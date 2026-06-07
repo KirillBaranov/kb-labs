@@ -29,7 +29,7 @@ func ServiceShort(servicePkg string) string {
 // Swap returns an optional non-fatal warning (e.g. the release shipped no
 // service manifest, so it could not auto-register with kb-dev) alongside a
 // fatal error. Callers should surface the warning — it must never be silent.
-func Swap(platformDir, servicePkg, releaseID string) (*diag.Diag, error) {
+func Swap(platformDir, servicePkg, releaseID string, envOverrides map[string]string) (*diag.Diag, error) {
 	if releaseID == "" {
 		return nil, errors.New("Swap: releaseID is required")
 	}
@@ -99,14 +99,14 @@ func Swap(platformDir, servicePkg, releaseID string) (*diag.Diag, error) {
 	// service via the stable `current` symlink. A missing manifest yields a
 	// non-fatal warning (returned, not swallowed) — the release is swapped, but
 	// the operator must know it won't auto-register.
-	return updateDevservices(platformDir, servicePkg, releaseID)
+	return updateDevservices(platformDir, servicePkg, releaseID, envOverrides)
 }
 
 // updateDevservices reads the service manifest from the swapped release and
 // upserts the matching entry in <platformDir>/.kb/devservices.yaml. Returns a
 // non-fatal warning Diag (not nil) when the release ships no manifest, so the
 // "service won't auto-register" condition is visible rather than silent.
-func updateDevservices(platformDir, servicePkg, releaseID string) (*diag.Diag, error) {
+func updateDevservices(platformDir, servicePkg, releaseID string, envOverrides map[string]string) (*diag.Diag, error) {
 	manifestPath := filepath.Join(platformDir, "releases", releaseID,
 		"node_modules", servicePkg, "dist", "manifest.json")
 	if _, err := os.Stat(manifestPath); errors.Is(err, os.ErrNotExist) {
@@ -125,7 +125,7 @@ func updateDevservices(platformDir, servicePkg, releaseID string) (*diag.Diag, e
 		return nil, err
 	}
 	serviceShort := ServiceShort(servicePkg)
-	id, entry := devservices.EntryForSwap(platformDir, servicePkg, serviceShort, manifest)
+	id, entry := devservices.EntryForSwap(platformDir, servicePkg, serviceShort, manifest, envOverrides)
 
 	file, err := devservices.Load(platformDir)
 	if err != nil {
@@ -155,7 +155,10 @@ func Rollback(platformDir, servicePkg string) (*diag.Diag, error) {
 	if prevID == "" {
 		return nil, fmt.Errorf("previous symlink for %s is malformed: %q", servicePkg, target)
 	}
-	return Swap(platformDir, servicePkg, prevID)
+	// Rollback re-registers with manifest-default env (no deploy-time overrides
+	// available here). This is a recovery state — the operator re-applies the
+	// forward deploy afterwards, which restores any per-service env overrides.
+	return Swap(platformDir, servicePkg, prevID, nil)
 }
 
 // CurrentReleaseID returns the id of the release the current symlink points at.

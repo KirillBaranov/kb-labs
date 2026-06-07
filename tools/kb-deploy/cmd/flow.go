@@ -32,6 +32,53 @@ type applyFlow struct {
 	Lock     *lock.Lock // may be nil (no lock yet)
 	Drift    []DriftItem
 	Configs  map[string]deliveredConfig // per-host rendered config; nil when none declared
+	// ServiceEnv is the resolved deploy.yaml per-service env (secrets expanded),
+	// keyed by service logical name. Delivered to `kb-create swap --env`.
+	ServiceEnv map[string]map[string]string
+}
+
+// fetchIntegrities resolves the registry content digest for every distinct
+// service package@version in the config, querying it on a target host (the
+// platform registry is often a host-local Verdaccio). The result keys are
+// "<pkg>@<version>". Any failure aborts apply with ERR_REGISTRY_INTEGRITY.
+func fetchIntegrities(cfg *config.Config, hosts map[string]*remote.Host) (map[string]string, error) {
+	registry := ""
+	if cfg.Platform != nil {
+		registry = cfg.Platform.Registry
+	}
+	out := make(map[string]string)
+	names := make([]string, 0, len(cfg.Services))
+	for n := range cfg.Services {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		svc := cfg.Services[name]
+		key := svc.Service + "@" + svc.Version
+		if _, done := out[key]; done {
+			continue
+		}
+		host, err := firstConnectedHost(svc.Targets.Hosts, hosts)
+		if err != nil {
+			return nil, fmt.Errorf("services.%s: %w", name, err)
+		}
+		integ, err := host.PackageIntegrity(svc.Service, svc.Version, registry)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = integ
+	}
+	return out, nil
+}
+
+// firstConnectedHost returns the first target host that has an open connection.
+func firstConnectedHost(targets []string, hosts map[string]*remote.Host) (*remote.Host, error) {
+	for _, name := range targets {
+		if h, ok := hosts[name]; ok {
+			return h, nil
+		}
+	}
+	return nil, fmt.Errorf("no connected target host among %v", targets)
 }
 
 // deliveredConfig is the per-host config payload prepared on the control
@@ -76,6 +123,12 @@ func loadFlow() (*applyFlow, error) {
 		return nil, err
 	}
 
+	// Resolve per-service env (secrets expanded) for delivery to kb-create swap.
+	serviceEnv, err := resolveServiceEnv(cfg, resolver)
+	if err != nil {
+		return nil, err
+	}
+
 	// Prepare + preflight per-host config before any host is dialed or mutated
 	// (fail-fast: a broken config or unresolved secret aborts before SSH).
 	configs, err := prepareConfigs(cfg, resolver, filepath.Dir(cfgPath))
@@ -99,8 +152,18 @@ func loadFlow() (*applyFlow, error) {
 		return nil, err
 	}
 
+	// Content-aware ids: fetch each service package's registry integrity so a
+	// same-version content patch yields a new id (install, not skip). Fail-fast
+	// here — the registry is required for apply anyway.
+	integrities, err := fetchIntegrities(cfg, hosts)
+	if err != nil {
+		closeAll()
+		return nil, err
+	}
+
 	plan, err := orchestrator.ComputePlan(cfg, states, func(svc config.Service) string {
-		return releaseid.ComputeID(svc.Service, svc.Version, svc.Adapters, svc.Plugins)
+		key := svc.Service + "@" + svc.Version
+		return releaseid.ComputeID(svc.Service, svc.Version, integrities[key], svc.Adapters, svc.Plugins)
 	})
 	if err != nil {
 		closeAll()
@@ -110,16 +173,41 @@ func loadFlow() (*applyFlow, error) {
 	drift := detectDrift(cfg, l, states)
 
 	return &applyFlow{
-		CfgPath:  cfgPath,
-		Cfg:      cfg,
-		Hosts:    hosts,
-		CloseAll: closeAll,
-		States:   states,
-		Plan:     plan,
-		Lock:     l,
-		Drift:    drift,
-		Configs:  configs,
+		CfgPath:    cfgPath,
+		Cfg:        cfg,
+		Hosts:      hosts,
+		CloseAll:   closeAll,
+		States:     states,
+		Plan:       plan,
+		Lock:       l,
+		Drift:      drift,
+		Configs:    configs,
+		ServiceEnv: serviceEnv,
 	}, nil
+}
+
+// resolveServiceEnv expands the deploy.yaml per-service env (${secrets.X} /
+// ${env.X}) into concrete KEY=VALUE maps keyed by service logical name. These
+// are delivered to `kb-create swap --env` so the devservices entry kb-dev
+// launches reflects deploy-time config. validateSecrets has already confirmed
+// every reference resolves, so an error here is unexpected.
+func resolveServiceEnv(cfg *config.Config, r *secrets.Resolver) (map[string]map[string]string, error) {
+	out := map[string]map[string]string{}
+	for name, svc := range cfg.Services {
+		if len(svc.Env) == 0 {
+			continue
+		}
+		resolved := make(map[string]string, len(svc.Env))
+		for k, v := range svc.Env {
+			ev, err := r.Expand(v)
+			if err != nil {
+				return nil, fmt.Errorf("services.%s.env.%s: %w", name, k, err)
+			}
+			resolved[k] = ev
+		}
+		out[name] = resolved
+	}
+	return out, nil
 }
 
 // prepareConfigs reads the rendered platform config, validates it, resolves

@@ -9,11 +9,9 @@ cli:
     - name: "<%= it.name %>"
       description: "<%= it.vars.description %>"
   commands:
-    - id: hello
-      group: "<%= it.name %>"
+    - path: "<%= it.name %> hello"
       describe: "Say hello from <%= it.name %>"
       handler: "./commands/hello.js#default"
-      handlerPath: "./commands/hello.js"
       flags:
         - name: who
           type: string

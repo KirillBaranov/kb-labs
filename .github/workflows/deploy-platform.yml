@@ -106,9 +106,11 @@ jobs:
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       # ── Reclaim disk (+ optional reset) BEFORE any host write ────────────────
-      # Repeated debug deploys fill the small VM disk (per-release pnpm stores,
-      # caches, dangling docker layers, old releases) until even `scp` of a binary
-      # fails with ENOSPC. Free space here, before Bootstrap touches the host.
+      # Repeated deploys fill the small VM disk (per-release node_modules, caches,
+      # dangling docker layers + volumes, old releases) until even `scp` of a
+      # binary fails with ENOSPC and MongoDB crashes. Free space here, before
+      # Bootstrap touches the host, then HARD-FAIL if still below the floor so the
+      # run aborts cleanly instead of hanging mid-install.
       - name: Reclaim disk
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -118,19 +120,39 @@ jobs:
           ssh $SSHOPTS "$SSH_USER@$SSH_HOST" "RESET='${{ inputs.reset_platform }}' bash -s" <<'REMOTE'
           set -uo pipefail
           P="$HOME/kb-platform"
+          STORE="$P/.kb/pnpm-store"
+          MIN_FREE_KB=$((3 * 1024 * 1024))   # 3 GiB floor (matches kb-create's guard headroom)
           echo "Disk before:"; df -h "$HOME" | tail -1
+
           if [ "${RESET:-}" = "true" ]; then
             command -v kb-dev >/dev/null && kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
             echo "reset_platform: removing installed releases / services / registry…"
             rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
           fi
-          # Always reclaim caches + dangling docker so scp and per-release installs fit.
+
+          # Do NOT prune the shared pnpm store ($STORE): keeping it warm across
+          # deploys lets pnpm hardlink already-durable store objects instead of
+          # cold-writing them, which avoids the transient manifest.json corruption
+          # (null bytes / truncation) seen when reading a just-written object. The
+          # store is small (deduped ~hundreds of MB), so warm-keeping costs little.
+          # Prune only the default per-user store + npm caches.
+          : "$STORE" # referenced for clarity; intentionally not pruned
           pnpm store prune 2>/dev/null || true
           rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
           npm cache clean --force 2>/dev/null || true
+          # Dangling docker volumes (old gateway/redis/analytics stacks) were the
+          # single largest reclaim in practice (~2.4 GiB). Only volumes not attached
+          # to any container are removed, so live infra is untouched.
           docker image prune -af 2>/dev/null || true
           docker builder prune -af 2>/dev/null || true
+          docker volume prune -f 2>/dev/null || true
+
           echo "Disk after:"; df -h "$HOME" | tail -1
+          FREE_KB=$(df -P "$HOME" | tail -1 | awk '{print $4}')
+          if [ "$FREE_KB" -lt "$MIN_FREE_KB" ]; then
+            echo "::error::Only $((FREE_KB/1024)) MiB free after reclaim; need >= $((MIN_FREE_KB/1024)) MiB. Free space or run with reset_platform=true."
+            exit 1
+          fi
           REMOTE
 
       # ── Bootstrap the host: kb-create + kb-dev binaries, Verdaccio ───────────
@@ -148,6 +170,19 @@ jobs:
           sudo install -m 0755 /tmp/kb-dev    /usr/local/bin/kb-dev
           rm -f /tmp/kb-create /tmp/kb-dev
           command -v node >/dev/null || { echo "::error::node missing on host"; exit 1; }
+          # pnpm is required for the shared-store install path (kb-create falls
+          # back to npm without it, which copies node_modules per release and
+          # fills the disk). Provision it via corepack (ships with Node 20+).
+          # Pin pnpm 9 — pnpm@latest (10+) requires Node 22+, but the host runs
+          # Node 20.
+          if ! command -v pnpm >/dev/null; then
+            echo "pnpm missing — provisioning pnpm@9 via corepack"
+            sudo corepack enable pnpm 2>/dev/null || true
+            corepack prepare pnpm@9.15.9 --activate 2>/dev/null \
+              || sudo npm install -g pnpm@9 2>/dev/null \
+              || { echo "::error::failed to install pnpm on host"; exit 1; }
+          fi
+          echo "pnpm: $(pnpm --version 2>&1 | head -1)"
           # Verdaccio config: htpasswd lives under the writable storage volume
           # (the image's default /verdaccio/conf is not writable by uid 10001, which
           # makes adduser fail with HTTP 500). @kb-labs/* is local-only; everything
@@ -270,10 +305,10 @@ jobs:
           set -uo pipefail
           check() { curl -sf -m 10 "$2" >/dev/null && echo "$1: OK" || { echo "::error::$1 health failed ($2)"; return 1; }; }
           rc=0
-          check state    http://127.0.0.1:7777/health || rc=1
           check rest     http://127.0.0.1:5050/api/v1/health || rc=1
           check workflow http://127.0.0.1:7778/health || rc=1
           check gateway  http://127.0.0.1:4000/health || rc=1
+          check studio   http://127.0.0.1:3002/health || rc=1
           exit $rc
           REMOTE
 
@@ -292,7 +327,7 @@ jobs:
           CFG="$HOME/kb-platform/.kb/devservices.yaml"
           echo "===== kb-dev status ====="
           kb-dev --config "$CFG" status 2>&1 || true
-          for s in core-state-daemon rest-api-app workflow-daemon gateway-app; do
+          for s in rest-api-app workflow-daemon gateway-app studio-app; do
             echo "===== logs: $s (last 120) ====="
             kb-dev --config "$CFG" logs "$s" -n 120 2>&1 || true
           done

@@ -54,11 +54,48 @@ describe('generated plugin manifest passes V3 validation', () => {
       expect(valid).toBe(true);
 
       // Every command handler path must be resolvable (start with ./).
-      const cmds = (manifest as { cli?: { commands?: Array<{ handler?: string }> } })
+      const cmds = (manifest as { cli?: { commands?: Array<{ handler?: string; path?: string; id?: string }> } })
         .cli?.commands ?? [];
       for (const cmd of cmds) {
         expect(cmd.handler).toMatch(/^\.\//);
+
+        // B-013: commands must use `path` (space-separated tokens like "demo hello"),
+        // not legacy `id`+`group`. discover.ts reads cmd.path to build segments[];
+        // missing path → segments=[] → MANIFEST_VALIDATION_FAILED → plugin unusable.
+        expect(typeof cmd.path).toBe('string');
+        expect(cmd.path!.trim().split(/\s+/).length).toBeGreaterThanOrEqual(2);
+        expect(cmd.id).toBeUndefined();
       }
     });
   }
+});
+
+describe('generated plugin files are type-safe', () => {
+  it('error.ts validationError signature takes (ctx, message, isJson?) — no hint param', async () => {
+    const { files } = await buildFor(['base']);
+    const errorFile = files.find(f => f.path.includes('utils/error'));
+    expect(errorFile).toBeDefined();
+
+    // B-020: hint parameter was removed from validationError() because MessageOptions.hint
+    // is not present in all published SDK versions, causing TS2353/TS2554 errors.
+    // The signature must be (ctx, message, isJson?) with no hint.
+    const src = errorFile!.contents;
+    expect(src).toContain('export function validationError(');
+    expect(src).not.toMatch(/validationError\([\s\S]*?hint\??\s*:/);
+  });
+
+  it('error.ts validationError call in hello command matches updated signature', async () => {
+    const { files } = await buildFor(['base']);
+    const helloFile = files.find(f => f.path.includes('commands/hello'));
+    expect(helloFile).toBeDefined();
+
+    // B-020: hello.ts was calling validationError(ctx, msg, hint, isJson) — 4 args.
+    // After fix: validationError(ctx, msg, isJson) — 3 args max.
+    const src = helloFile!.contents;
+    const match = src.match(/validationError\(([^)]+)\)/);
+    if (match) {
+      const args = match[1].split(',').map(s => s.trim()).filter(Boolean);
+      expect(args.length).toBeLessThanOrEqual(3);
+    }
+  });
 });

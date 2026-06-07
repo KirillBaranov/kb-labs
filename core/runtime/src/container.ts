@@ -141,6 +141,7 @@ export class PlatformContainer {
   private adapters = new Map<string, unknown>();
   private lifecycleHooks = new Map<string, PlatformLifecycleHooks>();
   private initialized = false;
+  private assembled = false;
 
   constructor() {
     // Bootstrap logger: callers (including `initPlatform()` itself) start
@@ -635,6 +636,23 @@ export class PlatformContainer {
   }
 
   /**
+   * Mark platform as assembled (called by initPlatform after assembly hook runs).
+   * @internal
+   */
+  markAssembled(): void {
+    this.assembled = true;
+  }
+
+  /**
+   * True once assemblePlatform() has been applied via the assemblyHook.
+   * Adapters in an unassembled platform lack rate limiting, analytics wrapping,
+   * LLM router, and PII redaction.
+   */
+  get isAssembled(): boolean {
+    return this.assembled;
+  }
+
+  /**
    * Initialize resource broker.
    * Called internally by initPlatform().
    */
@@ -800,6 +818,7 @@ export class PlatformContainer {
     this._runExecutor = undefined;
     this._runOrchestrator = undefined;
     this.initialized = false;
+    this.assembled = false;
   }
 
   /**

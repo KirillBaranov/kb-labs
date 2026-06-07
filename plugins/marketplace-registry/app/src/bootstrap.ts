@@ -1,4 +1,5 @@
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import { findRepoRoot } from '@kb-labs/core-sys';
@@ -15,7 +16,7 @@ async function main(): Promise<void> {
   const port = parseInt(process.env.KB_REGISTRY_PORT ?? String(DEFAULT_PORT), 10);
   const host = process.env.KB_REGISTRY_HOST ?? DEFAULT_HOST;
 
-  await createServiceBootstrap({ appId: 'marketplace-registry', repoRoot });
+  await createServiceBootstrap({ appId: 'marketplace-registry', repoRoot, assemblyHook: makeAssemblyHook() });
 
   const log = createCorrelatedLogger(platform.logger, {
     serviceId: 'marketplace-registry',

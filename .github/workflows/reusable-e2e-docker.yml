@@ -255,6 +255,7 @@ jobs:
           STATE_URL:       http://localhost:7777
           MCP_URL:         http://localhost:7779
           CI: "true"
+          KB_DEBUG: "true"
           KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
       # ── Artifacts + summary ──────────────────────────────────────────────
@@ -271,6 +272,8 @@ jobs:
           docker compose cp platform:/workspace/kb-e2e/.kb          /tmp/e2e-logs/kb-dir          2>&1 || true
           docker compose cp platform:/root/kb-platform/.kb           /tmp/e2e-logs/platform-kb-dir 2>&1 || true
           docker compose exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
+          docker compose exec -T platform sh -c 'cat /tmp/kb-e2e-diag.json 2>/dev/null' \
+            > /tmp/e2e-logs/kb-e2e-diag.json 2>&1 || true
 
       - name: Upload platform logs
         if: always()
@@ -278,6 +281,15 @@ jobs:
         with:
           name: platform-logs-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/e2e-logs/
+          retention-days: 14
+
+      - name: Upload KB_DEBUG diagnostic snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-e2e-diag-${{ github.run_id }}-${{ inputs.suite }}
+          path: /tmp/kb-e2e-diag.json
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Upload Playwright report

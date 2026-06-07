@@ -7,6 +7,7 @@ package remote
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -36,7 +37,11 @@ type InstallOpts struct {
 	Adapters     map[string]string // role → npm spec (with version)
 	Plugins      map[string]string // package → version
 	Registry     string            // optional
-	KeepReleases int               // default 3
+	KeepReleases int               // 0 = install-service default
+	// ReleaseID pins the release directory name. The deploy path sets this to
+	// the planner's content-aware desired id so the installed dir matches the
+	// plan exactly (and install-service does not recompute a spec-only id).
+	ReleaseID string
 }
 
 // InstallResult is the parsed outcome of install-service on the target.
@@ -46,20 +51,29 @@ type InstallResult struct {
 	Evicted   []string // ids evicted by GC
 }
 
-// InstallService runs kb-create install-service on the host.
+// InstallService runs kb-create install-service on the host and parses its
+// machine-readable JSON result. The release-id is read from a structured object
+// — never scraped from human-readable text — so wording drift cannot produce an
+// empty id that then breaks Swap. install-service buffers all pnpm noise, so its
+// stdout carries only the JSON object even when the SSH transport merges streams.
 func (h *Host) InstallService(opts InstallOpts) (*InstallResult, error) {
 	cmd := h.buildInstallCmd(opts)
 	out, err := h.Runner.Run(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
 	}
-	return parseInstallOutput(out), nil
+	res, err := parseInstallJSON(out)
+	if err != nil {
+		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
+	}
+	return res, nil
 }
 
 func (h *Host) buildInstallCmd(opts InstallOpts) string {
 	var b strings.Builder
 	b.WriteString("kb-create install-service ")
 	b.WriteString(shellQuote(opts.ServicePkg + "@" + opts.Version))
+	b.WriteString(" --output json")
 	if h.PlatformPath != "" {
 		b.WriteString(" --platform ")
 		b.WriteString(shellQuote(h.PlatformPath))
@@ -70,6 +84,10 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 	}
 	if opts.KeepReleases > 0 {
 		b.WriteString(fmt.Sprintf(" --keep-releases %d", opts.KeepReleases))
+	}
+	if opts.ReleaseID != "" {
+		b.WriteString(" --release-id ")
+		b.WriteString(shellQuote(opts.ReleaseID))
 	}
 	if len(opts.Adapters) > 0 {
 		b.WriteString(" --adapters ")
@@ -94,20 +112,35 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	manifestPath := h.PlatformPath + "/services/" + serviceShort +
 		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
-	out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
-	if err != nil {
-		return "", fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+	// Transient-corruption retry. Under the deploy's I/O load, a just-installed
+	// manifest.json is occasionally observed truncated or null-padded
+	// ("unexpected end of JSON input" / "invalid character '\x00'") even though
+	// the settled file is valid — the hardlinked pnpm-store object's content is
+	// not yet durable when read. Not reproducible in isolation; verified
+	// load-bearing in the full deploy (removing this retry made apply fail). A
+	// few re-reads let the file settle. Keeping the store warm (no pre-deploy
+	// prune) is the root mitigation; this is defence in depth.
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
+		if err != nil {
+			lastErr = fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+			continue
+		}
+		var m struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(out), &m); err != nil {
+			lastErr = fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
+			continue
+		}
+		if m.ID == "" {
+			lastErr = fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
+			continue
+		}
+		return m.ID, nil
 	}
-	var m struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal([]byte(out), &m); err != nil {
-		return "", fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
-	}
-	if m.ID == "" {
-		return "", fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
-	}
-	return m.ID, nil
+	return "", lastErr
 }
 
 // ReconcileDevservices prunes devservices.yaml dependsOn entries that name
@@ -127,18 +160,68 @@ func (h *Host) ReconcileDevservices() (string, error) {
 	return out, nil
 }
 
-// Swap atomically points current at the given release.
-func (h *Host) Swap(servicePkg, releaseID string) error {
+// PackageIntegrity returns the registry-reported content digest of
+// servicePkg@version, used to make the release-id content-aware. The query runs
+// ON THE HOST (via npm view) because the platform registry is frequently a
+// host-local Verdaccio on 127.0.0.1, unreachable from the control machine.
+//
+// A missing/empty digest is a hard error (ERR_REGISTRY_INTEGRITY): during apply
+// the package must already be published, so an empty result means the registry
+// is misconfigured or the package is absent — failing fast beats silently
+// reverting to a spec-only id that would re-trigger the skip-on-content-change
+// bug this guards against.
+func (h *Host) PackageIntegrity(servicePkg, version, registry string) (string, error) {
+	spec := servicePkg + "@" + version
+	cmd := "npm view " + shellQuote(spec) + " dist.integrity --silent"
+	if registry != "" {
+		cmd += " --registry " + shellQuote(registry)
+	}
+	out, err := h.Runner.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf(
+			"ERR_REGISTRY_INTEGRITY: query integrity for %s on %s: %w (output: %s)",
+			spec, h.Name, err, out)
+	}
+	integrity := strings.TrimSpace(out)
+	if integrity == "" {
+		return "", fmt.Errorf(
+			"ERR_REGISTRY_INTEGRITY: registry returned no integrity for %s on %s "+
+				"(is it published to %s?)", spec, h.Name, registry)
+	}
+	return integrity, nil
+}
+
+// Swap atomically points current at the given release. env carries the
+// deploy.yaml per-service env overrides (already resolved) so kb-create writes
+// them into the devservices entry — without this, a service whose deploy config
+// moves it off its manifest defaults (e.g. Studio's port) is launched wrong.
+func (h *Host) Swap(servicePkg, releaseID string, env map[string]string) error {
 	cmd := fmt.Sprintf("kb-create swap %s %s",
 		shellQuote(servicePkg), shellQuote(releaseID))
 	if h.PlatformPath != "" {
 		cmd += " --platform " + shellQuote(h.PlatformPath)
+	}
+	for _, k := range sortedKeys(env) {
+		cmd += " --env " + shellQuote(k+"="+env[k])
 	}
 	out, err := h.Runner.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("swap on %s: %w (output: %s)", h.Name, err, out)
 	}
 	return nil
+}
+
+// sortedKeys returns map keys in deterministic order (stable swap commands).
+func sortedKeys(m map[string]string) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // Rollback swaps current back to previous on the target.
@@ -249,40 +332,51 @@ func joinPlugins(m map[string]string) string {
 	return strings.Join(parts, ",")
 }
 
-// parseInstallOutput reads the human-friendly lines emitted by
-// `kb-create install-service` to reconstruct the result.
+// installResultJSON mirrors the object emitted by
+// `kb-create install-service --output json`. It is the contract between the two
+// tools; do not reconstruct the result from human-readable text.
+type installResultJSON struct {
+	ReleaseID string   `json:"releaseId"`
+	NoOp      bool     `json:"noop"`
+	Evicted   []string `json:"evicted"`
+}
+
+// parseInstallJSON extracts the structured install result from the host's
+// combined stdout+stderr. The Runner merges streams, so pnpm progress (routed to
+// stderr by install-service) is interleaved with the single JSON object on
+// stdout. We therefore scan lines and pick the one that unmarshals into our shape
+// with a non-empty releaseId — a real structured match, not phrase scraping.
 //
-// The command prints either:
-//
-//	release <id> already installed (no-op)
-//
-// or:
-//
-//	installed release <id> at <path>
-//	  evicted: <id>
-//	  evicted: <id>
-func parseInstallOutput(out string) *InstallResult {
-	r := &InstallResult{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		line = strings.TrimSpace(line)
-		switch {
-		case strings.HasPrefix(line, "release ") && strings.Contains(line, "already installed"):
-			r.NoOp = true
-			fields := strings.Fields(line)
-			if len(fields) >= 2 {
-				r.ReleaseID = fields[1]
-			}
-		case strings.HasPrefix(line, "installed release "):
-			fields := strings.Fields(line)
-			if len(fields) >= 3 {
-				r.ReleaseID = fields[2]
-			}
-		case strings.HasPrefix(line, "evicted:"):
-			id := strings.TrimSpace(strings.TrimPrefix(line, "evicted:"))
-			if id != "" {
-				r.Evicted = append(r.Evicted, id)
-			}
+// A missing or empty release-id is a hard error (ERR_INSTALL_NO_RELEASE_ID): far
+// better to fail the action here than to pass an empty id to Swap, which fails
+// obscurely with "releaseID is required".
+func parseInstallJSON(out string) (*InstallResult, error) {
+	var found *installResultJSON
+	for _, line := range strings.Split(out, "\n") {
+		// Be tolerant of a stray prefix glued onto the JSON line when stdout and
+		// stderr are merged over SSH: extract the outermost {...} span and try
+		// that. install-service buffers its noise so this should already be a
+		// clean line, but the extraction is cheap insurance.
+		open := strings.IndexByte(line, '{')
+		close := strings.LastIndexByte(line, '}')
+		if open < 0 || close <= open {
+			continue
+		}
+		var r installResultJSON
+		if err := json.Unmarshal([]byte(line[open:close+1]), &r); err != nil {
+			continue // not our object (e.g. a pnpm json-reporter line)
+		}
+		if r.ReleaseID != "" {
+			found = &r // keep the last valid one
 		}
 	}
-	return r
+	if found == nil {
+		return nil, fmt.Errorf(
+			"ERR_INSTALL_NO_RELEASE_ID: install-service produced no JSON result with a release id")
+	}
+	return &InstallResult{
+		ReleaseID: found.ReleaseID,
+		NoOp:      found.NoOp,
+		Evicted:   found.Evicted,
+	}, nil
 }

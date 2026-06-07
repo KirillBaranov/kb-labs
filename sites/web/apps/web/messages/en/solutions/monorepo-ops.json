@@ -74,7 +74,7 @@
           "note": "Export a structured impact report with dependency paths."
         },
         {
-          "cmd": "pnpm kb plugins clear-cache",
+          "cmd": "pnpm kb marketplace plugins refresh",
           "note": "Force-invalidate the CLI discovery cache after a build."
         }
       ],

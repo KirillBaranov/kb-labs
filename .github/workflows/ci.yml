@@ -173,7 +173,7 @@ jobs:
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - name: Run ${{ matrix.task }}
-        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }}
+        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }} --no-cache
 
   # ── 4. Site quality checks — seo, i18n, broken links ──────────────────────
   site-checks:

@@ -12,22 +12,86 @@ import (
 )
 
 // HashInputs computes a deterministic SHA256 hash over all files matching
-// the given glob patterns within pkgDir.
+// the given glob patterns.
 //
-// Hash input: sorted list of (relpath + content) for every matched file.
+// Patterns without a leading "^" are resolved relative to pkgDir.
+// Patterns with a leading "^" are resolved relative to each dir in depDirs —
+// this makes the hash sensitive to workspace dependency outputs (e.g. dist/).
+// depDirs may be nil; "^" patterns are then no-ops (no files matched).
+//
+// Hash keys for dep files are expressed as paths relative to pkgDir
+// (e.g. "../../../core/dist/index.js") so the hash is machine-independent
+// and safe to use with future remote cache backends.
+//
+// Hash input: sorted list of (unique path key + content) for every matched file.
 // Skips node_modules, .git, dist, .turbo, coverage automatically.
-func HashInputs(pkgDir string, patterns []string) (string, error) {
-	files, err := expandGlobs(pkgDir, patterns)
-	if err != nil {
-		return "", err
+func HashInputs(pkgDir string, depDirs []string, patterns []string) (string, error) {
+	type entry struct {
+		key  string // sort key written into hash (unique across local + dep files)
+		path string // absolute path for reading
 	}
 
-	h := sha256.New()
-	for _, rel := range files {
-		// Write path separator so "a/b"+"c" ≠ "a"+"bc".
-		_, _ = io.WriteString(h, rel+"\x00")
+	seen := make(map[string]entry)
 
-		f, err := os.Open(filepath.Join(pkgDir, rel))
+	// Partition patterns once to avoid per-pattern WalkDir calls.
+	var localPatterns, depPatterns []string
+	for _, p := range patterns {
+		if strings.HasPrefix(p, "^") {
+			depPatterns = append(depPatterns, strings.TrimPrefix(p, "^"))
+		} else {
+			localPatterns = append(localPatterns, p)
+		}
+	}
+
+	// One expandGlobs call for all local patterns (single WalkDir over pkgDir).
+	if len(localPatterns) > 0 {
+		rels, err := expandGlobs(pkgDir, localPatterns, true)
+		if err != nil {
+			return "", err
+		}
+		for _, rel := range rels {
+			if _, dup := seen[rel]; !dup {
+				seen[rel] = entry{key: rel, path: filepath.Join(pkgDir, rel)}
+			}
+		}
+	}
+
+	// One expandGlobs call per dep dir for all dep patterns (single WalkDir per dep).
+	for _, depDir := range depDirs {
+		if len(depPatterns) == 0 {
+			break
+		}
+		rels, err := expandGlobs(depDir, depPatterns, false)
+		if err != nil {
+			return "", err
+		}
+		for _, rel := range rels {
+			absPath := filepath.Join(depDir, rel)
+			// Key is relative to pkgDir — machine-independent across checkouts.
+			// Falls back to absPath only if the two dirs are on different drives (Windows).
+			relKey, err := filepath.Rel(pkgDir, absPath)
+			if err != nil {
+				relKey = absPath
+			}
+			relKey = filepath.ToSlash(relKey)
+			if _, dup := seen[relKey]; !dup {
+				seen[relKey] = entry{key: relKey, path: absPath}
+			}
+		}
+	}
+
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	h := sha256.New()
+	for _, key := range keys {
+		e := seen[key]
+		_, _ = io.WriteString(h, e.key+"\x00")
+
+		f, err := os.Open(e.path)
 		if err != nil {
 			return "", err
 		}
@@ -45,13 +109,13 @@ func HashInputs(pkgDir string, patterns []string) (string, error) {
 // expandGlobs returns sorted relative paths of all files matching any pattern.
 // Patterns use simple glob syntax: ** matches any number of path segments,
 // * matches within one segment.
-func expandGlobs(root string, patterns []string) ([]string, error) {
+// skipDist controls whether the "dist" directory is pruned during traversal.
+// Use true for local package dirs (dist is a generated output, not an input),
+// false for dep dirs (dist is exactly what we want to hash via "^dist/**").
+func expandGlobs(root string, patterns []string, skipDist bool) ([]string, error) {
 	seen := make(map[string]bool)
 
 	for _, pattern := range patterns {
-		// Strip leading ^  (used in dep input references like "^dist/**/*.d.ts").
-		pattern = strings.TrimPrefix(pattern, "^")
-
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return nil // skip unreadable
@@ -59,16 +123,13 @@ func expandGlobs(root string, patterns []string) ([]string, error) {
 
 			rel, _ := filepath.Rel(root, path)
 
-			// Always skip these directories.
 			if d.IsDir() {
-				name := d.Name()
-				if isSkippedDir(name) {
+				if shouldSkipDir(d.Name(), skipDist) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 
-			// Match relative path against pattern.
 			if matchGlob(pattern, rel) {
 				seen[rel] = true
 			}
@@ -138,10 +199,12 @@ func matchSingleSeg(pat, seg string) bool {
 	return ok
 }
 
-func isSkippedDir(name string) bool {
+func shouldSkipDir(name string, skipDist bool) bool {
 	switch name {
-	case "node_modules", ".git", "dist", ".turbo", "coverage", "__pycache__", ".cache":
+	case "node_modules", ".git", ".turbo", "coverage", "__pycache__", ".cache":
 		return true
+	case "dist":
+		return skipDist
 	}
 	return strings.HasPrefix(name, ".")
 }

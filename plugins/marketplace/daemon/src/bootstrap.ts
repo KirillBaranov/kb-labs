@@ -4,6 +4,7 @@
  */
 
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { readKbConfig } from '@kb-labs/core-config';
@@ -23,7 +24,7 @@ export async function bootstrap(cwd: string): Promise<void> {
   const host = process.env.KB_MARKETPLACE_HOST ?? DEFAULT_HOST;
 
   // Init platform (logger, cache, adapters)
-  await createServiceBootstrap({ appId: 'marketplace', repoRoot });
+  await createServiceBootstrap({ appId: 'marketplace', repoRoot, assemblyHook: makeAssemblyHook() });
 
   const log = createCorrelatedLogger(platform.logger, {
     serviceId: 'marketplace',

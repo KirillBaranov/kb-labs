@@ -1,6 +1,7 @@
 // seo-ignore og-keys (marketplace OG intentionally uses hero/eyebrow text for visual richness)
 import type { Metadata } from 'next';
-import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { setRequestLocale, getTranslations, getMessages } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -39,7 +40,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MarketplacePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale });
+  const [t, messages] = await Promise.all([
+    getTranslations({ locale }),
+    getMessages(),
+  ]);
 
   const items = await fetchRegistryItems();
 
@@ -74,7 +78,9 @@ export default async function MarketplacePage({ params }: Props) {
         {/* ── Catalog ── */}
         <section className="border-b border-line">
           <Container className="py-10">
-            <MarketplaceCatalog items={items} locale={locale} />
+            <NextIntlClientProvider messages={{ marketplace: messages.marketplace as Record<string, unknown> }}>
+              <MarketplaceCatalog items={items} locale={locale} />
+            </NextIntlClientProvider>
           </Container>
         </section>
 

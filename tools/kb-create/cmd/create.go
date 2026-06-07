@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/detect"
-	"github.com/kb-labs/create/internal/gateway"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
@@ -29,7 +27,7 @@ import (
 
 var (
 	flagYes         bool
-	flagLLM         bool
+	flagLocal       bool
 	flagDemo        bool
 	flagPlatform    string
 	flagSkipClaude  bool
@@ -39,8 +37,8 @@ var (
 )
 
 func init() {
-	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults (LLM and analytics off)")
-	rootCmd.Flags().BoolVar(&flagLLM, "llm", false, "enable LLM features (KB Labs Gateway, 50 free requests)")
+	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults (no LLM configured)")
+	rootCmd.Flags().BoolVar(&flagLocal, "local", false, "local single-user mode: gateway binds 127.0.0.1 and Studio opens without login (auth disabled)")
 	rootCmd.Flags().BoolVar(&flagDemo, "demo", false, "install demo plugins and run pipeline on your code")
 	rootCmd.Flags().StringVar(&flagPlatform, "platform", "", "platform installation directory")
 	rootCmd.Flags().BoolVar(&flagSkipClaude, "skip-claude", false, "do not install Claude Code skills or CLAUDE.md")
@@ -169,41 +167,32 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
+	// Local single-user mode is an EXPLICIT opt-in (--local flag or the wizard
+	// "Studio access" choice) — never an implicit default of --yes. In local mode
+	// the gateway binds 127.0.0.1 and auth is disabled so Studio opens without
+	// login and is unreachable off the machine (B-023). Unattended/server installs
+	// (plain --yes, e2e, cloud) keep auth on and bind 0.0.0.0 — the safe default.
+	if flagLocal || sel.LocalMode {
+		authOff := false
+		scaffoldOpts.GatewayAuthEnabled = &authOff
+		scaffoldOpts.GatewayHost = "127.0.0.1"
+	}
 	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
 	// for environments where user auth is a core feature, not an optional overlay).
 	if ac := m.AdapterConfig; ac != nil {
 		scaffoldOpts.DocumentDatabase = ac.DocumentDatabase
 		scaffoldOpts.KVStore = ac.KVStore
 	}
-	// LLM requires explicit user consent. Sources (in priority order):
-	//   1. --llm flag (silent install)
-	//   2. Wizard LLM toggle (sel.LLMEnabled set by wizard)
-	//   3. Demo consent (ConsentDemo implies LLM via KB Labs Gateway)
-	// --yes without --llm → no LLM (never auto-register).
-	wantsLLM := flagLLM || sel.LLMEnabled || sel.Consent == types.ConsentDemo
+	// LLM provider key: set by wizard (sel.LLMProvider + sel.LLMKey).
+	// No auto-registration — the user explicitly chooses their provider.
+	wantsLLM := sel.LLMProvider != "" || sel.LLMEnabled || sel.Consent == types.ConsentDemo
+	if sel.LLMProvider != "" && sel.LLMKey != "" {
+		scaffoldOpts.LLMProvider = sel.LLMProvider
+		scaffoldOpts.LLMKey = sel.LLMKey
+	}
 
 	printDataConsent(sel.TelemetryEnabled, wantsLLM)
-	if wantsLLM {
-		creds, credErr := tc.EnsureRegistered()
-		if credErr != nil {
-			deviceID := telemetry.GenerateDeviceID()
-			creds, credErr = gateway.Register(
-				context.Background(),
-				gateway.DefaultURL,
-				fmt.Sprintf("kb-create:%s", deviceID[:8]),
-				fmt.Sprintf("device:%s", deviceID),
-			)
-		}
-		if credErr != nil {
-			log.Printf("gateway registration: %v (LLM credentials skipped)", credErr)
-		} else {
-			scaffoldOpts.GatewayCredentials = &scaffold.GatewayCreds{
-				ClientID:     creds.ClientID,
-				ClientSecret: creds.ClientSecret,
-				GatewayURL:   gateway.DefaultURL,
-			}
-		}
-	}
+
 	// Write full platform config to platformDir (installer-owned, always overwritten).
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold platform config: %w", err)

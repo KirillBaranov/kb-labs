@@ -212,7 +212,12 @@ export async function createServer(
     }
 
     // Machine Bearer middleware — skips if userAuthContext already set by above.
-    scope.addHook('onRequest', createAuthMiddleware(cache, jwtConfig));
+    // When auth is disabled (solo/local), the middleware runs every request as
+    // the local admin (B-023).
+    scope.addHook(
+      'onRequest',
+      createAuthMiddleware(cache, jwtConfig, { authEnabled: config.auth?.enabled !== false }),
+    );
 
     // Per-tenant pressure (ADR-0056). Runs after auth so AuthContext is set.
     if (config.pressure?.perTenant?.enabled === true && platform.hasResourceBroker) {

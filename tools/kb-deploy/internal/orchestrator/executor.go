@@ -40,6 +40,11 @@ type ExecuteOptions struct {
 	// current hash differs gets a forced restart even when its release is
 	// unchanged (config-only change).
 	PrevConfigHash map[string]string
+	// ServiceEnv carries the resolved deploy.yaml per-service env overrides,
+	// keyed by service logical name. Passed to `kb-create swap --env` so the
+	// devservices entry kb-dev launches reflects deploy-time config (e.g. a
+	// Studio PORT override). Nil/absent → manifest defaults only.
+	ServiceEnv map[string]map[string]string
 }
 
 // Result records what happened per action.
@@ -256,7 +261,8 @@ func runWave(actions []Action, parallel int, opts ExecuteOptions, forceRestart m
 		}
 	}
 
-	// Phase 3 — restart + health gate.
+	// Phase 3 — restart + health gate. kb-dev's restart cascade now correctly
+	// re-starts dependents it stops, so no post-restart settle pass is needed.
 	runConcurrent(len(actions), parallel, func(i int) {
 		if !needsRestart[i] || results[i].Err != nil {
 			return
@@ -346,20 +352,31 @@ func prepareAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) 
 			Adapters:   svc.Adapters,
 			Plugins:    svc.Plugins,
 			Registry:   platformRegistry(opts.Config),
-			// KeepReleases left at 0 so install-service uses its default (3).
+			// Pin the dir name to the planner's content-aware desired id so the
+			// installed release matches the plan exactly (no spec-only recompute).
+			ReleaseID: a.ToID,
+			// KeepReleases left at 0 so install-service uses its default.
 		})
 		if err != nil {
 			res.Err = err
 			return res, false
 		}
-		if err := host.Swap(svc.Service, installRes.ReleaseID); err != nil {
+		if installRes.ReleaseID == "" {
+			// Defence in depth: InstallService already errors on an empty id, but
+			// never let an empty release-id reach Swap (which fails obscurely with
+			// "releaseID is required").
+			res.Err = fmt.Errorf("install %s@%s on %s: empty release id",
+				svc.Service, svc.Version, a.Host)
+			return res, false
+		}
+		if err := host.Swap(svc.Service, installRes.ReleaseID, opts.ServiceEnv[a.Service]); err != nil {
 			res.Err = err
 			return res, false
 		}
 		res.ReleaseID = installRes.ReleaseID
 
 	case ActionSwap:
-		if err := host.Swap(svc.Service, a.ToID); err != nil {
+		if err := host.Swap(svc.Service, a.ToID, opts.ServiceEnv[a.Service]); err != nil {
 			res.Err = err
 			return res, false
 		}

@@ -4,6 +4,7 @@ import {
   getPlatformRoot,
   getProjectRoot,
 } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { resolvePolicy } from '@kb-labs/core-policy';
 import { createCorrelatedLogger, resolveObservabilityInstanceId } from '@kb-labs/shared-http';
 import { noopUI } from '@kb-labs/plugin-contracts';
@@ -27,6 +28,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       const lines = callOutput.getStore();
       return lines ? createBufferedUI((s) => lines.push(s)).ui : noopUI;
     },
+    assemblyHook: makeAssemblyHook(),
   });
 
   // 2. Correlated bootstrap logger — same pattern as gateway and rest-api.

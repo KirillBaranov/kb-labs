@@ -1,4 +1,5 @@
 'use client';
+// i18n-client-provided: signup — caller must wrap with <NextIntlClientProvider messages={{ signup }}>
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';

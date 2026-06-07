@@ -21,6 +21,7 @@
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",
     "@kb-labs/marketplace-registry-api": "workspace:*",

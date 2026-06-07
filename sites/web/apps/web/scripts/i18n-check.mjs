@@ -402,6 +402,20 @@ for (const { key, file, line } of navDerivedRefs) {
   refsByKey.get(key).push({ file, line });
 }
 
+// ─── Shared top-level keys (available to client via NextIntlClientProvider in layout) ─────
+
+const { messages: sharedMessages } = (() => {
+  const sharedPath = join(MESSAGES_DIR, 'en', '_shared.json');
+  if (!existsSync(sharedPath)) return { messages: {} };
+  try {
+    return { messages: JSON.parse(readFileSync(sharedPath, 'utf8')) };
+  } catch {
+    return { messages: {} };
+  }
+})();
+
+const CLIENT_AVAILABLE_TOP_KEYS = new Set(Object.keys(sharedMessages));
+
 // ─── Run checks ───────────────────────────────────────────────────────────────
 
 // MISMATCH: compare merged en vs ru leaf key sets
@@ -414,6 +428,32 @@ for (const [key, locs] of refsByKey) {
   if (!enAllKeys.has(key)) missingRefs.push({ key, locs });
 }
 missingRefs.sort((a, b) => a.key.localeCompare(b.key));
+
+// CLIENT_LEAK: 'use client' components calling useTranslations() with keys outside _shared.json
+// Suppress per-file with: // i18n-client-provided: <namespace> — documents that caller wraps with provider.
+const CLIENT_PROVIDED_RE = /\/\/\s*i18n-client-provided\s*:/;
+
+function isClientFile(filePath) {
+  const src = readFileSync(filePath, 'utf8');
+  return src.startsWith("'use client'") || src.startsWith('"use client"') || src.includes("\n'use client'") || src.includes('\n"use client"');
+}
+
+function isClientProvided(filePath) {
+  const src = readFileSync(filePath, 'utf8');
+  return CLIENT_PROVIDED_RE.test(src);
+}
+
+const clientLeakIssues = [];
+for (const [key, locs] of refsByKey) {
+  const topKey = key.split('.')[0];
+  if (CLIENT_AVAILABLE_TOP_KEYS.has(topKey)) continue;
+  for (const loc of locs) {
+    if (!loc.file.endsWith('.tsx') && !loc.file.endsWith('.ts')) continue;
+    if (!isClientFile(loc.file)) continue;
+    if (isClientProvided(loc.file)) continue;
+    clientLeakIssues.push({ key, file: loc.file, line: loc.line });
+  }
+}
 
 // HARDCODED: Cyrillic text in .tsx not via t()
 const hardcodedIssues = sourceFiles.flatMap(f => extractHardcoded(f));
@@ -530,6 +570,10 @@ if (DEVKIT_MODE) {
     issues.push(toDevkitIssue(file, line,
       '[HARDCODED] Raw Cyrillic text — use t() or add // i18n-ignore'));
   }
+  for (const { key, file, line } of clientLeakIssues) {
+    issues.push(toDevkitIssue(file, line,
+      `[CLIENT_LEAK] Key "${key}" used in 'use client' component but not available via NextIntlClientProvider — add a page-level <NextIntlClientProvider messages={{...}}> or move key to _shared.json`));
+  }
   for (const key of unusedKeys) {
     issues.push({
       check: 'i18n-check',
@@ -617,7 +661,28 @@ if (hardcodedIssues.length > 0) {
   NL();
 }
 
-// 4. UNUSED
+// 4. CLIENT_LEAK
+if (clientLeakIssues.length > 0) {
+  exitCode = 1;
+  console.log(c.red(c.bold(`❌  CLIENT_LEAK (${clientLeakIssues.length}) — keys used in 'use client' components not available via NextIntlClientProvider`)));
+  console.log(c.red('   These render as the raw key string at runtime.'));
+  console.log(c.red('   Fix: add a page-level <NextIntlClientProvider messages={{...}}> or move keys to _shared.json.'));
+  NL();
+  const seen = new Set();
+  for (const { key, file, line } of clientLeakIssues) {
+    const fileKey = `${key}|${file}`;
+    if (seen.has(fileKey)) continue;
+    seen.add(fileKey);
+    console.log(c.red(`   ${key}`));
+    console.log(c.gray(`     ${relative(ROOT, file)}:${line}`));
+  }
+  NL();
+} else {
+  console.log(c.green('✅  CLIENT_LEAK — all client-component keys are available via provider'));
+  NL();
+}
+
+// 5. UNUSED
 if (unusedKeys.length > 0) {
   if (STRICT) exitCode = 1;
   const icon  = STRICT ? c.red('❌') : c.yellow('⚠️ ');
@@ -653,6 +718,7 @@ if (exitCode === 0 && unusedKeys.length === 0) {
     missingInRu.length + extraInRu.length > 0 && `${missingInRu.length + extraInRu.length} MISMATCH`,
     missingRefs.length > 0                    && `${missingRefs.length} MISSING`,
     hardcodedIssues.length > 0                && `${hardcodedIssues.length} HARDCODED`,
+    clientLeakIssues.length > 0               && `${clientLeakIssues.length} CLIENT_LEAK`,
     STRICT && unusedKeys.length > 0           && `${unusedKeys.length} UNUSED`,
   ].filter(Boolean).join(' · ');
   console.log(c.red(c.bold(`❌  Failed: ${parts}`)));

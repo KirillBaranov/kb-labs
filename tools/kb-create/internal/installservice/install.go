@@ -58,6 +58,28 @@ type Result struct {
 
 const releaseSchema = "kb.release/1"
 
+// defaultKeepReleases is the GC retention count when the caller doesn't specify
+// one. On a single VPS, current + previous (both protected) plus one spare is
+// plenty; a lower default keeps the releases tree small. Overridable per call.
+const defaultKeepReleases = 2
+
+// minFreeBytes is the pre-install disk-space floor. install-service refuses to
+// start a download when the releases filesystem has less than this available,
+// failing fast with a clear error instead of half-writing a release into a full
+// disk (which previously cascaded into pnpm failures, a crashed MongoDB, and an
+// unwritable devservices.yaml).
+//
+// Sized as a catastrophe floor, not a comfort margin: with the shared pnpm store,
+// only the FIRST install of a wave populates the store (~600MB–1GB); the rest
+// hardlink and add ~100MB each. A fixed 1 GiB floor keeps a safe gap above the
+// 0-byte cascade without blocking those cheap follow-on installs on a tight disk.
+const minFreeBytes = 1 << 30 // 1 GiB
+
+// pnpmStoreSubdir is the shared pnpm store location under the platform root. It
+// lives on the same filesystem as releases/ so pnpm hardlinks store objects into
+// each release's node_modules instead of copying them.
+const pnpmStoreSubdir = ".kb/pnpm-store"
+
 // Install installs the service into releases/<id>/ under opts.PlatformDir.
 //
 // High-level steps:
@@ -65,9 +87,10 @@ const releaseSchema = "kb.release/1"
 //  2. Ensure releases/ and services/ share a filesystem (D21).
 //  3. Compute release id deterministically if not provided (D3).
 //  4. If releases/<id>/ exists and is complete → no-op.
+//     4.5. Evict releases beyond keep, then guard free disk space.
 //  5. Create releases/<id>/ with an .incomplete marker.
 //  6. Write package.json pinning service + adapters + plugins.
-//  7. Run pnpm install in that directory.
+//  7. Run pnpm install in that directory (shared store → hardlinked deps).
 //  8. Write release.json with integrity digest.
 //  9. Remove .incomplete.
 //  10. Update releases.json, run GC, save.
@@ -106,6 +129,25 @@ func Install(ctx context.Context, opts Options) (*Result, error) {
 		if err := os.RemoveAll(releaseDir); err != nil {
 			return nil, fmt.Errorf("clean stale release %s: %w", releaseID, err)
 		}
+	}
+
+	// Step 4.5 — evict beyond keep BEFORE the download, then guard free space.
+	//
+	// Evicting first removes the old "peak = existing + new" window: stale
+	// releases are freed before pnpm pulls the next one. The disk guard is the
+	// hard backstop — refuse to start rather than half-write into a full disk.
+	preEvicted, err := pruneBeyondKeep(opts.PlatformDir, opts.ServicePkg, opts.KeepReleases, opts.Stderr)
+	if err != nil {
+		return nil, err
+	}
+	if free, err := releases.FreeBytes(releasesDir); err != nil {
+		return nil, err
+	} else if free < minFreeBytes {
+		return nil, fmt.Errorf(
+			"ERR_INSUFFICIENT_DISK: %d MiB free on %s, need at least %d MiB to install %s@%s. "+
+				"Free space (old releases, docker, caches) or lower keep-releases.",
+			free>>20, releasesDir, int64(minFreeBytes)>>20, opts.ServicePkg, opts.Version,
+		)
 	}
 
 	// Step 5 — fresh dir + marker.
@@ -194,8 +236,36 @@ func Install(ctx context.Context, opts Options) (*Result, error) {
 	return &Result{
 		ReleaseID:  releaseID,
 		ReleaseDir: releaseDir,
-		Evicted:    evicted,
+		Evicted:    append(preEvicted, evicted...),
 	}, nil
+}
+
+// pruneBeyondKeep evicts releases for service beyond the keep count (current and
+// previous stay protected) and physically removes their dirs, before a new
+// download begins. Returns the evicted ids. A nil store (no releases.json yet)
+// is a clean no-op.
+func pruneBeyondKeep(platformDir, service string, keep int, stderr io.Writer) ([]string, error) {
+	store, err := releases.Load(platformDir)
+	if err != nil {
+		return nil, err
+	}
+	evicted, err := store.GC(service, keep)
+	if err != nil {
+		return nil, fmt.Errorf("pre-install gc: %w", err)
+	}
+	if len(evicted) == 0 {
+		return nil, nil
+	}
+	if err := store.Save(); err != nil {
+		return nil, err
+	}
+	releasesDir := filepath.Join(platformDir, "releases")
+	for _, id := range evicted {
+		if err := os.RemoveAll(filepath.Join(releasesDir, id)); err != nil {
+			fmt.Fprintf(stderr, "warning: pre-evicted release %s could not be removed: %v\n", id, err)
+		}
+	}
+	return evicted, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +283,7 @@ func (o *Options) validate() error {
 		return errors.New("PlatformDir is required")
 	}
 	if o.KeepReleases < 1 {
-		o.KeepReleases = 3
+		o.KeepReleases = defaultKeepReleases
 	}
 	return nil
 }
@@ -275,7 +345,8 @@ func splitSpec(spec string) (name, version string, err error) {
 }
 
 func runInstall(_ context.Context, dir string, pkgs []string, opts Options) error {
-	mgr := pm.Detect(pm.DetectOptions{Registry: opts.Registry})
+	storeDir := filepath.Join(opts.PlatformDir, pnpmStoreSubdir)
+	mgr := pm.Detect(pm.DetectOptions{Registry: opts.Registry, StoreDir: storeDir})
 
 	progress := make(chan pm.Progress, 32)
 	done := make(chan error, 1)

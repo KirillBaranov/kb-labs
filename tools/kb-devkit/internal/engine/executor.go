@@ -35,16 +35,19 @@ func NewExecutor(objects cache.ObjectStore, manifests *cache.ManifestStore, stat
 }
 
 // Run executes (pkg, task) with full cache semantics:
-//  1. Compute input hash
+//  1. Compute input hash (local inputs + dep outputs via "^" patterns)
 //  2. Cache hit? → restore outputs + return cached result
 //  3. Run command
 //  4. Store outputs + write manifest
 //  5. Return result
-func (e *Executor) Run(pkg workspace.Package, def TaskDef, noCache bool) TaskResult {
+//
+// depDirs is the list of workspace dependency directories for this package.
+// It is used to resolve "^"-prefixed input patterns (e.g. "^dist/**").
+func (e *Executor) Run(pkg workspace.Package, def TaskDef, noCache bool, depDirs []string) TaskResult {
 	start := time.Now()
 
 	// 1. Compute input hash.
-	inputHash, err := cache.HashInputs(pkg.Dir, def.Inputs)
+	inputHash, err := cache.HashInputs(pkg.Dir, depDirs, def.Inputs)
 	if err != nil {
 		return TaskResult{
 			Package: pkg.Name, Task: def.Name,

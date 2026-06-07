@@ -307,6 +307,67 @@ describe('WorkflowEngine', () => {
     });
   });
 
+  describe('Job failure: run status and downstream (B-029, B-030)', () => {
+    it('B-029: terminal job failure sets run status to "failed", not "dlq"', async () => {
+      const spec: WorkflowSpec = {
+        name: 'Fail Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          main: {
+            runsOn: 'local',
+            retries: { max: 0, backoff: 'exp', initialIntervalMs: 100 },
+            steps: [{ name: 'Boom', uses: 'builtin:shell', with: { run: 'exit 1' } }],
+          },
+        },
+      };
+      const run = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const jobId = run.jobs.find(j => j.jobName === 'main')!.id;
+
+      await engine.markJobFailed(run.id, jobId, new Error('Step handler reported failure (exitCode: 1)'));
+
+      const updated = await engine.getRun(run.id);
+      // dlq must be reserved for infrastructure failures, not a user step exit 1.
+      expect(updated?.status).toBe('failed');
+      expect(updated?.status).not.toBe('dlq');
+      // The failing job's error must surface at the run level so consumers can
+      // show why the run failed (REST /runs/:id, Studio, e2e).
+      expect(updated?.result?.error?.message).toBeTruthy();
+    });
+
+    it('B-030: downstream job of a failed upstream is cancelled, not left queued', async () => {
+      const spec: WorkflowSpec = {
+        name: 'Cascade Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          'job-a': {
+            runsOn: 'local',
+            retries: { max: 0, backoff: 'exp', initialIntervalMs: 100 },
+            steps: [{ name: 'Boom', uses: 'builtin:shell', with: { run: 'exit 1' } }],
+          },
+          'job-b': {
+            runsOn: 'local',
+            needs: ['job-a'],
+            steps: [{ name: 'Step B', uses: 'builtin:shell', with: { run: 'echo b' } }],
+          },
+        },
+      };
+      const run = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobFailed(run.id, jobAId, new Error('boom'));
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      // job-b must NOT stay queued forever — it is cancelled because its
+      // dependency failed.
+      expect(jobB?.status).toBe('cancelled');
+      expect(jobB?.status).not.toBe('queued');
+      expect(updated?.status).toBe('failed');
+    });
+  });
+
   describe('Job Interruption', () => {
     it('should log job interruption', async () => {
       const spec: WorkflowSpec = {

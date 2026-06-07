@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/kb-labs/create/internal/manifest"
 )
@@ -227,5 +228,88 @@ func TestExpandHomeAbsolute(t *testing.T) {
 	path := "/usr/local/bin"
 	if got := expandHome(path); got != path {
 		t.Errorf("expandHome(%q) = %q, want %q", path, got, path)
+	}
+}
+
+// ── LLM provider wizard step (B-001 replacement) ─────────────────────────────
+
+// TestToSelectionLLMProviderOpenAI verifies that when the user picks openai
+// and enters a key, toSelection() propagates LLMProvider and LLMKey.
+// Before the fix these fields did not exist; after the fix they are set.
+func TestToSelectionLLMProviderOpenAI(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		llmProvider:   "openai",
+		llmKeyInput:   makeInput("sk-test-key-123"),
+	}
+
+	sel := m.toSelection()
+
+	if sel.LLMProvider != "openai" {
+		t.Errorf("LLMProvider = %q, want openai", sel.LLMProvider)
+	}
+	if sel.LLMKey != "sk-test-key-123" {
+		t.Errorf("LLMKey = %q, want sk-test-key-123", sel.LLMKey)
+	}
+}
+
+// TestToSelectionLLMProviderSkip verifies that skipping LLM sets empty
+// LLMProvider and LLMKey — no credentials written to .env.
+func TestToSelectionLLMProviderSkip(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		llmProvider:   "",
+	}
+
+	sel := m.toSelection()
+
+	if sel.LLMProvider != "" {
+		t.Errorf("LLMProvider = %q, want empty (skipped)", sel.LLMProvider)
+	}
+	if sel.LLMKey != "" {
+		t.Errorf("LLMKey = %q, want empty (skipped)", sel.LLMKey)
+	}
+}
+
+// ── Studio access mode (B-023) ───────────────────────────────────────────────
+
+// TestToSelectionStudioSecuredDefault verifies that the default (Secured) leaves
+// LocalMode false — auth stays on, the safe default for any install.
+func TestToSelectionStudioSecuredDefault(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		localMode:     false, // Secured (studioCursor 0)
+	}
+	if sel := m.toSelection(); sel.LocalMode {
+		t.Errorf("LocalMode = true, want false (Secured is the default)")
+	}
+}
+
+// TestToSelectionStudioLocal verifies that choosing Local single-user mode sets
+// LocalMode, which create.go turns into gateway auth-off + loopback bind.
+func TestToSelectionStudioLocal(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		localMode:     true, // Local (studioCursor 1)
+	}
+	if sel := m.toSelection(); !sel.LocalMode {
+		t.Errorf("LocalMode = false, want true (user chose Local)")
+	}
+}
+
+// TestHandleStudioKeySelectsLocal verifies the Studio stage maps cursor → localMode.
+func TestHandleStudioKeySelectsLocal(t *testing.T) {
+	m := wizardModel{stage: stageStudio, studioCursor: 1} // Local highlighted
+	next, _ := m.handleStudioKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if !got.localMode {
+		t.Errorf("localMode = false after selecting Local, want true")
+	}
+	if got.stage != stageConfirm {
+		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
 	}
 }

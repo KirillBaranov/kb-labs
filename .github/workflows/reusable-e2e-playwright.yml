@@ -362,6 +362,7 @@ jobs:
           AUTH_REFRESH_TTL_SEC: "15"
           AUTH_INVITE_TTL_MS: "604800000"
           CI: "true"
+          KB_DEBUG: "true"
 
       # ── Artifacts ────────────────────────────────────────────────────────────
 
@@ -378,6 +379,15 @@ jobs:
         with:
           name: e2e-${{ inputs.suite }}-platform-logs-${{ github.run_id }}
           path: /tmp/e2e-${{ inputs.suite }}-logs/
+          retention-days: 14
+
+      - name: Upload KB_DEBUG diagnostic snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-e2e-diag-${{ github.run_id }}-${{ inputs.suite }}
+          path: /tmp/kb-e2e-diag.json
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Upload Playwright report
