@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/kb-labs/create/internal/manifest"
 )
@@ -269,5 +270,46 @@ func TestToSelectionLLMProviderSkip(t *testing.T) {
 	}
 	if sel.LLMKey != "" {
 		t.Errorf("LLMKey = %q, want empty (skipped)", sel.LLMKey)
+	}
+}
+
+// ── Studio access mode (B-023) ───────────────────────────────────────────────
+
+// TestToSelectionStudioSecuredDefault verifies that the default (Secured) leaves
+// LocalMode false — auth stays on, the safe default for any install.
+func TestToSelectionStudioSecuredDefault(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		localMode:     false, // Secured (studioCursor 0)
+	}
+	if sel := m.toSelection(); sel.LocalMode {
+		t.Errorf("LocalMode = true, want false (Secured is the default)")
+	}
+}
+
+// TestToSelectionStudioLocal verifies that choosing Local single-user mode sets
+// LocalMode, which create.go turns into gateway auth-off + loopback bind.
+func TestToSelectionStudioLocal(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		localMode:     true, // Local (studioCursor 1)
+	}
+	if sel := m.toSelection(); !sel.LocalMode {
+		t.Errorf("LocalMode = false, want true (user chose Local)")
+	}
+}
+
+// TestHandleStudioKeySelectsLocal verifies the Studio stage maps cursor → localMode.
+func TestHandleStudioKeySelectsLocal(t *testing.T) {
+	m := wizardModel{stage: stageStudio, studioCursor: 1} // Local highlighted
+	next, _ := m.handleStudioKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if !got.localMode {
+		t.Errorf("localMode = false after selecting Local, want true")
+	}
+	if got.stage != stageConfirm {
+		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
 	}
 }

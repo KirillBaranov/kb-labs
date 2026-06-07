@@ -69,9 +69,8 @@ export const ruffEngine: LinterEngine = {
     '.ruff.toml',
   ],
 
-  buildCommand(files: string[], _cwd: string): string {
-    const quotedFiles = files.map(f => `"${f}"`).join(' ');
-    return `ruff check --output-format json ${quotedFiles}`;
+  buildCommand(files: string[], _cwd: string): string[] {
+    return ['ruff', 'check', '--output-format', 'json', ...files];
   },
 
   parseOutput(json: string, _cwd: string): ReviewFinding[] {
