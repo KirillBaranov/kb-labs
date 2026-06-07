@@ -17,6 +17,7 @@ import {
   runsViewFlags,
   runsWatchFlags,
   runsRerunFlags,
+  lintFlags,
 } from './flags';
 import {
   WORKFLOW_BASE_PATH,
@@ -86,6 +87,24 @@ export const manifest = {
         handler: './commands/metrics.js#default',
         flags: defineCommandFlags(metricsFlags),
         examples: ['kb workflow metrics', 'kb workflow metrics --json'],
+      },
+      {
+        path: 'workflow lint',
+        category: 'Daemon',
+        operationType: 'read' as const,
+        describe: 'Validate workflow files against the schema.',
+        longDescription:
+          'Statically validates workflow files under .kb/workflows (or a given --path) against ' +
+          'WorkflowSpecSchema, reporting per-file issues with their JSON-path. Runs locally without ' +
+          'the daemon. Exits non-zero if any file is invalid (or, with --strict, has warnings).',
+        handler: './commands/lint.js#default',
+        flags: defineCommandFlags(lintFlags),
+        examples: [
+          'kb workflow lint',
+          'kb workflow lint --path .kb/workflows/03-dev-cycle.yml',
+          'kb workflow lint --json',
+          'kb workflow lint --strict',
+        ],
       },
       {
         path: 'workflow status',

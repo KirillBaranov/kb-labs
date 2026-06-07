@@ -1,0 +1,10 @@
+name: fixture-valid
+version: 1.0.0
+on:
+  manual: true
+jobs:
+  build:
+    runsOn: local
+    steps:
+      - name: Echo
+        run: echo hi
