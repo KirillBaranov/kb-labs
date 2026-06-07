@@ -1,0 +1,118 @@
+# Tech Lead (L1) — night-lab artifact
+#
+# The missing top layer: intention → grounded decomposition → human gate → ClickUp tickets.
+# This is what turns you from Tech Lead into CEO. Validated against WorkflowSpecSchema.
+#
+# Decomposition is a `claude -p` subprocess (plan mode) with repo access, so it grounds tickets
+# on real conventions. Acceptance criteria are authored here as test descriptions (Ring C input
+# to ai-dev-cycle-hardened via its `acceptance_cmd`).
+
+name: tech-lead
+version: 0.1.0
+description: Intention → grounded epic decomposition → ClickUp tickets (with acceptance tests)
+on:
+  manual: true
+
+inputs:
+  intention:
+    type: string
+    description: One-sentence product intention from the founder
+    required: true
+  list_id:
+    type: string
+    description: ClickUp list to create tickets in
+    required: true
+
+phases:
+  analyze:
+    label: Analyze
+    description: RAG + decomposition
+  gate:
+    label: Approval
+    description: Founder approves decomposition + architectural fork
+  emit:
+    label: Tickets
+    description: Create ClickUp tickets
+
+jobs:
+
+  decompose:
+    runsOn: local
+    steps:
+      - name: Decompose intention
+        id: plan
+        phase: analyze
+        run: |
+          claude -p "You are a Tech Lead. Turn this intention into JSON {epic, summary, conventions_found, architectural_forks, tickets:[{id,title,rationale,files_likely,depends_on,blast_radius,acceptance_criteria_as_test}], escalation_notes}. Ground every choice on the real repo (read files; follow adapter/ADAPTER_REGISTRY + sdk-only conventions). 4-7 tickets. Output ONLY JSON. INTENTION: ${{ inputs.intention }}" \
+            --permission-mode plan --output-format json --dangerously-skip-permissions --model claude-sonnet-4-6 > /tmp/techlead.json
+          # claude -p wraps the JSON result in ```json fences — strip them so
+          # downstream jq parsing works.
+          DECOMP=$(jq -r '.result' /tmp/techlead.json | sed '/^```/d')
+          echo "::kb-output::$(printf '{"decomp_b64":"%s"}' "$(printf '%s' "$DECOMP" | base64)")"
+        timeoutMs: 900000
+        artifacts:
+          decomposition:
+            type: markdown
+            source: steps.plan.outputs.decomp_b64
+            label: Proposed decomposition
+
+  approve:
+    runsOn: local
+    needs: [decompose]
+    steps:
+      - name: Approve decomposition
+        id: approval
+        phase: gate
+        uses: builtin:approval
+        with:
+          title: "Approve decomposition for: ${{ inputs.intention }}"
+          instructions: Approve to create tickets; reject with notes to re-decompose.
+      - name: Route
+        id: gate
+        phase: gate
+        uses: builtin:gate
+        with:
+          decision: steps.approval.outputs.action
+          maxIterations: 3
+          routes:
+            approve: continue
+            reject:
+              restartFrom: decompose
+              context:
+                feedback: ${{ steps.approval.outputs.comment }}
+          default: fail
+
+  create-tickets:
+    runsOn: local
+    needs: [approve]
+    steps:
+      - name: Create ClickUp tickets from decomposition
+        id: emit
+        phase: emit
+        run: |
+          # Strip the ```json fences claude -p adds, then guard against a parse
+          # that yields zero tickets — otherwise a malformed decomposition would
+          # create nothing yet the step would still pass (false green).
+          DECOMP=$(jq -r '.result' /tmp/techlead.json | sed '/^```/d')
+          COUNT=$(echo "$DECOMP" | jq '.tickets | length' 2>/dev/null || echo 0)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "ERROR: no tickets parsed from decomposition (malformed JSON?)" >&2
+            exit 1
+          fi
+          echo "$DECOMP" | jq -c '.tickets[]' > /tmp/techlead-tickets.jsonl
+          CREATED=0
+          while read -r t; do
+            ID=$(echo "$t" | jq -r '.id')
+            TITLE=$(echo "$t" | jq -r '.title')
+            AC=$(echo "$t" | jq -r '.acceptance_criteria_as_test')
+            if kb clickup task create --list ${{ inputs.list_id }} \
+              --name "[$ID] $TITLE" \
+              --desc "Acceptance (test): $AC" \
+              --priority 3 --json; then
+              CREATED=$((CREATED + 1))
+            else
+              echo "WARN: failed to create ticket $ID" >&2
+            fi
+          done < /tmp/techlead-tickets.jsonl
+          echo "created $CREATED/$COUNT tickets"
+          echo "::kb-output::$(printf '{"emitted":true,"created":%s,"total":%s}' "$CREATED" "$COUNT")"
