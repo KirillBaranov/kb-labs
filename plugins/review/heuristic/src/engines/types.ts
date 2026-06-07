@@ -29,9 +29,9 @@ export interface LinterEngine {
    *
    * @param files - Absolute paths to files to lint
    * @param cwd - Working directory (project root)
-   * @returns CLI command string
+   * @returns argv array (cmd + args) — never a shell string, prevents injection
    */
-  buildCommand(files: string[], cwd: string): string;
+  buildCommand(files: string[], cwd: string): string[];
 
   /**
    * Parse JSON output from linter CLI.
