@@ -36,7 +36,8 @@
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "@kb-labs/workflow-contracts": "workspace:*"
+    "@kb-labs/workflow-contracts": "workspace:*",
+    "@kb-labs/workflow-runtime": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

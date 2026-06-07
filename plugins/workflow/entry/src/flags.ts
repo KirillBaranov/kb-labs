@@ -265,3 +265,25 @@ export const runsRerunFlags = {
 } as const;
 
 export type RunsRerunFlags = typeof runsRerunFlags;
+
+/**
+ * Flags for workflow:lint command
+ */
+export const lintFlags = {
+  path: {
+    type: 'string',
+    description: 'File or directory to lint (default: .kb/workflows)',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+  strict: {
+    type: 'boolean',
+    description: 'Treat warnings as errors',
+    default: false,
+  },
+} as const;
+
+export type LintFlags = typeof lintFlags;
