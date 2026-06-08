@@ -7,6 +7,7 @@ import { type FastifyInstance } from 'fastify';
 import {
   HttpObservabilityCollector,
   createDaemonServer,
+  createServiceReadyResponse,
   type ObservabilityCollectorLike,
 } from '@kb-labs/shared-http';
 import type { ILogger } from '@kb-labs/core-platform';
@@ -71,6 +72,14 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
     serviceId: 'marketplace',
     logger,
     observability,
+    // /ready must return { ready, components } (createServiceReadyResponse shape),
+    // not the bare buildHealth() payload — e2e MH-03/MH-04 assert body.ready and
+    // body.components.marketplaceService.
+    readyCheck: () =>
+      createServiceReadyResponse({
+        ready: true,
+        components: { marketplaceService: { ready: true } },
+      }),
     openapi: {
       title: 'KB Labs Marketplace',
       description: 'Unified marketplace for plugins, adapters, workflows, and more',

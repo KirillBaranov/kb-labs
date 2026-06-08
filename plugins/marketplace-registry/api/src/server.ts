@@ -3,6 +3,7 @@ import multipart from '@fastify/multipart';
 import {
   HttpObservabilityCollector,
   createDaemonServer,
+  createServiceReadyResponse,
   type ObservabilityCollectorLike,
 } from '@kb-labs/shared-http';
 import type { ILogger } from '@kb-labs/core-platform';
@@ -54,6 +55,12 @@ export async function createRegistryServer(opts: RegistryServerOptions): Promise
     serviceId: 'marketplace-registry',
     logger,
     observability,
+    // /ready must return { ready, components } — e2e RG-H02 asserts body.ready === true.
+    readyCheck: () =>
+      createServiceReadyResponse({
+        ready: true,
+        components: { registryService: { ready: true } },
+      }),
     openapi: {
       title: 'KB Labs Marketplace Registry',
       description: 'Public registry for KB Labs plugins and adapters',

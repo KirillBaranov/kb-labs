@@ -4,6 +4,7 @@ import type { ILogger } from '@kb-labs/core-platform';
 import type { ServiceObservabilityDescribe, ServiceObservabilityHealth } from '@kb-labs/core-contracts';
 import { createCorrelatedLogger } from './log-correlation.js';
 import { registerOpenAPI, type OpenAPIOptions } from './register-openapi.js';
+import type { ServiceReadyResponse } from './service-observability.js';
 
 export interface ObservabilityCollectorLike {
   register(server: FastifyInstance): void;
@@ -35,7 +36,7 @@ export interface DaemonServerOptions {
    * Optional custom readiness check. When provided, /ready returns 200 if the
    * check passes and 503 otherwise. When omitted, /ready delegates to buildHealth().
    */
-  readyCheck?: () => { ready: boolean; [key: string]: unknown };
+  readyCheck?: () => ServiceReadyResponse | { ready: boolean; [key: string]: unknown };
 }
 
 export async function createDaemonServer(opts: DaemonServerOptions): Promise<FastifyInstance> {
