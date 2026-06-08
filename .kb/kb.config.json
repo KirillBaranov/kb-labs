@@ -38,10 +38,6 @@
           "mcp-daemon": {
             "url": "http://localhost",
             "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/mcp-daemon.sock"
-          },
-          "state": {
-            "url": "http://localhost",
-            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/state-daemon.sock"
           }
         }
       },

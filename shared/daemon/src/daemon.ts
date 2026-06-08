@@ -9,6 +9,12 @@ export interface DaemonContext {
   logger: ILogger;
   port: number;
   host: string;
+  /**
+   * Repository root resolved via findRepoRoot(process.cwd()). Services should
+   * use this (not process.cwd()) for plugin/workflow discovery so they behave
+   * correctly when launched from a subdirectory.
+   */
+  repoRoot: string;
 }
 
 export interface DaemonConfig {
@@ -43,9 +49,12 @@ export async function runDaemon(
 
   // Ensure KB_SOCKET_HASH is set before interpolateConfig() runs inside platformBootstrap.
   // kb-dev sets it via spawnEnv() for all managed services (including gateway, rest-api).
-  // For manual starts (dev scripts, local testing), derive from repoRoot as fallback.
+  // For manual starts (dev scripts, local testing), derive it the same way kb-dev does —
+  // from the project dir (KB_PROJECT_ROOT), falling back to repoRoot — so a manually
+  // started service lands in the same /tmp/kb-<hash>/ dir as kb-dev-managed peers.
   if (!process.env.KB_SOCKET_HASH) {
-    process.env.KB_SOCKET_HASH = createHash('md5').update(repoRoot).digest('hex').slice(0, 8);
+    const hashRoot = process.env.KB_PROJECT_ROOT ?? repoRoot;
+    process.env.KB_SOCKET_HASH = createHash('md5').update(hashRoot).digest('hex').slice(0, 8);
   }
 
   const platform = await platformBootstrap(config.appId, repoRoot);
@@ -64,9 +73,16 @@ export async function runDaemon(
 
   logger.info(`${config.appId}: starting`, { port, host } as Record<string, unknown>);
 
-  const teardown = await config.setup({ platform, logger, port, host });
+  const teardown = await config.setup({ platform, logger, port, host, repoRoot });
 
+  // Guard against a second signal (e.g. SIGTERM then Ctrl-C) re-running teardown
+  // against already-closed resources.
+  let shuttingDown = false;
   const shutdown = async (signal: string) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
     logger.warn(`${config.appId}: received ${signal}`);
     await teardown();
     await platform.shutdown();

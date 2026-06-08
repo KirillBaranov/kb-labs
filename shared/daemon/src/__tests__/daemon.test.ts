@@ -170,6 +170,30 @@ describe('runDaemon()', () => {
     exitSpy.mockRestore();
   });
 
+  it('on repeated signals: runs teardown only once', async () => {
+    const teardown = vi.fn().mockResolvedValue(undefined);
+    const { bootstrap } = makePlatformBootstrap();
+    await runDaemon(makeConfig({ setup: vi.fn().mockResolvedValue(teardown) }), bootstrap);
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const sigterm = signalListeners.find((l) => l.event === 'SIGTERM')!;
+    const sigint = signalListeners.find((l) => l.event === 'SIGINT')!;
+    await (sigterm.fn as () => Promise<void>)();
+    await (sigint.fn as () => Promise<void>)();
+
+    expect(teardown).toHaveBeenCalledTimes(1);
+    exitSpy.mockRestore();
+  });
+
+  it('passes repoRoot to setup', async () => {
+    const { bootstrap } = makePlatformBootstrap();
+    const setup = vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(undefined));
+    await runDaemon(makeConfig({ setup }), bootstrap);
+    const ctx = (setup.mock.calls[0] as [{ repoRoot: string }])[0];
+    expect(typeof ctx.repoRoot).toBe('string');
+    expect(ctx.repoRoot.length).toBeGreaterThan(0);
+  });
+
   it('propagates error thrown in setup()', async () => {
     const { bootstrap } = makePlatformBootstrap();
     const config = makeConfig({
