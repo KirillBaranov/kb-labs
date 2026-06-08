@@ -8,7 +8,6 @@ import {
   createDaemonServer,
   createServiceReadyResponse,
   metricLine,
-  registerOpenAPI,
 } from '@kb-labs/shared-http';
 import type { FastifyInstance } from 'fastify';
 import type { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';

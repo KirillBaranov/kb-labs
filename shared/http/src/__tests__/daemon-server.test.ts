@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import Fastify from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
 import { createDaemonServer, type ObservabilityCollectorLike } from '../daemon-server.js';
 
