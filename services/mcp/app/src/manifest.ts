@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/index.js',
     port: 7779,
     healthCheck: '/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/mcp-daemon.sock',
   },
   env: {
     KB_MCP_DAEMON_PORT: { description: 'TCP port', default: '7779' },

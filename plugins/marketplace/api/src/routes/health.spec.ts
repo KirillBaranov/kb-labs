@@ -25,8 +25,9 @@ describe('marketplace observability surfaces', () => {
     const healthResponse = await server.inject({ method: 'GET', url: '/health' });
     expect(healthResponse.statusCode).toBe(200);
     const health = healthResponse.json();
-    expect(health.status).toBe('ok');
-    expect(health.service).toBe('marketplace');
+    // /health now returns the standard ServiceObservabilityHealth format from createDaemonServer.
+    expect(health.status).toBe('healthy');
+    expect(health.serviceId).toBe('marketplace');
 
     const describeResponse = await server.inject({ method: 'GET', url: '/observability/describe' });
     expect(describeResponse.statusCode).toBe(200);

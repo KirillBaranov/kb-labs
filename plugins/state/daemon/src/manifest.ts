@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/bin.cjs',
     port: 7777,
     healthCheck: '/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/state-daemon.sock',
   },
   env: {
     PORT: { description: 'HTTP port', default: '7777' },

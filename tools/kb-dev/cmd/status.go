@@ -2,9 +2,29 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// isSocketURL reports whether an address string is a unix domain socket
+// (rendered as "unix:<path>") rather than a TCP URL.
+func isSocketURL(url string) bool {
+	return strings.HasPrefix(url, "unix:")
+}
+
+// shortenSocketAddr renders a socket address compactly for the table by
+// eliding the constant /tmp/kb-<hash>/ directory (the same for every service)
+// down to an ellipsis. Returns the display string and the elided directory
+// (empty for non-socket URLs) so the caller can show it once in a footer.
+func shortenSocketAddr(url string) (display, dir string) {
+	if !isSocketURL(url) {
+		return url, ""
+	}
+	path := strings.TrimPrefix(url, "unix:")
+	return "unix:…/" + filepath.Base(path), filepath.Dir(path) + "/"
+}
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -35,6 +55,10 @@ func runStatus(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 	fmt.Println(out.label.Render("KB Labs Services"))
 
+	// socketDir is the constant /tmp/kb-<hash>/ shared by all socket services;
+	// captured during rendering and shown once in the footer instead of per row.
+	socketDir := ""
+
 	for _, group := range cfg.GroupOrder() {
 		services := cfg.Groups[group]
 		if len(services) == 0 {
@@ -49,9 +73,9 @@ func runStatus(_ *cobra.Command, _ []string) error {
 				continue
 			}
 
-			portStr := "-"
-			if ss.Port > 0 {
-				portStr = fmt.Sprintf("%d", ss.Port)
+			addr, dir := shortenSocketAddr(ss.URL)
+			if dir != "" {
+				socketDir = dir
 			}
 
 			latencyStr := ""
@@ -79,12 +103,11 @@ func runStatus(_ *cobra.Command, _ []string) error {
 				extras += "  " + out.dim.Render(cpuStr+" / "+memStr)
 			}
 
-			fmt.Printf("  %s %s%s%s%s%s\n",
+			fmt.Printf("  %s %s%s%s%s\n",
 				out.StatusIcon(ss.State),
-				Pad(id, 20),
-				Pad(portStr, 8),
-				out.StatusColor(Pad(ss.State, 12)),
-				Pad(ss.URL, 0),
+				Pad(id, 22),
+				out.StatusColor(Pad(ss.State, 10)),
+				Pad(addr, 0),
 				extras,
 			)
 
@@ -95,8 +118,11 @@ func runStatus(_ *cobra.Command, _ []string) error {
 	}
 
 	fmt.Println()
+	if socketDir != "" {
+		fmt.Printf("  %s\n", out.dim.Render("sockets · "+socketDir))
+	}
 	s := result.Summary
-	fmt.Printf("  %s  %s  %s  %s  (%d total)\n",
+	fmt.Printf("  %s · %s · %s · %s  (%d total)\n",
 		out.alive.Render(fmt.Sprintf("%d alive", s.Alive)),
 		out.starting.Render(fmt.Sprintf("%d starting", s.Starting)),
 		out.failed.Render(fmt.Sprintf("%d failed", s.Failed)),

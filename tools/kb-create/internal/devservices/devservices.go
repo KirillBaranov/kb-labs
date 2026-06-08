@@ -33,9 +33,13 @@ type Service struct {
 	Command     string            `yaml:"command"`
 	HealthCheck string            `yaml:"health_check,omitempty"`
 	Port        int               `yaml:"port,omitempty"`
-	URL         string            `yaml:"url,omitempty"`
-	Env         map[string]string `yaml:"env,omitempty"`
-	DependsOn   []string          `yaml:"depends_on,omitempty"`
+	// Socket is the unix domain socket path template (may contain ${KB_SOCKET_HASH},
+	// which kb-dev expands per project root). Set when a service binds a unix socket
+	// instead of a TCP port for internal transport.
+	Socket    string            `yaml:"socket,omitempty"`
+	URL       string            `yaml:"url,omitempty"`
+	Env       map[string]string `yaml:"env,omitempty"`
+	DependsOn []string          `yaml:"depends_on,omitempty"`
 }
 
 // Path returns the canonical location of devservices.yaml for platformDir.

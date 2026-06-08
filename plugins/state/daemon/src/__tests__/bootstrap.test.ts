@@ -1,8 +1,11 @@
 /**
  * Tests for bootstrap configuration — verifies port/host resolution from env vars,
- * server construction, and manifest correctness.
+ * server construction, socket support, and manifest correctness.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { StateDaemonServer } from '../server.js';
 import { manifest } from '../manifest.js';
 
@@ -31,6 +34,44 @@ describe('StateDaemonServer construction', () => {
 
     const server = new StateDaemonServer({ logger });
     expect(server).toBeDefined();
+  });
+});
+
+describe('StateDaemonServer socket support', () => {
+  const origSocketPath = process.env.KB_SOCKET_PATH;
+
+  afterEach(async () => {
+    if (origSocketPath === undefined) {
+      delete process.env.KB_SOCKET_PATH;
+    } else {
+      process.env.KB_SOCKET_PATH = origSocketPath;
+    }
+  });
+
+  it('listens on Unix socket when KB_SOCKET_PATH is set', async () => {
+    const sockPath = join(tmpdir(), `kb-test-state-${Date.now()}.sock`);
+    process.env.KB_SOCKET_PATH = sockPath;
+
+    const server = new StateDaemonServer({ port: 9998, host: 'localhost' });
+    await server.start();
+    try {
+      expect(existsSync(sockPath)).toBe(true);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('listens on TCP port when KB_SOCKET_PATH is not set', async () => {
+    delete process.env.KB_SOCKET_PATH;
+    const server = new StateDaemonServer({ port: 9997, host: '127.0.0.1' });
+    await server.start();
+    try {
+      // Verify TCP is reachable
+      const res = await fetch('http://127.0.0.1:9997/health');
+      expect(res.status).toBe(200);
+    } finally {
+      await server.stop();
+    }
   });
 });
 

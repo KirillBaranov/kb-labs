@@ -20,19 +20,28 @@
       "serviceTransport": {
         "services": {
           "rest": {
-            "url": "http://127.0.0.1:5050"
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/rest-api.sock"
           },
           "workflow": {
-            "url": "http://127.0.0.1:7778"
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/workflow.sock"
           },
           "marketplace": {
-            "url": "http://127.0.0.1:5070"
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/marketplace.sock"
           },
           "marketplace-registry": {
-            "url": "http://127.0.0.1:5071"
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/marketplace-registry.sock"
           },
           "mcp-daemon": {
-            "url": "http://127.0.0.1:7779"
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/mcp-daemon.sock"
+          },
+          "state": {
+            "url": "http://localhost",
+            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/state-daemon.sock"
           }
         }
       },

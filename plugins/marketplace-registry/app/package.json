@@ -24,6 +24,7 @@
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",
+    "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/marketplace-registry-api": "workspace:*",
     "@kb-labs/marketplace-registry-core": "workspace:*",
     "@kb-labs/shared-http": "workspace:*"

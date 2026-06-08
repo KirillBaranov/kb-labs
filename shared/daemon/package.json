@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/shared-http",
-  "description": "Shared Fastify/OpenAPI utilities for KB Labs HTTP services",
+  "name": "@kb-labs/shared-daemon",
+  "description": "Universal process-lifecycle bootstrapper for KB Labs daemon services",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,17 +26,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
-    "fastify-type-provider-zod": "^6.1.0",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.0"
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*"
   },
   "devDependencies": {
-    "@fastify/cors": "^10.0.0",
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "fastify": "^5.8.5",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
@@ -47,23 +43,6 @@
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@9.11.0",
-  "peerDependencies": {
-    "@fastify/cors": "^10.0.0",
-    "@fastify/swagger": ">=9.5.1",
-    "@fastify/swagger-ui": "^5.2.0",
-    "fastify": "^5.8.5"
-  },
-  "peerDependenciesMeta": {
-    "@fastify/cors": {
-      "optional": true
-    },
-    "@fastify/swagger": {
-      "optional": false
-    },
-    "@fastify/swagger-ui": {
-      "optional": false
-    }
-  },
   "publishConfig": {
     "access": "public"
   },

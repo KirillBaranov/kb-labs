@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/index.js',
     port: 5070,
     healthCheck: '/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/marketplace.sock',
   },
   env: {
     PORT: { description: 'HTTP port', default: '5070' },

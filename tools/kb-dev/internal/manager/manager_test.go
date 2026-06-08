@@ -230,8 +230,9 @@ func TestSpawnEnv_EmptyServiceEnv(t *testing.T) {
 	if result["KB_PROJECT_ROOT"] != "/workspace" {
 		t.Errorf("KB_PROJECT_ROOT = %q, want /workspace", result["KB_PROJECT_ROOT"])
 	}
-	if len(result) != 1 {
-		t.Errorf("len = %d, want 1 (only KB_PROJECT_ROOT)", len(result))
+	// KB_PROJECT_ROOT + KB_SOCKET_HASH, no socket path since Socket is empty.
+	if len(result) != 2 {
+		t.Errorf("len = %d, want 2 (KB_PROJECT_ROOT + KB_SOCKET_HASH)", len(result))
 	}
 }
 
@@ -339,6 +340,154 @@ func TestGetService_NotFound(t *testing.T) {
 	svc := m.GetService("nonexistent")
 	if svc != nil {
 		t.Error("GetService(nonexistent) should return nil")
+	}
+}
+
+// ── computeSocketHash ─────────────────────────────────────────────────
+
+// TestComputeSocketHash_MainWorkspace is a regression guard: ensures the hash
+// for the production workspace matches the value previously hardcoded in
+// devservices.yaml and kb.config.json, so socket paths don't change on upgrade.
+func TestComputeSocketHash_MainWorkspace(t *testing.T) {
+	got := computeSocketHash("/Users/kirillbaranov/Desktop/kb-labs-workspace")
+	if got != "86a20aa2" {
+		t.Errorf("computeSocketHash(main workspace) = %q, want 86a20aa2 (backward-compat value)", got)
+	}
+}
+
+func TestComputeSocketHash_DifferentDirsGiveDifferentHashes(t *testing.T) {
+	main := "/Users/kirillbaranov/Desktop/kb-labs-workspace"
+	wt := main + "/.claude/worktrees/test-worktree"
+	h1 := computeSocketHash(main)
+	h2 := computeSocketHash(wt)
+	if h1 == h2 {
+		t.Errorf("different dirs produced same hash %q — isolation broken", h1)
+	}
+	if len(h1) != 8 || len(h2) != 8 {
+		t.Errorf("hash lengths: %d, %d — want 8", len(h1), len(h2))
+	}
+}
+
+func TestSpawnEnv_InjectsSocketHash(t *testing.T) {
+	cfg := &config.Config{
+		Services: map[string]config.Service{},
+		Settings: config.Settings{},
+	}
+	m := New(cfg, "/workspace", "/workspace")
+
+	result := m.spawnEnv(config.Service{})
+
+	hash, ok := result["KB_SOCKET_HASH"]
+	if !ok {
+		t.Fatal("KB_SOCKET_HASH not injected by spawnEnv()")
+	}
+	if len(hash) != 8 {
+		t.Errorf("KB_SOCKET_HASH = %q, want 8-char hex string", hash)
+	}
+	if want := computeSocketHash("/workspace"); hash != want {
+		t.Errorf("KB_SOCKET_HASH = %q, want %q (hash of projectDir)", hash, want)
+	}
+}
+
+func TestSpawnEnv_DoesNotOverrideExistingSocketHash(t *testing.T) {
+	cfg := &config.Config{
+		Services: map[string]config.Service{},
+		Settings: config.Settings{},
+	}
+	m := New(cfg, "/workspace", "/workspace")
+
+	svc := config.Service{
+		Env: map[string]string{"KB_SOCKET_HASH": "custom12"},
+	}
+	result := m.spawnEnv(svc)
+
+	if result["KB_SOCKET_HASH"] != "custom12" {
+		t.Errorf("KB_SOCKET_HASH = %q, want custom12 (should not override)", result["KB_SOCKET_HASH"])
+	}
+}
+
+func TestManagerNew_ExpandsSocketHashInSocketPaths(t *testing.T) {
+	projectDir := "/Users/kirillbaranov/Desktop/kb-labs-workspace"
+	cfg := &config.Config{
+		Services: map[string]config.Service{
+			"rest": {
+				Name:   "REST API",
+				Type:   config.ServiceTypeNode,
+				Socket: "/tmp/kb-${KB_SOCKET_HASH}/rest-api.sock",
+			},
+			"workflow": {
+				Name:   "Workflow",
+				Type:   config.ServiceTypeNode,
+				Socket: "/tmp/kb-${KB_SOCKET_HASH}/workflow.sock",
+			},
+			"no-socket": {
+				Name: "No Socket",
+				Type: config.ServiceTypeNode,
+			},
+		},
+		Settings: config.Settings{},
+	}
+	m := New(cfg, projectDir, projectDir)
+
+	expectedHash := computeSocketHash(projectDir)
+
+	rest := m.GetService("rest")
+	if rest == nil {
+		t.Fatal("rest service not found")
+	}
+	wantRest := "/tmp/kb-" + expectedHash + "/rest-api.sock"
+	if rest.Config.Socket != wantRest {
+		t.Errorf("rest.Config.Socket = %q, want %q", rest.Config.Socket, wantRest)
+	}
+
+	wf := m.GetService("workflow")
+	if wf == nil {
+		t.Fatal("workflow service not found")
+	}
+	wantWF := "/tmp/kb-" + expectedHash + "/workflow.sock"
+	if wf.Config.Socket != wantWF {
+		t.Errorf("workflow.Config.Socket = %q, want %q", wf.Config.Socket, wantWF)
+	}
+
+	// Service without a socket field is unaffected.
+	ns := m.GetService("no-socket")
+	if ns == nil {
+		t.Fatal("no-socket service not found")
+	}
+	if ns.Config.Socket != "" {
+		t.Errorf("no-socket.Config.Socket = %q, want empty", ns.Config.Socket)
+	}
+}
+
+// ── serviceAddress ────────────────────────────────────────────────────
+
+func TestServiceAddress_SocketService(t *testing.T) {
+	addr := serviceAddress(config.Service{
+		Socket: "/tmp/kb-86a20aa2/marketplace.sock",
+		Port:   5070,
+		URL:    "http://localhost:5070",
+	})
+	if addr != "unix:/tmp/kb-86a20aa2/marketplace.sock" {
+		t.Errorf("serviceAddress(socket) = %q, want unix:... prefix", addr)
+	}
+}
+
+func TestServiceAddress_TCPService(t *testing.T) {
+	addr := serviceAddress(config.Service{
+		Port: 4000,
+		URL:  "http://localhost:4000",
+	})
+	if addr != "http://localhost:4000" {
+		t.Errorf("serviceAddress(tcp) = %q, want http://localhost:4000", addr)
+	}
+}
+
+func TestServiceAddress_FallbackToURL(t *testing.T) {
+	addr := serviceAddress(config.Service{
+		URL: "http://custom:9999",
+	})
+	if addr != "http://custom:9999" {
+		t.Errorf("serviceAddress(fallback) = %q, want http://custom:9999", addr)
 	}
 }
 

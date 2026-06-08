@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/index.js',
     port: 5050,
     healthCheck: '/api/v1/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/rest-api.sock',
   },
   dependsOn: ['qdrant'],
   env: {

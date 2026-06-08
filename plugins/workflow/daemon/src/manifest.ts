@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/index.js',
     port: 7778,
     healthCheck: '/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/workflow.sock',
   },
   env: {
     PORT: { description: 'HTTP port', default: '7778' },

@@ -27,6 +27,11 @@ export {
 } from './operation-metrics-tracker.js';
 
 export { getListenOptions } from './listen.js';
+export {
+  createDaemonServer,
+  type ObservabilityCollectorLike,
+  type DaemonServerOptions,
+} from './daemon-server.js';
 
 // Re-export fastify-type-provider-zod utilities so services don't need
 // a direct dependency on fastify-type-provider-zod for the common cases.
