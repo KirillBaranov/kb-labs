@@ -13,6 +13,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${1:-$REPO_ROOT/e2e/packages}"
 
+# Operate from REPO_ROOT so relative package paths (./core/…) resolve and the
+# path-exclusion patterns below don't match the repo root's own absolute path
+# (critical under .claude/worktrees/<id>/). OUT_DIR is absolute, set first.
+cd "$REPO_ROOT"
+
 mkdir -p "$OUT_DIR"
 # Clean previous packs so stale tarballs don't accumulate
 rm -f "$OUT_DIR"/*.tgz 2>/dev/null || true
@@ -52,7 +57,11 @@ while IFS= read -r pkg_json; do
     FAILED=$((FAILED+1))
   fi
 
-done < <(find "$REPO_ROOT" \
+# Find from REPO_ROOT using RELATIVE paths (cd + "find .") so the path-exclusion
+# patterns match real subdirectories, not the repo root's own absolute path. This
+# matters in a git worktree under .claude/worktrees/<id>/, where an absolute
+# find would make every path match "*/.claude/*" and exclude the whole tree.
+done < <(cd "$REPO_ROOT" && find . \
   -not -path "*/node_modules/*" \
   -not -path "*/.kb/*" \
   -not -path "*/e2e/*" \
