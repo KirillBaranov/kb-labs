@@ -12,21 +12,17 @@ import (
 	"github.com/kb-labs/env/internal/env"
 )
 
-// DefaultPortBase: 0 = use the platform's default ports (no shift).
-//
-// Port isolation across environments / coexistence with a running dev server
-// needs platform-level port unification: each daemon resolves its port
-// independently (serviceTransport urls for some, hard-coded defaults for others
-// like state-daemon 7777), so kb-dev --port-base shifts only kb-dev's view, not
-// the service's actual bind. Until the platform reads one port source, the
-// sandbox runs on default ports — one environment at a time, dev server stopped.
-// See plan: "port isolation" follow-up.
-const DefaultPortBase = 0
+// DefaultOffset: 0 = platform default ports. Port isolation now works end to
+// end through the transport adapter + KB_NET_OFFSET (additive), so a non-zero
+// offset shifts the whole virtual network — bind, route and kb-dev probes — and
+// environments coexist with a running dev stack / each other. Set per env via
+// KB_ENV_OFFSET; combine with a distinct KB_ENV_HOME for parallel environments.
+const DefaultOffset = 0
 
 // UpResult is the machine-readable outcome of `up`.
 type UpResult struct {
 	Profile    string `json:"profile"`
-	PortBase   int    `json:"portBase"`
+	Offset     int    `json:"offset"`
 	GatewayURL string `json:"gatewayUrl"`
 	Platform   string `json:"platform"`
 	Project    string `json:"project"`
@@ -57,15 +53,14 @@ func Up(l env.Layout, profileName string, p config.Profile, overlayPath string, 
 		return UpResult{}, err
 	}
 
-	portBase := DefaultPortBase
-	if v := os.Getenv("KB_ENV_PORT_BASE"); v != "" {
+	offset := DefaultOffset
+	if v := os.Getenv("KB_ENV_OFFSET"); v != "" {
 		if n, perr := strconv.Atoi(v); perr == nil && n > 0 {
-			portBase = n
+			offset = n
 		}
 	}
-	_ = portBase // shifting is opt-in via KB_ENV_PORT_BASE; default 0 = platform ports
 
-	_ = l.WriteMeta(env.Meta{Profile: profileName, Mode: "verdaccio", PortBase: portBase, Status: "provisioning", CreatedAt: time.Now()})
+	_ = l.WriteMeta(env.Meta{Profile: profileName, Mode: "verdaccio", Offset: offset, Status: "provisioning", CreatedAt: time.Now()})
 
 	// 1. Verdaccio: bring up registry, publish all @kb-labs/* tarballs.
 	registry, err := EnsureVerdaccio(l)
@@ -85,16 +80,16 @@ func Up(l env.Layout, profileName string, p config.Profile, overlayPath string, 
 		return UpResult{}, err
 	}
 	if err := Install(kbcreate, l, manifest, registry); err != nil {
-		_ = l.WriteMeta(env.Meta{Profile: profileName, PortBase: portBase, Status: "broken"})
+		_ = l.WriteMeta(env.Meta{Profile: profileName, Offset: offset, Status: "broken"})
 		return UpResult{}, err
 	}
 
-	// 3. Start services with the env's port base, then health-gate.
+	// 3. Start services with the env's offset, then health-gate.
 	cfgPath := l.DevservicesPath()
 	if err := ensureConfigExists(cfgPath); err != nil {
 		return UpResult{}, err
 	}
-	k := KBDev{Bin: kbdev, Config: cfgPath, PortBase: portBase, Layout: l}
+	k := KBDev{Bin: kbdev, Config: cfgPath, Offset: offset, Layout: l}
 
 	services := p.Services
 	if _, _, err := k.Start(services); err != nil {
@@ -102,7 +97,7 @@ func Up(l env.Layout, profileName string, p config.Profile, overlayPath string, 
 	}
 	readyRes, _, _ := k.Ready(services)
 	if !readyRes.OK {
-		_ = l.WriteMeta(env.Meta{Profile: profileName, PortBase: portBase, Status: "broken"})
+		_ = l.WriteMeta(env.Meta{Profile: profileName, Offset: offset, Status: "broken"})
 		return UpResult{}, diag.New("ERR_HEALTH_TIMEOUT", "services did not become healthy",
 			diag.WithReason(readyRes.failedServices()),
 			diag.WithHint("logs: "+filepath.Join(l.Platform, ".kb", "logs")))
@@ -115,28 +110,22 @@ func Up(l env.Layout, profileName string, p config.Profile, overlayPath string, 
 		}
 	}
 
-	ports := ComputePorts(portBase)
+	ports := ComputePorts(offset)
 	gwURL := fmt.Sprintf("http://127.0.0.1:%d", ports["gateway"])
-	_ = l.WriteMeta(env.Meta{Profile: profileName, Mode: "verdaccio", PortBase: portBase, Ports: ports, Status: "running", CreatedAt: time.Now()})
+	_ = l.WriteMeta(env.Meta{Profile: profileName, Mode: "verdaccio", Offset: offset, Ports: ports, Status: "running", CreatedAt: time.Now()})
 
-	return UpResult{Profile: profileName, PortBase: portBase, GatewayURL: gwURL, Platform: l.Platform, Project: l.Project}, nil
+	return UpResult{Profile: profileName, Offset: offset, GatewayURL: gwURL, Platform: l.Platform, Project: l.Project}, nil
 }
 
-// ComputePorts returns the service ports for a given base. base <= 0 means no
-// shift (platform defaults). Otherwise it mirrors kb-dev config.ApplyPortBase:
-// offset = base - minTCPPort, where minTCPPort is studio (3000).
-func ComputePorts(base int) map[string]int {
+// ComputePorts returns the service ports for a given additive offset, mirroring
+// the platform/kb-dev shift (canonical port + offset). offset 0 = defaults.
+func ComputePorts(offset int) map[string]int {
 	canonical := map[string]int{
 		"studio":  3000,
 		"gateway": 4000,
 		"rest":    5050,
 		"state":   7777,
 	}
-	if base <= 0 {
-		return canonical
-	}
-	const minTCP = 3000
-	offset := base - minTCP
 	out := make(map[string]int, len(canonical))
 	for id, p := range canonical {
 		out[id] = p + offset

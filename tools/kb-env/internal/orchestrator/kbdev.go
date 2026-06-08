@@ -21,18 +21,18 @@ type kbdevResult struct {
 	Hint string `json:"hint,omitempty"`
 }
 
-// KBDev wraps kb-dev invocations bound to one environment + port base.
+// KBDev wraps kb-dev invocations bound to one environment + net offset.
 type KBDev struct {
-	Bin      string
-	Config   string
-	PortBase int
-	Layout   env.Layout
+	Bin    string
+	Config string
+	Offset int
+	Layout env.Layout
 }
 
 func (k KBDev) base() []string {
 	args := []string{"--config", k.Config, "--json"}
-	if k.PortBase > 0 {
-		args = append(args, "--port-base", strconv.Itoa(k.PortBase))
+	if k.Offset > 0 {
+		args = append(args, "--net-offset", strconv.Itoa(k.Offset))
 	}
 	return args
 }
@@ -66,7 +66,7 @@ func (k KBDev) Stop() (kbdevResult, []byte, error) {
 
 // StatusRaw returns kb-dev status --json output for the environment.
 func (k KBDev) StatusRaw() ([]byte, error) {
-	cmd := exec.Command(k.Bin, "status", "--config", k.Config, "--json")
+	cmd := exec.Command(k.Bin, append([]string{"status"}, k.base()...)...)
 	cmd.Env = k.Layout.ExecEnv(nil)
 	out, err := cmd.CombinedOutput()
 	return out, err

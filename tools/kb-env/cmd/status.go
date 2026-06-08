@@ -31,7 +31,7 @@ var statusCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		k := orchestrator.KBDev{Bin: kbdev, Config: l.DevservicesPath(), PortBase: meta.PortBase, Layout: l}
+		k := orchestrator.KBDev{Bin: kbdev, Config: l.DevservicesPath(), Offset: meta.Offset, Layout: l}
 		raw, _ := k.StatusRaw()
 
 		if jsonMode {
@@ -39,7 +39,7 @@ var statusCmd = &cobra.Command{
 			_, _ = os.Stdout.Write(raw)
 			return nil
 		}
-		info("profile: %s  portBase: %d  status: %s", meta.Profile, meta.PortBase, meta.Status)
+		info("profile: %s  offset: %d  status: %s", meta.Profile, meta.Offset, meta.Status)
 		_, _ = os.Stdout.Write(raw)
 		return nil
 	},

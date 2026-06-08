@@ -50,7 +50,7 @@ var configCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		k := orchestrator.KBDev{Bin: kbdev, Config: l.DevservicesPath(), PortBase: meta.PortBase, Layout: l}
+		k := orchestrator.KBDev{Bin: kbdev, Config: l.DevservicesPath(), Offset: meta.Offset, Layout: l}
 
 		info("Applying config %q (overlay + restart, no reinstall)...", args[0])
 		if err := orchestrator.ApplyConfig(l, k, overlay, profile.Services); err != nil {

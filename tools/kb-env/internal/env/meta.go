@@ -12,7 +12,7 @@ import (
 type Meta struct {
 	Profile   string         `json:"profile"`
 	Mode      string         `json:"mode"`
-	PortBase  int            `json:"portBase"`
+	Offset    int            `json:"offset"`
 	Ports     map[string]int `json:"ports,omitempty"`
 	Status    string         `json:"status"` // provisioning | running | stopped | broken
 	CreatedAt time.Time      `json:"createdAt"`
