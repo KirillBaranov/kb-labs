@@ -59,7 +59,7 @@ async function startHarness(
     ws.on('message', (data, isBinary) => ws.send(data, { binary: isBinary }));
   });
   if (!brokenSocket) {
-    await new Promise<void>((resolve) => upstreamHttp.listen(socketPath, resolve));
+    await new Promise<void>((resolve) => { upstreamHttp.listen(socketPath, resolve); });
   }
 
   const gateway = createServer();
@@ -67,7 +67,7 @@ async function startHarness(
     { prefix, rewritePrefix: prefix, socketPath },
   ];
   attachGatewayWs(gateway, cache, jwtConfig, logger, undefined, upstreams);
-  await new Promise<void>((resolve) => gateway.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve) => { gateway.listen(0, '127.0.0.1', resolve); });
   const port = (gateway.address() as AddressInfo).port;
 
   const h: Harness = { port, socketPath, gateway, upstreamHttp, upstreamWss };
@@ -81,9 +81,9 @@ afterEach(async () => {
     // Force-close lingering sockets so server.close() resolves promptly.
     h.gateway.closeAllConnections?.();
     for (const c of h.upstreamWss.clients) { c.terminate(); }
-    await new Promise<void>((r) => h.gateway.close(() => r()));
+    await new Promise<void>((r) => { h.gateway.close(() => r()); });
     h.upstreamWss.close();
-    await new Promise<void>((r) => h.upstreamHttp.close(() => r()));
+    await new Promise<void>((r) => { h.upstreamHttp.close(() => r()); });
     rmSync(h.socketPath, { force: true });
   }
 });
