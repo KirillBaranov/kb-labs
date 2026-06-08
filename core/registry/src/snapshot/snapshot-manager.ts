@@ -156,7 +156,8 @@ export class SnapshotManager {
   private markStaleness(snapshot: RegistrySnapshot): RegistrySnapshot {
     const expired = snapshot.expiresAt ? Date.now() > Date.parse(snapshot.expiresAt) : false;
     const lockChanged = this.isLockNewerThanSnapshot(snapshot);
-    const stale = expired || lockChanged;
+    const manifestChanged = this.isAnyManifestNewerThanSnapshot(snapshot);
+    const stale = expired || lockChanged || manifestChanged;
     if (snapshot.stale === stale) {return snapshot;}
     return { ...snapshot, stale, partial: snapshot.partial || stale };
   }
@@ -170,6 +171,59 @@ export class SnapshotManager {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Detect a rebuilt plugin whose manifest artifact changed on disk after the
+   * snapshot was written. Installing/removing a plugin bumps marketplace.lock
+   * (covered by isLockNewerThanSnapshot), but rebuilding an *already-installed*
+   * plugin (e.g. fixing handler paths in its manifest and re-running the build)
+   * leaves the lock untouched — so without this check a stale registry.json
+   * keeps serving the old handler paths until it is manually deleted (#23).
+   */
+  private isAnyManifestNewerThanSnapshot(snapshot: RegistrySnapshot): boolean {
+    const snapshotTs = snapshot.ts ?? Date.parse(snapshot.generatedAt);
+    if (!Number.isFinite(snapshotTs)) {return false;}
+
+    for (const entry of snapshot.manifests) {
+      const manifestFile = this.resolveManifestFile(entry.pluginRoot);
+      if (!manifestFile) {continue;}
+      try {
+        if (statSync(manifestFile).mtimeMs > snapshotTs) {return true;}
+      } catch { /* manifest file removed — let discovery re-resolve it */ }
+    }
+    return false;
+  }
+
+  /**
+   * Resolve the on-disk manifest artifact for a plugin root, mirroring the
+   * precedence used by core-discovery's loadManifest:
+   *   1. package.json `kbLabs.manifest` / `kb.manifest` pointer
+   *   2. kb.plugin.json
+   *   3. dist/index.js
+   * Returns null when none can be located.
+   */
+  private resolveManifestFile(pluginRoot: string): string | null {
+    if (!pluginRoot) {return null;}
+
+    try {
+      const pkg = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8')) as {
+        kbLabs?: { manifest?: unknown };
+        kb?: { manifest?: unknown };
+      };
+      const pointer = pkg.kbLabs?.manifest ?? pkg.kb?.manifest;
+      if (typeof pointer === 'string' && pointer.length > 0) {
+        return resolve(pluginRoot, pointer);
+      }
+    } catch { /* no/invalid package.json — fall through */ }
+
+    const kbPluginJson = join(pluginRoot, 'kb.plugin.json');
+    if (existsSync(kbPluginJson)) {return kbPluginJson;}
+
+    const distIndex = join(pluginRoot, 'dist', 'index.js');
+    if (existsSync(distIndex)) {return distIndex;}
+
+    return null;
   }
 
   private normalize(raw: Partial<RegistrySnapshot>): RegistrySnapshot {
