@@ -337,6 +337,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   // 11. Listen
   const bindHost = config.host ?? '0.0.0.0';
 
+  // KB_SERVICE_PORT is the uniform port override injected by kb-dev (the
+  // port-base-shifted port from devservices.yaml). The gateway otherwise takes
+  // its port from kb.config.json only; this lets isolated environments shift it.
+  const envPort = process.env.KB_SERVICE_PORT
+    ? Number.parseInt(process.env.KB_SERVICE_PORT, 10)
+    : undefined;
+  const listenPort = envPort && !Number.isNaN(envPort) ? envPort : config.port;
+
   // Safety guardrail (B-023): a platform with auth disabled must never be
   // reachable off the local machine. If auth is off, the bind host MUST be a
   // loopback address — otherwise refuse to start with a clear, actionable error.
@@ -349,7 +357,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     );
   }
 
-  const address = await server.listen({ port: config.port, host: bindHost });
+  const address = await server.listen({ port: listenPort, host: bindHost });
   logger.info('Gateway listening', { address, authEnabled: config.auth?.enabled !== false });
 
   // 10. Graceful shutdown

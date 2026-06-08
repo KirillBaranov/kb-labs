@@ -22,7 +22,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const DIST = resolve(__dirname, 'dist');
-const PORT = Number(process.env.PORT ?? 3000);
+// KB_SERVICE_PORT is the uniform port override injected by kb-dev (the
+// port-base-shifted port from devservices.yaml); it wins over PORT.
+const PORT = Number(process.env.KB_SERVICE_PORT ?? process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
 // Runtime config — values come from the process environment.
