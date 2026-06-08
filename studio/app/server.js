@@ -22,7 +22,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const DIST = resolve(__dirname, 'dist');
-const PORT = Number(process.env.PORT ?? 3000);
+// Studio is a static server outside the transport map (no one routes to it via
+// the gateway), so it reads the offset directly — edge service. KB_NET_OFFSET is
+// a LOCAL mechanism for parallel environments; 0 in cloud/k8s.
+const PORT = Number(process.env.PORT ?? 3000) + (Number(process.env.KB_NET_OFFSET) || 0);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
 // Runtime config — values come from the process environment.

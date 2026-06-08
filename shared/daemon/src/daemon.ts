@@ -75,17 +75,19 @@ export async function runDaemon(
   // serviceId, so bind and route stay consistent — including any KB_NET_OFFSET
   // shift. Socket services resolve their bind via KB_SOCKET_PATH (setup →
   // getListenOptions), so listenAddress returns socketPath and we keep the
-  // fallback port. Fallback chain (no transport / serviceId / TCP entry):
-  // per-service env var, then the compiled default. Host stays the daemon's own
-  // concern (offset never affects host).
+  // fallback port. Services NOT in the transport map (e.g. state-daemon — not
+  // gateway-routed) are treated as edges: the fallback applies KB_NET_OFFSET
+  // directly, so the one offset knob still shifts their bind. Host stays the
+  // daemon's own concern (offset never affects host).
   const serviceId = config.serviceId ?? config.appId;
   const transport = platform.getAdapter<IServiceTransport>('serviceTransport');
   const addr = transport?.listenAddress?.(serviceId);
+  const netOffset = Number(process.env.KB_NET_OFFSET) || 0;
   const port = addr && 'port' in addr
     ? addr.port
-    : process.env[config.portEnvVar]
-      ? parseInt(process.env[config.portEnvVar]!, 10)
-      : config.defaultPort;
+    : (process.env[config.portEnvVar]
+        ? parseInt(process.env[config.portEnvVar]!, 10)
+        : config.defaultPort) + netOffset;
 
   const host = (config.hostEnvVar && process.env[config.hostEnvVar])
     ? process.env[config.hostEnvVar]!
