@@ -236,29 +236,6 @@ func TestSpawnEnv_EmptyServiceEnv(t *testing.T) {
 	}
 }
 
-func TestSpawnEnv_InjectsServicePort(t *testing.T) {
-	cfg := &config.Config{Services: map[string]config.Service{}, Settings: config.Settings{}}
-	m := New(cfg, "/workspace", "/workspace")
-
-	// Port reflects any --port-base shift already applied to the config.
-	result := m.spawnEnv(config.Service{Port: 16050})
-	if result["KB_SERVICE_PORT"] != "16050" {
-		t.Errorf("KB_SERVICE_PORT = %q, want 16050", result["KB_SERVICE_PORT"])
-	}
-
-	// No port → no KB_SERVICE_PORT.
-	noPort := m.spawnEnv(config.Service{})
-	if v, ok := noPort["KB_SERVICE_PORT"]; ok {
-		t.Errorf("KB_SERVICE_PORT set for port-less service: %q", v)
-	}
-
-	// Explicit override is respected.
-	withEnv := m.spawnEnv(config.Service{Port: 16050, Env: map[string]string{"KB_SERVICE_PORT": "9999"}})
-	if withEnv["KB_SERVICE_PORT"] != "9999" {
-		t.Errorf("KB_SERVICE_PORT = %q, want 9999 (explicit not overridden)", withEnv["KB_SERVICE_PORT"])
-	}
-}
-
 func TestSpawnEnv_InjectsKBSocketPath(t *testing.T) {
 	cfg := &config.Config{
 		Services: map[string]config.Service{},

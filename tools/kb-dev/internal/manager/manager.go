@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -117,15 +116,6 @@ func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
 	if svcCfg.Socket != "" {
 		if _, ok := merged["KB_SOCKET_PATH"]; !ok {
 			merged["KB_SOCKET_PATH"] = svcCfg.Socket
-		}
-	}
-	// KB_SERVICE_PORT is the uniform port contract: every daemon binds this port
-	// (over its own port env / config default). svcCfg.Port already reflects any
-	// --port-base shift, so devservices.yaml is the single source of truth for
-	// the bind — enabling isolated environments on shifted ports.
-	if svcCfg.Port > 0 {
-		if _, ok := merged["KB_SERVICE_PORT"]; !ok {
-			merged["KB_SERVICE_PORT"] = strconv.Itoa(svcCfg.Port)
 		}
 	}
 	return merged

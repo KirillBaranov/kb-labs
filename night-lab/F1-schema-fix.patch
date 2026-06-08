@@ -1,0 +1,49 @@
+diff --git a/plugins/workflow/contracts/src/__tests__/schemas.test.ts b/plugins/workflow/contracts/src/__tests__/schemas.test.ts
+index 638beaa3..b95524ed 100644
+--- a/plugins/workflow/contracts/src/__tests__/schemas.test.ts
++++ b/plugins/workflow/contracts/src/__tests__/schemas.test.ts
+@@ -78,6 +78,29 @@ describe('StepSpecSchema', () => {
+     })
+   })
+ 
++  describe('uses: command: syntax', () => {
++    // CLI command paths contain spaces (e.g. manifest path 'review run'); the
++    // runtime resolver matches the post-prefix remainder verbatim against the
++    // manifest path, so the schema must accept spaces in the command form.
++    it('accepts a command reference with a space in the path', () => {
++      const result = StepSpecSchema.safeParse({
++        name: 'AI Code Review',
++        uses: 'command:review run',
++      })
++      expect(result.success).toBe(true)
++      expect(result.data?.uses).toBe('command:review run')
++    })
++
++    it('accepts a command reference with a deeper space-separated path', () => {
++      const result = StepSpecSchema.safeParse({
++        name: 'Trace stats',
++        uses: 'command:agent trace stats',
++      })
++      expect(result.success).toBe(true)
++      expect(result.data?.uses).toBe('command:agent trace stats')
++    })
++  })
++
+   describe('builtins', () => {
+     it('accepts builtin:approval', () => {
+       const result = StepSpecSchema.safeParse({ name: 'Approve', uses: 'builtin:approval' })
+diff --git a/plugins/workflow/contracts/src/schemas.ts b/plugins/workflow/contracts/src/schemas.ts
+index 648e0370..a6809948 100644
+--- a/plugins/workflow/contracts/src/schemas.ts
++++ b/plugins/workflow/contracts/src/schemas.ts
+@@ -95,6 +95,10 @@ export const StepSpecSchema = z
+         z.literal('builtin:shell'),
+         z.literal('builtin:approval'),
+         z.literal('builtin:gate'),
++        // CLI command form — the resolver matches the part after `command:`
++        // verbatim against a manifest command path (e.g. `review run`,
++        // `agent trace stats`), which contains spaces. Allow them here.
++        z.string().regex(/^command:[a-zA-Z0-9@/_:+#. -]+$/),
+         z.string().regex(/^(plugin:|workflow:)?[a-zA-Z0-9@/_:+#.-]+$/),
+       ])
+       .optional(),

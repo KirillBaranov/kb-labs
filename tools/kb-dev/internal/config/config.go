@@ -4,9 +4,7 @@ package config
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
-	"strconv"
 )
 
 // ServiceType distinguishes node from docker services.
@@ -71,66 +69,6 @@ type Settings struct {
 	PIDDir              string `json:"pidDir"`
 	StartTimeout        int    `json:"startTimeout"`        // milliseconds
 	HealthCheckInterval int    `json:"healthCheckInterval"` // milliseconds
-}
-
-// ApplyPortBase shifts every TCP service port so that the lowest TCP port in the
-// config lands on base. The shift offset is (base - minTCPPort) and is applied
-// uniformly, preserving the relative spacing between services. Socket services
-// (Socket != "") are left untouched — they isolate per-environment via
-// KB_SOCKET_HASH and carry their TCP port only as informational metadata.
-//
-// For each shifted service, the Port field and any host:port occurrence inside
-// HealthCheck and URL are rewritten. Socket-style health checks (no port, e.g.
-// "/health") are not affected. A base of 0 (or no TCP services) is a no-op.
-func (c *Config) ApplyPortBase(base int) error {
-	if base <= 0 {
-		return nil
-	}
-
-	minPort := 0
-	for _, svc := range c.Services {
-		if svc.Socket != "" || svc.Port <= 0 {
-			continue
-		}
-		if minPort == 0 || svc.Port < minPort {
-			minPort = svc.Port
-		}
-	}
-	if minPort == 0 {
-		return nil // no TCP services to shift
-	}
-
-	offset := base - minPort
-	if offset == 0 {
-		return nil
-	}
-
-	for id, svc := range c.Services {
-		if svc.Socket != "" || svc.Port <= 0 {
-			continue
-		}
-		oldPort := svc.Port
-		newPort := oldPort + offset
-		if newPort <= 0 {
-			return fmt.Errorf("port-base %d shifts service %q to non-positive port %d", base, id, newPort)
-		}
-		svc.Port = newPort
-		svc.HealthCheck = rewritePort(svc.HealthCheck, oldPort, newPort)
-		svc.URL = rewritePort(svc.URL, oldPort, newPort)
-		c.Services[id] = svc
-	}
-	return nil
-}
-
-// rewritePort replaces a ":<oldPort>" occurrence (not followed by another digit)
-// with ":<newPort>" in s. It leaves the rest of the string — scheme, host,
-// path — intact. Empty or non-matching strings are returned unchanged.
-func rewritePort(s string, oldPort, newPort int) string {
-	if s == "" {
-		return s
-	}
-	re := regexp.MustCompile(`:` + strconv.Itoa(oldPort) + `(\D|$)`)
-	return re.ReplaceAllString(s, ":"+strconv.Itoa(newPort)+"$1")
 }
 
 // ResolveTarget converts a target string into a list of service IDs.

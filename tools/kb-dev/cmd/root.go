@@ -22,7 +22,6 @@ var (
 	outputFlag string
 	forceFlag  bool
 	configPath string
-	portBase   int
 )
 
 // SetVersionInfo is called from main.go with values injected at build time via -ldflags.
@@ -93,7 +92,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&outputFlag, "output", "", "output format: human|json|agent")
 	rootCmd.PersistentFlags().BoolVar(&forceFlag, "force", false, "kill port conflicts before starting")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
-	rootCmd.PersistentFlags().IntVar(&portBase, "port-base", 0, "shift all TCP service ports so the lowest lands on this base (0 = no shift; socket services untouched)")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")

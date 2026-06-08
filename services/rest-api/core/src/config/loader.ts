@@ -66,11 +66,8 @@ export async function loadRestApiConfig(
   const envMapper = (env: NodeJS.ProcessEnv): Partial<RestApiConfig> => {
     const overrides: Partial<RestApiConfig> = {};
 
-    // KB_SERVICE_PORT is the uniform port override injected by kb-dev (the
-    // port-base-shifted port from devservices.yaml); it wins over KB_REST_PORT.
-    const portEnv = env.KB_SERVICE_PORT ?? env.KB_REST_PORT;
-    if (portEnv) {
-      const parsedPort = Number.parseInt(portEnv, 10);
+    if (env.KB_REST_PORT) {
+      const parsedPort = Number.parseInt(env.KB_REST_PORT, 10);
       if (!Number.isNaN(parsedPort)) {
         overrides.port = parsedPort;
       }

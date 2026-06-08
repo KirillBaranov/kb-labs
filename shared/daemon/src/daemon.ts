@@ -63,16 +63,9 @@ export async function runDaemon(
     service: 'bootstrap',
   });
 
-  // KB_SERVICE_PORT is the uniform port override injected by kb-dev (the
-  // possibly port-base-shifted port from devservices.yaml). It takes precedence
-  // over the per-service env var and the compiled default, so a single contract
-  // shifts every daemon's bind for isolated environments. Falls back to the
-  // service-specific env var, then the default.
-  const port = process.env.KB_SERVICE_PORT
-    ? parseInt(process.env.KB_SERVICE_PORT, 10)
-    : process.env[config.portEnvVar]
-      ? parseInt(process.env[config.portEnvVar]!, 10)
-      : config.defaultPort;
+  const port = process.env[config.portEnvVar]
+    ? parseInt(process.env[config.portEnvVar]!, 10)
+    : config.defaultPort;
 
   const host = (config.hostEnvVar && process.env[config.hostEnvVar])
     ? process.env[config.hostEnvVar]!
