@@ -5,6 +5,7 @@ import (
 
 	"github.com/kb-labs/dev/internal/config"
 	"github.com/kb-labs/dev/internal/manager"
+	"github.com/kb-labs/dev/internal/netoffset"
 )
 
 // errSilent is returned when the command has already printed an error message.
@@ -23,8 +24,18 @@ func loadManager() (*manager.Manager, error) {
 		return nil, err
 	}
 
+	// Virtual-network port offset (isolated environments). --net-offset wins
+	// over KB_NET_OFFSET. Shift the config (health-probe ports) AND pass the
+	// value to spawned services so they bind the same shifted ports.
+	offset := netOffset
+	if offset == 0 {
+		offset = netoffset.FromEnv()
+	}
+	cfg.ApplyOffset(offset)
+
 	rootDir := config.RootDir(result.ConfigPath)
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
+	mgr.SetNetOffset(offset)
 
 	// Resolve environment (node/pnpm paths).
 	mgr.ResolveEnv()

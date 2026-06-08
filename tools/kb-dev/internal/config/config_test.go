@@ -233,3 +233,31 @@ func TestGroupOrder(t *testing.T) {
 		t.Errorf("first group = %q, want infra", order[0])
 	}
 }
+
+func TestApplyOffset(t *testing.T) {
+	cfg := &Config{Services: map[string]Service{
+		"gateway":  {Port: 4000, HealthCheck: "http://localhost:4000/health", URL: "http://localhost:4000"},
+		"state":    {Port: 7777, HealthCheck: "http://localhost:7777/health"},
+		"workflow": {Port: 7778, Socket: "/tmp/kb-abc/workflow.sock", HealthCheck: "/health"},
+	}}
+	cfg.ApplyOffset(1000)
+
+	if g := cfg.Services["gateway"]; g.Port != 5000 || g.HealthCheck != "http://localhost:5000/health" || g.URL != "http://localhost:5000" {
+		t.Errorf("gateway not shifted: %+v", g)
+	}
+	if s := cfg.Services["state"]; s.Port != 8777 || s.HealthCheck != "http://localhost:8777/health" {
+		t.Errorf("state not shifted: %+v", s)
+	}
+	// Socket service untouched (port + socket-style health check).
+	if w := cfg.Services["workflow"]; w.Port != 7778 || w.HealthCheck != "/health" {
+		t.Errorf("socket service shifted: %+v", w)
+	}
+}
+
+func TestApplyOffsetZeroNoop(t *testing.T) {
+	cfg := &Config{Services: map[string]Service{"gateway": {Port: 4000}}}
+	cfg.ApplyOffset(0)
+	if cfg.Services["gateway"].Port != 4000 {
+		t.Errorf("offset 0 changed port: %d", cfg.Services["gateway"].Port)
+	}
+}

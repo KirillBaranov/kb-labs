@@ -5,6 +5,8 @@ package config
 import (
 	"fmt"
 	"sort"
+
+	"github.com/kb-labs/dev/internal/netoffset"
 )
 
 // ServiceType distinguishes node from docker services.
@@ -69,6 +71,26 @@ type Settings struct {
 	PIDDir              string `json:"pidDir"`
 	StartTimeout        int    `json:"startTimeout"`        // milliseconds
 	HealthCheckInterval int    `json:"healthCheckInterval"` // milliseconds
+}
+
+// ApplyOffset shifts every TCP service's port by offset (additive), mirroring
+// the platform's KB_NET_OFFSET so kb-dev probes exactly where services bind.
+// Port, and any port inside HealthCheck/URL, are shifted. Socket services
+// (Socket != "") are skipped — they isolate per-environment via KB_SOCKET_HASH.
+// offset 0 is a no-op.
+func (c *Config) ApplyOffset(offset int) {
+	if offset == 0 {
+		return
+	}
+	for id, svc := range c.Services {
+		if svc.Socket != "" || svc.Port <= 0 {
+			continue
+		}
+		svc.Port += offset
+		svc.HealthCheck = netoffset.Shift(svc.HealthCheck, offset)
+		svc.URL = netoffset.Shift(svc.URL, offset)
+		c.Services[id] = svc
+	}
 }
 
 // ResolveTarget converts a target string into a list of service IDs.
