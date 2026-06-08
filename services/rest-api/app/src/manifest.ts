@@ -10,7 +10,10 @@ export const manifest: ServiceManifest = {
     entry: 'dist/index.js',
     port: 5050,
     healthCheck: '/api/v1/health',
-    socket: '/tmp/kb-${KB_SOCKET_HASH}/rest-api.sock',
+    // No socket: the gateway proxies WebSocket traffic to rest (upstream
+    // websocket: true on /api/v1). @fastify/http-proxy's WS upgrade uses the
+    // `ws` client, which cannot dial a unix socket (undici.socketPath applies
+    // only to HTTP), so rest must stay on TCP for WS proxying to work.
   },
   dependsOn: ['qdrant'],
   env: {

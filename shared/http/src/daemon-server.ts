@@ -37,6 +37,12 @@ export interface DaemonServerOptions {
    * check passes and 503 otherwise. When omitted, /ready delegates to buildHealth().
    */
   readyCheck?: () => ServiceReadyResponse | { ready: boolean; [key: string]: unknown };
+  /**
+   * Optional custom /health payload. When provided, /health returns it verbatim
+   * (200). When omitted, /health delegates to observability.buildHealth(). Use
+   * to preserve a service's legacy health contract (e.g. { status, service, ts }).
+   */
+  healthResponse?: () => unknown;
 }
 
 export async function createDaemonServer(opts: DaemonServerOptions): Promise<FastifyInstance> {
@@ -80,7 +86,7 @@ export async function createDaemonServer(opts: DaemonServerOptions): Promise<Fas
   });
 
   if (!opts.skipStandardRoutes) {
-  server.get('/health', async () => opts.observability.buildHealth());
+  server.get('/health', async () => (opts.healthResponse ? opts.healthResponse() : opts.observability.buildHealth()));
   server.get('/ready', async (_req: FastifyRequest, reply: FastifyReply) => {
     if (opts.readyCheck) {
       const result = opts.readyCheck();

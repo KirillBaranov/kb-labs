@@ -20,8 +20,7 @@
       "serviceTransport": {
         "services": {
           "rest": {
-            "url": "http://localhost",
-            "socketPath": "/tmp/kb-${KB_SOCKET_HASH}/rest-api.sock"
+            "url": "http://127.0.0.1:5050"
           },
           "workflow": {
             "url": "http://localhost",

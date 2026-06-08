@@ -198,6 +198,26 @@ describe('createDaemonServer()', () => {
     expect(setErrorHandler).toHaveBeenCalled();
   });
 
+  it('GET /health returns healthResponse() payload when provided', async () => {
+    const server = await make({ healthResponse: () => ({ status: 'ok', service: 'x', ts: 123 }) });
+    const res = await server.inject({ method: 'GET', url: '/health' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ status: 'ok', service: 'x', ts: 123 });
+  });
+
+  it('GET /ready returns readyCheck() payload (200) when provided', async () => {
+    const server = await make({ readyCheck: () => ({ ready: true, components: { x: { ready: true } } }) });
+    const res = await server.inject({ method: 'GET', url: '/ready' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ ready: true });
+  });
+
+  it('GET /ready returns 503 when readyCheck reports not ready', async () => {
+    const server = await make({ readyCheck: () => ({ ready: false }) });
+    const res = await server.inject({ method: 'GET', url: '/ready' });
+    expect(res.statusCode).toBe(503);
+  });
+
   it('skips standard routes when skipStandardRoutes: true', async () => {
     const server = await make({ skipStandardRoutes: true });
     const res = await server.inject({ method: 'GET', url: '/health' });

@@ -55,6 +55,8 @@ export async function createRegistryServer(opts: RegistryServerOptions): Promise
     serviceId: 'marketplace-registry',
     logger,
     observability,
+    // Preserve the legacy /health contract { status:'ok', service, ts } — e2e RG-H01.
+    healthResponse: () => ({ status: 'ok', service: 'marketplace-registry', ts: Date.now() }),
     // /ready must return { ready, components } — e2e RG-H02 asserts body.ready === true.
     readyCheck: () =>
       createServiceReadyResponse({
