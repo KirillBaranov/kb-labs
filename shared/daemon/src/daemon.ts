@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { loadEnvFromRoot } from '@kb-labs/core-runtime';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
-import type { ILogger } from '@kb-labs/core-platform';
+import type { ILogger, IServiceTransport } from '@kb-labs/core-platform';
 
 export interface DaemonContext {
   platform: PlatformContainer;
@@ -19,6 +19,13 @@ export interface DaemonContext {
 
 export interface DaemonConfig {
   appId: string;
+  /**
+   * serviceId in the transport map (declarative network). Defaults to appId.
+   * Set explicitly when they differ. The daemon binds the port the transport
+   * publishes for this serviceId — keeping bind and route consistent (incl.
+   * any KB_NET_OFFSET shift).
+   */
+  serviceId?: string;
   defaultPort: number;
   portEnvVar: string;
   defaultHost?: string;
@@ -63,9 +70,22 @@ export async function runDaemon(
     service: 'bootstrap',
   });
 
-  const port = process.env[config.portEnvVar]
-    ? parseInt(process.env[config.portEnvVar]!, 10)
-    : config.defaultPort;
+  // Bind port from the transport (the single declarative network source): the
+  // daemon listens on exactly the port the transport publishes for its
+  // serviceId, so bind and route stay consistent — including any KB_NET_OFFSET
+  // shift. Socket services resolve their bind via KB_SOCKET_PATH (setup →
+  // getListenOptions), so listenAddress returns socketPath and we keep the
+  // fallback port. Fallback chain (no transport / serviceId / TCP entry):
+  // per-service env var, then the compiled default. Host stays the daemon's own
+  // concern (offset never affects host).
+  const serviceId = config.serviceId ?? config.appId;
+  const transport = platform.getAdapter<IServiceTransport>('serviceTransport');
+  const addr = transport?.listenAddress?.(serviceId);
+  const port = addr && 'port' in addr
+    ? addr.port
+    : process.env[config.portEnvVar]
+      ? parseInt(process.env[config.portEnvVar]!, 10)
+      : config.defaultPort;
 
   const host = (config.hostEnvVar && process.env[config.hostEnvVar])
     ? process.env[config.hostEnvVar]!

@@ -24,6 +24,8 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
   await runDaemon(
     {
       appId: 'workflow-daemon',
+      // serviceId in the transport map / devservices is 'workflow' (≠ appId).
+      serviceId: 'workflow',
       defaultPort: 7778,
       portEnvVar: 'WORKFLOW_PORT',
       defaultHost: '0.0.0.0',

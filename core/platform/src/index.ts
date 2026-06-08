@@ -321,6 +321,7 @@ export type {
 export type {
   IServiceTransport,
   ServiceConnectionInfo,
+  ServiceListenAddress,
   ServiceTransportRequest,
   ServiceTransportResponse,
   ServiceTransportStream,

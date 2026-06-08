@@ -50,12 +50,29 @@ export interface ServiceTransportHealth {
   services: Record<string, boolean>;
 }
 
+/**
+ * Where a service should BIND, resolved from the same declarative network as
+ * routing. Symmetric with connectionInfo (route): a daemon binds exactly where
+ * the network publishes it. host MAY differ from the route host (e.g. k8s:
+ * bind 0.0.0.0, route via cluster DNS) — that is intentional and keeps the
+ * model correct across local / cloud / k8s.
+ */
+export type ServiceListenAddress = { host: string; port: number } | { socketPath: string };
+
 export interface IServiceTransport {
   /**
    * Connection info for configuring @fastify/http-proxy per service.
    * Called once at gateway startup.
    */
   connectionInfo(serviceId: string): ServiceConnectionInfo | undefined;
+
+  /**
+   * Bind address for the service that hosts this serviceId — the symmetric
+   * counterpart of connectionInfo, resolved from the same declarative map (so
+   * bind and route stay consistent, including any offset). Optional: transports
+   * that don't own binding may omit it; callers fall back to local defaults.
+   */
+  listenAddress?(serviceId: string): ServiceListenAddress | undefined;
 
   /**
    * Buffered request — use only for small payloads (health, admin calls).

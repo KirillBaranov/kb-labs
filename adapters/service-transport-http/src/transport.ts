@@ -2,6 +2,7 @@ import { Pool } from 'undici';
 import type {
   IServiceTransport,
   ServiceConnectionInfo,
+  ServiceListenAddress,
   ServiceTransportRequest,
   ServiceTransportResponse,
   ServiceTransportStream,
@@ -22,6 +23,13 @@ export interface HttpServiceTransportConfig {
    * back to the KB_NET_OFFSET env var when not set in config.
    */
   offset?: number;
+  /**
+   * Host a daemon binds on (listenAddress). Default '0.0.0.0' (matches the
+   * historical daemon default; accepts loopback too). Set to '127.0.0.1' for
+   * strict loopback-only environments. Independent of the route host in the
+   * service url — bind and route hosts may legitimately differ.
+   */
+  bindHost?: string;
 }
 
 /**
@@ -45,9 +53,11 @@ export function applyPortOffset(url: string, offset: number): string {
 export class HttpServiceTransport implements IServiceTransport {
   private readonly pools = new Map<string, Pool>();
   private readonly offset: number;
+  private readonly bindHost: string;
 
   constructor(private readonly config: HttpServiceTransportConfig) {
     this.offset = config.offset ?? (Number(process.env.KB_NET_OFFSET) || 0);
+    this.bindHost = config.bindHost ?? process.env.KB_BIND_HOST ?? '0.0.0.0';
     for (const [id, svc] of Object.entries(config.services)) {
       // Socket services route via socketPath; their url is a placeholder, so
       // the offset is harmlessly skipped. TCP services get the shifted url.
@@ -65,6 +75,16 @@ export class HttpServiceTransport implements IServiceTransport {
     if (!svc) return undefined;
     const baseUrl = svc.socketPath ? svc.url : applyPortOffset(svc.url, this.offset);
     return { baseUrl, socketPath: svc.socketPath };
+  }
+
+  listenAddress(serviceId: string): ServiceListenAddress | undefined {
+    const svc = this.config.services[serviceId];
+    if (!svc) return undefined;
+    if (svc.socketPath) return { socketPath: svc.socketPath };
+    // Same offset as the route, so bind and route ports never drift; bind host
+    // is independent of the route host (see bindHost).
+    const u = new URL(applyPortOffset(svc.url, this.offset));
+    return { host: this.bindHost, port: Number(u.port) };
   }
 
   async call(serviceId: string, req: ServiceTransportRequest): Promise<ServiceTransportResponse> {
