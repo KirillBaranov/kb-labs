@@ -1,0 +1,26 @@
+schemaVersion: 1
+
+# Repo testbed — overrides the embedded defaults. Plugin ids match
+# tools/kb-create/dev-manifest.json; service ids match .kb/devservices.yaml.
+# `config:` paths are relative to this file (e2e/testbed/).
+profiles:
+  mind:
+    description: Mind (RAG) — default retrieval
+    plugins: [mind, marketplace]
+    services: [state-daemon, rest, gateway]
+
+  mind-hyde:
+    description: Mind with HyDE retrieval (hot-swap demo, same plugins as mind)
+    plugins: [mind, marketplace]
+    services: [state-daemon, rest, gateway]
+    config: overlays/hyde-on.jsonc
+
+  combo:
+    description: Mind + Commit + AI Review together
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway]
+
+  release-set:
+    description: Reference set for pre-release regression
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway, workflow, marketplace]

@@ -23,6 +23,13 @@ func loadManager() (*manager.Manager, error) {
 		return nil, err
 	}
 
+	// Shift ports for isolated environments (kb-env passes --port-base);
+	// no-op when the flag is unset. Applied before Manager so every command
+	// (start/stop/status/ready) sees the same shifted ports.
+	if err := cfg.ApplyPortBase(portBase); err != nil {
+		return nil, err
+	}
+
 	rootDir := config.RootDir(result.ConfigPath)
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
 

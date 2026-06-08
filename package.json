@@ -61,6 +61,7 @@
     "test": "./tools/kb-devkit/kb-devkit run test",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test:catalog:check": "node scripts/test-catalog.mjs --check",
+    "tools:rebuild": "bash scripts/rebuild-tool-binaries.sh",
     "type-check": "./tools/kb-devkit/kb-devkit run type-check",
     "version": "changeset version",
     "ws:check": "./tools/kb-devkit/kb-devkit check",

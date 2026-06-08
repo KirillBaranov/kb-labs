@@ -1,0 +1,20 @@
+schemaVersion: 1
+
+# Built-in default profiles. A repo can override these by shipping its own
+# e2e/testbed/testbed.yaml. Plugin ids match tools/kb-create/dev-manifest.json;
+# service ids match .kb/devservices.yaml.
+profiles:
+  mind:
+    description: Mind (RAG) in isolation
+    plugins: [mind, marketplace]
+    services: [state-daemon, rest, gateway]
+
+  combo:
+    description: Mind + Commit + AI Review together
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway]
+
+  release-set:
+    description: Reference set for pre-release regression
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway, workflow, marketplace]
