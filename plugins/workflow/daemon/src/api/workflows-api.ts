@@ -37,8 +37,8 @@ export interface RegisterWorkflowsAPIOptions {
 export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void {
   const { server, hostService, engine, workflowService, logger, observability } = options;
 
-  // POST /api/v1/workflows/refresh - Reload workflow definitions from disk
-  server.post('/api/v1/workflows/refresh', { schema: { tags: ['Workflows'], summary: 'Reload workflow definitions from disk' } }, async () => {
+  // POST /api/v1/workflows/reload  (alias: /refresh) - Reload workflow definitions from disk
+  const reloadHandler = async () => {
     try {
       logger.info('[workflows-api] Refreshing workflows from disk');
 
@@ -58,7 +58,10 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
       logger.error('[workflows-api] Failed to refresh workflows', error instanceof Error ? error : undefined);
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
-  });
+  };
+
+  server.post('/api/v1/workflows/reload', { schema: { tags: ['Workflows'], summary: 'Reload workflow definitions from disk' } }, reloadHandler);
+  server.post('/api/v1/workflows/refresh', { schema: { tags: ['Workflows'], summary: 'Reload workflow definitions from disk (alias for /reload)' } }, reloadHandler);
 
   // GET /api/v1/workflows - List all workflow definitions
   server.get<{

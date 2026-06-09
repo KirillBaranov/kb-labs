@@ -12,9 +12,11 @@ import { createWorkflowWorker } from './worker.js';
 import { JobBroker } from './job-broker.js';
 import { CronScheduler } from './cron-scheduler.js';
 import { CronDiscovery } from './cron-discovery.js';
+import { WorkflowFileWatcher } from './file-watcher.js';
 import { createServer } from './server.js';
 import { createRegistry } from '@kb-labs/core-registry';
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 
 /**
  * Bootstrap workflow daemon.
@@ -140,6 +142,18 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
           bootstrapLogger.warn('Manifest scanner warmup failed', { err }),
         );
 
+        bootstrapLogger.info('Starting WorkflowFileWatcher');
+        const fileWatcher = new WorkflowFileWatcher({
+          watchDirs: [
+            join(projectRoot, '.kb', 'workflows'),
+            join(projectRoot, '.kb', 'jobs'),
+          ],
+          workflowService,
+          cronDiscovery,
+          cronScheduler,
+          logger: createWorkflowLogger('file-watcher', 'workflow.file-watcher'),
+        });
+
         bootstrapLogger.info('Creating HTTP server');
         const server = await createServer({
           engine,
@@ -181,6 +195,7 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
 
         return async () => {
           bootstrapLogger.warn('Stopping workflow daemon components');
+          fileWatcher.close();
           await cronScheduler.stop();
           await worker.stop();
           await server.close();
