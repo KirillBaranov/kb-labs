@@ -7,9 +7,20 @@ vi.mock('child_process', () => ({
 }));
 
 // Hermetic: stub the SDK so the unit-under-test resolves a no-op cache instead
-// of loading the real @kb-labs/sdk barrel. The cold dynamic import of that heavy
-// module is what made the first test in this file flake on a 5s timeout under
-// CI load — the spawnSync argv assertion does not depend on real cache infra.
+// of loading the real @kb-labs/sdk barrel.
+//
+// Why: importing @kb-labs/sdk (any entrypoint, incl. /hooks) eagerly drags
+// @kb-labs/core-runtime in via shared-command-kit's top-level
+// `import { platform } from '@kb-labs/core-runtime'` (helpers/use-platform.ts).
+// That graph costs ~400ms cold and, under CI fork-pool contention, spikes past
+// Vitest's 5s default and flakes this argv-only test. Measured: barrel & /hooks
+// ~400ms vs /platform ~16ms; deps.optimizer doesn't help (dist already built,
+// nothing to transpile) and can't even bundle core-runtime. This test asserts
+// spawnSync argv shape — it has no business loading the real cache infra.
+//
+// TODO(sdk-core-decouple): drop this mock once the platform fallback in
+// @kb-labs/shared-command-kit is injected/lazy instead of a static
+// core-runtime import, so importing SDK hooks stops dragging the whole runtime.
 vi.mock('@kb-labs/sdk', () => ({
   useCache: () => null,
 }));
