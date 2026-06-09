@@ -33,8 +33,11 @@ var downCmd = &cobra.Command{
 			_, _, _ = k.Stop()
 		}
 
+		// Verdaccio is an environment-level process — stop it on any `down`, not
+		// just --rm, so it never lingers after the env is taken down.
+		orchestrator.StopVerdaccio(l)
+
 		if downRemove {
-			orchestrator.StopVerdaccio(l)
 			_ = os.RemoveAll(l.SocketDir())
 			if err := l.Remove(); err != nil {
 				return err

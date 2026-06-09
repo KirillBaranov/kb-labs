@@ -48,11 +48,11 @@ describe('listenAddress (bind)', () => {
   it('returns shifted port; bind host independent of route host', () => {
     const t = new HttpServiceTransport({
       offset: 1000,
-      bindHost: '0.0.0.0',
       services: { rest: { url: 'http://127.0.0.1:5050' } },
     });
-    expect(t.listenAddress('rest')).toEqual({ host: '0.0.0.0', port: 6050 });
-    // route host stays the url host, bind host differs — intentional.
+    // Port shifted; host omitted (the local adapter doesn't own the bind host).
+    expect(t.listenAddress('rest')).toEqual({ port: 6050 });
+    // Route still resolves the shifted url.
     expect(t.connectionInfo('rest')?.baseUrl).toBe('http://127.0.0.1:6050');
   });
 
@@ -62,6 +62,11 @@ describe('listenAddress (bind)', () => {
       services: { workflow: { url: 'http://localhost', socketPath: '/tmp/kb-abc/workflow.sock' } },
     });
     expect(t.listenAddress('workflow')).toEqual({ socketPath: '/tmp/kb-abc/workflow.sock' });
+  });
+
+  it('returns undefined for a TCP service whose url has no explicit port', () => {
+    const t = new HttpServiceTransport({ services: { x: { url: 'http://localhost' } } });
+    expect(t.listenAddress('x')).toBeUndefined();
   });
 
   it('returns undefined for unknown service', () => {

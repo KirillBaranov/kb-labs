@@ -53,11 +53,14 @@ export interface ServiceTransportHealth {
 /**
  * Where a service should BIND, resolved from the same declarative network as
  * routing. Symmetric with connectionInfo (route): a daemon binds exactly where
- * the network publishes it. host MAY differ from the route host (e.g. k8s:
- * bind 0.0.0.0, route via cluster DNS) — that is intentional and keeps the
- * model correct across local / cloud / k8s.
+ * the network publishes it.
+ *
+ * `host` is optional and advisory: a transport that genuinely owns the bind host
+ * (e.g. a future k8s adapter binding 0.0.0.0 while routing via cluster DNS) sets
+ * it; the local HTTP adapter omits it, leaving the host to the daemon's own
+ * config (host env / default). Consumers use host only when present.
  */
-export type ServiceListenAddress = { host: string; port: number } | { socketPath: string };
+export type ServiceListenAddress = { host?: string; port: number } | { socketPath: string };
 
 export interface IServiceTransport {
   /**

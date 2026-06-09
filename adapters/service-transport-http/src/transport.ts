@@ -23,13 +23,6 @@ export interface HttpServiceTransportConfig {
    * back to the KB_NET_OFFSET env var when not set in config.
    */
   offset?: number;
-  /**
-   * Host a daemon binds on (listenAddress). Default '0.0.0.0' (matches the
-   * historical daemon default; accepts loopback too). Set to '127.0.0.1' for
-   * strict loopback-only environments. Independent of the route host in the
-   * service url — bind and route hosts may legitimately differ.
-   */
-  bindHost?: string;
 }
 
 /**
@@ -53,11 +46,9 @@ export function applyPortOffset(url: string, offset: number): string {
 export class HttpServiceTransport implements IServiceTransport {
   private readonly pools = new Map<string, Pool>();
   private readonly offset: number;
-  private readonly bindHost: string;
 
   constructor(private readonly config: HttpServiceTransportConfig) {
     this.offset = config.offset ?? (Number(process.env.KB_NET_OFFSET) || 0);
-    this.bindHost = config.bindHost ?? process.env.KB_BIND_HOST ?? '0.0.0.0';
     for (const [id, svc] of Object.entries(config.services)) {
       // Socket services route via socketPath; their url is a placeholder, so
       // the offset is harmlessly skipped. TCP services get the shifted url.
@@ -81,10 +72,19 @@ export class HttpServiceTransport implements IServiceTransport {
     const svc = this.config.services[serviceId];
     if (!svc) return undefined;
     if (svc.socketPath) return { socketPath: svc.socketPath };
-    // Same offset as the route, so bind and route ports never drift; bind host
-    // is independent of the route host (see bindHost).
-    const u = new URL(applyPortOffset(svc.url, this.offset));
-    return { host: this.bindHost, port: Number(u.port) };
+    // Same offset as the route, so bind and route ports never drift. Host is
+    // omitted — the local adapter doesn't own the bind host; the daemon keeps
+    // its own host config. Guard a url without an explicit port (would parse to
+    // 0): return undefined so the caller falls back to its default port.
+    let port: number;
+    try {
+      const u = new URL(applyPortOffset(svc.url, this.offset));
+      if (!u.port) return undefined;
+      port = Number(u.port);
+    } catch {
+      return undefined;
+    }
+    return { port };
   }
 
   async call(serviceId: string, req: ServiceTransportRequest): Promise<ServiceTransportResponse> {

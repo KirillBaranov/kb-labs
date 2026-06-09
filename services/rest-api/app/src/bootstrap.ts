@@ -160,12 +160,14 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   const restTransport = platform.getAdapter<IServiceTransport>('serviceTransport');
   const restAddr = restTransport?.listenAddress?.('rest');
   const listenPort = restAddr && 'port' in restAddr ? restAddr.port : config.port;
+  const restAddrHost = restAddr && 'host' in restAddr ? restAddr.host : undefined;
 
-  // Start server.
-  // Defaults to 0.0.0.0 for compatibility with Docker port-forwarding and dev setups.
-  // Set REST_API_HOST=127.0.0.1 to restrict to loopback in environments where
-  // all public traffic is routed through the gateway.
-  const address = await server.listen(getListenOptions(listenPort, process.env.REST_API_HOST ?? '0.0.0.0'));
+  // Start server. Host precedence: REST_API_HOST env > transport's advisory host
+  // > 0.0.0.0 (0.0.0.0 keeps Docker port-forwarding working; set
+  // REST_API_HOST=127.0.0.1 to restrict to loopback when all traffic is routed
+  // through the gateway).
+  const restHost = process.env.REST_API_HOST ?? restAddrHost ?? '0.0.0.0';
+  const address = await server.listen(getListenOptions(listenPort, restHost));
 
   bootstrapLogger.info('REST API server listening', { address });
 

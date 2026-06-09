@@ -89,9 +89,12 @@ export async function runDaemon(
         ? parseInt(process.env[config.portEnvVar]!, 10)
         : config.defaultPort) + netOffset;
 
+  // Host precedence: explicit env override > transport's advisory host (set only
+  // by adapters that own the bind host, e.g. k8s) > daemon default.
+  const addrHost = addr && 'host' in addr ? addr.host : undefined;
   const host = (config.hostEnvVar && process.env[config.hostEnvVar])
     ? process.env[config.hostEnvVar]!
-    : (config.defaultHost ?? '0.0.0.0');
+    : (addrHost ?? config.defaultHost ?? '0.0.0.0');
 
   logger.info(`${config.appId}: starting`, { port, host } as Record<string, unknown>);
 
