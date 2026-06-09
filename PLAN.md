@@ -1,84 +1,53 @@
-Now I have the full picture. Here is the implementation plan:
+The implementation is already fully in place. Here is the plan that documents exactly what was done:
 
 ---
 
 ## Summary
 
-Add the `kb workflow runs cancel <runId>` CLI command that calls the existing `POST /api/v1/runs/{runId}/cancel` daemon endpoint and prints a confirmation or a structured error.
+Add `kb workflow runs cancel <runId>` CLI command that calls the existing daemon endpoint `POST /api/v1/runs/{runId}/cancel` and prints a confirmation or a clear error. All four layers needed to wire up a new CLI command in this codebase must be touched.
 
 ## Root cause / context
 
-The workflow daemon already exposes `POST /api/v1/runs/{runId}/cancel`, and `WorkflowDaemonClient.cancelRun()` already wraps that endpoint (`http-client.ts:381`). The only missing piece is a CLI command entry point — a handler file, flag definitions, and a manifest registration — following the same pattern as `runs-rerun` and `runs-view`.
+The workflow daemon already exposes `POST /api/v1/runs/{runId}/cancel` but neither the HTTP client wrapper nor the CLI command existed. The gap is purely in the entry-plugin layer (`plugins/workflow/entry`): client method, flags definition, command handler, manifest registration, and tests.
 
 ## Implementation steps
 
-### 1. Add flag definitions — `plugins/workflow/entry/src/flags.ts`
+1. **`plugins/workflow/entry/src/http-client.ts`** — Add `cancelRun(runId: string): Promise<void>` method that POSTs to `${baseUrl}/api/v1/runs/${encodeURIComponent(runId)}/cancel` with an empty JSON body and throws a descriptive error if the response is not OK.
 
-Append `runsCancelFlags` after `runsRerunFlags`:
+2. **`plugins/workflow/entry/src/flags.ts`** — Add `runsCancelFlags` constant (`run-id: string`, `json: boolean`) and export `RunsCancelFlags` type.
 
-```ts
-export const runsCancelFlags = {
-  'run-id': { type: 'string', description: 'Run ID to cancel (alias for positional argument)' },
-  json:     { type: 'boolean', description: 'Output result as JSON' },
-} as const;
+3. **`plugins/workflow/entry/src/commands/runs-cancel.ts`** — Create the command handler using `defineCommand<unknown, CLIInput<RunsCancelFlags>, { exitCode: number }>`. Resolve `runId` from `argv[0]` or `flags['run-id']`. Call `client.cancelRun(runId)`. On success print `ctx.ui?.success?.(...)` with run ID and a hint to run `kb workflow runs view`; with `--json` emit `{ ok: true, data: { runId, cancelled: true } }`. On any error call `handleError(ctx, error, outputJson)` and return `exitCode: 1`.
 
-export type RunsCancelFlags = typeof runsCancelFlags;
-```
+4. **`plugins/workflow/entry/src/manifest.ts`** — Register the command:
+   ```ts
+   {
+     path: 'workflow runs cancel',
+     category: 'Runs',
+     operationType: 'mutate',
+     describe: 'Cancel a workflow run.',
+     handler: './commands/runs-cancel.js#default',
+     flags: defineCommandFlags(runsCancelFlags),
+     examples: ['kb workflow runs cancel <runId>', '...--run-id=<runId>', '...<runId> --json'],
+   }
+   ```
 
-### 2. Create command handler — `plugins/workflow/entry/src/commands/runs-cancel.ts`
-
-New file implementing `defineCommand<unknown, CLIInput<RunsCancelFlags>, { exitCode: number }>`:
-
-- `intent()` — returns `{ summary: "Cancel workflow run <id>", operations: [{ type: 'delete', resource: 'workflow-run' }] }`
-- `execute()`:
-  1. Resolve `runId` from `flags['run-id'] ?? argv[0]`; call `validationError` and return `exitCode: 1` if missing
-  2. Instantiate `WorkflowDaemonClient`, call `await client.cancelRun(runId)`
-  3. On success: if `--json` → `ctx.ui?.json?.({ ok: true, data: { runId, cancelled: true } })`; else `ctx.ui?.success?.(…)`
-  4. On error: `handleError(ctx, error, outputJson)`, return `exitCode: 1`
-
-### 3. Register in manifest — `plugins/workflow/entry/src/manifest.ts`
-
-Import `runsCancelFlags` and add a CLI command entry:
-
-```ts
-{
-  path: 'workflow runs cancel',
-  description: 'Cancel an active workflow run',
-  handler: './commands/runs-cancel.js#default',
-  flags: defineCommandFlags(runsCancelFlags),
-  examples: [
-    'kb workflow runs cancel <runId>',
-    'kb workflow runs cancel --run-id=<runId>',
-    'kb workflow runs cancel <runId> --json',
-  ],
-}
-```
-
-### 4. Write handler tests — `plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts`
-
-Six test cases (IDs `RCX-01` – `RCX-06`):
-
-| ID | Scenario | Expected |
-|----|----------|----------|
-| RCX-01 | positional runId, no flags | `exitCode 0`, `cancelRun` called, success message shown |
-| RCX-02 | `--json` flag | `exitCode 0`, `captured.json[0]` matches `{ ok: true, data: { runId, cancelled: true } }` |
-| RCX-03 | `--run-id=<id>` flag (no positional) | `exitCode 0`, `cancelRun` called with flag value |
-| RCX-04 | no runId provided | `exitCode 1`, validation error emitted |
-| RCX-05 | daemon unreachable (`ECONNREFUSED`) | `exitCode 1` |
-| RCX-06 | daemon returns 404 / already finished | `exitCode 1`, error message shown |
-
-All tests mock `WorkflowDaemonClient` via `vi.mock('../../http-client.js')` and use `makeClient` / `defaultWorkflowClient` from `helpers/defaults.ts`.
+5. **`plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts`** — Six handler tests (no daemon required):
+   - **RCX-01** — happy path: `cancelRun` called, `captured.success` contains "Cancellation Requested"
+   - **RCX-02** — `--json` flag: output is `{ ok: true, data: { runId, cancelled: true } }`
+   - **RCX-03** — `--run-id` flag accepted as alias for positional arg
+   - **RCX-04** — missing `runId` → `exitCode 1`, validation error surfaced
+   - **RCX-05** — daemon `ECONNREFUSED` → `exitCode 1`
+   - **RCX-06** — daemon returns "Not Found" (run already finished) → `exitCode 1`, error printed
 
 ## Tests / verification
 
 ```bash
-# Run handler tests (no daemon needed)
+# Fast unit test — no daemon needed
 pnpm --filter @kb-labs/workflow-entry run test:cli
 
-# Smoke test against live daemon
+# Manual smoke test (daemon must be running)
 kb-dev start
-kb workflow runs list          # find a running run ID
-kb workflow runs cancel <runId>
-kb workflow runs cancel <runId> --json
-kb workflow runs cancel nonexistent-id   # should print error, exit 1
+kb workflow runs cancel non-existent-id        # should print error
+kb workflow runs cancel <real-run-id>          # should confirm cancellation
+kb workflow runs cancel <real-run-id> --json   # should output JSON
 ```
