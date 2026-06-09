@@ -212,3 +212,43 @@ describe('Logger governance via runInProcess', () => {
     );
   });
 });
+
+// ─── F2 regression: config reaches the handler's governed platform ───────────
+//
+// F2 was: `ctx.platform.config` was undefined inside `command:` handlers on the
+// isolated/worker path — the governed platform the handler runs against lacked
+// `config` (config was attached after assembly / not in the proxy platform).
+// This runs a REAL handler through runInProcess() + governance (the same path,
+// in-process) and asserts the handler can actually read and call config. A
+// pure unit on createProxyPlatform/governance could pass while this real chain
+// (governance → store → ctx.platform.config) still broke, so assert it here.
+describe('config availability in handlers (F2 regression)', () => {
+  it('handler reads and calls ctx.platform.config under governance', async () => {
+    const platform = createMockPlatform();
+    (platform.config.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+      marker: 'F2-config-present',
+    });
+
+    const path = makeHandler('config-present', `
+      export default {
+        async execute(ctx) {
+          // The exact F2 symptom: config undefined on the governed platform.
+          if (!ctx.platform.config) {
+            return { hasConfig: false };
+          }
+          const cfg = await ctx.platform.config.getConfig();
+          return { hasConfig: true, marker: cfg?.marker };
+        }
+      };
+    `);
+
+    const result = await runInProcess({
+      // config is a pass-through adapter — no permission needed; empty perms
+      // proves it survives governance regardless of declared permissions.
+      descriptor: makeDescriptor('test-config', {}),
+      platform, ui: mockUI, handlerPath: path, input: {}, cwd: testDir,
+    });
+
+    expect(result.data).toMatchObject({ hasConfig: true, marker: 'F2-config-present' });
+  });
+});
