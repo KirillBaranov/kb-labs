@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -84,13 +85,106 @@ func TestReadMissing(t *testing.T) {
 	}
 }
 
-// TestConfigPath verifies the expected config file path.
+// TestConfigPath verifies install state lives at .kb/install.json, outside the
+// kb.config.* namespace owned by the platform runtime config.
 func TestConfigPath(t *testing.T) {
 	base := t.TempDir()
 	got := ConfigPath(base)
-	want := filepath.Join(base, configDir, configFile)
+	want := filepath.Join(base, configDir, installStateFile)
 	if got != want {
 		t.Errorf("ConfigPath = %q, want %q", got, want)
+	}
+	if filepath.Base(got) != "install.json" {
+		t.Errorf("install state file = %q, want install.json", filepath.Base(got))
+	}
+}
+
+// TestWriteRemovesLegacyState verifies that writing install state cleans up a
+// legacy kb.config.json install-state file, freeing the kb.config.* namespace.
+func TestWriteRemovesLegacyState(t *testing.T) {
+	dir := t.TempDir()
+	kbDir := filepath.Join(dir, configDir)
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed a legacy install-state file (has install-state markers).
+	m := sampleManifest()
+	legacy := NewConfig(dir, "/p", "pnpm", "", "kb-create@1.0.0", &m, TelemetryConfig{})
+	legacyData, _ := json.MarshalIndent(legacy, "", "  ")
+	legacyPath := filepath.Join(kbDir, legacyStateFile)
+	if err := os.WriteFile(legacyPath, legacyData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Write(dir, legacy); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Error("legacy kb.config.json install state should be removed after Write")
+	}
+	if _, err := os.Stat(ConfigPath(dir)); err != nil {
+		t.Errorf("install.json should exist after Write: %v", err)
+	}
+}
+
+// TestReadMigratesLegacyState verifies that Read transparently migrates a legacy
+// kb.config.json install-state file to install.json and removes the old file.
+func TestReadMigratesLegacyState(t *testing.T) {
+	dir := t.TempDir()
+	kbDir := filepath.Join(dir, configDir)
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	m := sampleManifest()
+	legacy := NewConfig(dir, "/p", "pnpm", "", "kb-create@1.0.0", &m, TelemetryConfig{DeviceID: "dev-1"})
+	legacyData, _ := json.MarshalIndent(legacy, "", "  ")
+	legacyPath := filepath.Join(kbDir, legacyStateFile)
+	if err := os.WriteFile(legacyPath, legacyData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Read(dir)
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	if got.Telemetry.DeviceID != "dev-1" {
+		t.Errorf("migrated DeviceID = %q, want dev-1", got.Telemetry.DeviceID)
+	}
+	// Legacy file gone, new file present.
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Error("legacy kb.config.json should be removed after migration")
+	}
+	if _, err := os.Stat(ConfigPath(dir)); err != nil {
+		t.Errorf("install.json should exist after migration: %v", err)
+	}
+}
+
+// TestReadIgnoresNonInstallStateJSON verifies that a kb.config.json which is NOT
+// install state (a hand-written runtime config) is left untouched and reported
+// as "not installed" — never migrated or deleted.
+func TestReadIgnoresNonInstallStateJSON(t *testing.T) {
+	dir := t.TempDir()
+	kbDir := filepath.Join(dir, configDir)
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// A runtime config shape: no install-state markers.
+	runtime := []byte(`{"platform":{"adapters":{"logging":"@kb-labs/adapters-logging-pino"}}}`)
+	legacyPath := filepath.Join(kbDir, legacyStateFile)
+	if err := os.WriteFile(legacyPath, runtime, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Read(dir); err == nil {
+		t.Error("Read() should report not-installed for a non-install-state kb.config.json")
+	}
+	// The user's file must survive untouched.
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Errorf("non-install-state kb.config.json must not be removed: %v", err)
+	}
+	if _, err := os.Stat(ConfigPath(dir)); !os.IsNotExist(err) {
+		t.Error("install.json must not be created from a non-install-state file")
 	}
 }
 
