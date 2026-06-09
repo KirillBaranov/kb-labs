@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE, REVIEW_ISSUES, IMPL_SESSION_ID
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 RESULT_FILE=$(mktemp)
 
 PROMPT="The AI code review found blocking issues in your implementation. Fix them now.

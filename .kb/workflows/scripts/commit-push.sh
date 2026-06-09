@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE, BRANCH_NAME, IMPL_FEEDBACK
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 git add -A
 
 if git diff --cached --quiet; then
