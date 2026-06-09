@@ -40,17 +40,10 @@ export default defineHandler<unknown, CreateBranchInput, CreateBranchOutput>({
 
       if (!createRes.ok) {
         if (createRes.status === 422) {
-          // Branch already exists — fetch its current SHA
-          const existingRes = await ctx.runtime.fetch(
-            `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branchName}`,
-            { headers: hdrs },
-          )
-          if (!existingRes.ok) throw new Error(`GitHub ${existingRes.status}: ${await existingRes.text()}`)
-          const existing = await existingRes.json() as Record<string, unknown>
-          const existingSha = (existing.object as { sha: string }).sha
+          // Branch already exists — use it as-is (idempotent).
           return {
             branchName,
-            sha: existingSha,
+            sha,
             url: `https://github.com/${owner}/${repo}/tree/${branchName}`,
           }
         }

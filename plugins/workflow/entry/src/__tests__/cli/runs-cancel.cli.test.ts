@@ -76,7 +76,7 @@ describe('workflow:runs cancel', () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(captured.error.length + captured.warning.length).toBeGreaterThan(0);
+    expect(captured.errors.length + captured.warnings.length).toBeGreaterThan(0);
   });
 
   it('RCX-05: daemon unavailable returns exitCode 1', async () => {
@@ -109,6 +109,6 @@ describe('workflow:runs cancel', () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(captured.error.length).toBeGreaterThan(0);
+    expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,8 @@
 {
+  "skipWorkflowUsageWarning": true,
+  "env": {
+    "GITHUB_WORKFLOW_TOKEN": ""
+  },
   "permissions": {
     "allow": [
       "Read",

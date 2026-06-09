@@ -351,6 +351,96 @@ describe('workflow worker lifecycle', () => {
     );
   });
 
+  it('buildShellSafeCommand: builtin:shell step receives env-var references, not raw substituted values', async () => {
+    // Regression: issue/PR titles may contain backticks or $() which would be
+    // executed if substituted raw into the shell script. buildShellSafeCommand
+    // must inject values as _WF_* env vars so shell expansion is safe.
+    const runId = `run-shell-safe-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+    const dangerousTitle = 'Add `kb cancel` command $(whoami)';
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      env: {},
+      inputs: { title: dangerousTitle },
+      metadata: {},
+      trigger: { type: 'manual' },
+      jobs: [{
+        id: jobId,
+        jobName: 'shell-safe-job',
+        status: 'queued',
+        attempt: 0,
+        steps: [{
+          id: 'step-1',
+          status: 'pending',
+          spec: {
+            uses: 'builtin:shell',
+            with: { command: 'echo "${{ inputs.title }}"' },
+          },
+        }],
+      }],
+    };
+
+    const completion = createDeferred<void>();
+    let queueDrained = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) { return id === runId ? run : null; },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markJobCompleted() { run.jobs[0].status = 'success'; completion.resolve(); },
+      async markJobFailed(_r: string, _j: string, error: Error) { completion.reject(error); },
+      async markStepStarted() {},
+      async markStepCompleted() {},
+      async markStepFailed() {},
+      async markJobInterrupted() {},
+      getStateStore: vi.fn(() => ({ updateStep: vi.fn(async () => {}) })),
+    };
+
+    const logger = {
+      info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(),
+      child: vi.fn(() => logger),
+    };
+
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger: logger as any,
+      workspaceRoot: '/tmp/test-workspace',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+    });
+
+    const startPromise = worker.start();
+    await Promise.race([
+      completion.promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10_000)),
+    ]);
+    await worker.stop();
+    await startPromise;
+
+    expect(run.jobs[0].status).toBe('success');
+    const call = mockRunnerExecute.mock.calls[0]?.[0];
+
+    // Command must use ${_WF_...} reference, NOT the raw dangerous value.
+    expect(call.spec.with.command).not.toContain(dangerousTitle);
+    expect(call.spec.with.command).not.toContain('${{');
+    expect(call.spec.with.command).toContain('${_WF_');
+
+    // Dangerous value injected safely via env var.
+    const envVars = call.spec.with.env as Record<string, string>;
+    const injectedKey = Object.keys(envVars).find((k) => k.startsWith('_WF_'));
+    expect(injectedKey).toBeDefined();
+    expect(envVars[injectedKey!]).toBe(dangerousTitle);
+  });
+
   it('debugMode emits verbose [debug] logs for expr context and interpolation', async () => {
     const runId = `run-debug-${Date.now().toString(36)}`;
     const jobId = `${runId}:job`;
