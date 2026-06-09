@@ -202,6 +202,14 @@ describe('runDaemon()', () => {
     await expect(runDaemon(config, bootstrap)).rejects.toThrow('setup failed');
   });
 
+  it('propagates error thrown in platformBootstrap()', async () => {
+    const setup = vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(undefined));
+    const bootstrap = vi.fn().mockRejectedValue(new Error('platform bootstrap failed'));
+    await expect(runDaemon(makeConfig({ setup }), bootstrap)).rejects.toThrow('platform bootstrap failed');
+    // setup must not run if the platform never came up
+    expect(setup).not.toHaveBeenCalled();
+  });
+
   it('sets KB_SOCKET_HASH in process.env before platformBootstrap is called', async () => {
     delete process.env.KB_SOCKET_HASH;
     let hashAtBootstrap: string | undefined;
