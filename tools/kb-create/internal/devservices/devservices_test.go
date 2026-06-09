@@ -145,6 +145,42 @@ func TestEntryForSwap_BuildsCommandAndHealth(t *testing.T) {
 	}
 }
 
+// TestEntryForSwap_PropagatesSocket guards socket-based transport: a service
+// that declares runtime.socket in its manifest must carry that socket path
+// (placeholder intact) into the generated devservices entry, so kb-dev binds
+// the unix socket instead of a TCP port.
+func TestEntryForSwap_PropagatesSocket(t *testing.T) {
+	m := &ServiceManifest{
+		Schema:  "kb.service/1",
+		ID:      "marketplace",
+		Name:    "Marketplace",
+		Version: "1.0.0",
+	}
+	m.Runtime.Entry = "dist/index.js"
+	m.Runtime.Port = 5070
+	m.Runtime.HealthCheck = "/health"
+	m.Runtime.Socket = "/tmp/kb-${KB_SOCKET_HASH}/marketplace.sock"
+
+	_, svc := EntryForSwap("/opt/kb-platform", "@kb-labs/marketplace", "marketplace", m, nil)
+
+	// Placeholder must pass through verbatim — expansion happens in kb-dev, not here.
+	if svc.Socket != "/tmp/kb-${KB_SOCKET_HASH}/marketplace.sock" {
+		t.Errorf("socket = %q, want literal ${KB_SOCKET_HASH} placeholder preserved", svc.Socket)
+	}
+}
+
+func TestEntryForSwap_NoSocketWhenAbsent(t *testing.T) {
+	m := &ServiceManifest{Schema: "kb.service/1", ID: "gateway"}
+	m.Runtime.Entry = "dist/index.js"
+	m.Runtime.Port = 4000
+	m.Runtime.HealthCheck = "/health"
+
+	_, svc := EntryForSwap("/p", "@kb-labs/gateway", "gateway", m, nil)
+	if svc.Socket != "" {
+		t.Errorf("socket = %q, want empty for TCP-only service", svc.Socket)
+	}
+}
+
 func TestEntryForSwap_EnvDefaultsOnly(t *testing.T) {
 	m := &ServiceManifest{
 		Schema: "kb.service/1",

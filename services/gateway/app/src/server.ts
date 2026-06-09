@@ -33,7 +33,7 @@ import { registerTelemetryRoutes } from './telemetry/routes.js';
 import { registerPlatformRoutes } from './platform/routes.js';
 import { registerAggregatedDocsRoutes } from './docs/routes.js';
 import { HostRegistry } from './hosts/registry.js';
-import { attachGatewayWs } from './ws/gateway-ws.js';
+import { attachGatewayWs, type SocketWsUpstream } from './ws/gateway-ws.js';
 import { GatewayObservabilityCollector } from './observability/collector.js';
 import { randomUUID } from 'node:crypto';
 import { registerInternalRoutes } from './internal/routes.js';
@@ -168,6 +168,11 @@ export async function createServer(
   // @fastify/http-proxy with websocket:true intercepts upgrades at the HTTP
   // server level — no Fastify hooks must touch these requests.
   // Connection details (baseUrl, socketPath) come from IServiceTransport.
+  // WS-enabled upstreams bound to a unix socket: @fastify/http-proxy can't dial
+  // unix sockets for WS upgrades, so the gateway proxies those WS itself (see
+  // attachGatewayWs). HTTP for the same prefix still goes through http-proxy.
+  const socketWsUpstreams: SocketWsUpstream[] = [];
+
   for (const [name, upstream] of Object.entries(config.upstreams)) {
     const conn = serviceTransport.connectionInfo(upstream.serviceId);
     if (!conn) {
@@ -176,12 +181,23 @@ export async function createServer(
         `Configure @kb-labs/adapters-service-transport-http as adapterOptions.serviceTransport.services in kb.config.json.`,
       );
     }
+    // A WS upstream on a unix socket is handled by the gateway's own dialer, not
+    // by http-proxy's websocket support (which only works over TCP).
+    const wsOverSocket = Boolean(upstream.websocket) && Boolean(conn.socketPath);
+    if (wsOverSocket) {
+      socketWsUpstreams.push({
+        prefix: upstream.prefix,
+        rewritePrefix: upstream.rewritePrefix ?? upstream.prefix,
+        socketPath: conn.socketPath!,
+      });
+    }
     await app.register(fastifyHttpProxy, {
       upstream: conn.baseUrl,
       prefix: upstream.prefix,
       rewritePrefix: upstream.rewritePrefix ?? upstream.prefix,
       disableCache: true,
-      websocket: upstream.websocket ?? false,
+      // Disable http-proxy WS for socket upstreams — the gateway dialer owns it.
+      websocket: wsOverSocket ? false : (upstream.websocket ?? false),
       undici: {
         // Restore 1-hour body timeout for SSE streams and large transfers.
         // undici defaults: headersTimeout=30s, bodyTimeout=300s — too short for streaming.
@@ -190,7 +206,8 @@ export async function createServer(
       },
     });
     const connDesc = conn.socketPath ? `${conn.baseUrl} (unix:${conn.socketPath})` : conn.baseUrl;
-    gatewayLogger.info(`Upstream registered: ${name} → ${connDesc} (${upstream.prefix}${upstream.websocket ? ', ws' : ''})`);
+    const wsDesc = upstream.websocket ? (wsOverSocket ? ', ws→unix' : ', ws') : '';
+    gatewayLogger.info(`Upstream registered: ${name} → ${connDesc} (${upstream.prefix}${wsDesc})`);
   }
 
   // ── Gateway's own routes (with auth) ───────────────────────────────
@@ -561,7 +578,7 @@ export async function createServer(
   // that dispatches gateway WS paths to raw ws handlers and delegates
   // everything else (upstream WS proxy) to http-proxy.
   await app.ready();
-  attachGatewayWs(app.server, cache, jwtConfig, logger, registry);
+  attachGatewayWs(app.server, cache, jwtConfig, logger, registry, socketWsUpstreams);
 
   return app;
 }

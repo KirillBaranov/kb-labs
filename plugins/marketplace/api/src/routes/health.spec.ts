@@ -25,8 +25,10 @@ describe('marketplace observability surfaces', () => {
     const healthResponse = await server.inject({ method: 'GET', url: '/health' });
     expect(healthResponse.statusCode).toBe(200);
     const health = healthResponse.json();
+    // /health preserves the legacy contract { status:'ok', service, ts } (matches e2e MH-01/MH-02).
     expect(health.status).toBe('ok');
     expect(health.service).toBe('marketplace');
+    expect(typeof health.ts).toBe('number');
 
     const describeResponse = await server.inject({ method: 'GET', url: '/observability/describe' });
     expect(describeResponse.statusCode).toBe(200);

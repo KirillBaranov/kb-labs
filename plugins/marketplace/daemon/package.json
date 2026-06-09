@@ -27,6 +27,7 @@
     "@kb-labs/marketplace-core": "workspace:*",
     "@kb-labs/marketplace-npm": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
     "fastify": "^5.8.5"
   },

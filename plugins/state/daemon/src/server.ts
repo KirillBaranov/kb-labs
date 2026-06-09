@@ -5,6 +5,7 @@ import {
   createCorrelatedLogger,
   HttpObservabilityCollector,
   createServiceReadyResponse,
+  getListenOptions,
   metricLine,
   registerOpenAPI,
 } from '@kb-labs/shared-http';
@@ -163,10 +164,7 @@ export class StateDaemonServer {
     this.observability.recordOperation('state.bootstrap', 0, 'ok');
     this.server = server;
 
-    process.on('SIGTERM', () => void this.shutdown());
-    process.on('SIGINT', () => void this.shutdown());
-
-    await server.listen({ port, host });
+    await server.listen(getListenOptions(port, host));
   }
 
   async stop(): Promise<void> {

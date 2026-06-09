@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.3",
+    "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/marketplace-registry-contracts": "workspace:*",
     "@kb-labs/marketplace-registry-core": "workspace:*",

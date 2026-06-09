@@ -13,14 +13,76 @@
 
 import type { Server, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import type { ICache, ILogger } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import { createWsHandler } from '../hosts/ws-handler.js';
 import { createClientWsHandler } from '../clients/ws-handler.js';
 import type { HostRegistry } from '../hosts/registry.js';
+import { pumpBidirectional } from './pump.js';
 
 const GATEWAY_WS_PATHS = new Set(['/hosts/connect', '/clients/connect']);
+
+/**
+ * A WS-enabled upstream reachable over a Unix domain socket. @fastify/http-proxy
+ * cannot proxy WS upgrades over unix sockets, so the gateway dials these itself.
+ */
+export interface SocketWsUpstream {
+  /** Gateway-side path prefix, e.g. "/api/v1". */
+  prefix: string;
+  /** Upstream-side prefix replacement (http-proxy rewritePrefix semantics). */
+  rewritePrefix: string;
+  /** Absolute unix socket path the upstream service is bound to. */
+  socketPath: string;
+}
+
+/** Headers forwarded to the upstream WS handshake (auth, correlation, subprotocol). */
+const FORWARDED_WS_HEADERS = [
+  'authorization',
+  'cookie',
+  'x-request-id',
+  'x-trace-id',
+  'sec-websocket-protocol',
+] as const;
+
+/**
+ * Pick the socket upstream that owns this pathname. Matches on a path boundary
+ * (exact prefix or prefix followed by "/"), so "/api/v1x" does not match "/api/v1".
+ */
+export function pickSocketWsUpstream(
+  pathname: string,
+  upstreams: SocketWsUpstream[],
+): SocketWsUpstream | undefined {
+  return upstreams.find(
+    (u) => pathname === u.prefix || pathname.startsWith(`${u.prefix}/`),
+  );
+}
+
+/**
+ * Build the `ws+unix://<socket>:<path>` URL — the only form the `ws` client
+ * accepts for a unix socket (the `socketPath` option is ignored by ws). The
+ * gateway prefix is rewritten to the upstream prefix, query string preserved.
+ */
+export function buildUpstreamWsUrl(
+  upstream: SocketWsUpstream,
+  pathname: string,
+  search: string,
+): string {
+  const rewritten = upstream.rewritePrefix + pathname.slice(upstream.prefix.length);
+  return `ws+unix://${upstream.socketPath}:${rewritten}${search}`;
+}
+
+/** Extract the subset of request headers forwarded to the upstream WS handshake. */
+export function forwardWsHeaders(req: IncomingMessage): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of FORWARDED_WS_HEADERS) {
+    const value = req.headers[name];
+    if (typeof value === 'string') {
+      out[name] = value;
+    }
+  }
+  return out;
+}
 
 /**
  * Attach gateway-own WebSocket endpoints using raw `ws` package.
@@ -39,6 +101,7 @@ export function attachGatewayWs(
   jwtConfig: JwtConfig,
   logger: ILogger,
   hostRegistry?: HostRegistry,
+  socketWsUpstreams: SocketWsUpstream[] = [],
 ): void {
   const wss = new WebSocketServer({ noServer: true });
   const hostsHandler = createWsHandler(cache, jwtConfig, logger, hostRegistry);
@@ -64,11 +127,26 @@ export function attachGatewayWs(
           try { ws.close(1011, 'Internal error'); } catch { /* already closed */ }
         });
       });
-    } else {
-      // Delegate to @fastify/http-proxy for upstream WS proxy
-      for (const listener of existingListeners) {
-        listener.call(server, req, socket, head);
-      }
+      return;
+    }
+
+    // Socket-bound upstream WS: @fastify/http-proxy can't dial unix sockets for
+    // upgrades, so the gateway opens the upstream WS itself (ws+unix://) and
+    // relays frames. TCP upstreams fall through to http-proxy below.
+    const socketUpstream = pickSocketWsUpstream(pathname, socketWsUpstreams);
+    if (socketUpstream) {
+      const { search } = new URL(req.url ?? '/', 'http://localhost');
+      const upstreamUrl = buildUpstreamWsUrl(socketUpstream, pathname, search);
+      wss.handleUpgrade(req, socket, head, (clientWs) => {
+        const upstreamWs = new WebSocket(upstreamUrl, { headers: forwardWsHeaders(req) });
+        pumpBidirectional(clientWs, upstreamWs, logger);
+      });
+      return;
+    }
+
+    // Delegate to @fastify/http-proxy for TCP upstream WS proxy
+    for (const listener of existingListeners) {
+      listener.call(server, req, socket, head);
     }
   });
 

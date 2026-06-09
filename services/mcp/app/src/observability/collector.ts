@@ -22,6 +22,7 @@ import {
   createServiceObservabilityHealth,
   resolveObservabilityInstanceId,
 } from '@kb-labs/shared-http';
+import type { ObservabilityCapability, CanonicalObservabilityMetric } from '@kb-labs/core-contracts';
 
 /** Domain operations tracked at the MCP level. */
 export type McpOperation = 'mcp.tools.list' | 'mcp.tool.call';
@@ -83,7 +84,7 @@ export class McpObservabilityCollector {
       dependencies: [],
       metricsEndpoint: '/metrics',
       healthEndpoint: '/observability/health',
-      capabilities: ['httpMetrics', 'operationMetrics', 'logCorrelation'] as const,
+      capabilities: ['httpMetrics', 'operationMetrics', 'logCorrelation'] as ObservabilityCapability[],
       metricFamilies: [
         'process_rss_bytes',
         'process_heap_used_bytes',
@@ -92,7 +93,7 @@ export class McpObservabilityCollector {
         'http_errors_total',
         'service_operation_total',
         'service_operation_duration_ms',
-      ] as const,
+      ] as CanonicalObservabilityMetric[],
       meta: { toolCount, registryReady },
     });
   }
@@ -109,7 +110,7 @@ export class McpObservabilityCollector {
       uptimeSec: Math.floor(process.uptime()),
       logsSource: 'mcp-daemon',
       metricsEndpoint: '/metrics',
-      capabilities: ['httpMetrics', 'operationMetrics', 'logCorrelation'] as const,
+      capabilities: ['httpMetrics', 'operationMetrics', 'logCorrelation'] as ObservabilityCapability[],
       snapshot: {
         rssBytes: mem.rss,
         heapUsedBytes: mem.heapUsed,
