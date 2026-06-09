@@ -816,12 +816,47 @@
       "findings": [],
       "createdAt": 1777538512740,
       "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/daemon/src/api/workflows-api.ts": {
+      "path": "plugins/workflow/daemon/src/api/workflows-api.ts",
+      "contentHash": "597757a8a742ebfe",
+      "findings": [],
+      "createdAt": 1781021311427,
+      "lastAccessedAt": 1781021311427
+    },
+    "plugins/workflow/daemon/src/bootstrap.ts": {
+      "path": "plugins/workflow/daemon/src/bootstrap.ts",
+      "contentHash": "019ffd277e4c9d59",
+      "findings": [],
+      "createdAt": 1781021311427,
+      "lastAccessedAt": 1781021311427
+    },
+    "plugins/workflow/daemon/src/cron-scheduler.ts": {
+      "path": "plugins/workflow/daemon/src/cron-scheduler.ts",
+      "contentHash": "a6e50ccb170de384",
+      "findings": [],
+      "createdAt": 1781021311427,
+      "lastAccessedAt": 1781021311427
+    },
+    "plugins/workflow/daemon/src/__tests__/file-watcher.test.ts": {
+      "path": "plugins/workflow/daemon/src/__tests__/file-watcher.test.ts",
+      "contentHash": "68c2fe6bbe3fe1be",
+      "findings": [],
+      "createdAt": 1781021311427,
+      "lastAccessedAt": 1781021311427
+    },
+    "plugins/workflow/daemon/src/file-watcher.ts": {
+      "path": "plugins/workflow/daemon/src/file-watcher.ts",
+      "contentHash": "c1956745a7c58b26",
+      "findings": [],
+      "createdAt": 1781021311427,
+      "lastAccessedAt": 1781021311427
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1777538512740,
+    "lastUpdatedAt": 1781021311427,
     "totalFindings": 14,
-    "totalFiles": 82
+    "totalFiles": 87
   }
 }

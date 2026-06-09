@@ -508,4 +508,24 @@ export class CronScheduler {
     this.registeredJobs.clear();
     // Note: scheduledTasks are cleared in stop()
   }
+
+  /**
+   * Unregister all user-sourced cron jobs (source === 'user'), stopping their
+   * scheduled tasks. Safe to call while the scheduler is running — jobs are
+   * stopped and removed so they can be re-registered by a fresh discovery pass.
+   */
+  clearUserJobs(): void {
+    const userJobIds = Array.from(this.registeredJobs.keys()).filter((id) => id.startsWith('user:'));
+
+    for (const cronJobId of userJobIds) {
+      const task = this.scheduledTasks.get(cronJobId);
+      if (task) {
+        task.stop();
+        this.scheduledTasks.delete(cronJobId);
+      }
+      this.registeredJobs.delete(cronJobId);
+    }
+
+    this.logger.info('Cleared user cron jobs', { count: userJobIds.length });
+  }
 }
