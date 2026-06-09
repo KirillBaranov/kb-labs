@@ -44,7 +44,7 @@
     "dayjs": "^1.11.19",
     "eslint": "^9",
     "jsdom": "^27.0.0",
-    "react-router-dom": "^7.0.0",
+    "react-router-dom": "^7.15.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "tsx": "^4.21.0",

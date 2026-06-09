@@ -51,7 +51,7 @@
     "react-dom": "^19.0.0",
     "react-grid-layout": "^2.1.0",
     "react-resizable": "^3.0.5",
-    "react-router-dom": "^7.1.4",
+    "react-router-dom": "^7.15.0",
     "reactflow": "^11.11.4",
     "zod": "^3.25.76",
     "zustand": "^5.0.2"
