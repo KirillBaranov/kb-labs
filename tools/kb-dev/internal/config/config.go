@@ -45,9 +45,12 @@ type Service struct {
 	Highlight   bool              `json:"highlight,omitempty"`
 	Note        string            `json:"note,omitempty"`
 	Target      string            `json:"target,omitempty"`
-	// Socket is the unix domain socket path declared by this service.
-	// When set, kb-dev injects it as KB_SOCKET_PATH and uses unix probe for health checks.
-	// Convention: /tmp/kb-<projectHash>/<serviceName>.sock
+	// Socket is the unix domain socket path template for this service.
+	// Use ${KB_SOCKET_HASH} as a placeholder — Manager.New() expands it from
+	// md5(projectDir)[:8], giving each project root an isolated socket directory.
+	// When set, kb-dev injects the expanded path as KB_SOCKET_PATH and uses
+	// a unix domain socket probe for health checks.
+	// Example: /tmp/kb-${KB_SOCKET_HASH}/service-name.sock
 	Socket string `json:"socket,omitempty"`
 	// API holds optional developer-facing metadata about the service's HTTP API.
 	// Informational only — not used for routing or health checks.

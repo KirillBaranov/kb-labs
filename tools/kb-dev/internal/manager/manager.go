@@ -2,10 +2,13 @@ package manager
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +20,27 @@ import (
 	"github.com/kb-labs/dev/internal/process"
 	"github.com/kb-labs/dev/internal/service"
 )
+
+// computeSocketHash returns the first 8 hex characters of MD5(dir).
+// Used to derive a project-unique socket directory: /tmp/kb-<hash>/<service>.sock.
+// Matches the convention documented in config.Service.Socket.
+func computeSocketHash(dir string) string {
+	h := md5.Sum([]byte(dir))
+	return hex.EncodeToString(h[:])[:8]
+}
+
+// serviceAddress returns the human-readable address for a service.
+// Socket-based services show "unix:<path>"; TCP services show "http://localhost:<port>"
+// or fall back to the configured URL.
+func serviceAddress(cfg config.Service) string {
+	if cfg.Socket != "" {
+		return "unix:" + cfg.Socket
+	}
+	if cfg.Port > 0 {
+		return fmt.Sprintf("http://localhost:%d", cfg.Port)
+	}
+	return cfg.URL
+}
 
 const (
 	defaultGracePeriod = 5 * time.Second
@@ -57,6 +81,15 @@ func New(cfg *config.Config, rootDir, projectDir string) *Manager {
 		m.svcLocks[id] = &sync.Mutex{}
 	}
 
+	// Expand ${KB_SOCKET_HASH} placeholders in socket paths so that spawnEnv()
+	// and health probes always receive the fully-resolved path.
+	hash := computeSocketHash(projectDir)
+	for _, svc := range m.services {
+		if strings.Contains(svc.Config.Socket, "${KB_SOCKET_HASH}") {
+			svc.Config.Socket = strings.ReplaceAll(svc.Config.Socket, "${KB_SOCKET_HASH}", hash)
+		}
+	}
+
 	return m
 }
 
@@ -74,6 +107,11 @@ func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
 	// may have a good reason to pin it to a different value.
 	if _, ok := merged["KB_PROJECT_ROOT"]; !ok {
 		merged["KB_PROJECT_ROOT"] = m.projectDir
+	}
+	// KB_SOCKET_HASH lets services and their platform config (kb.config.json) derive
+	// their socket directory via ${KB_SOCKET_HASH} interpolation at bootstrap time.
+	if _, ok := merged["KB_SOCKET_HASH"]; !ok {
+		merged["KB_SOCKET_HASH"] = computeSocketHash(m.projectDir)
 	}
 	if svcCfg.Socket != "" {
 		if _, ok := merged["KB_SOCKET_PATH"]; !ok {
@@ -601,7 +639,7 @@ func (m *Manager) Status() *StatusResult {
 		ss := ServiceStatus{
 			State:  state.String(),
 			Port:   svc.Config.Port,
-			URL:    svc.Config.URL,
+			URL:    serviceAddress(svc.Config),
 			Deps:   svc.Config.DependsOn,
 			Detail: svc.GetDetail(),
 		}

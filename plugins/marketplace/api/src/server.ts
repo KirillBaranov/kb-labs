@@ -3,22 +3,27 @@
  * Fastify server factory for marketplace service.
  */
 
-import Fastify, { type FastifyInstance } from 'fastify';
+import { type FastifyInstance } from 'fastify';
 import {
-  createCorrelatedLogger,
   HttpObservabilityCollector,
+  createDaemonServer,
   createServiceReadyResponse,
-  registerOpenAPI,
+  type ObservabilityCollectorLike,
 } from '@kb-labs/shared-http';
 import type { ILogger } from '@kb-labs/core-platform';
+import type { ServiceHealthStatus, ObservabilityCheckStatus } from '@kb-labs/core-contracts';
 import { registerRoutes } from './routes/index.js';
 import type { MarketplaceService } from '@kb-labs/marketplace-core';
 import { ScopeResolutionError, AdapterScopeError, InvalidEntityError } from '@kb-labs/marketplace-core';
 import { PackageInstallError } from '@kb-labs/marketplace-npm';
 import { ScopeRequestError } from './scope-parser.js';
-import { randomUUID } from 'node:crypto';
 
-const DEFAULT_PORT = 5070;
+export interface CreateServerOptions {
+  service: MarketplaceService;
+  logger?: ILogger;
+  port?: number;
+  host?: string;
+}
 
 function createFallbackLogger(): ILogger {
   const child = (_bindings: Record<string, unknown>): ILogger => createFallbackLogger();
@@ -33,151 +38,98 @@ function createFallbackLogger(): ILogger {
   };
 }
 
-export interface CreateServerOptions {
-  service: MarketplaceService;
-  logger?: ILogger;
-  port?: number;
-  host?: string;
+/**
+ * Wraps HttpObservabilityCollector to satisfy ObservabilityCollectorLike.
+ * The buildHealth() no-arg call from createDaemonServer routes uses a fixed
+ * "service registered" check — the same information the original routes conveyed.
+ */
+function wrapObservability(collector: HttpObservabilityCollector): ObservabilityCollectorLike {
+  return {
+    register: (server: FastifyInstance) => collector.register(server),
+    buildDescribe: () => collector.buildDescribe(),
+    renderPrometheusMetrics: (status: string, extra?: string[]) => collector.renderPrometheusMetrics(status as ServiceHealthStatus, extra),
+    buildHealth: (_params?: Record<string, unknown>) =>
+      collector.buildHealth({
+        status: 'healthy' as ServiceHealthStatus,
+        checks: [{ id: 'marketplace-service', status: 'ok' as ObservabilityCheckStatus, message: 'Marketplace service registered' }],
+        meta: { serviceHealthEndpoint: '/health' },
+      }),
+  };
 }
 
 export async function createServer(opts: CreateServerOptions): Promise<FastifyInstance> {
-  const port = opts.port ?? DEFAULT_PORT;
   const logger = opts.logger ?? createFallbackLogger();
-  const observability = new HttpObservabilityCollector({
+
+  const collector = new HttpObservabilityCollector({
     serviceId: 'marketplace',
     serviceType: 'http-api',
     version: '0.1.0',
     logsSource: 'marketplace',
   });
-  const server = Fastify({
-    logger: false, // using platform.logger
-  });
+  const observability = wrapObservability(collector);
 
-  // OpenAPI docs
-  await registerOpenAPI(server, {
-    title: 'KB Labs Marketplace',
-    version: '0.1.0',
-    description: 'Unified marketplace for plugins, adapters, workflows, and more',
-    servers: [
-      { url: `http://localhost:${port}`, description: 'Local dev' },
-    ],
-    ui: process.env.NODE_ENV !== 'production',
-  });
-
-  // Decorate with service instance
-  server.decorate('marketplace', opts.service);
-  server.decorate('observability', observability);
-  observability.register(server);
-
-  // Scope-related errors → 400. All three share a `code` property so clients
-  // can discriminate (SCOPE_INVALID, SCOPE_PROJECT_ROOT_REQUIRED,
-  // SCOPE_PROJECT_EQUALS_PLATFORM, MARKETPLACE_ADAPTER_PROJECT_SCOPE, ...).
-  server.setErrorHandler((err, _request, reply) => {
-    if (
-      err instanceof ScopeRequestError ||
-      err instanceof ScopeResolutionError ||
-      err instanceof AdapterScopeError
-    ) {
-      return reply.code(400).send({
-        error: err.name,
-        code: err.code,
-        message: err.message,
+  const server = await createDaemonServer({
+    serviceId: 'marketplace',
+    logger,
+    observability,
+    // Preserve the legacy /health contract { status:'ok', service, ts } (e2e MH-01/MH-02),
+    // not the observability buildHealth() shape.
+    healthResponse: () => ({ status: 'ok', service: 'marketplace', ts: Date.now() }),
+    // /ready must return { ready, components } (createServiceReadyResponse shape),
+    // not the bare buildHealth() payload — e2e MH-03/MH-04 assert body.ready and
+    // body.components.marketplaceService.
+    readyCheck: () =>
+      createServiceReadyResponse({
+        ready: true,
+        components: { marketplaceService: { ready: true } },
+      }),
+    openapi: {
+      title: 'KB Labs Marketplace',
+      description: 'Unified marketplace for plugins, adapters, workflows, and more',
+    },
+    setErrorHandler: (app) => {
+      // Scope-related errors → 400. All three share a `code` property so clients
+      // can discriminate (SCOPE_INVALID, SCOPE_PROJECT_ROOT_REQUIRED,
+      // SCOPE_PROJECT_EQUALS_PLATFORM, MARKETPLACE_ADAPTER_PROJECT_SCOPE, ...).
+      app.setErrorHandler((err, _request, reply) => {
+        if (
+          err instanceof ScopeRequestError ||
+          err instanceof ScopeResolutionError ||
+          err instanceof AdapterScopeError
+        ) {
+          return reply.code(400).send({
+            error: err.name,
+            code: err.code,
+            message: err.message,
+          });
+        }
+        if (err instanceof InvalidEntityError) {
+          return reply.code(422).send({
+            error: err.name,
+            code: err.code,
+            message: err.message,
+          });
+        }
+        if (err instanceof PackageInstallError) {
+          const status = err.code === 'NOT_FOUND' ? 404 : 422;
+          return reply.code(status).send({
+            error: err.name,
+            code: err.code,
+            message: err.message,
+          });
+        }
+        // Fallback to Fastify default behaviour.
+        throw err;
       });
-    }
-    if (err instanceof InvalidEntityError) {
-      return reply.code(422).send({
-        error: err.name,
-        code: err.code,
-        message: err.message,
-      });
-    }
-    if (err instanceof PackageInstallError) {
-      const status = err.code === 'NOT_FOUND' ? 404 : 422;
-      return reply.code(status).send({
-        error: err.name,
-        code: err.code,
-        message: err.message,
-      });
-    }
-    // Fallback to Fastify default behaviour.
-    throw err;
+    },
+    registerRoutes: async (app) => {
+      // Decorate with service and observability instances before registering routes.
+      app.decorate('marketplace', opts.service);
+      app.decorate('observability', collector);
+
+      await collector.observeOperation('marketplace.bootstrap', () => registerRoutes(app));
+    },
   });
-
-  server.addHook('onRequest', async (request, reply) => {
-    const requestId = (request.headers['x-request-id'] as string | undefined) || randomUUID();
-    const traceId = (request.headers['x-trace-id'] as string | undefined) || randomUUID();
-
-    request.id = requestId;
-    reply.header('X-Request-Id', requestId);
-    reply.header('X-Trace-Id', traceId);
-
-    request.kbLogger = createCorrelatedLogger(logger, {
-      serviceId: 'marketplace',
-      logsSource: 'marketplace',
-      layer: 'marketplace',
-      service: 'request',
-      requestId,
-      traceId,
-      method: request.method,
-      url: request.url,
-      operation: 'http.request',
-    });
-    request.kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
-  });
-
-  server.addHook('onResponse', async (request, reply) => {
-    const logger = request.kbLogger;
-    if (!logger) {
-      return;
-    }
-
-    logger.info(`✓ ${request.method.toUpperCase()} ${request.url} ${reply.statusCode}`, {
-      statusCode: reply.statusCode,
-    });
-  });
-
-  server.get('/health', async () => ({
-    status: 'ok',
-    service: 'marketplace',
-    ts: Date.now(),
-  }));
-
-  server.get('/ready', async () =>
-    createServiceReadyResponse({
-      ready: true,
-      components: {
-        marketplaceService: {
-          ready: true,
-        },
-      },
-    })
-  );
-
-  server.get('/metrics', async (_request, reply) => {
-    reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
-    return observability.renderPrometheusMetrics('healthy');
-  });
-
-  server.get('/observability/describe', async () => observability.buildDescribe());
-
-  server.get('/observability/health', async () =>
-    observability.buildHealth({
-      status: 'healthy',
-      checks: [
-        {
-          id: 'marketplace-service',
-          status: 'ok',
-          message: 'Marketplace service registered',
-        },
-      ],
-      meta: {
-        serviceHealthEndpoint: '/health',
-      },
-    })
-  );
-
-  // Register routes
-  await observability.observeOperation('marketplace.bootstrap', () => registerRoutes(server));
 
   return server;
 }

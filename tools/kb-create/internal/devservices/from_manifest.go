@@ -22,6 +22,7 @@ type ServiceManifest struct {
 		Port        int    `json:"port"`
 		HealthCheck string `json:"healthCheck"`
 		Protocol    string `json:"protocol,omitempty"`
+		Socket      string `json:"socket,omitempty"`
 	} `json:"runtime"`
 	DependsOn []string                 `json:"dependsOn,omitempty"`
 	Env       map[string]ServiceEnvVar `json:"env,omitempty"`
@@ -111,8 +112,11 @@ func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *Servic
 		Command:     "node " + entryPath,
 		HealthCheck: healthCheck,
 		Port:        port,
-		URL:         url,
-		Env:         env,
-		DependsOn:   manifest.DependsOn,
+		// Socket passes through verbatim — the ${KB_SOCKET_HASH} placeholder is
+		// expanded by kb-dev at start time (per project root), not here.
+		Socket:    manifest.Runtime.Socket,
+		URL:       url,
+		Env:       env,
+		DependsOn: manifest.DependsOn,
 	}
 }

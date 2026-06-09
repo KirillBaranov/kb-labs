@@ -1,67 +1,57 @@
-import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { createServiceBootstrap, getPlatformRoot } from '@kb-labs/core-runtime';
 import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
-import { createCorrelatedLogger } from '@kb-labs/shared-http';
+import { runDaemon } from '@kb-labs/shared-daemon';
+import { getListenOptions } from '@kb-labs/shared-http';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
-import { findRepoRoot } from '@kb-labs/core-sys';
 import { RegistryService } from '@kb-labs/marketplace-registry-core';
 import { createRegistryServer } from '@kb-labs/marketplace-registry-api';
 
-const DEFAULT_PORT = 5071;
-const DEFAULT_HOST = process.env.KB_REGISTRY_HOST ?? '0.0.0.0';
+const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
 
 async function main(): Promise<void> {
-  const repoRoot = await findRepoRoot(process.cwd());
-  loadEnvFromRoot(repoRoot);
+  await runDaemon(
+    {
+      appId: 'marketplace-registry',
+      defaultPort: 5071,
+      portEnvVar: 'KB_REGISTRY_PORT',
+      defaultHost: '0.0.0.0',
+      hostEnvVar: 'KB_REGISTRY_HOST',
+      async setup({ platform, logger, port, host }) {
+        const platformRoot = getPlatformRoot() ?? process.cwd();
+        void platformRoot; // reserved for future per-project scoping
 
-  const port = parseInt(process.env.KB_REGISTRY_PORT ?? String(DEFAULT_PORT), 10);
-  const host = process.env.KB_REGISTRY_HOST ?? DEFAULT_HOST;
+        const service = new RegistryService({
+          storage: platform.storage,
+          cache: platform.cache,
+          logger: platform.logger,
+          baseUrl: process.env.KB_REGISTRY_URL ?? `http://localhost:${port}`,
+          signingPrivateKey: process.env.KB_REGISTRY_SIGNING_KEY,
+          siteUrl: process.env.KB_SITE_URL ?? 'https://kblabs.ru',
+        });
 
-  await createServiceBootstrap({ appId: 'marketplace-registry', repoRoot, assemblyHook: makeAssemblyHook() });
+        const jwtSecret = process.env.GATEWAY_JWT_SECRET;
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (!jwtSecret && isProduction) {
+          throw new Error('GATEWAY_JWT_SECRET must be set in production');
+        }
+        if (!jwtSecret) {
+          logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)');
+        }
+        const jwtConfig: JwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
-  const log = createCorrelatedLogger(platform.logger, {
-    serviceId: 'marketplace-registry',
-    logsSource: 'marketplace-registry',
-    layer: 'marketplace-registry',
-    service: 'marketplace-registry-app',
-    operation: 'marketplace-registry.bootstrap',
-  });
-  log.info('Bootstrapping marketplace-registry service', { repoRoot, port, host });
+        const server = await createRegistryServer({ port, host, logger: platform.logger, registry: service, jwtConfig });
+        await server.listen(getListenOptions(port, host));
 
-  const platformRoot = getPlatformRoot() ?? repoRoot;
-  void platformRoot; // used for future per-project scoping
+        // Note: actual binding may be via Unix socket (KB_SOCKET_PATH) — see getListenOptions()
 
-  const service = new RegistryService({
-    storage: platform.storage,
-    cache: platform.cache,
-    logger: platform.logger,
-    baseUrl: process.env.KB_REGISTRY_URL ?? `http://localhost:${port}`,
-    signingPrivateKey: process.env.KB_REGISTRY_SIGNING_KEY,
-    siteUrl: process.env.KB_SITE_URL ?? 'https://kblabs.ru',
-  });
-
-  const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
-  const jwtSecret = process.env.GATEWAY_JWT_SECRET;
-  const isProduction = process.env.NODE_ENV === 'production';
-  if (!jwtSecret && isProduction) {
-    throw new Error('GATEWAY_JWT_SECRET must be set in production');
-  }
-  if (!jwtSecret) { log.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)'); }
-  const jwtConfig: JwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
-
-  const server = await createRegistryServer({ port, host, logger: platform.logger, registry: service, jwtConfig });
-
-  await server.listen({ port, host });
-  log.info(`marketplace-registry listening on http://${host}:${port}`);
-  log.info(`OpenAPI docs: http://localhost:${port}/docs`);
-
-  const shutdown = async (signal: string) => {
-    log.info(`Received ${signal}, shutting down...`);
-    await server.close();
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+        return async () => {
+          await server.close();
+        };
+      },
+    },
+    (appId, repoRoot) =>
+      createServiceBootstrap({ appId, repoRoot, assemblyHook: makeAssemblyHook() }),
+  );
 }
 
 main().catch((err) => {

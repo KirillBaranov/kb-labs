@@ -23,8 +23,7 @@
  *    changes here.
  */
 
-import { randomUUID } from 'node:crypto';
-import Fastify, { type FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
@@ -36,7 +35,7 @@ import type { ICache, ILogger } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
-import { createCorrelatedLogger, resolveObservabilityInstanceId } from '@kb-labs/shared-http';
+import { createDaemonServer, getListenOptions, type ObservabilityCollectorLike } from '@kb-labs/shared-http';
 import { resolveAuthContext } from './mcp/auth.js';
 import { toIdentity, actionForOperation, type Permits } from './mcp/authz.js';
 import { createToolRegistry } from './mcp/tool-builder.js';
@@ -47,7 +46,6 @@ import { McpObservabilityCollector } from './observability/collector.js';
 export interface McpDaemonServerOptions {
   port: number;
   host: string;
-  socketPath?: string;
   logger: ILogger;
   cache: ICache;
   /** Default global platform container — used as the resolvePlatform fallback. */
@@ -64,17 +62,16 @@ export interface McpDaemonServerOptions {
 }
 
 export class McpDaemonServer {
-  private readonly app: FastifyInstance;
   private readonly opts: McpDaemonServerOptions;
   private readonly resolvePlatform: PlatformResolver;
   private readonly collector: McpObservabilityCollector;
-  private registry?: IEntityRegistry;
+  private app: FastifyInstance | undefined;
+  private registry: IEntityRegistry | undefined;
 
   constructor(opts: McpDaemonServerOptions) {
     this.opts = opts;
     this.resolvePlatform = opts.resolvePlatform ?? (() => opts.platform);
     this.collector = new McpObservabilityCollector();
-    this.app = Fastify({ logger: false });
   }
 
   /** Build a per-request permits predicate bound to the identity (PDP seam). */
@@ -99,82 +96,45 @@ export class McpDaemonServer {
       cache: this.opts.cache,
     });
 
-    this.registerRoutes();
+    const execMode = process.env.KB_MCP_EXECUTION_MODE ?? 'subprocess';
 
-    const address = this.opts.socketPath
-      ? await this.app.listen({ path: this.opts.socketPath })
-      : await this.app.listen({ port: this.opts.port, host: this.opts.host });
+    // Adapter: wraps McpObservabilityCollector to match ObservabilityCollectorLike.
+    // Arrow functions capture `this` so the live registry/toolCount state is always current.
+    const observabilityAdapter: ObservabilityCollectorLike = {
+      register: (server: FastifyInstance) => this.collector.register(server),
+      buildDescribe: () => this.collector.buildDescribe(!!this.registry, this.toolCount),
+      buildHealth: () => this.collector.buildHealth(!!this.registry, this.toolCount, execMode),
+      renderPrometheusMetrics: (_status: string) => this.collector.renderPrometheusMetrics(this.toolCount),
+    };
 
-    this.opts.logger.info('MCP daemon listening', {
-      address,
-      socketPath: this.opts.socketPath,
+    this.app = await createDaemonServer({
+      serviceId: 'mcp-daemon',
+      logger: this.opts.logger,
+      observability: observabilityAdapter,
+      readyCheck: () => ({ ready: !!this.registry, service: 'mcp-daemon' }),
+      registerRoutes: async (server) => this.registerMcpRoutes(server),
     });
+
+    const listenOptions = getListenOptions(this.opts.port, this.opts.host);
+    const address = await this.app.listen(listenOptions);
+
+    this.opts.logger.info('MCP daemon listening', { address });
     return address;
   }
 
   async stop(): Promise<void> {
-    await this.app.close();
+    await this.app?.close();
   }
 
-  private registerRoutes(): void {
+  private async registerMcpRoutes(server: FastifyInstance): Promise<void> {
     const { cache, logger, jwtConfig } = this.opts;
-    const execMode = process.env.KB_MCP_EXECUTION_MODE ?? 'subprocess';
-
-    // ── Observability hooks (onRequest/onResponse timing for all routes) ──
-    this.collector.register(this.app);
-
-    // ── Per-request correlated logger ──────────────────────────────────────
-    // Attaches requestId + traceId to every incoming request, matching the
-    // gateway and rest-api pattern.
-    this.app.addHook('onRequest', async (request, reply) => {
-      const requestId =
-        (request.headers['x-request-id'] as string | undefined) ?? randomUUID();
-      const traceId =
-        (request.headers['x-trace-id'] as string | undefined) ?? randomUUID();
-      reply.header('X-Request-Id', requestId).header('X-Trace-Id', traceId);
-      request.kbLogger = createCorrelatedLogger(logger, {
-        serviceId: 'mcp-daemon',
-        instanceId: resolveObservabilityInstanceId(),
-        logsSource: 'mcp-daemon',
-        layer: 'mcp',
-        requestId,
-        traceId,
-        operation: 'mcp.request',
-        method: request.method,
-        url: request.url,
-      });
-    });
-
-    // ── Standard platform observability endpoints ──────────────────────────
-
-    this.app.get('/health', async () =>
-      this.collector.buildHealth(!!this.registry, this.toolCount, execMode),
-    );
-
-    this.app.get('/ready', async (_req, reply) => {
-      const ready = !!this.registry;
-      return reply.code(ready ? 200 : 503).send({ ready, service: 'mcp-daemon' });
-    });
-
-    this.app.get('/observability/describe', async () =>
-      this.collector.buildDescribe(!!this.registry, this.toolCount),
-    );
-
-    this.app.get('/observability/health', async () =>
-      this.collector.buildHealth(!!this.registry, this.toolCount, execMode),
-    );
-
-    this.app.get('/metrics', async (_req, reply) => {
-      reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
-      return this.collector.renderPrometheusMetrics(this.toolCount);
-    });
 
     // ── MCP JSON-RPC endpoint ──────────────────────────────────────────────
 
     // CORS headers for all MCP responses (including preflight OPTIONS).
     // fastify.all() covers every method including OPTIONS, so no separate
     // fastify.options() is needed — that would cause a duplicate-route error.
-    this.app.all('/api/v1/mcp', async (request, reply) => {
+    server.all('/api/v1/mcp', async (request, reply) => {
       reply
         .header('Access-Control-Allow-Origin', '*')
         .header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')

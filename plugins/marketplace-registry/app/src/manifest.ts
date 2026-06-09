@@ -10,6 +10,7 @@ export const manifest: ServiceManifest = {
     entry: 'dist/bootstrap.js',
     port: 5071,
     healthCheck: '/health',
+    socket: '/tmp/kb-${KB_SOCKET_HASH}/marketplace-registry.sock',
   },
   dependsOn: ['state-daemon'],
   env: {

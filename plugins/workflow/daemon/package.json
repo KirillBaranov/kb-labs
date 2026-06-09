@@ -31,6 +31,7 @@
     "@kb-labs/core-registry": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",
     "@kb-labs/gateway-core": "workspace:*",

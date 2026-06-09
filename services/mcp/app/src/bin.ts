@@ -4,7 +4,7 @@
 
 import { bootstrap } from './bootstrap.js';
 
-bootstrap(process.cwd()).catch((error) => {
+bootstrap().catch((error) => {
   console.error('Failed to start MCP daemon:', error);
   process.exit(1);
 });

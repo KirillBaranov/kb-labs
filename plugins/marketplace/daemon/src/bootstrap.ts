@@ -1,77 +1,63 @@
 /**
  * @module @kb-labs/marketplace-app/bootstrap
- * Server bootstrap: initPlatform → MarketplaceService → Fastify server.
+ * Server bootstrap: runDaemon → platformBootstrap → MarketplaceService → Fastify server.
  */
 
-import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { createServiceBootstrap, getPlatformRoot } from '@kb-labs/core-runtime';
 import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
-import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
+import { getListenOptions } from '@kb-labs/shared-http';
+import { runDaemon } from '@kb-labs/shared-daemon';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { readKbConfig } from '@kb-labs/core-config';
 import { createServer } from '@kb-labs/marketplace-api';
 import { MarketplaceService } from '@kb-labs/marketplace-core';
 import { NpmPackageSource, RegistryPackageSource } from '@kb-labs/marketplace-npm';
 
-const DEFAULT_PORT = 5070;
-// Defaults to 0.0.0.0 for Docker/dev compat. Set KB_MARKETPLACE_HOST=127.0.0.1 to restrict to loopback.
-const DEFAULT_HOST = process.env.KB_MARKETPLACE_HOST ?? '0.0.0.0';
+export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
+  await runDaemon(
+    {
+      appId: 'marketplace',
+      defaultPort: 5070,
+      portEnvVar: 'KB_MARKETPLACE_PORT',
+      // Defaults to 0.0.0.0 for Docker/dev compat. Set KB_MARKETPLACE_HOST=127.0.0.1 to restrict to loopback.
+      defaultHost: '0.0.0.0',
+      hostEnvVar: 'KB_MARKETPLACE_HOST',
+      async setup({ platform, logger, port, host }) {
+        // Resolve repo root for config reading (findRepoRoot is fast/cached by FS).
+        const repoRoot = await findRepoRoot(process.cwd());
 
-export async function bootstrap(cwd: string): Promise<void> {
-  const repoRoot = await findRepoRoot(cwd);
-  loadEnvFromRoot(repoRoot);
+        // Use getPlatformRoot() — in installed mode this is the platform installation
+        // dir (e.g. /kb-platform), not the project CWD where the daemon was started.
+        const platformRoot = getPlatformRoot() ?? repoRoot;
 
-  const port = parseInt(process.env.KB_MARKETPLACE_PORT ?? String(DEFAULT_PORT), 10);
-  const host = process.env.KB_MARKETPLACE_HOST ?? DEFAULT_HOST;
+        // Read marketplace.registry config to wire up RegistryPackageSource for kb: specs.
+        const kbConfig = await readKbConfig(repoRoot);
+        const registryConfig = (kbConfig?.data as Record<string, unknown> | undefined)?.marketplace as Record<string, unknown> | undefined;
+        const registryUrl = (registryConfig?.registry as Record<string, unknown> | undefined)?.url as string | undefined
+          ?? process.env.KB_REGISTRY_URL;
 
-  // Init platform (logger, cache, adapters)
-  await createServiceBootstrap({ appId: 'marketplace', repoRoot, assemblyHook: makeAssemblyHook() });
+        const registrySource = registryUrl
+          ? new RegistryPackageSource({ registryUrl, authToken: process.env.KB_REGISTRY_TOKEN })
+          : undefined;
 
-  const log = createCorrelatedLogger(platform.logger, {
-    serviceId: 'marketplace',
-    logsSource: 'marketplace',
-    layer: 'marketplace',
-    service: 'marketplace-app',
-    operation: 'marketplace.bootstrap',
-  });
-  log.info('Bootstrapping marketplace service', { repoRoot, port, host });
+        const service = new MarketplaceService({
+          platformRoot,
+          source: new NpmPackageSource(),
+          registrySource,
+        });
 
-  // Create marketplace service. The daemon lives inside the platform root —
-  // that's always the platform scope. `projectRoot` is passed per-request by
-  // API clients (CLI, other services) so one daemon can serve many projects.
-  // Use getPlatformRoot() — in installed mode this is the platform installation
-  // dir (e.g. /kb-platform), not the project CWD where the daemon was started.
-  const platformRoot = getPlatformRoot() ?? repoRoot;
+        const server = await createServer({ service, port, logger });
+        await server.listen(getListenOptions(port, host));
 
-  // Read marketplace.registry config to wire up RegistryPackageSource for kb: specs
-  const kbConfig = await readKbConfig(repoRoot);
-  const registryConfig = (kbConfig?.data as Record<string, unknown> | undefined)?.marketplace as Record<string, unknown> | undefined;
-  const registryUrl = (registryConfig?.registry as Record<string, unknown> | undefined)?.url as string | undefined
-    ?? process.env.KB_REGISTRY_URL;
+        logger.info(`Marketplace service listening on http://${host}:${port}`);
+        logger.info(`OpenAPI docs: http://localhost:${port}/docs`);
 
-  const registrySource = registryUrl
-    ? new RegistryPackageSource({ registryUrl, authToken: process.env.KB_REGISTRY_TOKEN })
-    : undefined;
-
-  const service = new MarketplaceService({
-    platformRoot,
-    source: new NpmPackageSource(),
-    registrySource,
-  });
-
-  // Create and start Fastify server
-  const server = await createServer({ service, port, logger: platform.logger });
-
-  await server.listen(getListenOptions(port, host));
-  log.info(`Marketplace service listening on http://${host}:${port}`);
-  log.info(`OpenAPI docs: http://localhost:${port}/docs`);
-
-  // Graceful shutdown
-  const shutdown = async (signal: string) => {
-    log.info(`Received ${signal}, shutting down...`);
-    await server.close();
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+        return async () => {
+          await server.close();
+        };
+      },
+    },
+    (appId, repoRoot) =>
+      createServiceBootstrap({ appId, repoRoot, assemblyHook: makeAssemblyHook() }),
+  );
 }
