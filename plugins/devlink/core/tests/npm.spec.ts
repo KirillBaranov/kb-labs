@@ -6,6 +6,14 @@ vi.mock('child_process', () => ({
   spawnSync: mockSpawnSync,
 }));
 
+// Hermetic: stub the SDK so the unit-under-test resolves a no-op cache instead
+// of loading the real @kb-labs/sdk barrel. The cold dynamic import of that heavy
+// module is what made the first test in this file flake on a 5s timeout under
+// CI load — the spawnSync argv assertion does not depend on real cache infra.
+vi.mock('@kb-labs/sdk', () => ({
+  useCache: () => null,
+}));
+
 // Regression: getLatestNpmVersion must use spawnSync with discrete argv,
 // not execSync with a template string — prevents command injection via packageName.
 describe('getLatestNpmVersion — no shell injection', () => {
