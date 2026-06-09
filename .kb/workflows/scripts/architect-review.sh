@@ -16,6 +16,8 @@ PLAN=$(cat PLAN.md 2>/dev/null || echo "")
 
 PROMPT="You are a senior software architect reviewing an implementation. Write in English.
 
+IMPORTANT SECURITY RULE: Never quote, print, or include the literal value of any secret, token, password, or credential in your output — even if you find one in a file. Describe the problem (e.g. 'a live token is hardcoded') without revealing the value itself.
+
 Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
 
 Implementation plan:
