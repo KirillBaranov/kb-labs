@@ -65,3 +65,27 @@ func TestEmbeddedDefaults(t *testing.T) {
 		}
 	}
 }
+
+// TestMarketplacePluginImpliesService guards the rule that a profile installing
+// the marketplace plugin must also run the marketplace service — otherwise
+// `kb marketplace plugins list` (and friends) hit a dead :5070 with ECONNREFUSED.
+func TestMarketplacePluginImpliesService(t *testing.T) {
+	tb, err := Parse(embeddedTestbed)
+	if err != nil {
+		t.Fatalf("embedded testbed invalid: %v", err)
+	}
+	has := func(xs []string, v string) bool {
+		for _, x := range xs {
+			if x == v {
+				return true
+			}
+		}
+		return false
+	}
+	for _, name := range tb.Names() {
+		p, _ := tb.Get(name)
+		if has(p.Plugins, "marketplace") && !has(p.Services, "marketplace") {
+			t.Errorf("profile %q installs the marketplace plugin but does not run the marketplace service", name)
+		}
+	}
+}
