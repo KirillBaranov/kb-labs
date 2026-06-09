@@ -50,15 +50,17 @@ export function evaluateExpression(
 ): boolean {
   const trimmed = expr.trim()
 
-  // Handle logical operators
-  if (trimmed.includes('&&')) {
-    const parts = trimmed.split('&&').map((p) => p.trim())
-    return parts.every((part) => evaluateExpression(part, context))
+  // Handle logical operators. || has lower precedence than && — split on ||
+  // first so && operands are evaluated as a unit, not the other way around.
+  // Use splitOnOperator so quoted strings (e.g. "a && b") are not split.
+  const orParts = splitOnOperator(trimmed, '||')
+  if (orParts.length > 1) {
+    return orParts.some((part) => evaluateExpression(part.trim(), context))
   }
 
-  if (trimmed.includes('||')) {
-    const parts = trimmed.split('||').map((p) => p.trim())
-    return parts.some((part) => evaluateExpression(part, context))
+  const andParts = splitOnOperator(trimmed, '&&')
+  if (andParts.length > 1) {
+    return andParts.every((part) => evaluateExpression(part.trim(), context))
   }
 
   // Handle negation
@@ -251,6 +253,44 @@ export function interpolateString(
   }
 
   return result
+}
+
+/**
+ * Build a shell-safe command from a `run:` block by injecting ${{ expr }} values
+ * as environment variables instead of raw string substitution.
+ *
+ * Raw substitution is unsafe because issue/PR titles may contain shell metacharacters
+ * (backticks, $(), quotes). When content arrives via an env var, shell expansion of
+ * the variable does NOT re-evaluate backticks or $() — they are literal characters.
+ *
+ * Example:
+ *   Input:  `echo "${{ steps.issue.outputs.title }}"`
+ *   Output: command = `echo "${_WF_steps_issue_outputs_title}"`
+ *           shellEnvVars = { _WF_steps_issue_outputs_title: "Add `kb cancel` command" }
+ */
+export function buildShellSafeCommand(
+  rawRun: string,
+  context: ExpressionContext,
+): { command: string; shellEnvVars: Record<string, string> } {
+  const expressions = extractExpressions(rawRun)
+  const shellEnvVars: Record<string, string> = {}
+  let command = rawRun
+
+  for (const expr of expressions) {
+    const value = resolveValueWithFallback(expr, context)
+    const strValue = coerceToString(value)
+
+    // Build a safe shell variable name from the expression.
+    // Replace any non-alphanumeric/underscore chars with underscore.
+    const safeName = '_WF_' + expr.trim().replace(/[^a-zA-Z0-9_]/g, '_')
+    shellEnvVars[safeName] = strValue
+
+    // Replace ${{ expr }} with ${_WF_varname} in the command.
+    const pattern = new RegExp(`\\$\\{\\{\\s*${escapeRegex(expr)}\\s*\\}\\}`, 'g')
+    command = command.replace(pattern, `\${${safeName}}`)
+  }
+
+  return { command, shellEnvVars }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { evaluateExpression, interpolateString, resolveExpression, interpolateObject, resolveValue, coerceToString } from '../expressions'
+import { evaluateExpression, interpolateString, resolveExpression, interpolateObject, resolveValue, coerceToString, buildShellSafeCommand } from '../expressions'
 import type { ExpressionContext } from '../types'
 
 describe('Expression Evaluation', () => {
@@ -497,5 +497,119 @@ describe('env block coercion (BUG-001 — worker.ts fix)', () => {
     )
     expect(envVars['KB_ENV']).toBe('production')
     expect(envVars['KB_VERSION']).toBe('1.2.3')
+  })
+})
+
+// ─── buildShellSafeCommand ───────────────────────────────────────────────────
+// Regression tests for shell injection via ${{ }} in run: blocks.
+//
+// Root cause: issue titles (and other user-supplied strings) can contain shell
+// metacharacters — backticks, $(), quotes. When ${{ steps.issue.outputs.title }}
+// is substituted raw into a shell script, those metacharacters are evaluated.
+// buildShellSafeCommand injects values as _WF_* env vars instead, so the shell
+// script reads them via ${_WF_...} references where backtick expansion does NOT
+// occur during variable expansion.
+
+describe('buildShellSafeCommand', () => {
+  const ctx: ExpressionContext = {
+    env: {},
+    trigger: { type: 'manual' },
+    steps: {
+      issue: {
+        outputs: {
+          title: 'Add `kb workflow runs cancel` command',
+          body: 'Fix the $(broken) thing',
+          number: '174',
+        },
+      },
+      branch: {
+        outputs: { branchName: 'issue-174-auto' },
+      },
+    },
+    inputs: {
+      issueNumber: 174,
+      owner: 'kb-labs-team',
+      repo: 'kb-labs',
+    },
+  }
+
+  it('replaces ${{ expr }} with ${_WF_varname} in command', () => {
+    const raw = 'echo "${{ steps.issue.outputs.title }}"'
+    const { command } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe('echo "${_WF_steps_issue_outputs_title}"')
+    expect(command).not.toContain('${{')
+  })
+
+  it('injects resolved value into shellEnvVars', () => {
+    const raw = 'echo "${{ steps.issue.outputs.title }}"'
+    const { shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(shellEnvVars['_WF_steps_issue_outputs_title']).toBe(
+      'Add `kb workflow runs cancel` command',
+    )
+  })
+
+  it('shellEnvVar value contains raw backticks — NOT executed by the outer shell', () => {
+    // This is the key invariant: the env var value must be the literal string.
+    // When the shell evaluates `echo "${_WF_...}"`, variable expansion does
+    // not re-evaluate backticks inside the value — they are literal characters.
+    const raw = 'echo "${{ steps.issue.outputs.title }}"'
+    const { shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(shellEnvVars['_WF_steps_issue_outputs_title']).toContain('`kb workflow runs cancel`')
+  })
+
+  it('handles $() in values (dollar-paren injection)', () => {
+    const raw = 'echo "${{ steps.issue.outputs.body }}"'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe('echo "${_WF_steps_issue_outputs_body}"')
+    expect(shellEnvVars['_WF_steps_issue_outputs_body']).toBe('Fix the $(broken) thing')
+  })
+
+  it('handles multiple expressions in one command', () => {
+    const raw = 'gh pr create --title "feat: ${{ steps.issue.outputs.title }}" --repo "${{ inputs.owner }}/${{ inputs.repo }}"'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe(
+      'gh pr create --title "feat: ${_WF_steps_issue_outputs_title}" --repo "${_WF_inputs_owner}/${_WF_inputs_repo}"',
+    )
+    expect(shellEnvVars['_WF_steps_issue_outputs_title']).toBe('Add `kb workflow runs cancel` command')
+    expect(shellEnvVars['_WF_inputs_owner']).toBe('kb-labs-team')
+    expect(shellEnvVars['_WF_inputs_repo']).toBe('kb-labs')
+  })
+
+  it('deduplicates repeated expressions — same var name, same value', () => {
+    const raw = 'echo "${{ inputs.issueNumber }}" && echo "${{ inputs.issueNumber }}"'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe(
+      'echo "${_WF_inputs_issueNumber}" && echo "${_WF_inputs_issueNumber}"',
+    )
+    // Only one env var entry for the repeated expression
+    expect(Object.keys(shellEnvVars).filter(k => k.includes('issueNumber'))).toHaveLength(1)
+  })
+
+  it('produces a safe variable name from dotted expression', () => {
+    const raw = '${{ steps.branch.outputs.branchName }}'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe('${_WF_steps_branch_outputs_branchName}')
+    expect(shellEnvVars['_WF_steps_branch_outputs_branchName']).toBe('issue-174-auto')
+  })
+
+  it('handles numeric inputs — coerces to string in env var', () => {
+    const raw = 'echo "${{ inputs.issueNumber }}"'
+    const { shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(typeof shellEnvVars['_WF_inputs_issueNumber']).toBe('string')
+    expect(shellEnvVars['_WF_inputs_issueNumber']).toBe('174')
+  })
+
+  it('leaves the command unchanged when there are no ${{ }} expressions', () => {
+    const raw = 'echo "hello world" && git status'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe(raw)
+    expect(shellEnvVars).toEqual({})
+  })
+
+  it('resolves missing step output to empty string — does not throw', () => {
+    const raw = 'echo "${{ steps.nonexistent.outputs.value }}"'
+    const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe('echo "${_WF_steps_nonexistent_outputs_value}"')
+    expect(shellEnvVars['_WF_steps_nonexistent_outputs_value']).toBe('')
   })
 })
