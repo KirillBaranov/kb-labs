@@ -14,6 +14,10 @@ function makePlatform(): PlatformContainer {
       child: vi.fn().mockImplementation(() => makePlatform().logger),
     },
     shutdown: vi.fn().mockResolvedValue(undefined),
+    // runDaemon resolves the bind address via platform.getAdapter('serviceTransport').
+    // No transport configured in these unit tests → undefined → port/host fall
+    // back to env/defaults (+ KB_NET_OFFSET), which is exactly what the cases below assert.
+    getAdapter: vi.fn().mockReturnValue(undefined),
   } as unknown as PlatformContainer;
 }
 
