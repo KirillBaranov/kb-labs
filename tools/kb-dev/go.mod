@@ -2,6 +2,8 @@ module github.com/kb-labs/dev
 
 go 1.25.0
 
+toolchain go1.25.11
+
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/kb-labs/clikit v0.0.0
