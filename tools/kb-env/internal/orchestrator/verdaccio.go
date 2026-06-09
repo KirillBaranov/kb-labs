@@ -162,9 +162,7 @@ func PublishAll(l env.Layout, workspaceRoot, registry string) error {
 		sem <- struct{}{}
 		go func(tgz string) {
 			defer func() { <-sem }()
-			cmd := exec.Command("pnpm", "publish", tgz, "--registry", registry, "--no-git-checks")
-			cmd.Dir = neutralDir
-			cmd.Env = append(os.Environ(), userconfig)
+			cmd := newPublishCmd(tgz, registry, neutralDir, userconfig)
 			out, perr := cmd.CombinedOutput()
 			if perr != nil && !strings.Contains(string(out), "EPUBLISHCONFLICT") && !strings.Contains(string(out), "409") {
 				errc <- fmt.Errorf("publish %s: %v\n%s", filepath.Base(tgz), perr, string(out))
@@ -179,6 +177,20 @@ func PublishAll(l env.Layout, workspaceRoot, registry string) error {
 		}
 	}
 	return nil
+}
+
+// newPublishCmd builds the command that publishes one pre-packed tarball.
+//
+// It uses npm (not pnpm): `npm publish <tgz>` reads the package.json from
+// *inside* the tarball, so it works from a neutral cwd. `pnpm publish <tgz>`
+// instead resolves the package from cwd and on a CI runner fails with ENOENT on
+// the (absent) neutralDir/package.json. --no-git-checks is pnpm-only and
+// unneeded here. Auth + registry come from the scoped .npmrc via userconfig.
+func newPublishCmd(tgz, registry, dir, userconfig string) *exec.Cmd {
+	cmd := exec.Command("npm", "publish", tgz, "--registry", registry)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), userconfig)
+	return cmd
 }
 
 const (
