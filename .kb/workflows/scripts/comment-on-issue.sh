@@ -2,6 +2,8 @@
 # Step: Comment on Issue with implementation summary
 # Env: ISSUE_NUMBER, ISSUE_TITLE, OWNER, REPO, QA_STATUS
 set -e
+# shellcheck source=lib-sanitize.sh
+source "$(dirname "$0")/lib-sanitize.sh"
 
 REPO_FULL="$OWNER/$REPO"
 RESULT_FILE=$(mktemp)
@@ -43,6 +45,6 @@ COMMENT=$(node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{c
 rm -f "$RESULT_FILE"
 
 TMP=$(mktemp)
-printf '%s' "$COMMENT" > "$TMP"
+printf '%s' "$COMMENT" | sanitize_secrets > "$TMP"
 gh issue comment "$ISSUE_NUMBER" --repo "$REPO_FULL" --body-file "$TMP"
 rm -f "$TMP"
