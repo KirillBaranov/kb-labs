@@ -124,6 +124,10 @@ e2e/*/test-results/
 
 # KB Labs runtime workflows (created by kb-dev start, per-developer)
 .kb/workflows/
+# ...except the shared autonomous pipeline (committed infra)
+!.kb/workflows/github-issue-to-pr.yaml
+!.kb/workflows/scripts/
+!.kb/workflows/scripts/**
 
 # Nested .kb/ runtime dirs inside packages (created during local dev)
 plugins/**/.kb/
