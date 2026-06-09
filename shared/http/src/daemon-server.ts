@@ -86,21 +86,21 @@ export async function createDaemonServer(opts: DaemonServerOptions): Promise<Fas
   });
 
   if (!opts.skipStandardRoutes) {
-  server.get('/health', async () => (opts.healthResponse ? opts.healthResponse() : opts.observability.buildHealth()));
-  server.get('/ready', async (_req: FastifyRequest, reply: FastifyReply) => {
-    if (opts.readyCheck) {
-      const result = opts.readyCheck();
-      return reply.code(result.ready ? 200 : 503).send(result);
-    }
-    return opts.observability.buildHealth();
-  });
-  server.get('/metrics', async (_req: FastifyRequest, reply: FastifyReply) => {
-    reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
-    return opts.observability.renderPrometheusMetrics('healthy');
-  });
-  server.get('/observability/describe', async () => opts.observability.buildDescribe());
-  server.get('/observability/health', async () => opts.observability.buildHealth());
-  } // end if (!opts.skipStandardRoutes)
+    server.get('/health', async () => (opts.healthResponse ? opts.healthResponse() : opts.observability.buildHealth()));
+    server.get('/ready', async (_req: FastifyRequest, reply: FastifyReply) => {
+      if (opts.readyCheck) {
+        const result = opts.readyCheck();
+        return reply.code(result.ready ? 200 : 503).send(result);
+      }
+      return opts.observability.buildHealth();
+    });
+    server.get('/metrics', async (_req: FastifyRequest, reply: FastifyReply) => {
+      reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      return opts.observability.renderPrometheusMetrics('healthy');
+    });
+    server.get('/observability/describe', async () => opts.observability.buildDescribe());
+    server.get('/observability/health', async () => opts.observability.buildHealth());
+  }
 
   if (opts.cors) {
     const { default: fastifyCors } = await import('@fastify/cors');

@@ -95,7 +95,8 @@ export function pumpBidirectional(client: WebSocket, upstream: WebSocket, logger
     logger.warn('Upstream WS error', { error: err.message });
     closeBoth(1011);
   });
-  client.on('error', () => {
+  client.on('error', (err: Error) => {
+    logger.warn('Client WS error', { error: err.message });
     closeBoth(1011);
   });
 }

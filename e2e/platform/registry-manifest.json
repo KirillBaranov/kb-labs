@@ -18,7 +18,8 @@
       "description": "REST API (port 5050)",
       "default": true,
       "port": 5050,
-      "gatewayPrefix": "/api/v1"
+      "gatewayPrefix": "/api/v1",
+      "gatewayWebSocket": true
     },
     {
       "id": "workflow",
