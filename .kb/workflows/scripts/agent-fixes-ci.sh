@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, BRANCH_NAME, IMPL_SESSION_ID, CI_LOGS_FILE
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 RESULT_FILE=$(mktemp)
 
 RESUME_FLAG=""

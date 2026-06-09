@@ -16,6 +16,7 @@ import type { ExecutionTarget, ExpressionContext, StepSpec, WorkflowRun, JobRun,
 import type { ExecutionBackend } from '@kb-labs/plugin-execution';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import {
+  buildShellSafeCommand,
   interpolateObject,
   interpolateString,
   evaluateExpression,
@@ -355,9 +356,25 @@ export async function createWorkflowWorker(
           }
 
           // --- Interpolate spec.with (data flow between steps) ---
-          const interpolatedWith = step.spec.with
+          // For builtin:shell steps: apply shell-safe command building so that user-supplied
+          // values (e.g. issue titles containing backticks or $()) are injected as env vars
+          // (_WF_* prefix) rather than substituted directly into the script string.
+          // Shell expansion of ${VAR} does NOT re-evaluate backticks or $() in the value.
+          let interpolatedWith = step.spec.with
             ? interpolateObject(step.spec.with as Record<string, unknown>, exprCtx)
             : undefined;
+          if (step.spec.uses === 'builtin:shell' && typeof step.spec.with?.['command'] === 'string') {
+            const rawCommand = step.spec.with['command'] as string;
+            const { command: safeCommand, shellEnvVars } = buildShellSafeCommand(rawCommand, exprCtx);
+            interpolatedWith = {
+              ...(interpolatedWith ?? {}),
+              command: safeCommand,
+              env: {
+                ...((interpolatedWith?.['env'] as Record<string, string> | undefined) ?? {}),
+                ...shellEnvVars,
+              },
+            };
+          }
 
           // --- Interpolate spec.env and forward to shell handler ---
           // step.spec.env values may contain ${{ }} expressions. Interpolate them
@@ -492,11 +509,22 @@ export async function createWorkflowWorker(
           // Interpolate the run string so ${{ inputs.* }}, ${{ steps.* }} etc. are resolved.
           // StepSpec (post-zod-transform) may omit `run` after normalization, so work
           // with the StepSpecRaw shape here before re-casting to StepSpec for execution.
+          // Note: run: blocks are normalized to uses: builtin:shell by the Zod schema transform
+          // at parse time. Shell-safe command building for builtin:shell is applied above
+          // via buildShellSafeCommand when computing interpolatedWith.
           let baseSpec: StepSpecRaw = step.spec as StepSpecRaw;
           if (baseSpec.run && !baseSpec.uses) {
+            // Legacy path: step.spec was not normalized (should not happen after schema v2+)
             const { run: rawRun, with: existingWith, ...rest } = baseSpec;
-            const command = typeof rawRun === 'string' ? interpolateString(rawRun, exprCtx) : rawRun;
-            baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command } };
+            const { command, shellEnvVars } =
+              typeof rawRun === 'string'
+                ? buildShellSafeCommand(rawRun, exprCtx)
+                : { command: rawRun, shellEnvVars: {} };
+            baseSpec = {
+              ...rest,
+              uses: 'builtin:shell',
+              with: { ...existingWith, command, env: { ...(existingWith?.['env'] as Record<string, string> | undefined ?? {}), ...shellEnvVars } },
+            };
           }
           // Interpolate the summary field so ${{ inputs.* }} resolves in step descriptions shown in Studio.
           if (typeof baseSpec.summary === 'string') {
@@ -534,7 +562,8 @@ export async function createWorkflowWorker(
                 // Shell steps can use this to reference platform commands when the
                 // worktree doesn't have compiled dist/ directories.
                 KB_PLATFORM_ROOT: workspaceRoot,
-                // KB_WORKSPACE_ROOT: the actual execution context (worktree or project dir).
+                // KB_WORKSPACE_ROOT: the worktree (or project dir when no worktree is used).
+                // Scripts cd into this path before invoking agents or running git commands.
                 KB_WORKSPACE_ROOT: runWorkspace,
                 ...(freshRun?.env || {}),
               },
@@ -578,7 +607,11 @@ export async function createWorkflowWorker(
                 void engine.publishLog(run.id, job.id, step.id, entry);
               },
             },
-            workspace: runWorkspace,
+            // Scripts (.kb/workflows/scripts/*.sh) live in the project root, not the worktree.
+            // Use workspaceRoot as cwd so relative paths like `bash .kb/workflows/scripts/...`
+            // resolve correctly. Scripts that need to operate inside the worktree cd into
+            // KB_WORKSPACE_ROOT themselves (agent scripts, git operations).
+            workspace: workspaceRoot,
             target,
           });
 

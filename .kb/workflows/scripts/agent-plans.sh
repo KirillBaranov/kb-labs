@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE, ISSUE_BODY, PLAN_FEEDBACK
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 RESULT_FILE=$(mktemp)
 PROMPT_FILE=$(mktemp)
 
