@@ -74,7 +74,7 @@ func writeSavedRegistry(t *testing.T, platformDir, registry string) {
 	if err != nil {
 		t.Fatalf("marshal config: %v", err)
 	}
-	cfgPath := filepath.Join(kbDir, "kb.config.json")
+	cfgPath := filepath.Join(kbDir, "install.json")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}

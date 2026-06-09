@@ -16,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/bindown"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/detect"
+	"github.com/kb-labs/create/internal/gateway"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/platform"
@@ -63,6 +64,11 @@ type Result struct {
 	// service. Together with InstalledBinaries this is enough to decide
 	// whether "start services" makes sense as a next step.
 	HasServices bool
+	// Gateway is the discovery-derived gateway plan. The caller passes it to
+	// scaffold.WritePlatformConfig so the dynamic upstreams/transport land in
+	// the single platform config (kb.config.jsonc). nil if no gateway-prefixed
+	// services were discovered.
+	Gateway *gateway.Plan
 }
 
 // UpdateDiff describes changes between the installed manifest and the current one.
@@ -81,13 +87,17 @@ func (d *UpdateDiff) HasChanges() bool {
 type UpdateResult struct {
 	Diff     *UpdateDiff
 	Duration time.Duration
+	// Gateway is the freshly re-derived gateway plan (services may have been
+	// added/removed). The caller renders it into kb.config.jsonc so gateway
+	// upstreams never go stale after an update. nil if no gateway services.
+	Gateway *gateway.Plan
 }
 
 // Installer orchestrates platform installation and updates.
 type Installer struct {
 	PM      pm.PackageManager
 	Log     *logger.Logger
-	Version string                            // kb-create version, e.g. "1.4.2" (used for provenance)
+	Version string                              // kb-create version, e.g. "1.4.2" (used for provenance)
 	OnStep  func(step, total int, label string) // called at each named stage
 	OnLine  func(line string)                   // called for each raw output line from pm
 }
@@ -205,25 +215,10 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
-	// Generate gateway upstreams from discovered services + manifest gateway info.
-	if scanResult != nil {
-		infoMap := make(map[string]scan.ServiceGatewayInfo)
-		for _, svc := range m.Services {
-			if svc.GatewayPrefix != "" {
-				infoMap[svc.ID] = scan.ServiceGatewayInfo{
-					Prefix:    svc.GatewayPrefix,
-					Rewrite:   svc.GatewayRewrite,
-					WebSocket: svc.GatewayWebSocket,
-				}
-			}
-		}
-		if len(infoMap) > 0 {
-			gwCfg := scan.GenerateGatewayConfig(scanResult, infoMap)
-			if err := scan.MergeGatewayIntoConfig(sel.PlatformDir, gwCfg); err != nil {
-				ins.Log.Printf("  [WARN] gateway config: %v", err)
-			}
-		}
-	}
+	// Derive the gateway plan from discovered services + manifest gateway info.
+	// The plan is returned to the caller, which renders it into the single
+	// platform config (kb.config.jsonc) via scaffold — see Result.Gateway.
+	gatewayPlan := buildGatewayPlan(scanResult, m)
 
 	// Persist "last known install" so subsequent kb-create commands
 	// (status/doctor/update/uninstall) can auto-discover the platform
@@ -245,7 +240,31 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		Duration:          time.Since(start),
 		InstalledBinaries: installedBinaries,
 		HasServices:       hasServices,
+		Gateway:           gatewayPlan,
 	}, nil
+}
+
+// buildGatewayPlan derives the gateway plan from a scan result and the manifest's
+// service → gateway-prefix map. Returns nil when discovery is unavailable or no
+// service declares a gateway prefix (e.g. gateway/studio only).
+func buildGatewayPlan(scanResult *scan.ScanResult, m *manifest.Manifest) *gateway.Plan {
+	if scanResult == nil {
+		return nil
+	}
+	infoMap := make(map[string]scan.ServiceGatewayInfo)
+	for _, svc := range m.Services {
+		if svc.GatewayPrefix != "" {
+			infoMap[svc.ID] = scan.ServiceGatewayInfo{
+				Prefix:    svc.GatewayPrefix,
+				Rewrite:   svc.GatewayRewrite,
+				WebSocket: svc.GatewayWebSocket,
+			}
+		}
+	}
+	if len(infoMap) == 0 {
+		return nil
+	}
+	return scan.GenerateGatewayConfig(scanResult, infoMap)
 }
 
 // Diff computes what would change if Update were applied now.
@@ -320,9 +339,9 @@ func (ins *Installer) Update(platformDir string, current *manifest.Manifest) (*U
 	// reflect any package additions/removals from this update. Without
 	// this the gateway stays on whatever upstreams were written at install
 	// time and silently 404s after a new service package is added.
-	ins.refreshDerivedConfigs(platformDir, current)
+	gatewayPlan := ins.refreshDerivedConfigs(platformDir, current)
 
-	return &UpdateResult{Diff: diff, Duration: time.Since(start)}, nil
+	return &UpdateResult{Diff: diff, Duration: time.Since(start), Gateway: gatewayPlan}, nil
 }
 
 // refreshDerivedConfigs re-runs the manifest scanner and rewrites the
@@ -331,11 +350,11 @@ func (ins *Installer) Update(platformDir string, current *manifest.Manifest) (*U
 //
 // Called from both Install and Update so the two paths stay in sync and
 // gateway upstreams never go stale after `kb-create update`.
-func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Manifest) {
+func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Manifest) *gateway.Plan {
 	scanResult, scanErr := scan.Run(platformDir)
 	if scanErr != nil {
 		ins.Log.Printf("  [WARN] manifest scan failed: %v", scanErr)
-		return
+		return nil
 	}
 
 	ins.Log.Printf("  found %d plugins, %d adapters, %d services",
@@ -347,23 +366,10 @@ func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Mani
 		ins.Log.Printf("  [WARN] write configs: %v", err)
 	}
 
-	// Rebuild gateway upstreams from the manifest's service → prefix map.
-	infoMap := make(map[string]scan.ServiceGatewayInfo)
-	for _, svc := range m.Services {
-		if svc.GatewayPrefix != "" {
-			infoMap[svc.ID] = scan.ServiceGatewayInfo{
-				Prefix:    svc.GatewayPrefix,
-				Rewrite:   svc.GatewayRewrite,
-				WebSocket: svc.GatewayWebSocket,
-			}
-		}
-	}
-	if len(infoMap) > 0 {
-		gwCfg := scan.GenerateGatewayConfig(scanResult, infoMap)
-		if err := scan.MergeGatewayIntoConfig(platformDir, gwCfg); err != nil {
-			ins.Log.Printf("  [WARN] gateway config: %v", err)
-		}
-	}
+	// Re-derive gateway upstreams from the manifest's service → prefix map.
+	// Returned to the caller, which re-renders kb.config.jsonc so gateway
+	// upstreams reflect any added/removed service packages.
+	return buildGatewayPlan(scanResult, m)
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

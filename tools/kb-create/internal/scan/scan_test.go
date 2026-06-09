@@ -452,155 +452,20 @@ func TestGenerateGatewayConfig(t *testing.T) {
 		t.Errorf("widgets serviceId = %q, want rest", widgetsUp.ServiceID)
 	}
 
-	// Transport services: URLs in adapterOptions location (not in gateway config)
-	if svc, ok := result.TransportServices["rest"]; !ok {
-		t.Error("rest not in TransportServices")
+	// Transport services: URLs in the transport map (not in gateway config)
+	if svc, ok := result.Transport["rest"]; !ok {
+		t.Error("rest not in Transport")
 	} else if svc.URL != "http://127.0.0.1:5050" {
 		t.Errorf("rest transport URL = %q, want http://127.0.0.1:5050", svc.URL)
 	}
-	if svc, ok := result.TransportServices["workflow"]; !ok {
-		t.Error("workflow not in TransportServices")
+	if svc, ok := result.Transport["workflow"]; !ok {
+		t.Error("workflow not in Transport")
 	} else if svc.URL != "http://127.0.0.1:7778" {
 		t.Errorf("workflow transport URL = %q, want http://127.0.0.1:7778", svc.URL)
 	}
 	// gateway service (no prefix) must not appear in transport services either
-	if _, ok := result.TransportServices["gateway"]; ok {
-		t.Error("gateway (no prefix) should not appear in TransportServices")
-	}
-}
-
-// TestMergeGatewayIntoConfig verifies gateway section and adapterOptions are
-// written to the correct locations (not nested under each other).
-func TestMergeGatewayIntoConfig(t *testing.T) {
-	dir := t.TempDir()
-	kbDir := filepath.Join(dir, ".kb")
-	if err := os.MkdirAll(kbDir, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	// Write an existing config with an unrelated key that must be preserved.
-	existing := map[string]any{"platform": map[string]any{"someKey": "someValue"}}
-	data, _ := json.Marshal(existing)
-	if err := os.WriteFile(filepath.Join(kbDir, "kb.config.json"), data, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &GatewaySetupResult{
-		Gateway: GatewayConfig{
-			Port: 4000,
-			Upstreams: map[string]GatewayUpstream{
-				"rest": {ServiceID: "rest", Prefix: "/api/v1"},
-			},
-		},
-		TransportServices: map[string]GatewayTransportService{
-			"rest": {URL: "http://127.0.0.1:5050"},
-		},
-	}
-
-	if err := MergeGatewayIntoConfig(dir, result); err != nil {
-		t.Fatalf("MergeGatewayIntoConfig() error = %v", err)
-	}
-
-	// Read back and verify
-	out, err := os.ReadFile(filepath.Join(kbDir, "kb.config.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var merged map[string]any
-	if err := json.Unmarshal(out, &merged); err != nil {
-		t.Fatalf("unmarshal result: %v", err)
-	}
-
-	// platform key must be preserved
-	if _, ok := merged["platform"]; !ok {
-		t.Error("platform key lost after merge")
-	}
-
-	// gateway section: no transport field
-	gwRaw, ok := merged["gateway"]
-	if !ok {
-		t.Fatal("gateway key missing after merge")
-	}
-	gwBytes, _ := json.Marshal(gwRaw)
-	var gw map[string]any
-	_ = json.Unmarshal(gwBytes, &gw)
-	if _, hasTransport := gw["transport"]; hasTransport {
-		t.Error("gateway section must NOT contain transport — transport lives in adapterOptions")
-	}
-	if _, hasUpstreams := gw["upstreams"]; !hasUpstreams {
-		t.Error("gateway section must contain upstreams")
-	}
-
-	// adapterOptions.serviceTransport.services must contain rest
-	adapterOptsRaw, ok := merged["adapterOptions"]
-	if !ok {
-		t.Fatal("adapterOptions key missing after merge")
-	}
-	adapterOptsBytes, _ := json.Marshal(adapterOptsRaw)
-	var adapterOpts map[string]any
-	_ = json.Unmarshal(adapterOptsBytes, &adapterOpts)
-
-	svcTransportRaw, ok := adapterOpts["serviceTransport"]
-	if !ok {
-		t.Fatal("adapterOptions.serviceTransport missing after merge")
-	}
-	svcTransportBytes, _ := json.Marshal(svcTransportRaw)
-	var svcTransport map[string]any
-	_ = json.Unmarshal(svcTransportBytes, &svcTransport)
-
-	servicesRaw, ok := svcTransport["services"]
-	if !ok {
-		t.Fatal("adapterOptions.serviceTransport.services missing after merge")
-	}
-	servicesBytes, _ := json.Marshal(servicesRaw)
-	var services map[string]any
-	_ = json.Unmarshal(servicesBytes, &services)
-
-	if _, ok := services["rest"]; !ok {
-		t.Error("rest service missing from adapterOptions.serviceTransport.services")
-	}
-}
-
-// TestMergeGatewayIntoConfig_PreservesAdapterOptions verifies that existing
-// adapterOptions keys are not overwritten when merging transport services.
-func TestMergeGatewayIntoConfig_PreservesAdapterOptions(t *testing.T) {
-	dir := t.TempDir()
-	kbDir := filepath.Join(dir, ".kb")
-	if err := os.MkdirAll(kbDir, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	existing := map[string]any{
-		"adapterOptions": map[string]any{
-			"redis": map[string]any{"url": "redis://localhost:6379"},
-		},
-	}
-	data, _ := json.Marshal(existing)
-	if err := os.WriteFile(filepath.Join(kbDir, "kb.config.json"), data, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &GatewaySetupResult{
-		Gateway:           GatewayConfig{Port: 4000, Upstreams: map[string]GatewayUpstream{}},
-		TransportServices: map[string]GatewayTransportService{"rest": {URL: "http://127.0.0.1:5050"}},
-	}
-	if err := MergeGatewayIntoConfig(dir, result); err != nil {
-		t.Fatalf("MergeGatewayIntoConfig() error = %v", err)
-	}
-
-	out, _ := os.ReadFile(filepath.Join(kbDir, "kb.config.json"))
-	var merged map[string]any
-	_ = json.Unmarshal(out, &merged)
-
-	adapterOptsBytes, _ := json.Marshal(merged["adapterOptions"])
-	var adapterOpts map[string]any
-	_ = json.Unmarshal(adapterOptsBytes, &adapterOpts)
-
-	// redis key must survive
-	if _, ok := adapterOpts["redis"]; !ok {
-		t.Error("existing adapterOptions.redis was lost during merge")
-	}
-	// serviceTransport must also be present
-	if _, ok := adapterOpts["serviceTransport"]; !ok {
-		t.Error("adapterOptions.serviceTransport not added")
+	if _, ok := result.Transport["gateway"]; ok {
+		t.Error("gateway (no prefix) should not appear in Transport")
 	}
 }
 

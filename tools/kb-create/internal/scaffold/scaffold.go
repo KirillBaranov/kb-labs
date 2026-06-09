@@ -3,8 +3,9 @@
 // for every section — same pattern as tsconfig.json.
 //
 // Config placement follows ADR-0012 / ADR-0013:
-//   platformDir/.kb/kb.config.jsonc  — full defaults, installer-owned (always overwritten)
-//   projectDir/.kb/kb.config.jsonc   — platform.dir pointer, user-owned (skip if exists)
+//
+//	platformDir/.kb/kb.config.jsonc  — full defaults, installer-owned (always overwritten)
+//	projectDir/.kb/kb.config.jsonc   — platform.dir pointer, user-owned (skip if exists)
 package scaffold
 
 import (
@@ -13,7 +14,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
+
+	"github.com/kb-labs/create/internal/gateway"
 )
 
 // GatewayCreds holds the KB Labs Gateway machine identity written into the
@@ -25,8 +29,9 @@ type GatewayCreds struct {
 	GatewayURL   string
 }
 
-// DefaultGatewayURL is the production KB Labs Gateway base URL, mirrored here
-// so scaffold does not import the gateway package (avoids circular deps).
+// DefaultGatewayURL is the production KB Labs cloud Gateway base URL used for
+// demo-mode LLM credentials. Unrelated to internal/gateway, which models the
+// platform's own API gateway config.
 const DefaultGatewayURL = "https://api.kblabs.ru"
 
 // Options controls which sections are included in the generated config.
@@ -57,6 +62,10 @@ type Options struct {
 	// (production default: 0.0.0.0). Solo local installs set "127.0.0.1" so a
 	// no-auth Studio is never reachable off the machine.
 	GatewayHost string
+	// Gateway is the discovery-derived gateway plan (upstreams + transport).
+	// nil → the canonical default plan is rendered (gateway.DefaultPlan), so an
+	// install that ran no discovery still gets a working gateway section.
+	Gateway *gateway.Plan
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -268,11 +277,65 @@ func stripGeneratedJsonc(src string) string {
 	return src
 }
 
+// resolveGatewayPlan returns the gateway plan to render: the discovery-derived
+// plan when present, otherwise the canonical default so installs that ran no
+// discovery still get a working gateway section.
+func resolveGatewayPlan(opts Options) *gateway.Plan {
+	if opts.Gateway != nil {
+		return opts.Gateway
+	}
+	return gateway.DefaultPlan()
+}
+
+// renderGatewayUpstreams renders the gateway.upstreams entries as JSON object
+// members (6-space indent), keys sorted for deterministic output. Each upstream
+// is JSON-encoded so omitempty (rewritePrefix, websocket) is handled correctly.
+func renderGatewayUpstreams(plan *gateway.Plan) string {
+	keys := make([]string, 0, len(plan.Gateway.Upstreams))
+	for k := range plan.Gateway.Upstreams {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for i, k := range keys {
+		raw, _ := json.Marshal(plan.Gateway.Upstreams[k])
+		fmt.Fprintf(&b, "      %q: %s", k, raw)
+		if i < len(keys)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// renderTransportServices renders adapterOptions.serviceTransport.services
+// entries as JSON object members (8-space indent), keys sorted.
+func renderTransportServices(plan *gateway.Plan) string {
+	keys := make([]string, 0, len(plan.Transport))
+	for k := range plan.Transport {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for i, k := range keys {
+		raw, _ := json.Marshal(plan.Transport[k])
+		fmt.Fprintf(&b, "        %q: %s", k, raw)
+		if i < len(keys)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
 // generateFull produces the complete platform config written to platformDir.
 // Contains all sections: adapters, adapterOptions, execution, services, plugins.
 func generateFull(opts Options) string {
 	svcSet := toSet(opts.Services)
 	plugSet := toSet(opts.Plugins)
+	plan := resolveGatewayPlan(opts)
 
 	var b strings.Builder
 
@@ -379,9 +442,7 @@ func generateFull(opts Options) string {
 	b.WriteString("    // To use unix sockets, add \"socketPath\" per service (kb-dev injects KB_SOCKET_PATH).\n")
 	b.WriteString("    \"serviceTransport\": {\n")
 	b.WriteString("      \"services\": {\n")
-	b.WriteString("        \"rest\":        { \"url\": \"http://127.0.0.1:5050\" },\n")
-	b.WriteString("        \"workflow\":    { \"url\": \"http://127.0.0.1:7778\" },\n")
-	b.WriteString("        \"marketplace\": { \"url\": \"http://127.0.0.1:5070\" }\n")
+	b.WriteString(renderTransportServices(plan))
 	b.WriteString("      }\n")
 	b.WriteString("    }\n")
 	b.WriteString("  },\n\n")
@@ -406,19 +467,10 @@ func generateFull(opts Options) string {
 			b.WriteString("    \"auth\": { \"enabled\": false },\n")
 		}
 	}
-	b.WriteString(`    "upstreams": {
-      // REST API — main platform BFF.
-      "rest":        { "serviceId": "rest",        "prefix": "/api/v1",             "websocket": true },
-      // Workflow daemon — execution engine.
-      "workflow":    { "serviceId": "workflow",    "prefix": "/api/exec",           "rewritePrefix": "" },
-      // Marketplace service — entity management.
-      "marketplace": { "serviceId": "marketplace", "prefix": "/api/v1/marketplace"                   },
-      // Plugin widget bundles — static files served by REST API.
-      "widgets":     { "serviceId": "rest",        "prefix": "/plugins"                              }
-    }
-  },
-
-`)
+	b.WriteString("    \"upstreams\": {\n")
+	b.WriteString(renderGatewayUpstreams(plan))
+	b.WriteString("    }\n")
+	b.WriteString("  },\n\n")
 
 	// ── services section ──────────────────────────────────────────────────
 	b.WriteString(`  // ─── Services ─────────────────────────────────────────────────────────
