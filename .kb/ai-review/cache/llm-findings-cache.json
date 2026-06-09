@@ -693,10 +693,10 @@
     },
     "plugins/workflow/entry/src/flags.ts": {
       "path": "plugins/workflow/entry/src/flags.ts",
-      "contentHash": "477ff2685bef7178",
+      "contentHash": "67f2e79a074a3488",
       "findings": [],
-      "createdAt": 1777538512739,
-      "lastAccessedAt": 1777538512739
+      "createdAt": 1781030126601,
+      "lastAccessedAt": 1781030126601
     },
     "plugins/workflow/entry/src/http-client.ts": {
       "path": "plugins/workflow/entry/src/http-client.ts",
@@ -707,10 +707,10 @@
     },
     "plugins/workflow/entry/src/manifest.ts": {
       "path": "plugins/workflow/entry/src/manifest.ts",
-      "contentHash": "42b632b07f4b8f0e",
+      "contentHash": "07868500bd302f82",
       "findings": [],
-      "createdAt": 1777538512739,
-      "lastAccessedAt": 1777538512739
+      "createdAt": 1781030126601,
+      "lastAccessedAt": 1781030126601
     },
     "plugins/workflow/entry/src/studio/components/triage/RunCard.tsx": {
       "path": "plugins/workflow/entry/src/studio/components/triage/RunCard.tsx",
@@ -816,12 +816,92 @@
       "findings": [],
       "createdAt": 1777538512740,
       "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts": {
+      "path": "plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts",
+      "contentHash": "a0f5853db2ef0aab",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts-8",
+          "ruleId": "llm-lite:cli",
+          "file": "plugins/workflow/entry/src/__tests__/cli/runs-cancel.cli.test.ts",
+          "line": 8,
+          "column": 1,
+          "message": "Direct invocations of the `cancelRun` function in tests without proper mocks may lead to flaky tests and exposure to changes in external dependencies.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "const cancelRun = vi.fn().mockResolvedValue(undefined);",
+          "contentHash": "a0f5853db2ef0aab",
+          "cachedAt": 1781030126601
+        }
+      ],
+      "createdAt": 1781030126601,
+      "lastAccessedAt": 1781030126601
+    },
+    "plugins/workflow/entry/src/commands/runs-cancel.ts": {
+      "path": "plugins/workflow/entry/src/commands/runs-cancel.ts",
+      "contentHash": "8618024faa36542b",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/commands/runs-cancel.ts-22",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/entry/src/commands/runs-cancel.ts",
+          "line": 22,
+          "column": 1,
+          "message": "The `runId` variable is directly used in the `cancelRun` function without any validation or sanitization, which could lead to injection attacks or unexpected behavior.",
+          "severity": "high",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "await client.cancelRun(runId);",
+          "contentHash": "8618024faa36542b",
+          "cachedAt": 1781030126601
+        },
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/commands/runs-cancel.ts-61",
+          "ruleId": "llm-lite:cli",
+          "file": "plugins/workflow/entry/src/commands/runs-cancel.ts",
+          "line": 61,
+          "column": 1,
+          "message": "The error handling in the `catch` block does not mask potential sensitive error information from being exposed to the client.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "handleError(ctx, error, outputJson);",
+          "contentHash": "8618024faa36542b",
+          "cachedAt": 1781030126601
+        },
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/commands/runs-cancel.ts-40",
+          "ruleId": "llm-lite:cli",
+          "file": "plugins/workflow/entry/src/commands/runs-cancel.ts",
+          "line": 40,
+          "column": 1,
+          "message": "The command does not check if the user has permission to cancel the workflow run, which can lead to unauthorized actions.",
+          "severity": "high",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "await client.cancelRun(runId);",
+          "contentHash": "8618024faa36542b",
+          "cachedAt": 1781030126601
+        }
+      ],
+      "createdAt": 1781030126601,
+      "lastAccessedAt": 1781030126601
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1777538512740,
-    "totalFindings": 14,
-    "totalFiles": 82
+    "lastUpdatedAt": 1781030126602,
+    "totalFindings": 18,
+    "totalFiles": 84
   }
 }
