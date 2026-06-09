@@ -31,7 +31,7 @@
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-testing": "workspace:*",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
