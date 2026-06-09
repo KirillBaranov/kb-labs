@@ -281,7 +281,10 @@ export const runsCancelFlags = {
   },
 } as const;
 
-export type RunsCancelFlags = typeof runsCancelFlags;
+export interface RunsCancelFlags {
+  'run-id'?: string;
+  json?: boolean;
+}
 
 /**
  * Flags for workflow:lint command
