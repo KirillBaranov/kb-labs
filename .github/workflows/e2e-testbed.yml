@@ -45,6 +45,9 @@ jobs:
 
       - name: Build (TS dist + Go tools)
         run: |
+          # The committed kb-devkit binary is built for the maintainer's host
+          # (darwin/arm64); rebuild it for this runner before invoking it.
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           ./tools/kb-devkit/kb-devkit run build
           make -C tools/kb-create build
           make -C tools/kb-dev build
