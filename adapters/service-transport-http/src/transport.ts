@@ -2,6 +2,7 @@ import { Pool } from 'undici';
 import type {
   IServiceTransport,
   ServiceConnectionInfo,
+  ServiceListenAddress,
   ServiceTransportRequest,
   ServiceTransportResponse,
   ServiceTransportStream,
@@ -14,14 +15,45 @@ export interface HttpServiceTransportConfig {
     socketPath?: string;
     timeoutMs?: number;
   }>;
+  /**
+   * Per-environment TCP port shift, added to every service url's port. Sockets
+   * are unaffected (they isolate via KB_SOCKET_HASH path, not port). This is a
+   * LOCAL mechanism for running multiple environments on one host; in
+   * cloud/k8s the offset is 0 and isolation comes from namespace/DNS. Falls
+   * back to the KB_NET_OFFSET env var when not set in config.
+   */
+  offset?: number;
+}
+
+/**
+ * Shift the port of a TCP url by offset, leaving scheme/host/path intact.
+ * No-op for offset 0, urls without an explicit port (e.g. socket placeholders),
+ * or unparseable urls. The single helper used for both route and bind so the
+ * two never drift.
+ */
+export function applyPortOffset(url: string, offset: number): string {
+  if (!offset) return url;
+  try {
+    const u = new URL(url);
+    if (!u.port) return url;
+    u.port = String(Number(u.port) + offset);
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return url;
+  }
 }
 
 export class HttpServiceTransport implements IServiceTransport {
   private readonly pools = new Map<string, Pool>();
+  private readonly offset: number;
 
   constructor(private readonly config: HttpServiceTransportConfig) {
+    this.offset = config.offset ?? (Number(process.env.KB_NET_OFFSET) || 0);
     for (const [id, svc] of Object.entries(config.services)) {
-      this.pools.set(id, new Pool(svc.url, {
+      // Socket services route via socketPath; their url is a placeholder, so
+      // the offset is harmlessly skipped. TCP services get the shifted url.
+      const base = svc.socketPath ? svc.url : applyPortOffset(svc.url, this.offset);
+      this.pools.set(id, new Pool(base, {
         ...(svc.socketPath ? { socketPath: svc.socketPath } : {}),
         connections: 10,
         pipelining: 0,
@@ -32,7 +64,27 @@ export class HttpServiceTransport implements IServiceTransport {
   connectionInfo(serviceId: string): ServiceConnectionInfo | undefined {
     const svc = this.config.services[serviceId];
     if (!svc) return undefined;
-    return { baseUrl: svc.url, socketPath: svc.socketPath };
+    const baseUrl = svc.socketPath ? svc.url : applyPortOffset(svc.url, this.offset);
+    return { baseUrl, socketPath: svc.socketPath };
+  }
+
+  listenAddress(serviceId: string): ServiceListenAddress | undefined {
+    const svc = this.config.services[serviceId];
+    if (!svc) return undefined;
+    if (svc.socketPath) return { socketPath: svc.socketPath };
+    // Same offset as the route, so bind and route ports never drift. Host is
+    // omitted — the local adapter doesn't own the bind host; the daemon keeps
+    // its own host config. Guard a url without an explicit port (would parse to
+    // 0): return undefined so the caller falls back to its default port.
+    let port: number;
+    try {
+      const u = new URL(applyPortOffset(svc.url, this.offset));
+      if (!u.port) return undefined;
+      port = Number(u.port);
+    } catch {
+      return undefined;
+    }
+    return { port };
   }
 
   async call(serviceId: string, req: ServiceTransportRequest): Promise<ServiceTransportResponse> {

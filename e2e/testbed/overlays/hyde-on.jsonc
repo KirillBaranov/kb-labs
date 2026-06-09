@@ -1,0 +1,11 @@
+// Mind config overlay — enable HyDE (hypothetical document embeddings).
+// Applied by `kb-env config mind-hyde` via kb-dev ensure --scenario; the
+// platform re-reads it on service restart. Infra-free (no external server),
+// so it is safe for hot-swap verification.
+{
+  "mind": {
+    "retrieval": {
+      "hyde": true
+    }
+  }
+}

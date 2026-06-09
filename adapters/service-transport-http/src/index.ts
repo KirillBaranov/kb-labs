@@ -8,7 +8,7 @@
 
 import { HttpServiceTransport, type HttpServiceTransportConfig } from './transport.js';
 
-export { HttpServiceTransport, type HttpServiceTransportConfig };
+export { HttpServiceTransport, type HttpServiceTransportConfig, applyPortOffset } from './transport.js';
 export { manifest } from './manifest.js';
 
 export function createAdapter(config: HttpServiceTransportConfig): HttpServiceTransport {

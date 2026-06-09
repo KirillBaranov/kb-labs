@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -61,7 +62,14 @@ type Manager struct {
 	// Without this, "ensure rest gateway" can try to start redis twice
 	// because both rest and gateway depend on it and resolve deps in parallel.
 	svcLocks map[string]*sync.Mutex
+
+	// netOffset is the KB_NET_OFFSET applied to this run; passed to spawned
+	// services so they bind the same shifted ports kb-dev probes.
+	netOffset int
 }
+
+// SetNetOffset records the virtual-network port offset for spawnEnv passthrough.
+func (m *Manager) SetNetOffset(offset int) { m.netOffset = offset }
 
 // New creates a Manager from a parsed config.
 // rootDir is the platform/config directory (where devservices.yaml lives).
@@ -116,6 +124,14 @@ func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
 	if svcCfg.Socket != "" {
 		if _, ok := merged["KB_SOCKET_PATH"]; !ok {
 			merged["KB_SOCKET_PATH"] = svcCfg.Socket
+		}
+	}
+	// Pass the virtual-network offset so the service (transport adapter / edge
+	// bootstrap) binds the same shifted port kb-dev probes. Don't overwrite an
+	// explicit value.
+	if m.netOffset != 0 {
+		if _, ok := merged["KB_NET_OFFSET"]; !ok {
+			merged["KB_NET_OFFSET"] = strconv.Itoa(m.netOffset)
 		}
 	}
 	return merged

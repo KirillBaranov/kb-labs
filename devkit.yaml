@@ -110,6 +110,7 @@ workspace:
         - "tools/kb-create"
         - "tools/kb-deploy"
         - "tools/kb-monitor"
+        - "tools/kb-env"
       language: go
       preset: go-binary
 
@@ -806,6 +807,16 @@ custom_checks:
   - name: check-assembly-hook
     run: node scripts/checks/check-assembly-hook.mjs
     on: [check]
+
+  # Tracked Go tool binaries (tools/<name>/<name>) must be rebuilt when their
+  # source changes — they ship in git so `pnpm build`/`dev:start` work without a
+  # Go toolchain. Diff-based (binaries aren't byte-reproducible due to ldflags):
+  # fails a PR where a tool's source changed but its committed binary did not.
+  # Fix: `pnpm tools:rebuild && git add tools/<name>/<name>`.
+  - name: tool-binaries-fresh
+    run: node scripts/checks/check-tool-binaries.mjs
+    on: [check]
+    categories: [go-binary]
 
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS

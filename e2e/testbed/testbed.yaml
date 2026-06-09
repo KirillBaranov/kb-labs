@@ -1,0 +1,31 @@
+schemaVersion: 1
+
+# Repo testbed — overrides the embedded defaults. Plugin ids match
+# tools/kb-create/dev-manifest.json; service ids match .kb/devservices.yaml.
+# `config:` paths are relative to this file (e2e/testbed/).
+#
+# Rule: if a profile installs the `marketplace` plugin, it must also run the
+# `marketplace` service — the plugin's commands (e.g. `kb marketplace plugins
+# list`) proxy to that daemon on :5070, so installing the plugin without the
+# service leaves plugin management unusable (ECONNREFUSED / upstream down).
+profiles:
+  mind:
+    description: Mind (RAG) — default retrieval
+    plugins: [mind, marketplace]
+    services: [state-daemon, rest, gateway, marketplace]
+
+  mind-hyde:
+    description: Mind with HyDE retrieval (hot-swap demo, same plugins as mind)
+    plugins: [mind, marketplace]
+    services: [state-daemon, rest, gateway, marketplace]
+    config: overlays/hyde-on.jsonc
+
+  combo:
+    description: Mind + Commit + AI Review together
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway, marketplace]
+
+  release-set:
+    description: Reference set for pre-release regression
+    plugins: [mind, commit, ai-review, marketplace]
+    services: [state-daemon, rest, gateway, workflow, marketplace]
