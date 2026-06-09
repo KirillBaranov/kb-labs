@@ -1,44 +1,33 @@
 title = "KB Labs gitleaks config"
 
-# Allowlist of known false positives.
-# These are intentional test fixtures, e2e certificates, and test secrets —
-# NOT real credentials. Each entry is pinned to its commit fingerprint so that
-# any NEW occurrence of a similar pattern in production code will still be caught.
+# Run gitleaks' built-in rule set, then allow known false positives by path.
+# (A bare config with no rules and no [extend] silently disables all detection,
+#  so useDefault=true is required for scanning to actually happen.)
+[extend]
+useDefault = true
+
+# Allowlist of intentional test fixtures, e2e certificates, fake test secrets,
+# and committed build artifacts — NOT real credentials. Path-based so it stays
+# stable across squash-merges (commit-fingerprint allowlists break when SHAs
+# change). New secrets in production code are still caught.
 [allowlist]
-description = "Test fixtures, e2e certs, and test secrets"
-fingerprints = [
-  # e2e/oidc-idp — self-signed CA and server certs for OIDC e2e tests
-  "f49c25ba65262be9a6edd896b2a941f92397ae78:e2e/oidc-idp/certs/ca.key:private-key:1",
-  "f49c25ba65262be9a6edd896b2a941f92397ae78:e2e/oidc-idp/certs/server.key:private-key:1",
-
-  # e2e/delivery — SSH key used only in delivery e2e test fixtures
-  "eba27cb78f695acf990908bd90cfbbe847735478:e2e/delivery/keys/id_rsa:private-key:1",
-
-  # gateway auth unit tests — fake JWT secrets and passwords in test assertions
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/jwt-user.test.ts:generic-api-key:60",
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/user-auth-service.test.ts:generic-api-key:316",
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/user-auth-service.test.ts:generic-api-key:338",
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/user-auth-service.test.ts:generic-api-key:349",
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/user-auth-service.test.ts:generic-api-key:377",
-  "e9091f9ee2a304a4d76c00356c30decc80141f32:plugins/gateway/auth/src/__tests__/user-auth-service.test.ts:generic-api-key:378",
-
-  # e2e test specs — fake API tokens in test helpers
-  "351c71b1159ff95bd378c67c78034497b88c1c2e:e2e/rest-api/specs/internal.spec.ts:generic-api-key:18",
-  "d398ade47054acd219efeb8a8f240906c1d6b4bc:plugins/host-agent/entry/src/__tests__/cli/register.cli.test.ts:generic-api-key:17",
-  "145675510232141008ef0afa0feab4d820aaaf14:e2e/tests/specs/studio/realtime.spec.ts:generic-api-key:61",
-
-  # .next build artifacts committed in history (sites/kb-labs-web)
-  "55f34894a729e07f8621209b0d5c61a734c2b85d:sites/kb-labs-web/apps/docs/.next/server/server-reference-manifest.json:generic-api-key:4",
-  "55f34894a729e07f8621209b0d5c61a734c2b85d:sites/kb-labs-web/apps/web/.next/server/server-reference-manifest.json:generic-api-key:4",
-
-  # .kb/lock.json — SHA-256 hashes of plugin builds, not secrets
-  "3c5a22e3507766b05fc0c60911193d9aa496182a:.kb/lock.json:generic-api-key:5",
-
-  # Test fixtures
-  "d2212244f40eb40d6fa5dec4b6045041cd7a2ee1:plugins/fixtures/small-project/.kb/mind/index.json:generic-api-key:2",
-
-  # Unit tests with fake values designed to test PII/secret detection
-  "cd178551d1ab1eda47634be8373d36e878ebb9da:core/platform/src/wrappers/pii-detector.test.ts:generic-api-key:168",
-  "cd178551d1ab1eda47634be8373d36e878ebb9da:plugins/agents/core/tests/tracer/incremental-trace-writer.test.ts:generic-api-key:111",
-  "cd178551d1ab1eda47634be8373d36e878ebb9da:plugins/agents/mcp/src/__tests__/mcp-tool-pack.test.ts:generic-api-key:211",
+description = "Test fixtures, e2e certs, fake test secrets, build artifacts"
+paths = [
+  # e2e/oidc-idp — self-signed CA + server certs for OIDC e2e tests
+  '''e2e/oidc-idp/certs/.*''',
+  # e2e/delivery — SSH key used only in delivery e2e fixtures
+  '''e2e/delivery/keys/.*''',
+  # gateway auth unit tests — fake JWT secrets/passwords in assertions
+  '''plugins/gateway/auth/src/__tests__/.*''',
+  # e2e / unit test specs — fake API tokens in test helpers
+  '''e2e/rest-api/specs/internal\.spec\.ts''',
+  '''plugins/host-agent/entry/src/__tests__/cli/register\.cli\.test\.ts''',
+  '''e2e/tests/specs/studio/realtime\.spec\.ts''',
+  '''core/platform/src/wrappers/pii-detector\.test\.ts''',
+  '''plugins/agents/core/tests/tracer/incremental-trace-writer\.test\.ts''',
+  '''plugins/agents/mcp/src/__tests__/mcp-tool-pack\.test\.ts''',
+  # committed build artifacts / generated data — not secrets
+  '''sites/.*/\.next/.*''',
+  '''\.kb/lock\.json''',
+  '''plugins/fixtures/.*''',
 ]

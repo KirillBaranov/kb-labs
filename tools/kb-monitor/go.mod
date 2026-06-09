@@ -2,6 +2,8 @@ module github.com/kb-labs/kb-monitor
 
 go 1.25.0
 
+toolchain go1.25.11
+
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
