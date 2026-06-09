@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kb-labs/create/internal/gateway"
 )
 
 //go:embed scanner.js
@@ -51,13 +53,13 @@ type PluginEntry struct {
 // `IKVStore`). The custom unmarshaller below accepts either shape on the
 // wire.
 type AdapterEntry struct {
-	ID           string           `json:"id"`
-	Name         string           `json:"name"`
-	Version      string           `json:"version"`
-	Description  string           `json:"description"`
-	ResolvedPath string           `json:"resolvedPath"`
-	Implements   ImplementsField  `json:"implements"`
-	Type         string           `json:"type"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Version      string          `json:"version"`
+	Description  string          `json:"description"`
+	ResolvedPath string          `json:"resolvedPath"`
+	Implements   ImplementsField `json:"implements"`
+	Type         string          `json:"type"`
 }
 
 // ImplementsField holds the contracts an adapter satisfies. Accepts either
@@ -416,38 +418,6 @@ func WriteConfigs(platformDir string, r *ScanResult, projectDir string) error {
 
 // ── Gateway config ─────────────────────────────────────────────────────────
 
-// GatewayUpstream describes a single proxy route for the gateway.
-// serviceId references a key in GatewayTransport.Services.
-type GatewayUpstream struct {
-	ServiceID     string  `json:"serviceId"`
-	Prefix        string  `json:"prefix"`
-	RewritePrefix *string `json:"rewritePrefix,omitempty"` // nil=omitted (default), ""=strip prefix
-	WebSocket     bool    `json:"websocket,omitempty"`
-}
-
-// GatewayTransportService holds connection info for one upstream service.
-// Written to adapterOptions.serviceTransport.services — NOT to the gateway section.
-type GatewayTransportService struct {
-	URL        string `json:"url"`
-	SocketPath string `json:"socketPath,omitempty"`
-}
-
-// GatewayConfig is the gateway section written to .kb/kb.config.json.
-// Transport connection info lives in adapterOptions.serviceTransport — not here.
-type GatewayConfig struct {
-	Port      int                        `json:"port"`
-	Upstreams map[string]GatewayUpstream `json:"upstreams"`
-}
-
-// GatewaySetupResult groups the gateway section and the transport services map
-// so callers can write both to kb.config.json in the correct locations.
-type GatewaySetupResult struct {
-	// Gateway is written to kb.config.json["gateway"].
-	Gateway GatewayConfig
-	// TransportServices is written to kb.config.json["adapterOptions"]["serviceTransport"]["services"].
-	TransportServices map[string]GatewayTransportService
-}
-
 // ServiceGatewayInfo holds gateway proxy config for a service from the manifest.
 type ServiceGatewayInfo struct {
 	Prefix    string
@@ -455,20 +425,18 @@ type ServiceGatewayInfo struct {
 	WebSocket bool
 }
 
-// GenerateGatewayConfig builds gateway upstreams and transport services from scan
-// results and manifest gateway info. Services without a prefix (gateway, studio)
-// are skipped.
-//
-// The result separates the two config locations:
-//   - result.Gateway  → kb.config.json["gateway"] (port + upstreams referencing serviceId)
-//   - result.TransportServices → kb.config.json["adapterOptions"]["serviceTransport"]["services"]
-func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo) *GatewaySetupResult {
-	result := &GatewaySetupResult{
-		Gateway: GatewayConfig{
+// GenerateGatewayConfig derives the gateway plan (upstreams + transport
+// services) from scan results and manifest gateway info. Services without a
+// prefix (gateway, studio) are skipped. The returned plan is rendered into the
+// single platform config (kb.config.jsonc) by internal/scaffold — see
+// gateway.Plan for where each part lands.
+func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo) *gateway.Plan {
+	plan := &gateway.Plan{
+		Gateway: gateway.Config{
 			Port:      4000,
-			Upstreams: make(map[string]GatewayUpstream),
+			Upstreams: make(map[string]gateway.Upstream),
 		},
-		TransportServices: make(map[string]GatewayTransportService),
+		Transport: make(map[string]gateway.TransportService),
 	}
 
 	for _, svc := range r.Services {
@@ -477,10 +445,10 @@ func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo)
 			continue
 		}
 		// Transport: TCP loopback URL for @kb-labs/adapters-service-transport-http.
-		result.TransportServices[svc.ID] = GatewayTransportService{
+		plan.Transport[svc.ID] = gateway.TransportService{
 			URL: fmt.Sprintf("http://127.0.0.1:%d", svc.Runtime.Port),
 		}
-		up := GatewayUpstream{
+		up := gateway.Upstream{
 			ServiceID: svc.ID,
 			Prefix:    info.Prefix,
 			WebSocket: info.WebSocket,
@@ -488,63 +456,23 @@ func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo)
 		if info.Rewrite != nil {
 			up.RewritePrefix = info.Rewrite
 		}
-		result.Gateway.Upstreams[svc.ID] = up
+		plan.Gateway.Upstreams[svc.ID] = up
 	}
 
 	// Add widgets and plugin bundle proxies to REST if rest is present.
 	// /plugins/* serves Module Federation remote entries (remoteEntry.js + chunks).
-	if _, hasRest := result.Gateway.Upstreams["rest"]; hasRest {
-		result.Gateway.Upstreams["widgets"] = GatewayUpstream{
+	if _, hasRest := plan.Gateway.Upstreams["rest"]; hasRest {
+		plan.Gateway.Upstreams["widgets"] = gateway.Upstream{
 			ServiceID: "rest",
 			Prefix:    "/api/v1/widgets",
 		}
-		result.Gateway.Upstreams["plugins"] = GatewayUpstream{
+		plan.Gateway.Upstreams["plugins"] = gateway.Upstream{
 			ServiceID: "rest",
 			Prefix:    "/plugins",
 		}
 	}
 
-	return result
-}
-
-// MergeGatewayIntoConfig reads the existing .kb/kb.config.json, updates two keys,
-// and writes it back. Other keys are preserved:
-//
-//   - config["gateway"]  ← result.Gateway  (port + upstreams)
-//   - config["adapterOptions"]["serviceTransport"]["services"]  ← result.TransportServices
-func MergeGatewayIntoConfig(platformDir string, result *GatewaySetupResult) error {
-	configPath := filepath.Join(platformDir, ".kb", "kb.config.json")
-
-	existing := make(map[string]any)
-	// #nosec G304 -- path is deterministic
-	data, err := os.ReadFile(configPath)
-	if err == nil {
-		_ = json.Unmarshal(data, &existing)
-	}
-
-	// 1. Gateway section (port + upstreams — no transport here)
-	existing["gateway"] = result.Gateway
-
-	// 2. adapterOptions.serviceTransport.services
-	if len(result.TransportServices) > 0 {
-		adapterOpts, _ := existing["adapterOptions"].(map[string]any)
-		if adapterOpts == nil {
-			adapterOpts = make(map[string]any)
-		}
-		svcTransport, _ := adapterOpts["serviceTransport"].(map[string]any)
-		if svcTransport == nil {
-			svcTransport = make(map[string]any)
-		}
-		svcTransport["services"] = result.TransportServices
-		adapterOpts["serviceTransport"] = svcTransport
-		existing["adapterOptions"] = adapterOpts
-	}
-
-	out, err := json.MarshalIndent(existing, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal config with gateway: %w", err)
-	}
-	return os.WriteFile(configPath, out, 0o600)
+	return plan
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────

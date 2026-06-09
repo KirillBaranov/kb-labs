@@ -1,10 +1,13 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/kb-labs/create/internal/gateway"
 )
 
 // ── WritePlatformConfig ───────────────────────────────────────────────────────
@@ -45,6 +48,52 @@ func TestWritePlatformConfig_FullSelection(t *testing.T) {
 
 	// JSONC comments present.
 	assertContains(t, content, "//", "JSONC comments")
+}
+
+// TestWritePlatformConfig_LocalMode verifies that local single-user mode
+// (B-023) writes the gateway loopback host and auth-off into kb.config.jsonc —
+// the runtime platform config, NOT kb.config.json (kb-create install state,
+// which has no gateway section). This is the file the platform actually reads.
+func TestWritePlatformConfig_LocalMode(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		Services:           []string{"gateway"},
+		GatewayHost:        "127.0.0.1",
+		GatewayAuthEnabled: &authOff,
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	assertContains(t, content, `"host": "127.0.0.1"`, "gateway loopback host")
+	assertContains(t, content, `"auth": { "enabled": false }`, "gateway auth disabled")
+}
+
+// TestWritePlatformConfig_DefaultGateway verifies that without local-mode opts
+// the gateway section omits the loopback host and the auth-off override — the
+// safe default for server/CI/cloud installs.
+func TestWritePlatformConfig_DefaultGateway(t *testing.T) {
+	platformDir := t.TempDir()
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir: platformDir,
+		Services:    []string{"gateway"},
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	if strings.Contains(content, `"host": "127.0.0.1"`) {
+		t.Errorf("default install must not pin gateway to loopback:\n%s", content)
+	}
+	if strings.Contains(content, `"auth": { "enabled": false }`) {
+		t.Errorf("default install must not disable gateway auth:\n%s", content)
+	}
 }
 
 func TestWritePlatformConfig_DocumentDatabase(t *testing.T) {
@@ -439,6 +488,58 @@ func TestGenerateFull_GatewayUpstreams(t *testing.T) {
 	}
 	if !strings.Contains(stripped, "http://127.0.0.1:5070") {
 		t.Error("stripGeneratedJsonc corrupted http://127.0.0.1:5070 URL in gateway section")
+	}
+}
+
+// TestGenerateFull_DynamicGatewayPlan verifies that a discovery-derived plan is
+// rendered verbatim into the config — the dynamic upstreams/transport reach the
+// single platform config instead of being discarded (the bug this refactor fixed).
+func TestGenerateFull_DynamicGatewayPlan(t *testing.T) {
+	rewrite := ""
+	plan := &gateway.Plan{
+		Gateway: gateway.Config{
+			Port: 4000,
+			Upstreams: map[string]gateway.Upstream{
+				"analytics": {ServiceID: "analytics", Prefix: "/api/analytics", RewritePrefix: &rewrite, WebSocket: true},
+			},
+		},
+		Transport: map[string]gateway.TransportService{
+			"analytics": {URL: "http://127.0.0.1:9123"},
+		},
+	}
+
+	content := generateFull(Options{PlatformDir: "/x", Gateway: plan})
+
+	assertContains(t, content, `"analytics"`, "custom upstream id")
+	assertContains(t, content, `"/api/analytics"`, "custom upstream prefix")
+	assertContains(t, content, `http://127.0.0.1:9123`, "custom transport URL")
+	// The default rest/workflow upstreams must NOT appear — the plan is authoritative.
+	if strings.Contains(content, `"/api/exec"`) {
+		t.Error("custom plan must replace defaults, but default workflow upstream leaked in")
+	}
+
+	assertValidJSONC(t, content)
+}
+
+// TestGenerateFull_ValidJSONC ensures the generated config parses as JSON after
+// comment stripping — guards the dynamic comma placement in the rendered maps.
+func TestGenerateFull_ValidJSONC(t *testing.T) {
+	content := generateFull(Options{
+		PlatformDir: "/x",
+		Services:    []string{"rest", "workflow"},
+		Plugins:     []string{"mind"},
+	})
+	assertValidJSONC(t, content)
+}
+
+// assertValidJSONC strips JSONC comments and trailing commas, then parses as
+// JSON, failing with context if the result is not valid.
+func assertValidJSONC(t *testing.T, content string) {
+	t.Helper()
+	stripped := stripGeneratedJsonc(content)
+	var v any
+	if err := json.Unmarshal([]byte(stripped), &v); err != nil {
+		t.Fatalf("generated config is not valid JSON after comment stripping: %v\n--- stripped ---\n%s", err, stripped)
 	}
 }
 

@@ -16,7 +16,7 @@ const (
 	ConsentSkipped ConsentChoice = ""
 )
 
-// DemoConfig holds demo-mode settings persisted in kb.config.json.
+// DemoConfig holds demo-mode settings persisted in kb-create install state (install.json).
 type DemoConfig struct {
 	Enabled bool          `json:"enabled"`
 	Consent ConsentChoice `json:"consent"`
