@@ -527,7 +527,7 @@ export async function createServer(
     // admin API (GET /api/v1/webhooks, POST /api/v1/webhooks/provision, DELETE) works
     // even in environments where no webhook-enabled plugins are currently installed.
     if (platform.hasResourceBroker) {
-      const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port}`;
+      const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port + (Number(process.env.KB_NET_OFFSET) || 0)}`;
       // Thin adapter: globalDispatcher.call() requires namespaceId — threaded via optional field
       const provisionBackend = {
         async execute({ handlerRef, pluginRoot, input, namespaceId }: {
@@ -560,7 +560,7 @@ export async function createServer(
   // middleware (which live only inside gatewayRoutes) are bypassed automatically.
   // Delivery auth is handled by the webhook router itself (secret / hmac / custom).
   if (webhookManifests?.length && platform.hasResourceBroker) {
-    const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port}`;
+    const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port + (Number(process.env.KB_NET_OFFSET) || 0)}`;
     await app.register(async (webhookScope) => {
       await registerWebhookRoutes(webhookScope, {
         cache,

@@ -8,6 +8,7 @@ import { createServer } from './server';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createRegistry, type IEntityRegistry } from '@kb-labs/core-registry';
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import type { IServiceTransport } from '@kb-labs/core-platform';
 import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { getListenOptions } from '@kb-labs/shared-http';
 import { SystemMetricsCollector } from './daemon/metrics';
@@ -152,11 +153,21 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   metricsCollector = new SystemMetricsCollector('rest', () => requestMetricsCollector.getActiveRequests());
   await metricsCollector.start(10000, 60000); // Collect every 10s, TTL 60s
 
-  // Start server.
-  // Defaults to 0.0.0.0 for compatibility with Docker port-forwarding and dev setups.
-  // Set REST_API_HOST=127.0.0.1 to restrict to loopback in environments where
-  // all public traffic is routed through the gateway.
-  const address = await server.listen(getListenOptions(config.port, process.env.REST_API_HOST ?? '0.0.0.0'));
+  // Bind port from the transport (single declarative network source): rest is a
+  // TCP service in the serviceTransport map, so it listens on exactly the port
+  // the transport publishes for 'rest' — keeping bind and route consistent
+  // (incl. any KB_NET_OFFSET shift). Falls back to config.port when no transport.
+  const restTransport = platform.getAdapter<IServiceTransport>('serviceTransport');
+  const restAddr = restTransport?.listenAddress?.('rest');
+  const listenPort = restAddr && 'port' in restAddr ? restAddr.port : config.port;
+  const restAddrHost = restAddr && 'host' in restAddr ? restAddr.host : undefined;
+
+  // Start server. Host precedence: REST_API_HOST env > transport's advisory host
+  // > 0.0.0.0 (0.0.0.0 keeps Docker port-forwarding working; set
+  // REST_API_HOST=127.0.0.1 to restrict to loopback when all traffic is routed
+  // through the gateway).
+  const restHost = process.env.REST_API_HOST ?? restAddrHost ?? '0.0.0.0';
+  const address = await server.listen(getListenOptions(listenPort, restHost));
 
   bootstrapLogger.info('REST API server listening', { address });
 

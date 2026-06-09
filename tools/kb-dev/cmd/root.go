@@ -22,6 +22,7 @@ var (
 	outputFlag string
 	forceFlag  bool
 	configPath string
+	netOffset  int
 )
 
 // SetVersionInfo is called from main.go with values injected at build time via -ldflags.
@@ -92,6 +93,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&outputFlag, "output", "", "output format: human|json|agent")
 	rootCmd.PersistentFlags().BoolVar(&forceFlag, "force", false, "kill port conflicts before starting")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
+	rootCmd.PersistentFlags().IntVar(&netOffset, "net-offset", 0, "shift all TCP ports by this amount (overrides KB_NET_OFFSET); for isolated parallel environments. Socket services untouched.")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")
