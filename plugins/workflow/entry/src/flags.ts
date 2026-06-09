@@ -267,6 +267,23 @@ export const runsRerunFlags = {
 export type RunsRerunFlags = typeof runsRerunFlags;
 
 /**
+ * Flags for workflow:runs-cancel command
+ */
+export const runsCancelFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to cancel (alias for positional argument)',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export type RunsCancelFlags = typeof runsCancelFlags;
+
+/**
  * Flags for workflow:lint command
  */
 export const lintFlags = {
