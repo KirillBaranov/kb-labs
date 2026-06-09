@@ -22,6 +22,13 @@ export default defineConfig({
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**'
     ],
+    // The first test in an import-heavy suite pays the cold ESM transform +
+    // module-graph load. Under the forks pool on a CPU-constrained CI runner
+    // that occasionally spikes past Vitest's 5s default and flakes a healthy
+    // test (e.g. one whose body does `await import('../heavy-module.js')`).
+    // 30s gives generous headroom for cold-start latency while still catching a
+    // genuine hang; logic-level slowness is not a concern for these unit suites.
+    testTimeout: 30_000,
     coverage: {
       enabled: false,
       provider: 'v8',
