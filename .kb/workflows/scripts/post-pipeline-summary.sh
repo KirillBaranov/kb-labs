@@ -4,6 +4,8 @@
 #      REVIEW_PASSED, ARCHITECT_VERDICT, QA_VERDICT, QA_BUGS_COUNT,
 #      CHECKS_STATUS, BRANCH_NAME
 set -e
+# shellcheck source=lib-sanitize.sh
+source "$(dirname "$0")/lib-sanitize.sh"
 
 REPO_FULL="$OWNER/$REPO"
 DIFF_STAT=$(git diff HEAD~1..HEAD --stat 2>/dev/null | tail -5 || echo "")
@@ -58,5 +60,7 @@ cat >> "$TMP" << BODY
 *Each stage ran independently with full tool access — no human wrote any of this code.*
 BODY
 
+SANITIZED=$(mktemp)
+sanitize_secrets < "$TMP" > "$SANITIZED" && mv "$SANITIZED" "$TMP"
 gh pr comment "$PR_NUMBER" --repo "$REPO_FULL" --body-file "$TMP" 2>/dev/null || true
 rm -f "$TMP"

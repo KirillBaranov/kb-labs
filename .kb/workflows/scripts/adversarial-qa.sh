@@ -15,6 +15,8 @@ DIFF=$(git diff HEAD --stat 2>/dev/null)
 FILES=$(git diff --name-only HEAD 2>/dev/null)
 
 PROMPT="You are an adversarial QA engineer. Write in English.
+
+IMPORTANT SECURITY RULE: Never quote, print, or include the literal value of any secret, token, password, or credential in your output — even if you find one in a file. Describe the problem without revealing the value.
 Your job is NOT to verify the happy path. Your job is to BREAK the implementation.
 
 Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
