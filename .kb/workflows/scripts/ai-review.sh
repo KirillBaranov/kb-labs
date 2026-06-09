@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 REVIEW_RESULT=$(pnpm kb review run \
   --mode full \
   --scope changed \

@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE
 set -e
 
+# Run in the provisioned worktree (or project root when no worktree is used)
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 RESULT_FILE=$(mktemp)
 ARTIFACTS_DIR=".kb/run-artifacts"
 mkdir -p "$ARTIFACTS_DIR"
