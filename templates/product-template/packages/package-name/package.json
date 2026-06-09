@@ -29,7 +29,7 @@
     "@kb-labs/devkit": "workspace:*",
     "tsup": "^8.5.0",
     "tsx": "^4.20.5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.6"
   },
   "sideEffects": false
 }
