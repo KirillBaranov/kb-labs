@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMockContext } from '@kb-labs/shared-testing-e2e/cli';
+import type { RestInput } from '@kb-labs/sdk';
 
 vi.mock('../../http-client.js', () => ({
   getWorkflowDaemonUrl: () => 'http://localhost:7778',
@@ -7,8 +8,14 @@ vi.mock('../../http-client.js', () => ({
 
 import handler from '../../rest/workflow-run-cancel-handler.js';
 
-const makeInput = (runId: string | undefined) => ({
-  params: runId !== undefined ? { runId } : {},
+const makeInput = (runId: string): RestInput<unknown, unknown, { runId: string }> => ({
+  params: { runId },
+  body: undefined,
+  query: undefined,
+});
+
+const makeEmptyInput = (): RestInput<unknown, unknown, { runId: string }> => ({
+  params: undefined,
   body: undefined,
   query: undefined,
 });
@@ -63,9 +70,9 @@ describe('workflow-run-cancel-handler (REST)', () => {
     await expect(handler.execute(ctx, makeInput('run-ghost'))).rejects.toThrow('Run not found');
   });
 
-  it('RCH-04: missing runId — throws before calling daemon', async () => {
+  it('RCH-04: missing params — throws before calling daemon', async () => {
     const ctx = createMockContext();
-    await expect(handler.execute(ctx, makeInput(undefined))).rejects.toThrow();
+    await expect(handler.execute(ctx, makeEmptyInput())).rejects.toThrow();
     expect(fetch).not.toHaveBeenCalled();
   });
 
