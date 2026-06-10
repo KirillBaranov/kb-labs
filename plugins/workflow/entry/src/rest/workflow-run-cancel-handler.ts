@@ -1,10 +1,10 @@
 /**
  * REST handler: POST /workflows/runs/:runId/cancel
- * Proxies to workflow daemon POST /api/v1/workflows/runs/:runId/cancel
+ * Proxies to workflow daemon POST /api/v1/runs/:runId/cancel
  */
 
 import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
-import { getWorkflowDaemonUrl } from '../http-client';
+import { getWorkflowDaemonUrl } from '../http-client.js';
 
 interface RunCancelParams {
   runId: string;
