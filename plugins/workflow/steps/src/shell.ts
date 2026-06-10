@@ -74,53 +74,118 @@ export interface ShellOutput {
 }
 
 /**
- * Output marker prefix. Shell commands emit structured outputs via:
+ * Plain-JSON output marker.
  *   echo '::kb-output::{"passed":true}'
  *
- * This separates logs (plain stdout) from structured data (outputs).
- * Similar to GitHub Actions ::set-output:: pattern.
+ * Only safe for values without embedded newlines, quotes, or control chars.
+ * For multi-line text, binary data, or any value produced by a sub-command,
+ * prefer the base64 variant below.
  */
 const OUTPUT_MARKER = '::kb-output::';
+
+/**
+ * Base64-encoded JSON output marker — JSON-safe for any payload.
+ *
+ * Usage (shell):
+ *   PAYLOAD=$(jq -cn --arg plan "$(cat /tmp/plan.md)" '{plan: $plan}' | base64 -w0)
+ *   echo "::kb-output:base64::${PAYLOAD}"
+ *
+ * This handles multi-line text, special chars, and any binary-safe content.
+ * The base64 string is decoded and JSON-parsed by the runtime.
+ */
+const OUTPUT_MARKER_B64 = '::kb-output:base64::';
+
+/**
+ * Parse a single ::kb-output:: or ::kb-output:base64:: marker line into key-value pairs.
+ *
+ * Returns the parsed object, or null if the line is not a recognized marker.
+ * Throws a descriptive error if the marker payload is malformed so callers can warn.
+ */
+export function parseOutputMarkerLine(line: string): Record<string, unknown> | null {
+  // Base64-encoded variant — JSON-safe for any payload
+  const b64Idx = line.indexOf(OUTPUT_MARKER_B64);
+  if (b64Idx !== -1) {
+    const raw = line.slice(b64Idx + OUTPUT_MARKER_B64.length).trim();
+    let decoded: string;
+    try {
+      decoded = Buffer.from(raw, 'base64').toString('utf8');
+    } catch {
+      throw new Error(`::kb-output:base64:: payload is not valid base64`);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(decoded);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`::kb-output:base64:: malformed JSON payload after decode: ${detail}`);
+    }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    throw new Error(`::kb-output:base64:: JSON must be an object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+  }
+
+  // Plain-JSON variant — only safe for simple scalar values
+  const idx = line.indexOf(OUTPUT_MARKER);
+  if (idx !== -1) {
+    const raw = line.slice(idx + OUTPUT_MARKER.length);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`::kb-output:: malformed JSON payload: ${detail}`);
+    }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    throw new Error(`::kb-output:: JSON must be an object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+  }
+
+  return null;
+}
 
 /**
  * Extract structured outputs from shell stdout.
  *
  * Priority:
- * 1. ::kb-output::{...} marker lines — explicit, recommended
- * 2. Entire stdout as JSON — fallback for backward compat (simple commands)
+ * 1. ::kb-output:base64:: marker lines — JSON-safe, recommended for complex values
+ * 2. ::kb-output:: marker lines — plain JSON, ok for simple scalars
+ * 3. Entire stdout as JSON — fallback for backward compat (simple commands)
  *
+ * Malformed markers emit a warning instead of silently dropping the output.
  * Logs and other stdout content are ignored for output purposes.
  */
-function mergeJsonOutputs(output: ShellOutput): Record<string, unknown> {
+export function mergeJsonOutputs(output: ShellOutput, warn?: (msg: string) => void): Record<string, unknown> {
   const base: Record<string, unknown> = { ...output };
   const trimmed = output.stdout.trim();
   if (!trimmed) {return base;}
 
-  // Priority 1: Look for ::kb-output:: marker lines
+  // Priority 1 + 2: Look for ::kb-output:: or ::kb-output:base64:: marker lines
   const lines = output.stdout.split('\n');
   let foundMarker = false;
   for (const line of lines) {
-    const idx = line.indexOf(OUTPUT_MARKER);
-    if (idx !== -1) {
-      foundMarker = true;
-      try {
-        const parsed = JSON.parse(line.slice(idx + OUTPUT_MARKER.length));
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          Object.assign(base, parsed);
-        }
-      } catch {
-        // Malformed marker — skip
+    if (!line.includes('::kb-output')) {continue;}
+    foundMarker = true;
+    try {
+      const parsed = parseOutputMarkerLine(line);
+      if (parsed) {
+        Object.assign(base, parsed);
       }
+    } catch (err) {
+      // Malformed marker — warn instead of silently dropping
+      const msg = err instanceof Error ? err.message : String(err);
+      warn?.(`Malformed ::kb-output:: marker (outputs not populated): ${msg}`);
     }
   }
 
   if (foundMarker) {return base;}
 
-  // Priority 2: Fallback — entire stdout as JSON (backward compat)
+  // Priority 3: Fallback — entire stdout as JSON (backward compat)
   try {
-    const parsed = JSON.parse(trimmed);
+    const parsed: unknown = JSON.parse(trimmed);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      Object.assign(base, parsed);
+      Object.assign(base, parsed as Record<string, unknown>);
     }
   } catch {
     // Not JSON — return as-is
@@ -244,7 +309,7 @@ async function shellHandler(
       }
     }
 
-    return mergeJsonOutputs(output);
+    return mergeJsonOutputs(output, (msg) => ctx.platform.logger.warn(`[shell] ${msg}`));
   } catch (error) {
     // Handle timeout
     if (error && typeof error === 'object' && 'timedOut' in error && error.timedOut) {
