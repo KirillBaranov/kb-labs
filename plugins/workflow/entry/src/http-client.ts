@@ -386,8 +386,11 @@ export class WorkflowDaemonClient {
       body: '{}',
     });
     if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`Failed to cancel run: ${body || response.statusText || response.status}`);
+      const message = await response
+        .json()
+        .then((j: { error?: string }) => j?.error ?? '')
+        .catch(() => response.text().catch(() => ''));
+      throw new Error(`Failed to cancel run: ${message || response.statusText || response.status}`);
     }
   }
 
