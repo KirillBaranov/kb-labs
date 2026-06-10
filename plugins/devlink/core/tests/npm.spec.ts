@@ -1,6 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockSpawnSync = vi.fn();
+// vi.hoisted ensures the mock variable is defined before vi.mock factories run.
+// Without vi.hoisted(), `mockSpawnSync` may be `undefined` when the factory
+// executes under Vitest's hoisting pass — causing spawnSync: undefined in the
+// mock and intermittent failures in the forks pool (~10% flake rate).
+const mockSpawnSync = vi.hoisted(() => vi.fn());
 
 vi.mock('child_process', () => ({
   spawnSync: mockSpawnSync,
@@ -28,6 +32,12 @@ vi.mock('@kb-labs/sdk', () => ({
 // Regression: getLatestNpmVersion must use spawnSync with discrete argv,
 // not execSync with a template string — prevents command injection via packageName.
 describe('getLatestNpmVersion — no shell injection', () => {
+  beforeEach(() => {
+    // Reset call history between tests so `.mock.calls[0]` and `.at(-1)`
+    // always refer to the current test's invocations only.
+    mockSpawnSync.mockReset();
+  });
+
   it('calls spawnSync with packageName as a discrete argv element', async () => {
     mockSpawnSync.mockReturnValue({ stdout: '"1.0.0"', status: 0, error: undefined });
 

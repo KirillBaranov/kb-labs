@@ -200,22 +200,37 @@ describe('registerCacheRoutes', () => {
     it('tracks request timing in metadata', async () => {
       const snapshot = createMockSnapshot(1);
 
-      vi.mocked(mockCliApi.snapshot).mockReturnValue(snapshot);
-      vi.mocked(mockCliApi.refresh).mockImplementation(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 10);
+      // Use fake timers so the test is deterministic regardless of CPU load or CI jitter.
+      // Without this, setTimeout(resolve, 10) may resolve after < 10 ms of wall-clock
+      // time as measured by Date.now(), causing an intermittent off-by-one failure.
+      vi.useFakeTimers();
+      const FAKE_DELAY_MS = 10;
+
+      try {
+        vi.mocked(mockCliApi.snapshot).mockReturnValue(snapshot);
+        vi.mocked(mockCliApi.refresh).mockImplementation(async () => {
+          // Advance fake clock so Date.now() inside the route handler reflects the delay.
+          vi.advanceTimersByTime(FAKE_DELAY_MS);
         });
-      });
-      vi.mocked(mockCliApi.listPlugins).mockResolvedValue([]);
+        vi.mocked(mockCliApi.listPlugins).mockResolvedValue([]);
 
-      const response = await app.inject({
-        method: 'POST',
-        url: '/api/v1/cache/invalidate',
-      });
+        const responsePromise = app.inject({
+          method: 'POST',
+          url: '/api/v1/cache/invalidate',
+        });
 
-      expect(response.statusCode).toBe(200);
-      const payload = response.json();
-      expect(payload.meta.durationMs).toBeGreaterThanOrEqual(10);
+        // Drain any pending microtasks so the mock refresh runs and the clock advance
+        // takes effect before we await the final response.
+        await Promise.resolve();
+
+        const response = await responsePromise;
+
+        expect(response.statusCode).toBe(200);
+        const payload = response.json();
+        expect(payload.meta.durationMs).toBeGreaterThanOrEqual(FAKE_DELAY_MS);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('includes timestamp in ISO format', async () => {
