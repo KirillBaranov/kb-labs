@@ -9,7 +9,7 @@
  * - Error handling and retries
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { WorkflowEngine } from '../engine.js';
 import type { WorkflowSpec, WorkflowRun } from '@kb-labs/workflow-contracts';
 import type { ICache, IEventBus } from '@kb-labs/core-platform';
