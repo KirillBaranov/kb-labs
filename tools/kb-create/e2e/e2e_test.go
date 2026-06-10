@@ -834,17 +834,22 @@ func TestLocalModeWritesAuthOff(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
 
 	out, code := run(t, bin, projectDir, "--yes", "--local", "--platform", platformDir)
+	// Always log the install output so -v reveals what kb-create printed on
+	// failure. On the happy path this is a no-op; on failure it shows the
+	// exact error without relying on devkit's truncated tail.
+	t.Logf("kb-create output (exit %d):\n%s", code, out)
 	if code != 0 {
-		t.Fatalf("install --yes --local exited %d:\n%s", code, out)
+		t.Fatalf("install --yes --local exited %d (see output above)", code)
 	}
 	cfg := readPlatformConfig(t, platformDir)
+	t.Logf("kb.config.jsonc:\n%s", cfg)
 	// Match the gateway auth toggle specifically (not any disabled plugin's
 	// "enabled": false).
 	if !strings.Contains(cfg, `"auth": { "enabled": false }`) {
-		t.Errorf("--local must disable gateway auth:\n%s", cfg)
+		t.Errorf("--local must disable gateway auth (see kb.config.jsonc above)")
 	}
 	if !strings.Contains(cfg, `"host": "127.0.0.1"`) {
-		t.Errorf("--local must bind the gateway to loopback:\n%s", cfg)
+		t.Errorf("--local must bind the gateway to loopback (see kb.config.jsonc above)")
 	}
 }
 
