@@ -70,6 +70,38 @@ jobs:
   setup:
     runsOn: local
     steps:
+      # Guard: reject runs that start on a dirty working tree.
+      # Uncommitted changes would be invisible to the agent worktree and could
+      # contaminate the diff / PR. Fail fast here instead of producing a
+      # misleading or incomplete PR later.
+      - name: Precondition Check
+        id: precondition
+        phase: setup
+        run: |
+          # Ensure we are on a real branch (not detached HEAD after a stash/rebase)
+          BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+          if [ -z "$BRANCH" ]; then
+            echo "ERROR: repository is in detached HEAD state — checkout a branch first"
+            exit 1
+          fi
+
+          # Ensure the working tree is clean (no staged or unstaged changes, no
+          # new untracked files that the agent would be unaware of).
+          STATUS=$(git status --porcelain 2>/dev/null)
+          if [ -n "$STATUS" ]; then
+            echo "ERROR: working tree is not clean — commit or stash changes before starting a dev-cycle run"
+            echo "$STATUS"
+            exit 1
+          fi
+
+          echo "::kb-output:base64::$(jq -cn --arg b "$BRANCH" '{branch:$b}' | base64 -w0)"
+        artifacts:
+          precondition:
+            type: text
+            source: steps.precondition.outputs.branch
+            label: Base branch
+            showInSummary: false
+
       - name: Fetch ClickUp Task
         id: task
         phase: setup
