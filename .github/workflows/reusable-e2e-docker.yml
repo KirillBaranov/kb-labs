@@ -325,6 +325,7 @@ jobs:
 
       - name: Emit timings
         if: always()
+        continue-on-error: true   # non-critical telemetry — gh api may return empty JSON mid-run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.run_id }}
