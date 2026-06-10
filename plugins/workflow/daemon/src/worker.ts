@@ -916,6 +916,19 @@ async function waitForApproval(
     await sleep(2000);
     pollCount++;
     const currentRun = await engine.getRun(runId);
+
+    // If the run is cancelled, treat it as an interruption — do NOT proceed as
+    // if the approval was granted. A cancelled run must never bypass human gates.
+    if (currentRun?.status === 'cancelled') {
+      stepLogger.info('[approval] Run cancelled — treating as interrupted, NOT approved', {
+        runId,
+        stepId: step.id,
+        stepName: step.name,
+        waitedMs: Date.now() - approvalStartMs,
+      });
+      return 'interrupted';
+    }
+
     const currentJob = currentRun?.jobs.find(j => j.id === jobId);
     const currentStep = currentJob?.steps.find(s => s.id === step.id);
 

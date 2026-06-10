@@ -494,4 +494,120 @@ describe('workflow worker lifecycle', () => {
     // debugMode must emit outputs log
     expect(infoMessages.some(m => m === '[debug] Step outputs')).toBe(true);
   });
+
+  it('does not execute steps after approval when run is cancelled — regression for merge-without-approval bug', async () => {
+    // Regression: when a run was cancelled while a builtin:approval step was waiting,
+    // waitForApproval returned 'done' instead of 'interrupted' because it only checked
+    // step status (which the engine set to 'success' on cancel), not run status.
+    // This caused the pipeline to continue past the approval gate and execute Merge PR
+    // without human approval.
+    const runId = `run-cancel-approval-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+
+    const approvalStep: any = {
+      id: 'step-approval',
+      status: 'pending',
+      spec: { id: 'approval', uses: 'builtin:approval', with: { message: 'Approve?' } },
+    };
+    const actionStep: any = {
+      id: 'step-action',
+      status: 'pending',
+      spec: { uses: 'plugin:test/handler', with: {} },
+    };
+
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      status: 'running',
+      env: {},
+      metadata: {},
+      trigger: { type: 'manual' },
+      inputs: {},
+      jobs: [{
+        id: jobId,
+        jobName: 'job',
+        status: 'queued',
+        attempt: 0,
+        steps: [approvalStep, actionStep],
+      }],
+    };
+
+    let markStepWaitingApprovalCalled = false;
+    const completion = createDeferred<void>();
+
+    let queueDrained = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) {
+        if (id !== runId) { return null; }
+        if (markStepWaitingApprovalCalled) {
+          // Simulate what the engine does on cancel: run.status='cancelled' AND
+          // the waiting approval step gets marked 'success' to finalize state.
+          // This is the exact condition that caused waitForApproval to return 'done'
+          // as if a human had approved — the bug we are fixing.
+          return {
+            ...run,
+            status: 'cancelled',
+            jobs: [{ ...run.jobs[0], steps: [{ ...approvalStep, status: 'success' }, actionStep] }],
+          };
+        }
+        return run;
+      },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markJobCompleted() {
+        run.jobs[0].status = 'success';
+        completion.resolve();
+      },
+      async markJobFailed(_r: string, _j: string, err: Error) {
+        completion.reject(err);
+      },
+      async markStepStarted() {},
+      async markStepCompleted() {},
+      async markStepFailed() {},
+      async markJobInterrupted() {},
+      async markStepWaitingApproval() {
+        markStepWaitingApprovalCalled = true;
+        approvalStep.status = 'waiting_approval';
+      },
+      getStateStore: vi.fn(() => ({
+        updateStep: vi.fn(async () => {}),
+      })),
+    };
+
+    const logger = mockLogger();
+
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger,
+      workspaceRoot: '/tmp/test-approval-cancel',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+    });
+
+    const startPromise = worker.start();
+
+    // Give the worker enough time to reach the approval step, detect cancellation,
+    // and — if the bug is present — proceed to execute the action step.
+    // waitForApproval polls every 2s; 5s gives 2 full polls, enough to exercise the bug.
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    await worker.stop();
+    await startPromise;
+
+    // CRITICAL: the action step after a cancelled approval must NEVER execute.
+    // Before the fix this assertion failed — the worker continued as if approved.
+    expect(mockRunnerExecute).not.toHaveBeenCalled();
+
+    // Job must not have completed successfully (was interrupted, not approved)
+    expect(run.jobs[0].status).not.toBe('success');
+  });
 });
