@@ -302,6 +302,8 @@ jobs:
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          CI_TIMEOUT_SECONDS: '3600'
+          CI_MIN_CHECKS: '3'
         run: bash .kb/workflows/scripts/check-ci.sh
 
       # ── 13. CI Gate: pass, wait more, or fix ────────────────────────────────
