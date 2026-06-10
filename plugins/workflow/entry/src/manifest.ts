@@ -18,6 +18,7 @@ import {
   runsWatchFlags,
   runsRerunFlags,
   runsCancelFlags,
+  runsApproveFlags,
   lintFlags,
 } from './flags';
 import {
@@ -250,6 +251,26 @@ export const manifest = {
           'kb workflow runs cancel <runId>',
           'kb workflow runs cancel --run-id=<runId>',
           'kb workflow runs cancel <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs approve',
+        category: 'Runs',
+        operationType: 'mutate' as const,
+        describe: 'Approve or reject a pending approval step in a workflow run.',
+        longDescription:
+          'Resolves a human-gate (approval) step that is waiting for a decision. ' +
+          'If the run has exactly one pending approval, it is resolved automatically. ' +
+          'If there are multiple, specify --job-id and --step-id to target the right one. ' +
+          'Use --action=reject to reject instead of approve (default: approve). ' +
+          'Use --comment to attach a note to the decision.',
+        handler: './commands/runs-approve.js#default',
+        flags: defineCommandFlags(runsApproveFlags),
+        examples: [
+          'kb workflow runs approve <runId>',
+          'kb workflow runs approve <runId> --action=reject --comment="Needs rework"',
+          'kb workflow runs approve <runId> --job-id=<jobId> --step-id=<stepId>',
+          'kb workflow runs approve <runId> --json',
         ],
       },
       {

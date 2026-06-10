@@ -42,6 +42,16 @@ export const defaultWorkflowClient: WorkflowDaemonClient = {
 
   cancelRun: async () => {},
 
+  listPendingApprovals: async (runId: string) => ({ runId, pending: [] }),
+
+  resolveApproval: async (runId: string, jobId: string, stepId: string, action: 'approve' | 'reject') => ({
+    runId,
+    jobId,
+    stepId,
+    action,
+    resolved: true,
+  }),
+
   getJobStatus: async (jobId: string): Promise<JobStatusDetail> => ({
     id: jobId,
     type: 'test',
