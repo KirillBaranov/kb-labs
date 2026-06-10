@@ -6,7 +6,7 @@
  * Use --log-failed to see only the logs from failed steps.
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunDetail } from '../http-client.js';
 import { WorkflowDaemonClient } from '../http-client.js';
 

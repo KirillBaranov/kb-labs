@@ -24,7 +24,7 @@ const CONTAINER: React.CSSProperties = {
 }
 
 export function ConnectionBadge({ status, lastEventAt }: ConnectionBadgeProps) {
-  if (status === 'closed') return null
+  if (status === 'closed') {return null}
 
   const tooltip = lastEventAt
     ? `Last update: ${Math.round((Date.now() - lastEventAt.getTime()) / 1000)}s ago`
