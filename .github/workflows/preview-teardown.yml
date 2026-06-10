@@ -22,16 +22,31 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
+      - name: Check preview configured
+        id: cfg
+        env:
+          PREVIEW_HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+        run: |
+          if [ -n "$PREVIEW_HOST" ]; then
+            echo "has_preview=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_preview=false" >> "$GITHUB_OUTPUT"
+            echo "No preview SSH host configured — teardown is a no-op."
+          fi
+
       - name: Write SSH key
+        if: steps.cfg.outputs.has_preview == 'true'
         env:
           DEPLOY_KEY_PEM: ${{ secrets.PREVIEW_SSH_KEY }}
+          PREVIEW_HOST: ${{ secrets.PREVIEW_SSH_HOST }}
         run: |
           mkdir -p ~/.ssh
           echo "$DEPLOY_KEY_PEM" > ~/.ssh/preview.key
           chmod 0600 ~/.ssh/preview.key
-          ssh-keyscan -H "${{ secrets.PREVIEW_SSH_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$PREVIEW_HOST" >> ~/.ssh/known_hosts
 
       - name: Tear down compose stack
+        if: steps.cfg.outputs.has_preview == 'true'
         env:
           HOST: ${{ secrets.PREVIEW_SSH_HOST }}
           USER: ${{ secrets.PREVIEW_SSH_USER }}
@@ -55,6 +70,7 @@ jobs:
           REMOTE
 
       - name: Remove nginx sites
+        if: steps.cfg.outputs.has_preview == 'true'
         env:
           HOST: ${{ secrets.PREVIEW_SSH_HOST }}
           USER: ${{ secrets.PREVIEW_SSH_USER }}
