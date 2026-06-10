@@ -149,19 +149,37 @@ export class WorkflowService {
 
   /**
    * Get workflow by ID (from either source).
+   *
+   * Lookup order:
+   * 1. Standalone by filename-derived id (canonical, fast path)
+   * 2. Standalone by `name:` field — allows `--workflow-id=dev-cycle` even
+   *    when the file is named `03-dev-cycle.yml` (F8 ergonomics fix)
+   * 3. Manifest-based by id
+   * 4. Manifest-based by name field
    */
   async get(id: string): Promise<WorkflowRuntime | null> {
-    // Try standalone first (faster, direct lookup)
+    // 1. Standalone by canonical filename-derived id (fast path, B-016)
     const standalone = await this.repository.get(id);
     if (standalone) {
       return standalone;
     }
 
-    // Try manifest-based (requires full scan)
+    // 2. Standalone by name field — name-based alias (F8)
+    const allStandalone = await this.repository.list();
+    const byName = allStandalone.find((w) => w.name === id);
+    if (byName) {
+      return byName;
+    }
+
+    // 3. Manifest-based by id
     const manifestWorkflows = await this.scanner.scanPlugins();
     const manifest = manifestWorkflows.find((w) => w.id === id);
+    if (manifest) {
+      return manifest;
+    }
 
-    return manifest ?? null;
+    // 4. Manifest-based by name field
+    return manifestWorkflows.find((w) => w.name === id) ?? null;
   }
 
   /**
