@@ -1,4 +1,4 @@
-import { WorkflowDaemonClient } from '../../http-client.js';
+import type { WorkflowDaemonClient } from '../../http-client.js';
 import type { WorkflowRunSummary, WorkflowRunDetail, JobStatusDetail } from '../../http-client.js';
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 

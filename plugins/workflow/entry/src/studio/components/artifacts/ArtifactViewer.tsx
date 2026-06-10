@@ -24,7 +24,7 @@ export interface ArtifactViewerProps {
 
 class ArtifactErrorBoundary extends Component<{ children: ReactNode; label?: string }, { error: Error | null }> {
   override state = { error: null as Error | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   static getDerivedStateFromError(error: Error): any { return { error }; }
   override render() {
     if (this.state.error) {

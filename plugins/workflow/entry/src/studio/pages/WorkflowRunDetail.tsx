@@ -501,15 +501,15 @@ function RunDetailSkeleton() {
 
 function applyStateEvent(run: WorkflowRun, ev: WorkflowLogEvent): WorkflowRun {
   const { type, jobId, stepId, payload } = ev
-  if (type === 'run.started') return { ...run, status: 'running', startedAt: (payload?.startedAt as string) ?? run.startedAt }
-  if (type === 'run.finished') return { ...run, status: 'success' }
-  if (type === 'run.failed') return { ...run, status: 'failed' }
-  if (type === 'run.cancelled') return { ...run, status: 'cancelled' }
-  if (!jobId) return run
+  if (type === 'run.started') {return { ...run, status: 'running', startedAt: (payload?.startedAt as string) ?? run.startedAt }}
+  if (type === 'run.finished') {return { ...run, status: 'success' }}
+  if (type === 'run.failed') {return { ...run, status: 'failed' }}
+  if (type === 'run.cancelled') {return { ...run, status: 'cancelled' }}
+  if (!jobId) {return run}
   const jobs = run.jobs.map(j => {
-    if (j.id !== jobId) return j
-    if (type.startsWith('job.')) return { ...j, status: eventTypeToStatus(type) as JobRun['status'], durationMs: (payload?.durationMs as number) ?? j.durationMs }
-    if (!stepId) return j
+    if (j.id !== jobId) {return j}
+    if (type.startsWith('job.')) {return { ...j, status: eventTypeToStatus(type) as JobRun['status'], durationMs: (payload?.durationMs as number) ?? j.durationMs }}
+    if (!stepId) {return j}
     const steps = j.steps.map(s => s.id !== stepId || !type.startsWith('step.') ? s : {
       ...s,
       status: eventTypeToStatus(type) as StepRun['status'],
@@ -535,7 +535,7 @@ export default function WorkflowRunDetail() {
   const [localRun, setLocalRun] = useState<WorkflowRun | null>(null)
   useEffect(() => {
     const fetched = runData?.run ?? (runData as unknown as WorkflowRun | undefined) ?? null
-    if (fetched) setLocalRun(fetched)
+    if (fetched) {setLocalRun(fetched)}
   }, [runData])
 
   const run = localRun
@@ -549,7 +549,7 @@ export default function WorkflowRunDetail() {
   const [lastEventAt, setLastEventAt] = useState<Date | undefined>(undefined)
   const handleSseEvent = useCallback((ev: WorkflowLogEvent) => {
     const isStateEvent = STATE_EVENT_PREFIXES.some(p => ev.type.startsWith(p)) && ev.type !== 'log.appended'
-    if (isStateEvent) setLocalRun(prev => prev ? applyStateEvent(prev, ev) : prev)
+    if (isStateEvent) {setLocalRun(prev => prev ? applyStateEvent(prev, ev) : prev)}
     setLastEventAt(new Date())
   }, [])
 
@@ -568,7 +568,7 @@ export default function WorkflowRunDetail() {
   } as const
 
   useEffect(() => {
-    if (logError && isRunActive) void refetch()
+    if (logError && isRunActive) {void refetch()}
   }, [logError, isRunActive, refetch])
 
   const isTerminal = run != null && !isRunActive
