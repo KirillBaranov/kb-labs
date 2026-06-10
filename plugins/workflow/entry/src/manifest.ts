@@ -17,6 +17,7 @@ import {
   runsViewFlags,
   runsWatchFlags,
   runsRerunFlags,
+  runsCancelFlags,
   lintFlags,
 } from './flags';
 import {
@@ -234,6 +235,21 @@ export const manifest = {
           'kb workflow runs rerun --run-id=<runId>',
           'kb workflow runs rerun <runId> --failed-only',
           'kb workflow runs rerun <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs cancel',
+        category: 'Runs',
+        operationType: 'mutate' as const,
+        describe: 'Cancel a workflow run.',
+        longDescription:
+          'Cancels an active workflow run. If the run is not found or already finished, prints a clear error.',
+        handler: './commands/runs-cancel.js#default',
+        flags: defineCommandFlags(runsCancelFlags),
+        examples: [
+          'kb workflow runs cancel <runId>',
+          'kb workflow runs cancel --run-id=<runId>',
+          'kb workflow runs cancel <runId> --json',
         ],
       },
       {

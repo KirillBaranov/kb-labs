@@ -324,7 +324,10 @@ jobs:
                 hasLogs: ${{ steps.ci_wait.outputs.hasLogs }}
                 ciLogsFile: ${{ steps.ci_wait.outputs.ciLogsFile }}
           default: fail
-          maxIterations: 240
+          # Wall-clock timeout in check-ci.sh (CI_TIMEOUT_SECONDS=3600) is the
+          # real guard. Iterations cap must not be the bottleneck — large CI
+          # suites can take 40+ min with 15s sleep = 160+ iterations just waiting.
+          maxIterations: 1440
 
       # ── 14. Mark PR Ready ────────────────────────────────────────────────────
       - name: Mark PR Ready

@@ -70,6 +70,8 @@ services:
     port: 7778
     url: http://localhost:7778
     depends_on: [state-daemon]
+    env:
+      GITHUB_WORKFLOW_TOKEN: "${GITHUB_WORKFLOW_TOKEN}"
     api:
       docs: http://localhost:7778/openapi.json
       endpoints:

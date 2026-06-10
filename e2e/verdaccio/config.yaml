@@ -16,9 +16,12 @@ auth:
 uplinks:
   npmjs:
     url: https://registry.npmjs.org
-    timeout: 60s
-    max_fails: 5
-    fail_timeout: 5m
+    # Large binaries (e.g. @rspack/binding-linux-x64-gnu ~40MB) need more time.
+    timeout: 180s
+    # Recover quickly from npmjs hiccups instead of staying blocked for minutes.
+    # 5m fail_timeout caused cascading 404s for all parallel e2e shards.
+    max_fails: 3
+    fail_timeout: 15s
     cache: true
 
 packages:
