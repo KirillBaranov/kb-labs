@@ -283,6 +283,15 @@ export async function createWorkflowWorker(
 
           // --- Build ExpressionContext from fresh run state ---
           const freshRun = await engine.getRun(run.id);
+
+          if (freshRun?.status === 'cancelled') {
+            jobLogger.info('[worker] Run cancelled — stopping step execution', {
+              runId: run.id,
+              jobId: job.id,
+            });
+            break;
+          }
+
           const exprCtx: ExpressionContext = {
             env: freshRun?.env ?? {},
             trigger: freshRun?.trigger ?? { type: 'manual' },

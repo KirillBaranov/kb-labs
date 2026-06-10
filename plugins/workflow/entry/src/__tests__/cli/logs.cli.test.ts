@@ -12,9 +12,9 @@ import logsCommand from '../../commands/logs.js';
 const MockedClient = vi.mocked(WorkflowDaemonClient);
 
 const sampleLogs = [
-  { level: 'info', message: 'Step started', timestamp: new Date().toISOString() },
-  { level: 'warn', message: 'Retrying step', timestamp: new Date().toISOString() },
-  { level: 'info', message: 'Step finished', timestamp: new Date().toISOString(), stepId: 'step-1' },
+  { level: 'info' as const, message: 'Step started', timestamp: new Date().toISOString() },
+  { level: 'warn' as const, message: 'Retrying step', timestamp: new Date().toISOString() },
+  { level: 'info' as const, message: 'Step finished', timestamp: new Date().toISOString(), stepId: 'step-1' },
 ];
 
 beforeEach(() => {
