@@ -33,7 +33,7 @@ export default defineHandler({
       throw new Error('Missing runId parameter');
     }
 
-    const url = `${daemonUrl}/api/v1/workflows/runs/${encodeURIComponent(runId)}/cancel`;
+    const url = `${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}/cancel`;
     ctx.platform.logger.info(`[workflow-run-cancel-handler] Cancelling run ${runId} at ${url}`);
 
     try {

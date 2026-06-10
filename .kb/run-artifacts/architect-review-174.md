@@ -2,28 +2,30 @@
 NEEDS_FIXES
 
 ## Summary
-The core `runs cancel` implementation (committed in `0451ceb0`) appears structurally sound and consistent with existing patterns. However, the current diff introduces two blockers that must not merge: a real GitHub OAuth token committed to `settings.json`, and a destructive force-reset behavior change in `create-branch.ts` that is unrelated to issue #174. Additionally, `buildShellSafeCommand` — a legitimately valuable security fix — is implemented and tested but never wired into the execution path, leaving the shell injection vulnerability open in production.
+The diff contains **none of the planned workflow cancel implementation**. All six steps from the plan (http-client method, flags, command file, manifest entry, tests, helper stub) are absent. The only code change is an unrelated and potentially destructive modification to `plugins/github/entry/src/handlers/create-branch.ts` that was not part of the plan. PLAN.md was deleted as if the work is complete, but the feature does not exist.
 
 ## Findings
 
-- **[BLOCKER]** `GITHUB_WORKFLOW_TOKEN: "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"` is a live GitHub OAuth token hardcoded in `.claude/settings.json`. This file is tracked in git and will be pushed. Revoke the token immediately, remove the value from the file, and supply it via a gitignored `.env` or a local settings override (e.g. `settings.local.json`).
+- **[BLOCKER]** `kb workflow runs cancel` command is not implemented. The entire planned scope — `cancelRun()` in `http-client.ts`, `runsCancelFlags` in `flags.ts`, `runs-cancel.ts` command handler, manifest entry, and all six test cases — is missing from the diff. The PR does not address issue #174 at all.
 
-- **[BLOCKER]** `create-branch.ts`: when a branch already exists, the old code returned the existing SHA (non-destructive — continues from current tip). The new code force-resets the branch to the base SHA, silently discarding any commits already on it. This is a **destructive behavioral change** with no linked issue, no ADR, and no test covering the data-loss scenario. It is also completely unrelated to issue #174. Revert or split into a dedicated PR with explicit rationale.
+- **[BLOCKER]** The change in `plugins/github/entry/src/handlers/create-branch.ts` is unrelated to this issue. It silently rewrites branch-collision semantics from idempotent (use existing branch as-is) to destructive (force-reset to base SHA), which will silently destroy any commits on the branch that diverge from the base. This is a behavioral regression disguised as a comment update.
 
-- **[WARNING]** `buildShellSafeCommand` is implemented in `expressions.ts` and has good test coverage, but there is no call site in the diff — no worker, step-runner, or execution path actually uses it. The shell injection vulnerability (`${{ }}` raw substitution in `run:` blocks) is still exploitable in production. Either wire it up in this PR or open a follow-up issue and track it explicitly.
+- **[BLOCKER]** `PLAN.md` was deleted, implying the task is done. It is not. Deleting the plan file without delivering the work removes traceability with no benefit.
 
-- **[WARNING]** Significant scope creep: `buildShellSafeCommand` (security fix), `create-branch.ts` (destructive behavior change), `devservices.dev.yaml` env wiring, and `lock.json` timestamp are all bundled into an "Add runs cancel command" PR. Each should ship as its own PR to keep history readable and blast radius small.
+- **[WARNING]** The force-reset path in `create-branch.ts` calls `resetRes.text()` inside a `throw` expression. If the response body is a non-UTF-8 stream or reading it throws, the original error context is lost and a secondary unhandled rejection surfaces instead. Error bodies should be read defensively.
 
-- **[SUGGESTION]** The `captured.error` → `captured.errors` and `captured.warning` → `captured.warnings` fixes in `runs-cancel.cli.test.ts` look correct, but they silently fix a property-name bug in the test harness API. This should be called out explicitly in the commit message so the API contract is visible.
+- **[WARNING]** If the force-reset in `create-branch.ts` is intentional for a separate use case (e.g., CI idempotency of branch creation), it should be its own issue and PR with explicit tests covering the "branch already has commits" path. Bundling it here with no tests and no issue reference makes it unfollowable.
 
-- **[SUGGESTION]** `buildShellSafeCommand` uses dot-to-underscore replacement (`expr.trim().replace(/[^a-zA-Z0-9_]/g, '_')`), which can produce collisions: `steps.a.b` and `steps_a_b` both map to `_WF_steps_a_b`. Low probability but worth a note or a uniqueness guard.
+- **[SUGGESTION]** The `create-branch.ts` change lacks a test. The original idempotent 422 branch already had implied coverage. The new destructive PATCH path has zero coverage — success, PATCH failure, and PATCH network error are all untested.
 
 ## Conclusion
 
-Two blockers must be resolved before merge:
-1. Revoke and remove the hardcoded GitHub token from `settings.json`.
-2. Revert the `create-branch.ts` force-reset change or move it to a separate PR with a documented rationale and a test.
+This PR must not be merged. The feature requested in issue #174 (`kb workflow runs cancel`) is entirely absent. The only code change present is an unrelated destructive modification to branch-creation semantics with no tests and no issue linkage. The plan file was deleted prematurely. Required before merge:
 
-`buildShellSafeCommand` should either be wired into the execution path in this PR or explicitly tracked as a follow-up — shipping an unused security utility with no call site gives false confidence that the injection is fixed.
+1. Implement the six planned steps for `runs cancel` (http-client, flags, command, manifest, tests, helper stub).
+2. Revert the `create-branch.ts` change or move it to a separate issue with proper tests and rationale.
+3. Do not re-delete `PLAN.md` until all steps are verifiably present in the diff.
 
-::kb-output::{"verdict":"NEEDS_FIXES","blockers_count":2,"review":"The core runs cancel implementation appears structurally sound. However, a live GitHub OAuth token is hardcoded in settings.json, and create-branch.ts introduces a destructive force-reset behavior change unrelated to issue #174. buildShellSafeCommand is tested but never wired up."}
+---
+
+::kb-output::{"verdict":"NEEDS_FIXES","blockers_count":3,"review":"The diff contains none of the planned workflow cancel implementation. All six steps are absent. The only code change is an unrelated destructive modification to create-branch.ts that force-resets existing branches, destroying any divergent commits."}

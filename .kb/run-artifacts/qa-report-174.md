@@ -1,4 +1,4 @@
-Good — all mutations properly caught. Let me now compile the full report:
+I have all the evidence I need. Let me compile the final report:
 
 ---
 
@@ -7,89 +7,92 @@ BUGS_FOUND
 
 ## Test Coverage Assessment
 - **Tests written**: yes
-- **Coverage quality**: adequate for the cancel command; weak for expressions.ts additions
-- **Tests actually catch failures**: yes — all 4 mutation tests triggered correct failures
+- **Coverage quality**: adequate for CLI handler; none for REST handler
+- **Tests actually catch failures**: yes (mutation test confirmed RCX-04 correctly catches removed validation)
 - **Missing**:
-  - No test for whitespace-only `runId` (e.g. `"   "`) bypassing the `!runId` guard
-  - No test for operator precedence in mixed `&&`/`||` expressions
-  - No test for `&&` or `||` inside string literals in function args (`contains(env.X, "a && b")`)
-  - No daemon/worker-level integration test for `buildShellSafeCommand` wiring (only contracts-level unit tests)
-  - No test for the `--dry-run` / intent path (runs-rerun has it, runs-cancel does not — no `--dry-run` flag exists)
-
----
+  - Zero tests for `workflow-run-cancel-handler.ts` (REST proxy)
+  - No test for whitespace-only runId (`"   "` passes `!runId` check silently)
+  - No test for duplicate cancel (second cancel on already-cancelled run)
+  - No worker test verifying cancellation actually halts in-flight step execution
+  - No test for both `--run-id` flag and positional arg provided simultaneously
 
 ## Attack Summary
-
-Tested the `runs-cancel` command with: invalid/empty inputs, whitespace run IDs, both argument forms (`positional` vs `--run-id`), daemon failure modes. Audited `expressions.ts` additions for operator parsing correctness. Ran 4 mutation tests to verify test robustness. Examined the shell injection fix (`buildShellSafeCommand`) for completeness.
-
----
+Targeted three surfaces: (1) CLI handler via unit test boundary, (2) REST proxy handler URL construction, (3) live daemon runtime behavior after cancel is issued. Found that the CLI path works end-to-end but the REST proxy path is broken by a URL mismatch, and the worker does not respect the cancelled state at runtime — execution continues across all queued steps.
 
 ## Findings
 
-### [BUG] Operator precedence wrong for mixed `&&`/`||` expressions
-
-- **Type**: runtime bug in `expressions.ts`
-- **Attack / observation**: `evaluateExpression` checks `includes('&&')` before `includes('||')`. For `"true || false && false"`, it splits on `&&` first → evaluates `(true || false) && false = false`. Standard operator precedence: `||` is lower than `&&`, so the expression should evaluate as `true || (false && false) = true`.
-- **Expected**: `evaluateExpression('true || false && false', ctx)` → `true`
-- **Actual**: returns `false`
-- **Severity**: major — any workflow `if:` condition using mixed `&&`/`||` without explicit parentheses will evaluate incorrectly, causing jobs to be skipped or run unexpectedly
+### [BUG] REST proxy calls the wrong daemon URL — always 404
+- **Type**: runtime bug
+- **Attack / observation**: `workflow-run-cancel-handler.ts:36` builds URL as `/api/v1/workflows/runs/:runId/cancel`. The daemon registers `POST /api/v1/runs/:runId/cancel` (no `/workflows/` prefix). The daemon API contract test at `api-contract.integration.test.ts:281` explicitly asserts that `POST /api/v1/workflows/runs/:runId/cancel` returns **404** — confirming this path was removed or never existed.
+- **Expected**: REST API cancel request proxied to daemon succeeds with `{ cancelled: true, runId }`
+- **Actual**: Every REST API cancel call receives a 404 from the daemon; the REST handler throws and returns an error to the client
+- **Severity**: critical
 - **Reproduce**:
-  ```js
-  evaluateExpression('true || false && false', ctx) // returns false, should be true
+  ```bash
+  curl -s -X POST "http://localhost:7778/api/v1/workflows/runs/any-id/cancel" \
+    -H "Content-Type: application/json" -d '{}'
+  # Returns 404 {"message":"Route POST:/api/v1/workflows/runs/any-id/cancel not found"}
   ```
-  Real-world case: `if: "trigger.type == 'push' || env.FORCE_RUN == 'true' && env.BRANCH == 'main'"` — would be parsed as `(... push || ... FORCE_RUN) && (... BRANCH == main)` instead of the intended short-circuit.
+  The correct path works:
+  ```bash
+  curl -s -X POST "http://localhost:7778/api/v1/runs/any-id/cancel" \
+    -H "Content-Type: application/json" -d '{}'
+  # Returns {"ok":false,"error":"Run not found"} — correctly reaches handler
+  ```
+  **Fix**: Change line 36 of `workflow-run-cancel-handler.ts` from  
+  `` `${daemonUrl}/api/v1/workflows/runs/${encodeURIComponent(runId)}/cancel` ``  
+  to `` `${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}/cancel` ``
 
 ---
 
-### [BUG] `&&` or `||` inside function argument strings breaks expression parsing
-
-- **Type**: runtime bug in `evaluateExpression`
-- **Attack / observation**: `contains(env.MSG, "hello && world")` — the outer `trimmed.includes('&&')` check fires before the function is parsed, splitting into `['contains(env.MSG, "hello', 'world")']` — both halves are invalid expressions.
-- **Expected**: `contains(env.MSG, "hello && world")` returns true/false based on string match
-- **Actual**: throws or returns incorrect result (both split halves fail to parse as valid expressions)
-- **Severity**: major — real YAML `if:` conditions with literal `&&` in string arguments silently break
+### [BUG] Cancel marks state but does not stop the worker — in-flight jobs continue
+- **Type**: runtime bug
+- **Attack / observation**: Issued `POST /api/v1/runs/:runId/cancel` on the live running workflow (`3596d5e3...`). The run's top-level `status` immediately flipped to `"cancelled"`. Polled again 3 seconds later: job status was still `"running"`, the current step `"Adversarial QA"` was still `"running"`, and 15+ downstream steps remained `"queued"` continuing to process. The worker (`worker.ts`) reads `freshRun` at the start of each step loop iteration but only uses it to build `ExpressionContext` — it never checks `freshRun.status === 'cancelled'`. The only cancellation signal the worker respects is `stopRequested` (set by daemon shutdown), not the run's own state.
+- **Expected**: Cancelling a run stops execution of the current and all subsequent steps; job is marked as cancelled/interrupted; no further steps execute
+- **Actual**: The worker continues processing all remaining queued steps through to completion, overwriting the `cancelled` status
+- **Severity**: major
 - **Reproduce**:
-  ```js
-  evaluateExpression('contains(env.MSG, "hello && world")', { env: { MSG: 'hello && world' }, ... })
-  // Should return true; instead produces wrong result
+  ```bash
+  # 1. Start a workflow with multiple steps
+  # 2. Cancel it mid-flight
+  curl -X POST http://localhost:7778/api/v1/runs/<runId>/cancel -H "Content-Type: application/json" -d '{}'
+  # 3. Observe: run.status = "cancelled" but job.status = "running"
+  # 4. Wait — remaining steps execute anyway
+  curl http://localhost:7778/api/v1/runs/<runId>
+  # job.status will eventually become "success"
   ```
 
 ---
 
-### [WEAK_TEST] `cancelRun` error loses daemon message — uses `statusText` not JSON body
-
-- **Type**: coverage gap + minor bug
-- **Attack / observation**: `cancelRun` in `http-client.ts:389` throws `Failed to cancel run: ${response.statusText}`. In HTTP/2, `statusText` is always empty string. The daemon returns a JSON body `{ ok: false, error: "Run not found" }` (or `"Cannot cancel run with status..."`) — but the client never reads it. Test RCX-06 mocks this with `Error('Failed to cancel run: Not Found')` which is a fabricated error string that can never occur in real HTTP/2.
-- **Expected**: error message includes the daemon's actual reason (e.g. "Run not found")
-- **Actual**: user sees `"Failed to cancel run: "` (empty) for HTTP/2 connections
-- **Severity**: minor — does not break functionality, but produces unhelpful UX
-- **Reproduce**: Run against a real daemon in HTTP/2 mode; cancel a non-existent run; observe error message
-
----
-
-### [MISSING_TEST] Whitespace-only `runId` bypasses validation
-
+### [MISSING_TEST] REST handler `workflow-run-cancel-handler.ts` has zero test coverage
 - **Type**: coverage gap
-- **Attack / observation**: `runId = "   "` (spaces only) — `!runId` evaluates to `false` because non-empty string is truthy. The command sends `%20%20%20` to the daemon, which returns 404, and the user gets an unhelpful error.
-- **Expected**: validation should reject whitespace-only run IDs with a clear error
-- **Actual**: passes validation, sends bad request to daemon
+- **Attack / observation**: `find .../entry/src/__tests__` shows only CLI handler tests exist. No test file covers the REST proxy handler. The URL mismatch bug (above) would have been caught immediately if a unit test existed.
+- **Expected**: Tests covering: correct daemon URL construction, success path, 404→rethrow, 409→rethrow, daemon down scenario
+- **Actual**: No tests exist for this file
+- **Severity**: major
+
+---
+
+### [WEAK_TEST] Whitespace-only runId bypasses validation
+- **Type**: coverage gap / minor runtime bug
+- **Attack / observation**: `if (!runId)` on line 27 of `runs-cancel.ts` evaluates `"   "` as truthy. A whitespace-only string passes validation, gets sent to the daemon as `%20%20%20`, and returns `{"ok":false,"error":"Run not found"}` — correct result by accident, but the validation message `"Missing run ID"` is the right user-facing error. Tested live: `curl -X POST "http://localhost:7778/api/v1/runs/%20%20%20/cancel"` returns 404 from daemon, not a clean client-side validation error.
+- **Expected**: `kb workflow runs cancel "   "` → validation error "Missing run ID"
+- **Actual**: Request reaches daemon and gets "Run not found" — misleading for the user
 - **Severity**: minor
-- **Reproduce**: `runsCancelCommand.execute(ctx, mockCLIInput({ argv: ['   '], flags: {} }))` — returns exitCode 1 via daemon error, not via validation
+- **Reproduce**: `runsCancelCommand.execute(ctx, mockCLIInput({ argv: ['   '], flags: {} }))`
 
 ---
 
-### [MISSING_TEST] No daemon/worker integration test for `buildShellSafeCommand` wiring
-
-- **Type**: coverage gap
-- **Attack / observation**: The security-critical `buildShellSafeCommand` integration in `worker.ts:368,521` has zero integration tests in `plugins/workflow/daemon/src/__tests__/`. Only unit tests in `contracts/` verify the function itself.
-- **Expected**: at least one worker-level test verifying that a `builtin:shell` step with a backtick/`$()` title actually injects the value as an env var and the command string does not contain the raw value
-- **Actual**: none
-- **Severity**: minor (function is well unit-tested; wiring is ~5 lines) — but the security claim cannot be verified end-to-end without running the daemon
+### [WEAK_TEST] Error message in API contract test doesn't match implementation
+- **Type**: false test / maintenance hazard
+- **Attack / observation**: `api-contract.integration.test.ts:276` mocks the 409 error as `'Cannot cancel run in status: success'` (colon + space format). The actual `workflow-host-service.ts:514` throws `Cannot cancel run with status "${run.status}"` (with + quotes format). The HTTP handler's `startsWith('Cannot cancel run')` prefix check masks the mismatch — tests pass regardless of which format is used.
+- **Expected**: Test mock message matches actual thrown message exactly
+- **Actual**: Mock uses a different format; the test is not actually verifying real error propagation
+- **Severity**: minor
 
 ---
 
 ## Conclusion
+Not safe to ship as-is. There are two runtime bugs with immediate user impact: (1) the REST proxy cancel path is hardcoded to a URL the daemon explicitly rejects with 404 — every Studio/API cancel request will fail silently; (2) cancel is semantically broken at the worker level — it marks state but doesn't interrupt execution, meaning a "cancelled" run continues running to completion. The CLI `kb workflow runs cancel` command itself works correctly for the happy path. Fix priority: REST URL fix is one line; the worker cancellation check requires adding `if (freshRun?.status === 'cancelled') return;` after the `freshRun` fetch in the step loop.
 
-The `runs cancel` command itself is solid: the 6 tests cover the core happy path, flag aliases, missing input, and two daemon failure modes — all catch real regressions (mutation-verified). The main issues are in the `expressions.ts` additions that came bundled in this PR: operator precedence is wrong for mixed `&&`/`||` (confirmed reproducible), and `&&`/`||` inside string literals in function arguments break expression parsing. These are latent bugs in workflow condition evaluation. The `cancelRun` error reporting silently loses the daemon's error message under HTTP/2. None of these block the cancel feature specifically, but the expressions bugs could cause silent misrouting in production workflows.
-
-::kb-output::{"verdict":"BUGS_FOUND","bugs_count":4,"report":"The `runs cancel` command implementation and tests are solid (all mutations caught). Two bugs found in expressions.ts: (1) operator precedence is inverted for mixed && / || — `true || false && false` returns false instead of true; (2) && or || inside function argument strings (e.g. contains(env.X, \"a && b\")) breaks expression parsing by splitting before the function is recognized. Additionally, cancelRun error messages are silently empty under HTTP/2 (uses statusText instead of JSON body), and no daemon-level integration test covers the security-critical buildShellSafeCommand wiring in worker.ts."}
+::kb-output::{"verdict":"BUGS_FOUND","bugs_count":4,"report":"Critical: REST proxy handler calls wrong daemon URL (/api/v1/workflows/runs/:id/cancel instead of /api/v1/runs/:id/cancel) — every gateway cancel request fails with 404; the daemon even has a test explicitly asserting this path is invalid. Major: worker.ts does not check run.status=cancelled between step iterations, so a cancelled run continues executing all remaining queued steps through to completion. CLI happy path works correctly. REST handler has zero test coverage."}
