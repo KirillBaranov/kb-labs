@@ -132,6 +132,31 @@ jobs:
           command: sleep 10
 EOF
 
+cat > .kb/workflows/e2e-approval.yml << 'EOF'
+name: e2e-approval
+version: 1.0.0
+description: E2E approval workflow — pauses for human approval then continues
+on:
+  manual: true
+jobs:
+  gate:
+    runsOn: local
+    steps:
+      - name: Before gate
+        uses: builtin:shell
+        with:
+          command: echo "before approval"
+      - name: Human gate
+        uses: builtin:approval
+        with:
+          title: E2E approval check
+          instructions: Approve to continue, reject to stop
+      - name: After gate
+        uses: builtin:shell
+        with:
+          command: echo "after approval"
+EOF
+
 # ── Step 3: Start backend services ────────────────────────────────────────
 # Start infra first (state-daemon), then backend group.
 # kb-dev start accepts one service/group name — not multiple.
