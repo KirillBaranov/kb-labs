@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ConcurrencyManager } from '../concurrency-manager.js';
 import type { ICache } from '@kb-labs/core-platform';
 import { mockLogger } from '@kb-labs/shared-testing';

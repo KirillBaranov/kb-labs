@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Scheduler, type JobQueueEntry } from '../scheduler.js';
 import type { JobRun } from '@kb-labs/workflow-contracts';
 import type { ICache } from '@kb-labs/core-platform';
