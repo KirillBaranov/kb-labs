@@ -376,6 +376,77 @@ export class WorkflowDaemonClient {
   }
 
   /**
+   * List pending approval steps for a run
+   */
+  async listPendingApprovals(runId: string): Promise<{
+    runId: string;
+    pending: Array<{
+      jobId: string;
+      stepId: string;
+      stepName: string;
+      specId?: string;
+      context: Record<string, unknown>;
+      waitingSince?: string;
+    }>;
+  }> {
+    const encodedId = encodeURIComponent(runId);
+    const response = await fetch(`${this.baseUrl}/api/v1/runs/${encodedId}/approvals`);
+    if (!response.ok) {
+      const message = await response
+        .json()
+        .then((j: { error?: string }) => j?.error ?? '')
+        .catch(() => response.text().catch(() => ''));
+      throw new Error(`Failed to list pending approvals: ${message || response.statusText || response.status}`);
+    }
+    const payload = await this.parseJsonResponse<{
+      ok: boolean;
+      data?: {
+        runId: string;
+        pending: Array<{
+          jobId: string;
+          stepId: string;
+          stepName: string;
+          specId?: string;
+          context: Record<string, unknown>;
+          waitingSince?: string;
+        }>;
+      };
+    }>(response);
+    return this.unwrapData(payload);
+  }
+
+  /**
+   * Resolve (approve or reject) a pending approval step
+   */
+  async resolveApproval(
+    runId: string,
+    jobId: string,
+    stepId: string,
+    action: 'approve' | 'reject',
+    comment?: string,
+    data?: Record<string, unknown>
+  ): Promise<{ runId: string; jobId: string; stepId: string; action: string; resolved: boolean }> {
+    const encodedId = encodeURIComponent(runId);
+    const response = await fetch(`${this.baseUrl}/api/v1/runs/${encodedId}/approvals/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId, stepId, action, comment, data }),
+    });
+    if (!response.ok) {
+      const message = await response
+        .json()
+        .then((j: { error?: string }) => j?.error ?? '')
+        .catch(() => response.text().catch(() => ''));
+      throw new Error(`Failed to resolve approval: ${message || response.statusText || response.status}`);
+    }
+    const payload = await this.parseJsonResponse<{
+      ok: boolean;
+      data?: { runId: string; jobId: string; stepId: string; action: string; resolved: boolean };
+    }>(response);
+    return this.unwrapData(payload);
+  }
+
+  /**
    * Cancel a workflow run
    */
   async cancelRun(runId: string): Promise<void> {

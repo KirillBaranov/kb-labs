@@ -287,6 +287,47 @@ export interface RunsCancelFlags {
 }
 
 /**
+ * Flags for workflow:runs-approve command
+ */
+export const runsApproveFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to approve/reject (alias for positional argument)',
+  },
+  'job-id': {
+    type: 'string',
+    description: 'Job ID containing the approval step',
+  },
+  'step-id': {
+    type: 'string',
+    description: 'Step ID to approve or reject',
+  },
+  action: {
+    type: 'string',
+    description: 'Action to take: "approve" or "reject" (default: approve)',
+    default: 'approve',
+  },
+  comment: {
+    type: 'string',
+    description: 'Optional comment to attach to the approval decision',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export interface RunsApproveFlags {
+  'run-id'?: string;
+  'job-id'?: string;
+  'step-id'?: string;
+  action?: string;
+  comment?: string;
+  json?: boolean;
+}
+
+/**
  * Flags for workflow:lint command
  */
 export const lintFlags = {
