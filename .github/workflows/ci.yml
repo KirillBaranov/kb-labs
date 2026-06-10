@@ -361,9 +361,20 @@ jobs:
           fi
 
       - name: Run kb-create e2e via devkit
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        run: |
+          ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache \
+            2>&1 | tee /tmp/kb-create-e2e-devkit.log; exit "${PIPESTATUS[0]}"
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          KB_DEVKIT_FAIL_LINES: 0
+
+      - name: Upload kb-create e2e log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-create-e2e-log-${{ github.run_id }}
+          path: /tmp/kb-create-e2e-devkit.log
+          retention-days: 14
 
       - name: Stop Verdaccio
         if: always()

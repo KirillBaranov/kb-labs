@@ -20,7 +20,7 @@ test:
 
 ## e2e: run full end-to-end suite (installs platform from npm — requires network)
 e2e:
-	go test -race -count=1 -timeout 20m ./e2e/...
+	go test -v -race -count=1 -timeout 20m ./e2e/...
 
 ## cover: run tests and open coverage report in browser (skips network-bound e2e — use `make e2e` separately)
 cover:
