@@ -1,61 +1,12 @@
 /**
  * Unit tests for the shell built-in output extraction.
  *
- * `mergeJsonOutputs` is private inside shell.ts, so we reproduce the
- * same logic here and verify the expected contract.
+ * Tests cover mergeJsonOutputs and parseOutputMarkerLine — the two
+ * functions responsible for extracting structured outputs from shell stdout.
  */
-import { describe, it, expect, expectTypeOf } from 'vitest'
-import type { ShellInput, ShellOutput } from '../shell'
-
-// ---------------------------------------------------------------------------
-// Constants — must match shell.ts
-// ---------------------------------------------------------------------------
-const OUTPUT_MARKER = '::kb-output::'
-
-// ---------------------------------------------------------------------------
-// Inline mirror of the private mergeJsonOutputs function.
-// Any change to the logic in shell.ts must be reflected here.
-// ---------------------------------------------------------------------------
-function mergeJsonOutputs(output: ShellOutput): Record<string, unknown> {
-  const base: Record<string, unknown> = { ...output }
-  const trimmed = output.stdout.trim()
-  if (!trimmed) {
-    return base
-  }
-
-  // Priority 1: Look for ::kb-output:: marker lines
-  const lines = output.stdout.split('\n')
-  let foundMarker = false
-  for (const line of lines) {
-    const idx = line.indexOf(OUTPUT_MARKER)
-    if (idx !== -1) {
-      foundMarker = true
-      try {
-        const parsed = JSON.parse(line.slice(idx + OUTPUT_MARKER.length))
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          Object.assign(base, parsed)
-        }
-      } catch {
-        // Malformed marker — skip
-      }
-    }
-  }
-
-  if (foundMarker) {
-    return base
-  }
-
-  // Priority 2: Fallback — entire stdout as JSON (backward compat)
-  try {
-    const parsed = JSON.parse(trimmed)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      Object.assign(base, parsed)
-    }
-  } catch {
-    // Not JSON — return as-is
-  }
-  return base
-}
+import { describe, it, expect, expectTypeOf, vi } from 'vitest'
+import type { ShellInput, ShellOutput } from '../shell.js'
+import { mergeJsonOutputs, parseOutputMarkerLine } from '../shell.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,7 +21,63 @@ function makeOutput(stdout: string, exitCode = 0): ShellOutput {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: ::kb-output:: marker (primary mechanism)
+// Tests: parseOutputMarkerLine
+// ---------------------------------------------------------------------------
+describe('parseOutputMarkerLine', () => {
+  it('returns null for a line with no marker', () => {
+    expect(parseOutputMarkerLine('just a log line')).toBeNull()
+    expect(parseOutputMarkerLine('')).toBeNull()
+    expect(parseOutputMarkerLine('{ "foo": 1 }')).toBeNull()
+  })
+
+  it('parses a plain ::kb-output:: marker', () => {
+    expect(parseOutputMarkerLine('::kb-output::{"passed":true,"score":95}')).toEqual({ passed: true, score: 95 })
+  })
+
+  it('throws a descriptive error for malformed JSON in plain marker (F6)', () => {
+    // Silent drop was the bug — must now throw so callers can warn
+    expect(() => parseOutputMarkerLine('::kb-output::not json')).toThrow(/malformed/i)
+    expect(() => parseOutputMarkerLine('::kb-output::{"key": }')).toThrow()
+  })
+
+  it('throws a descriptive error when plain marker JSON is an array (not object)', () => {
+    expect(() => parseOutputMarkerLine('::kb-output::[1,2,3]')).toThrow(/array/i)
+  })
+
+  it('parses ::kb-output:base64:: with valid base64-encoded JSON (F7)', () => {
+    const payload = Buffer.from(JSON.stringify({ plan: 'line 1\nline 2\n"quotes"' })).toString('base64')
+    const result = parseOutputMarkerLine(`::kb-output:base64::${payload}`)
+    expect(result).toEqual({ plan: 'line 1\nline 2\n"quotes"' })
+  })
+
+  it('handles multi-line text safely via base64 — the F7 fix', () => {
+    // This is the scenario that was broken: embedding raw multi-line text in plain marker
+    // breaks JSON.parse.  Base64 variant handles it correctly.
+    const multiline = 'line 1\nline 2\n"quotes" and \\backslash'
+    const payload = Buffer.from(JSON.stringify({ content: multiline })).toString('base64')
+    const result = parseOutputMarkerLine(`::kb-output:base64::${payload}`)
+    expect(result).toEqual({ content: multiline })
+  })
+
+  it('throws on invalid base64 in base64 marker', () => {
+    expect(() => parseOutputMarkerLine('::kb-output:base64::!!!not-base64!!!')).toThrow()
+  })
+
+  it('throws when base64 decodes to non-object JSON', () => {
+    const payload = Buffer.from(JSON.stringify([1, 2, 3])).toString('base64')
+    expect(() => parseOutputMarkerLine(`::kb-output:base64::${payload}`)).toThrow(/array/i)
+  })
+
+  it('base64 marker takes priority when both markers appear on the same line', () => {
+    // ::kb-output:base64:: contains ::kb-output:: as a substring — base64 wins
+    const payload = Buffer.from(JSON.stringify({ source: 'base64' })).toString('base64')
+    const result = parseOutputMarkerLine(`::kb-output:base64::${payload}`)
+    expect(result?.source).toBe('base64')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: mergeJsonOutputs — ::kb-output:: marker (plain JSON)
 // ---------------------------------------------------------------------------
 describe('mergeJsonOutputs — ::kb-output:: marker', () => {
   it('extracts outputs from ::kb-output:: marker line', () => {
@@ -124,21 +131,34 @@ describe('mergeJsonOutputs — ::kb-output:: marker', () => {
     expect(result.passed).toBe(true)
   })
 
-  it('skips malformed marker JSON without crashing', () => {
+  it('calls warn callback and skips key on malformed marker JSON (F6 fix)', () => {
+    const warn = vi.fn()
     const stdout = [
       '::kb-output::not json',
       '::kb-output::{"valid":true}',
     ].join('\n')
-    const result = mergeJsonOutputs(makeOutput(stdout))
+    const result = mergeJsonOutputs(makeOutput(stdout), warn)
 
+    // Valid marker still processed
     expect(result.valid).toBe(true)
+    // Warn called exactly once for the malformed line
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]?.[0]).toMatch(/malformed/i)
   })
 
-  it('ignores marker with array JSON', () => {
+  it('without warn callback, malformed marker is silently skipped (no throw)', () => {
+    const stdout = '::kb-output::not json'
+    // Must not throw even without a warn callback
+    expect(() => mergeJsonOutputs(makeOutput(stdout))).not.toThrow()
+  })
+
+  it('ignores marker with array JSON and calls warn', () => {
+    const warn = vi.fn()
     const stdout = '::kb-output::[1,2,3]'
-    const result = mergeJsonOutputs(makeOutput(stdout))
+    const result = mergeJsonOutputs(makeOutput(stdout), warn)
 
     expect(result[0]).toBeUndefined()
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 
   it('preserves base ShellOutput fields', () => {
@@ -158,6 +178,70 @@ describe('mergeJsonOutputs — ::kb-output:: marker', () => {
     const result = mergeJsonOutputs(makeOutput(stdout))
 
     expect(result.source).toBe('marker')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: mergeJsonOutputs — ::kb-output:base64:: (JSON-safe, F7 fix)
+// ---------------------------------------------------------------------------
+describe('mergeJsonOutputs — ::kb-output:base64:: marker', () => {
+  it('extracts outputs from a base64-encoded marker', () => {
+    const payload = Buffer.from(JSON.stringify({ plan: 'my plan', passed: true })).toString('base64')
+    const result = mergeJsonOutputs(makeOutput(`::kb-output:base64::${payload}`))
+
+    expect(result.plan).toBe('my plan')
+    expect(result.passed).toBe(true)
+  })
+
+  it('handles multi-line text values safely (F7 regression guard)', () => {
+    const multiline = '# Plan\n- Step 1\n- Step 2\n"quoted" value'
+    const payload = Buffer.from(JSON.stringify({ plan: multiline })).toString('base64')
+    const result = mergeJsonOutputs(makeOutput(`::kb-output:base64::${payload}`))
+
+    expect(result.plan).toBe(multiline)
+  })
+
+  it('handles special chars and unicode safely', () => {
+    const special = 'hello\t\r\n"world"\\ ← → ✓'
+    const payload = Buffer.from(JSON.stringify({ v: special })).toString('base64')
+    const result = mergeJsonOutputs(makeOutput(`::kb-output:base64::${payload}`))
+
+    expect(result.v).toBe(special)
+  })
+
+  it('merges multiple base64 markers', () => {
+    const p1 = Buffer.from(JSON.stringify({ a: 1 })).toString('base64')
+    const p2 = Buffer.from(JSON.stringify({ b: 2 })).toString('base64')
+    const stdout = [`::kb-output:base64::${p1}`, 'log', `::kb-output:base64::${p2}`].join('\n')
+    const result = mergeJsonOutputs(makeOutput(stdout))
+
+    expect(result.a).toBe(1)
+    expect(result.b).toBe(2)
+  })
+
+  it('calls warn on invalid base64 and continues processing other lines', () => {
+    const warn = vi.fn()
+    const validPayload = Buffer.from(JSON.stringify({ ok: true })).toString('base64')
+    const stdout = [
+      '::kb-output:base64::!!!invalid!!!',
+      `::kb-output:base64::${validPayload}`,
+    ].join('\n')
+    const result = mergeJsonOutputs(makeOutput(stdout), warn)
+
+    expect(result.ok).toBe(true)
+    expect(warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('base64 and plain markers can coexist in the same stdout', () => {
+    const b64Payload = Buffer.from(JSON.stringify({ fromBase64: true })).toString('base64')
+    const stdout = [
+      '::kb-output::{"fromPlain":true}',
+      `::kb-output:base64::${b64Payload}`,
+    ].join('\n')
+    const result = mergeJsonOutputs(makeOutput(stdout))
+
+    expect(result.fromPlain).toBe(true)
+    expect(result.fromBase64).toBe(true)
   })
 })
 
