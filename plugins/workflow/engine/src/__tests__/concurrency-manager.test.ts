@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConcurrencyManager } from '../concurrency-manager.js';
 import type { ICache } from '@kb-labs/core-platform';
+import { mockLogger } from '@kb-labs/shared-testing';
 
 class MockCache implements ICache {
   private store = new Map<string, any>();
@@ -22,7 +23,6 @@ class MockCache implements ICache {
   async stop() {}
 }
 
-const noopLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 describe('ConcurrencyManager', () => {
   let cache: MockCache;
@@ -30,7 +30,7 @@ describe('ConcurrencyManager', () => {
 
   beforeEach(() => {
     cache = new MockCache();
-    mgr = new ConcurrencyManager(cache, noopLogger as any);
+    mgr = new ConcurrencyManager(cache, mockLogger());
   });
 
   it('acquires lock for empty group', async () => {

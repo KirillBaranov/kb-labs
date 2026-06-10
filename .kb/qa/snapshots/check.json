@@ -9164,5 +9164,1697 @@
         "warnings": 0
       }
     }
+  },
+  {
+    "id": "34a664a6-207f-4b7b-941a-fe970e7a39e8",
+    "timestamp": "2026-06-10T17:38:08.376Z",
+    "durationMs": 15956,
+    "git": {
+      "commit": "2c78dd52",
+      "branch": "main",
+      "message": "fix(ci): add continue-on-error to Emit timings step in e2e-docker workflow"
+    },
+    "kind": "check",
+    "raw": {
+      "ok": true,
+      "packages": {
+        "@kb-labs/adapters-analytics-duckdb": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-analytics-file": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-analytics-sqlite": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-environment-docker": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-eventbus-cache": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-fs": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-kblabs-gateway": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-log-document": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-log-ringbuffer": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-mongodb": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-openai": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-pino": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-pino-http": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-qdrant": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-redis": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-s3": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-service-transport-http": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-snapshot-localfs": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-sqlite": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-telegram": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-transport": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-vibeproxy": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-voyage-ai": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-workspace-agent": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-workspace-localfs": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/adapters-workspace-worktree": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-history": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-kernel": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-mcp": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-runtime": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-sdk": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-store": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-tools": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/agent-tracing": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/cli-bin": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/cli-commands": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/cli-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/cli-runtime": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/clickup-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/clickup-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/clickup-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/commit-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/commit-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/commit-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-bundle": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-config": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-discovery": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-ipc": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-platform": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-policy": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-registry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-resource-broker": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-runtime": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-sandbox": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-state-broker": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-state-daemon": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-sys": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-tenant": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-types": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/core-workspace": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/devkit": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/devlink-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/devlink-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/devlink-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-gateway": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-marketplace": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-marketplace-registry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-mcp": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-mind": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-platform": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-plugins": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-rest-api": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-services": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-studio": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/e2e-workflows": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/gateway-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/gateway-auth": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/gateway-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/gateway-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/gateway-runtime-server": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/github-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/github-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-client": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-fs": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/host-agent-transport": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/impact-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/impact-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/inbox-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/inbox-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/inbox-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/infra-worker-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/infra-worker-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/llm-router": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-api": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-npm": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-registry-api": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-registry-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-registry-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-registry-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/marketplace-registry-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/mcp-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/mind-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/mind-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/mind-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/notifier-router": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/perm-presets": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/platform-client": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/plugin-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/plugin-execution": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/plugin-execution-factory": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/plugin-runtime": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/policy-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/policy-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/qa-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/qa-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/qa-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/quality-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/quality-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/quality-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/release-manager-changelog": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/release-manager-checks": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/release-manager-cli": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/release-manager-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/release-manager-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/rest-api-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/rest-api-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/rest-api-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/review-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/review-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/review-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/review-heuristic": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/review-llm": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/scaffold": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/scaffold-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/scaffold-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/sdk": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-cli-ui": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-command-kit": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-daemon": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-http": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-testing": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-testing-e2e": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-testing-platform": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/shared-tool-kit": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/site-tools": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-app": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-data-client": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-devtools": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-event-bus": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-federation": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-hooks": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-plugin-tools": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-ui-core": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/studio-ui-kit": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/telemetry-client": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-artifacts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-constants": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-contracts": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-daemon": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-engine": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-entry": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-runtime": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-steps": {
+          "ok": true,
+          "issues": null
+        },
+        "@kb-labs/workflow-studio": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/clikit": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/dev": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/devkit": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/env": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/kb-deploy": {
+          "ok": true,
+          "issues": null
+        },
+        "github.com/kb-labs/kb-monitor": {
+          "ok": true,
+          "issues": null
+        },
+        "kb-create": {
+          "ok": true,
+          "issues": null
+        },
+        "kb-labs-web": {
+          "ok": true,
+          "issues": null
+        }
+      },
+      "results": [
+        {
+          "package": "@kb-labs/studio-ui-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/policy-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/env",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/rest-api-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-testing",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/site-tools",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-cli-ui",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-ipc",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/plugin-runtime",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-mongodb",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/clikit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-mind",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-runtime",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-pino-http",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-workspace",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/scaffold-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-registry-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/mcp-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-vibeproxy",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/cli-runtime",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/release-manager-changelog",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/plugin-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-tool-kit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/release-manager-cli",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/review-llm",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/qa-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-eventbus-cache",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/notifier-router",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-hooks",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/cli-bin",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/commit-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/impact-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-registry-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-federation",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-tracing",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/devkit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/platform-client",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/release-manager-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-resource-broker",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/plugin-execution-factory",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-engine",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/devlink-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/scaffold",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-state-daemon",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-gateway",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-daemon",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-transport",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/devlink-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/policy-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-testing-e2e",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/review-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-sqlite",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-snapshot-localfs",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/clickup-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-daemon",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/telemetry-client",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/quality-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/qa-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/mind-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-workspace-agent",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-studio",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-http",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-steps",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-s3",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-policy",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-analytics-sqlite",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/clickup-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/quality-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/release-manager-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-plugins",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-registry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/qa-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-kernel",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/mind-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-data-client",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-marketplace-registry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-mcp",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-config",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-artifacts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "kb-create",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/sdk",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/infra-worker-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-store",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/gateway-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/plugin-execution",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/kb-deploy",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-registry-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-runtime",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/mind-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/gateway-runtime-server",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-analytics-file",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-qdrant",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/cli-commands",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-command-kit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/github-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/gateway-auth",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/gateway-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-analytics-duckdb",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-log-document",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-openai",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/devkit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/commit-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-service-transport-http",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/dev",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "kb-labs-web",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-tenant",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-rest-api",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-fs",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/inbox-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-api",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-telegram",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-plugin-tools",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-ui-kit",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-transport",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-discovery",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/llm-router",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-platform",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-constants",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-workspace-worktree",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/release-manager-checks",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/devlink-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/perm-presets",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/shared-testing-platform",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/inbox-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/impact-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-log-ringbuffer",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-types",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/scaffold-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-environment-docker",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-pino",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/host-agent-client",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/review-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/review-heuristic",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/gateway-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-kblabs-gateway",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-event-bus",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-state-broker",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-sys",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-bundle",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-history",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-sdk",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-sandbox",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/rest-api-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/quality-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/commit-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-platform",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/infra-worker-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-voyage-ai",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-workspace-localfs",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-services",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-workflows",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/core-runtime",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/e2e-marketplace",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-npm",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/workflow-studio",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/rest-api-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-fs",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/studio-devtools",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/review-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/adapters-redis",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "github.com/kb-labs/kb-monitor",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/cli-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/github-contracts",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/inbox-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-mcp",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-tools",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/clickup-entry",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/agent-core",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-registry-app",
+          "ok": true,
+          "issues": null
+        },
+        {
+          "package": "@kb-labs/marketplace-registry-api",
+          "ok": true,
+          "issues": null
+        }
+      ],
+      "groups": {
+        "adapter": 27,
+        "e2e-suite": 7,
+        "go-binary": 7,
+        "plugin-e2e-suite": 4,
+        "plugin-entry": 17,
+        "site": 1,
+        "spa": 2,
+        "ts-app": 9,
+        "ts-lib": 110
+      },
+      "summary": {
+        "total": 184,
+        "passed": 184,
+        "failed": 0,
+        "errors": 0,
+        "warnings": 0
+      }
+    }
   }
 ]

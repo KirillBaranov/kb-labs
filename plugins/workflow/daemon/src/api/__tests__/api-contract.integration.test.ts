@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockLogger } from '@kb-labs/shared-testing';
 import { registerCronAPI } from '../cron-api.js';
 import { registerJobsAPI } from '../jobs-api.js';
 import { registerWorkflowsAPI } from '../workflows-api.js';
@@ -63,9 +64,7 @@ describe('Workflow API Contract Integration', () => {
     app = Fastify({ logger: false });
     hostService = createHostServiceMock();
     engine = createEngineMock();
-    const logger = {
-      info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn(),
-    } as any;
+    const logger = mockLogger();
     observability = {
       observeOperation: vi.fn((_name: string, fn: () => unknown) => fn()),
     };

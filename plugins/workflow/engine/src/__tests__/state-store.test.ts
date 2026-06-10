@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StateStore } from '../state-store.js';
 import type { WorkflowRun, JobRun } from '@kb-labs/workflow-contracts';
 import type { ICache } from '@kb-labs/core-platform';
+import { mockLogger } from '@kb-labs/shared-testing';
 
 class MockCache implements ICache {
   private store = new Map<string, any>();
@@ -36,7 +37,6 @@ class MockCache implements ICache {
   async stop() {}
 }
 
-const noopLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
   return {
@@ -68,7 +68,7 @@ describe('StateStore', () => {
 
   beforeEach(() => {
     cache = new MockCache();
-    store = new StateStore(cache, noopLogger as any);
+    store = new StateStore(cache, mockLogger());
   });
 
   // ── saveRun / getRun ─────────────────────────────────────────────────

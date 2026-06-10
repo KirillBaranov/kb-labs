@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowRun } from '@kb-labs/workflow-contracts';
+import { mockLogger } from '@kb-labs/shared-testing';
 import { WorkflowHostService } from './workflow-host-service.js';
 
 function createService(overrides: Partial<Record<string, any>> = {}) {
@@ -20,22 +21,13 @@ function createService(overrides: Partial<Record<string, any>> = {}) {
     ...overrides.jobBroker,
   };
 
-  const logger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    child: vi.fn(() => logger),
-    ...overrides.logger,
-  };
-
   const workflowService = overrides.workflowService;
   const cronScheduler = overrides.cronScheduler;
 
   return new WorkflowHostService({
     engine: engine as any,
     jobBroker: jobBroker as any,
-    logger: logger as any,
+    logger: mockLogger(),
     workflowService: workflowService as any,
     cronScheduler: cronScheduler as any,
   });

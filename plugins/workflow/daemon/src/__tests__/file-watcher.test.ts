@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import type { FSWatcher } from 'node:fs';
+import { mockLogger } from '@kb-labs/shared-testing';
 
 // --- fs mocks must be set up before importing the module under test ---
 
@@ -29,15 +30,6 @@ function getWatchCallback(callIndex = 0): WatchCallback {
 
 // ---------- helpers ----------
 
-function makeLogger() {
-  return {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    child: vi.fn(),
-  };
-}
 
 function makeWorkflowService() {
   return { refreshManifests: vi.fn().mockResolvedValue(undefined) };
@@ -52,7 +44,7 @@ function makeCronScheduler() {
 }
 
 function makeWatcher(overrides: Partial<ConstructorParameters<typeof WorkflowFileWatcher>[0]> = {}) {
-  const logger = makeLogger();
+  const logger = mockLogger();
   const workflowService = makeWorkflowService();
   const cronDiscovery = makeCronDiscovery();
   const cronScheduler = makeCronScheduler();
@@ -62,7 +54,7 @@ function makeWatcher(overrides: Partial<ConstructorParameters<typeof WorkflowFil
     workflowService: workflowService as any,
     cronDiscovery: cronDiscovery as any,
     cronScheduler: cronScheduler as any,
-    logger: logger as any,
+    logger,
     debounceMs: 0, // no delay in tests
     ...overrides,
   });

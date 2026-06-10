@@ -851,12 +851,132 @@
       "findings": [],
       "createdAt": 1781021311427,
       "lastAccessedAt": 1781021311427
+    },
+    "plugins/workflow/daemon/src/__tests__/worker-lifecycle.e2e.test.ts": {
+      "path": "plugins/workflow/daemon/src/__tests__/worker-lifecycle.e2e.test.ts",
+      "contentHash": "17a2cec6f47208b1",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/daemon/src/__tests__/worker-lifecycle.e2e.test.ts-1",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/daemon/src/__tests__/worker-lifecycle.e2e.test.ts",
+          "line": 1,
+          "column": 1,
+          "message": "Usage of mockLogger is present without validation — it's unclear how messages are logged or if there are any constraints on message formats or sizes, which could lead to unnecessary memory usage or unhandled errors depending on implementation details of mockLogger.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "import { mockLogger } from '@kb-labs/shared-testing';",
+          "contentHash": "17a2cec6f47208b1",
+          "cachedAt": 1781112607732
+        }
+      ],
+      "createdAt": 1781112607732,
+      "lastAccessedAt": 1781112607732
+    },
+    "plugins/workflow/engine/src/__tests__/concurrency-manager.test.ts": {
+      "path": "plugins/workflow/engine/src/__tests__/concurrency-manager.test.ts",
+      "contentHash": "b9b59d7b9e215589",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/engine/src/__tests__/concurrency-manager.test.ts-1",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/engine/src/__tests__/concurrency-manager.test.ts",
+          "line": 1,
+          "column": 1,
+          "message": "Usage of mockLogger is present without validation and may affect log processing or consumption, leading to potential performance issues or unhandled exceptions based on logger implementation.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "import { mockLogger } from '@kb-labs/shared-testing';",
+          "contentHash": "b9b59d7b9e215589",
+          "cachedAt": 1781112607732
+        }
+      ],
+      "createdAt": 1781112607732,
+      "lastAccessedAt": 1781112607732
+    },
+    "plugins/workflow/engine/src/__tests__/engine.test.ts": {
+      "path": "plugins/workflow/engine/src/__tests__/engine.test.ts",
+      "contentHash": "d81a34e01852b263",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/engine/src/__tests__/engine.test.ts-1",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/engine/src/__tests__/engine.test.ts",
+          "line": 1,
+          "column": 1,
+          "message": "mockLogger is imported but there's no visible validation or sanitization of the logger's output; poor log management could lead to performance issues.",
+          "severity": "low",
+          "confidence": "likely",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "import { mockLogger } from '@kb-labs/shared-testing';",
+          "contentHash": "d81a34e01852b263",
+          "cachedAt": 1781112607732
+        }
+      ],
+      "createdAt": 1781112607732,
+      "lastAccessedAt": 1781112607732
+    },
+    "plugins/workflow/engine/src/__tests__/scheduler.test.ts": {
+      "path": "plugins/workflow/engine/src/__tests__/scheduler.test.ts",
+      "contentHash": "4e920e17328868ad",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/engine/src/__tests__/scheduler.test.ts-1",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/engine/src/__tests__/scheduler.test.ts",
+          "line": 1,
+          "column": 1,
+          "message": "Handling of mockLogger should be validated — ensure messages are not inadvertently overloaded, which can lead to application slowdowns.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "import { mockLogger } from '@kb-labs/shared-testing';",
+          "contentHash": "4e920e17328868ad",
+          "cachedAt": 1781112607733
+        }
+      ],
+      "createdAt": 1781112607733,
+      "lastAccessedAt": 1781112607733
+    },
+    "plugins/workflow/engine/src/__tests__/state-store.test.ts": {
+      "path": "plugins/workflow/engine/src/__tests__/state-store.test.ts",
+      "contentHash": "54205deae1b6d285",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/engine/src/__tests__/state-store.test.ts-1",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/engine/src/__tests__/state-store.test.ts",
+          "line": 1,
+          "column": 1,
+          "message": "mockLogger is used without any constraints on message logging; this could lead to memory issues if very verbose logging is done.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "import { mockLogger } from '@kb-labs/shared-testing';",
+          "contentHash": "54205deae1b6d285",
+          "cachedAt": 1781112607733
+        }
+      ],
+      "createdAt": 1781112607733,
+      "lastAccessedAt": 1781112607733
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1781021311427,
-    "totalFindings": 14,
-    "totalFiles": 87
+    "lastUpdatedAt": 1781112607733,
+    "totalFindings": 19,
+    "totalFiles": 92
   }
 }
