@@ -12,7 +12,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WorkflowEngine } from '../engine.js';
 import type { WorkflowSpec, WorkflowRun } from '@kb-labs/workflow-contracts';
-import type { ICache, IEventBus, ILogger } from '@kb-labs/core-platform';
+import type { ICache, IEventBus } from '@kb-labs/core-platform';
+import { mockLogger, type MockLoggerInstance } from '@kb-labs/shared-testing';
 
 // Mock Cache
 class MockCache implements ICache {
@@ -112,29 +113,16 @@ class MockEventBus implements IEventBus {
   }
 }
 
-// Mock Logger
-const createMockLogger = (): ILogger => ({
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  debug: vi.fn(),
-  trace: vi.fn(),
-  fatal: vi.fn(),
-  child: vi.fn(function () {
-    return createMockLogger();
-  }),
-});
-
 describe('WorkflowEngine', () => {
   let cache: MockCache;
   let events: MockEventBus;
-  let logger: ILogger;
+  let logger: MockLoggerInstance;
   let engine: WorkflowEngine;
 
   beforeEach(() => {
     cache = new MockCache();
     events = new MockEventBus();
-    logger = createMockLogger();
+    logger = mockLogger();
 
     engine = new WorkflowEngine({
       cache,

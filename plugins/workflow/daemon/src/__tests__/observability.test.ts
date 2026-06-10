@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mockLogger } from '@kb-labs/shared-testing';
 import {
   checkCanonicalObservabilityMetrics,
   validateServiceObservabilityDescribe,
@@ -31,20 +32,12 @@ function createWorkflowServer() {
   const jobBroker = {};
   const workflowService = { listAll: vi.fn(), get: vi.fn() };
   const cronScheduler = {};
-  const logger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    child: vi.fn(),
-  };
-
   return createServer({
     engine: engine as any,
     jobBroker: jobBroker as any,
     workflowService: workflowService as any,
     cronScheduler: cronScheduler as any,
-    logger: logger as any,
+    logger: mockLogger(),
   });
 }
 

@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+import { mockLogger } from '@kb-labs/shared-testing';
 import { JobBroker } from '../job-broker.js';
 
 function buildPlatform(logsResult: unknown) {
@@ -27,9 +28,6 @@ function buildEngine(run: unknown) {
   };
 }
 
-function buildLogger() {
-  return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-}
 
 describe('JobBroker._queryLogs — null/undefined log safety', () => {
   it('returns [] when platform.logs.query returns { logs: null }', async () => {
@@ -40,7 +38,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     };
     const broker = new JobBroker(
       buildEngine(run) as never,
-      buildLogger() as never,
+      mockLogger(),
       buildPlatform({ logs: null }) as never,
     );
 
@@ -57,7 +55,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     };
     const broker = new JobBroker(
       buildEngine(run) as never,
-      buildLogger() as never,
+      mockLogger(),
       buildPlatform({ logs: undefined }) as never,
     );
 
@@ -74,7 +72,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     };
     const broker = new JobBroker(
       buildEngine(run) as never,
-      buildLogger() as never,
+      mockLogger(),
       buildPlatform({}) as never,
     );
 
@@ -91,7 +89,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     };
     const broker = new JobBroker(
       buildEngine(run) as never,
-      buildLogger() as never,
+      mockLogger(),
       buildPlatform({
         logs: [
           // Entry with valid fields matching runId
@@ -114,7 +112,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
   it('returns [] when run does not exist', async () => {
     const broker = new JobBroker(
       buildEngine(null) as never,
-      buildLogger() as never,
+      mockLogger(),
       buildPlatform({ logs: [] }) as never,
     );
 
@@ -134,7 +132,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     };
     const broker = new JobBroker(
       buildEngine(run) as never,
-      buildLogger() as never,
+      mockLogger(),
       {
         logs: {
           query: vi.fn(async () => {

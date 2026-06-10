@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Scheduler, type JobQueueEntry } from '../scheduler.js';
 import type { JobRun } from '@kb-labs/workflow-contracts';
 import type { ICache } from '@kb-labs/core-platform';
+import { mockLogger } from '@kb-labs/shared-testing';
 
 // Reuse MockCache pattern from engine.test.ts
 class MockCache implements ICache {
@@ -38,12 +39,6 @@ class MockCache implements ICache {
   async stop() {}
 }
 
-const noopLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
 
 function makeJob(overrides: Partial<JobRun> = {}): JobRun {
   return {
@@ -62,7 +57,7 @@ describe('Scheduler', () => {
 
   beforeEach(() => {
     cache = new MockCache();
-    scheduler = new Scheduler(cache, noopLogger as any);
+    scheduler = new Scheduler(cache, mockLogger());
   });
 
   // ── enqueueJob ───────────────────────────────────────────────────────
@@ -180,7 +175,7 @@ describe('Scheduler', () => {
   it('returns configured default priority', () => {
     expect(scheduler.getDefaultPriority()).toBe('normal');
 
-    const highDefault = new Scheduler(cache, noopLogger as any, { defaultPriority: 'high' });
+    const highDefault = new Scheduler(cache, mockLogger(), { defaultPriority: 'high' });
     expect(highDefault.getDefaultPriority()).toBe('high');
   });
 });

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockLogger } from '@kb-labs/shared-testing';
 
 // Mock SandboxRunner — worker tests verify orchestration, not plugin resolution.
 // SandboxRunner is tested separately in workflow-runtime.
@@ -80,18 +81,12 @@ describe('workflow worker lifecycle', () => {
       })),
     };
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test-workspace',
       platform: {
         executionBackend: { execute: vi.fn() } as any,
@@ -163,18 +158,12 @@ describe('workflow worker lifecycle', () => {
       async markJobInterrupted() {},
     };
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test-workspace',
       platform: {
         executionBackend: { execute: vi.fn() } as any,
@@ -233,10 +222,7 @@ describe('workflow worker lifecycle', () => {
       async markJobInterrupted() {},
     };
 
-    const logger = {
-      info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     // Platform has getAdapter returning undefined — worker should handle it gracefully
     const platformObj = {
@@ -248,7 +234,7 @@ describe('workflow worker lifecycle', () => {
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test',
       platform: platformObj,
       concurrency: 1,
@@ -306,13 +292,7 @@ describe('workflow worker lifecycle', () => {
       async markJobInterrupted() {},
     };
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     const failingWsProvider = {
       materialize: vi.fn().mockRejectedValue(new Error('ETIMEDOUT: connection timed out')),
@@ -322,7 +302,7 @@ describe('workflow worker lifecycle', () => {
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test-workspace',
       platform: {
         executionBackend: { execute: vi.fn() } as any,
@@ -400,15 +380,12 @@ describe('workflow worker lifecycle', () => {
       getStateStore: vi.fn(() => ({ updateStep: vi.fn(async () => {}) })),
     };
 
-    const logger = {
-      info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test-workspace',
       platform: {
         executionBackend: { execute: vi.fn() } as any,
@@ -483,18 +460,12 @@ describe('workflow worker lifecycle', () => {
       getStateStore: vi.fn(() => ({ updateStep: vi.fn(async () => {}) })),
     };
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      child: vi.fn(() => logger),
-    };
+    const logger = mockLogger();
 
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
-      logger: logger as any,
+      logger,
       workspaceRoot: '/tmp/test-workspace',
       platform: {
         executionBackend: { execute: vi.fn() } as any,
@@ -514,15 +485,13 @@ describe('workflow worker lifecycle', () => {
     await startPromise;
 
     // debugMode must emit expression context log
-    const infoCalls: string[] = (logger.info as ReturnType<typeof vi.fn>).mock.calls.map(
-      (c: unknown[]) => c[0] as string,
-    );
-    expect(infoCalls.some(m => m === '[debug] Expression context for step')).toBe(true);
+    const infoMessages = logger.messages.filter(e => e.level === 'info').map(e => e.msg);
+    expect(infoMessages.some(m => m === '[debug] Expression context for step')).toBe(true);
 
     // debugMode must emit raw-vs-resolved interpolation log
-    expect(infoCalls.some(m => m === '[debug] Step input interpolation')).toBe(true);
+    expect(infoMessages.some(m => m === '[debug] Step input interpolation')).toBe(true);
 
     // debugMode must emit outputs log
-    expect(infoCalls.some(m => m === '[debug] Step outputs')).toBe(true);
+    expect(infoMessages.some(m => m === '[debug] Step outputs')).toBe(true);
   });
 });

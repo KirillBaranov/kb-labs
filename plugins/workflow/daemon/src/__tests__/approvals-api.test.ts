@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mockLogger } from '@kb-labs/shared-testing';
 import { createServer } from '../server.js';
 
 function makeStep(overrides: Record<string, unknown> = {}) {
@@ -43,20 +44,12 @@ function createWorkflowServer(runOverride?: Record<string, unknown>) {
     })),
   };
 
-  const logger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    child: vi.fn(),
-  };
-
   const server = createServer({
     engine: engine as any,
     jobBroker: {} as any,
     workflowService: { listAll: vi.fn(), get: vi.fn() } as any,
     cronScheduler: {} as any,
-    logger: logger as any,
+    logger: mockLogger(),
   });
 
   return { server, engine };
