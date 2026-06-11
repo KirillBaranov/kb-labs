@@ -34,9 +34,8 @@ Working directory: $(pwd)
 Instructions:
 1. Follow your plan step by step — do not deviate.
 2. Make all necessary code changes.
-3. Delete PLAN.md when done (it was temporary).
-4. Do NOT commit — just make the changes.
-5. End with a short summary (2-3 sentences) of what you changed."
+3. Do NOT commit — just make the changes.
+4. End with a short summary (2-3 sentences) of what you changed."
 
   RESUME_FLAG=""
   [ -n "$PLAN_SESSION_ID" ] && RESUME_FLAG="--resume $PLAN_SESSION_ID"

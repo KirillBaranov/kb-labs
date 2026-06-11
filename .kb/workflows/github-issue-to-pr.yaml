@@ -281,6 +281,17 @@ jobs:
           IMPL_FEEDBACK: '${{ trigger.payload.implFeedback }}'
         run: bash .kb/workflows/scripts/commit-push.sh
 
+      # ── 10b. Resolve Conflicts ───────────────────────────────────────────────
+      - name: Resolve Conflicts
+        id: conflicts
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: bash .kb/workflows/scripts/resolve-conflicts.sh
+
       # ── 11. Agent: Fix CI failures ───────────────────────────────────────────
       - name: Agent Fixes CI
         id: ci_fix
@@ -323,6 +334,11 @@ jobs:
               context:
                 hasLogs: ${{ steps.ci_wait.outputs.hasLogs }}
                 ciLogsFile: ${{ steps.ci_wait.outputs.ciLogsFile }}
+            needs_rebase:
+              restartFrom: conflicts
+              context:
+                hasLogs: false
+                ciLogsFile: ''
           default: fail
           # Wall-clock timeout in check-ci.sh (CI_TIMEOUT_SECONDS=3600) is the
           # real guard. Iterations cap must not be the bottleneck — large CI
