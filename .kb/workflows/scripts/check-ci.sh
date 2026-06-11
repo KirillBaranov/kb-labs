@@ -22,6 +22,15 @@ ELAPSED=$(( NOW - START_TIME ))
 
 echo "Checking CI for PR #${PR_NUMBER} (branch: ${BRANCH_NAME}, elapsed: ${ELAPSED}s / timeout: ${TIMEOUT}s)..."
 
+# Conflict guard — GitHub will not queue CI if the PR has merge conflicts
+MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO_FULL" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+if [ "$MERGEABLE" = "CONFLICTING" ]; then
+  echo "PR has merge conflicts — CI will not run until resolved. Routing to conflict resolver."
+  rm -f "$START_FILE"
+  echo '::kb-output::{"decision":"needs_rebase","hasLogs":false,"ciLogsFile":""}'
+  exit 0
+fi
+
 # Wall-clock timeout guard
 if [ "$ELAPSED" -gt "$TIMEOUT" ]; then
   echo "CI timeout reached after ${ELAPSED}s. Treating as failure to unblock pipeline."

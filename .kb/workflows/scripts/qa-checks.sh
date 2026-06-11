@@ -6,6 +6,14 @@ set -e
 # Run in the provisioned worktree (or project root when no worktree is used)
 cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
 
+# Type-check affected packages before running QA — catches TS errors that CI
+# would catch later, preventing a commit→CI-fail→fix loop.
+echo "Running type-check on affected packages..."
+if ! kb-devkit run type-check --affected 2>&1; then
+  echo "::kb-output::{\"status\":\"failed\",\"blockers\":[\"type-check failed — fix TS errors before commit\"],\"warnings\":[]}"
+  exit 1
+fi
+
 QA_RESULT=$(pnpm kb qa check \
   --id new-tests \
   --base "$BASE_BRANCH" \
