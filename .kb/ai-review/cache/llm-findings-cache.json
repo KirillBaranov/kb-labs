@@ -672,10 +672,43 @@
     },
     "plugins/workflow/daemon/src/worker.ts": {
       "path": "plugins/workflow/daemon/src/worker.ts",
-      "contentHash": "f6a6b012a2044609",
-      "findings": [],
-      "createdAt": 1777538512739,
-      "lastAccessedAt": 1777538512739
+      "contentHash": "3906517e3897d164",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/daemon/src/worker.ts-383",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/daemon/src/worker.ts",
+          "line": 383,
+          "column": 1,
+          "message": "User inputs through the command could be improperly sanitized before being processed, particularly within string interpolation functions. If user-defined data is not validated and sanitized, this could open up for injection attacks.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "command: safeCommand,\n    env: {\n      ...Object.fromEntries(\n        Object.entries((interpolatedWith?.['env'] as Record<string, unknown> | undefined) ?? {})\n          .map(([k, v]) => [k, coerceToString(v)])\n      ),",
+          "contentHash": "3906517e3897d164",
+          "cachedAt": 1781201793178
+        },
+        {
+          "id": "llm-lite-plugins/workflow/daemon/src/worker.ts-385",
+          "ruleId": "llm-lite:cli",
+          "file": "plugins/workflow/daemon/src/worker.ts",
+          "line": 385,
+          "column": 1,
+          "message": "Considering the dynamic nature of command handling and variable interpolation, there is a potential for remote code execution if not sufficiently protected. The system allows for command execution via user inputs which can lead to injection attacks.",
+          "severity": "blocker",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "command: safeCommand,",
+          "contentHash": "3906517e3897d164",
+          "cachedAt": 1781201793178
+        }
+      ],
+      "createdAt": 1781201793178,
+      "lastAccessedAt": 1781201793178
     },
     "plugins/workflow/engine/src/engine.ts": {
       "path": "plugins/workflow/engine/src/engine.ts",
@@ -693,10 +726,27 @@
     },
     "plugins/workflow/entry/src/flags.ts": {
       "path": "plugins/workflow/entry/src/flags.ts",
-      "contentHash": "477ff2685bef7178",
-      "findings": [],
-      "createdAt": 1777538512739,
-      "lastAccessedAt": 1777538512739
+      "contentHash": "b5033d528d5d5f85",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/flags.ts-140",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/entry/src/flags.ts",
+          "line": 140,
+          "column": 1,
+          "message": "Without proper validation, user inputs specified in --input and --inputs flags may lead to unhandled situations or type coercion vulnerabilities during processing. Ensure all user inputs are validated to prevent malicious data causing operational issues.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "inputs: {\n    type: 'string',\n    description: 'Deprecated alias for --input. Use --input instead.',\n  }",
+          "contentHash": "b5033d528d5d5f85",
+          "cachedAt": 1781201793178
+        }
+      ],
+      "createdAt": 1781201793178,
+      "lastAccessedAt": 1781201793178
     },
     "plugins/workflow/entry/src/http-client.ts": {
       "path": "plugins/workflow/entry/src/http-client.ts",
@@ -971,12 +1021,66 @@
       ],
       "createdAt": 1781112607733,
       "lastAccessedAt": 1781112607733
+    },
+    "plugins/workflow/contracts/src/__tests__/expressions.test.ts": {
+      "path": "plugins/workflow/contracts/src/__tests__/expressions.test.ts",
+      "contentHash": "d86414cfc1e6e14b",
+      "findings": [],
+      "createdAt": 1781201793177,
+      "lastAccessedAt": 1781201793177
+    },
+    "plugins/workflow/entry/src/__tests__/cli/workflow-run.cli.test.ts": {
+      "path": "plugins/workflow/entry/src/__tests__/cli/workflow-run.cli.test.ts",
+      "contentHash": "26120d93b47ddd98",
+      "findings": [],
+      "createdAt": 1781201793178,
+      "lastAccessedAt": 1781201793178
+    },
+    "plugins/workflow/entry/src/commands/workflow-run.ts": {
+      "path": "plugins/workflow/entry/src/commands/workflow-run.ts",
+      "contentHash": "95bf393bdb28592b",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/commands/workflow-run.ts-65",
+          "ruleId": "llm-lite:cli",
+          "file": "plugins/workflow/entry/src/commands/workflow-run.ts",
+          "line": 65,
+          "column": 1,
+          "message": "The usage of deprecated flags (i.e., --inputs) might lead to confusion. While warnings are logged, handling deprecated features without clear transitions could lead to misuse or unexpected behaviors.",
+          "severity": "low",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "if (input.flags.inputs && !input.flags.input) {\n          ctx.ui?.warn?.('--inputs is deprecated; use --input instead');",
+          "contentHash": "95bf393bdb28592b",
+          "cachedAt": 1781201793178
+        },
+        {
+          "id": "llm-lite-plugins/workflow/entry/src/commands/workflow-run.ts-66",
+          "ruleId": "rule:security/input-validation",
+          "file": "plugins/workflow/entry/src/commands/workflow-run.ts",
+          "line": 66,
+          "column": 1,
+          "message": "If the input is crafted incorrectly or contains malicious data, the parsing function parseJsonInput(rawInput) may throw errors or lead to critical failures. There should be validation before processing potentially unsafe inputs.",
+          "severity": "high",
+          "confidence": "certain",
+          "type": "cli",
+          "engine": "llm-lite",
+          "source": "rule",
+          "snippet": "const inputPayload = parseJsonInput(rawInput);",
+          "contentHash": "95bf393bdb28592b",
+          "cachedAt": 1781201793178
+        }
+      ],
+      "createdAt": 1781201793178,
+      "lastAccessedAt": 1781201793178
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1781112607733,
-    "totalFindings": 19,
-    "totalFiles": 92
+    "lastUpdatedAt": 1781201793178,
+    "totalFindings": 24,
+    "totalFiles": 95
   }
 }

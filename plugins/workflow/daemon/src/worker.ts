@@ -379,7 +379,10 @@ export async function createWorkflowWorker(
               ...(interpolatedWith ?? {}),
               command: safeCommand,
               env: {
-                ...((interpolatedWith?.['env'] as Record<string, string> | undefined) ?? {}),
+                ...Object.fromEntries(
+                  Object.entries((interpolatedWith?.['env'] as Record<string, unknown> | undefined) ?? {})
+                    .map(([k, v]) => [k, coerceToString(v)])
+                ),
                 ...shellEnvVars,
               },
             };

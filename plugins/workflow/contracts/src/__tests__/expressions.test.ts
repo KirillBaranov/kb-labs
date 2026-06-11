@@ -498,6 +498,21 @@ describe('env block coercion (BUG-001 — worker.ts fix)', () => {
     expect(envVars['KB_ENV']).toBe('production')
     expect(envVars['KB_VERSION']).toBe('1.2.3')
   })
+
+  it('with.env object inputs coerced to strings (secondary path — worker.ts:382)', () => {
+    // Mirrors the with.env spread fix: builtin:shell steps using explicit
+    // `with: { env: { KEY: '${{ inputs.obj }}' } }` must also coerce values.
+    const raw = interpolateObject(
+      { env: { KB_PAYLOAD: '${{ inputs.invoice_payload }}' } },
+      ctx,
+    )
+    const withEnv = raw['env'] as Record<string, unknown>
+    const coerced = Object.fromEntries(
+      Object.entries(withEnv).map(([k, v]) => [k, coerceToString(v)])
+    )
+    expect(coerced['KB_PAYLOAD']).toBe('{"vendor":"ACME Corp","amount":15000,"currency":"USD"}')
+    expect(coerced['KB_PAYLOAD']).not.toContain('[object Object]')
+  })
 })
 
 // ─── buildShellSafeCommand ───────────────────────────────────────────────────
