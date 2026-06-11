@@ -501,7 +501,7 @@ describe('workflow worker lifecycle', () => {
     expect(envVars['KB_INVOICE_PAYLOAD']).toBe(JSON.stringify(invoicePayload));
     expect(envVars['KB_INVOICE_PAYLOAD']).not.toContain('[object Object]');
     // Must be parseable by jq (i.e., valid JSON string)
-    expect(() => JSON.parse(envVars['KB_INVOICE_PAYLOAD'])).not.toThrow();
+    expect(() => JSON.parse(envVars['KB_INVOICE_PAYLOAD']!)).not.toThrow();
   });
 
   it('debugMode emits verbose [debug] logs for expr context and interpolation', async () => {
