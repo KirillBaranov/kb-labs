@@ -20,6 +20,10 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
       const statusFilter = flags.status;
       const typeFilter = flags.type;
 
+      if (typeFilter !== 'cron') {
+        ctx.ui?.warn?.('workflow list is deprecated; use: kb workflow runs list');
+      }
+
       try {
         const client = new WorkflowDaemonClient();
 

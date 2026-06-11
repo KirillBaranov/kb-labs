@@ -15,6 +15,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Job status display with deep run/job/step traversal, multiple output formats (JSON/human), timing calculations, status color coding, and error aggregation
     async execute(ctx: PluginContextV3, input: StatusInput): Promise<{ exitCode: number }> {
+      ctx.ui?.warn?.('workflow status is deprecated; use: kb workflow runs status <runId>');
       const flags = (input as { flags?: StatusFlags }).flags ?? input;
       const outputJson = flags.json ?? false;
       const jobId = flags['job-id'];

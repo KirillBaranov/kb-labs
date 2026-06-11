@@ -104,4 +104,16 @@ describe('workflow:status', () => {
     expect(result.exitCode).toBe(0);
     expect(captured.errors.length).toBe(0);
   });
+
+  it('CS-06: emits deprecation warning on every invocation', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      getJobStatus: async () => runningJob,
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await statusCommand.execute(ctx, mockCLIInput({ flags: { 'job-id': 'job-abc' } }));
+
+    expect(captured.warnings.some((w: { message: string }) => w.message.includes('deprecated'))).toBe(true);
+  });
 });

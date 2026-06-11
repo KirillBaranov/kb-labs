@@ -354,6 +354,7 @@ export class WorkflowDaemonClient {
     if (params.stepId) { query.set('stepId', params.stepId); }
     if (params.level) { query.set('level', params.level); }
     if (params.limit) { query.set('limit', String(params.limit)); }
+    if (params.failedOnly) { query.set('failedOnly', 'true'); }
 
     const encodedId = encodeURIComponent(runId);
     const qs = query.toString();

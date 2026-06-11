@@ -14,6 +14,8 @@ import {
   runFlags,
   workflowRunFlags,
   runsListFlags,
+  runsLogsFlags,
+  runsStatusFlags,
   runsViewFlags,
   runsWatchFlags,
   runsRerunFlags,
@@ -112,10 +114,11 @@ export const manifest = {
         path: 'workflow status',
         category: 'Jobs',
         operationType: 'read' as const,
-        describe: 'Get status of a specific workflow job.',
+        describe: '(Deprecated) Get job status. Use: kb workflow runs status <runId>',
         longDescription:
           'Retrieves detailed status information for a specific job by ID, including current state, ' +
-          'start time, and completion time if finished.',
+          'start time, and completion time if finished. ' +
+          'DEPRECATED: use "kb workflow runs status <runId>" for run-level status.',
         handler: './commands/status.js#default',
         flags: defineCommandFlags(statusFlags),
         examples: ['kb workflow status --job-id=abc123', 'kb workflow status --job-id=abc123 --json'],
@@ -124,9 +127,10 @@ export const manifest = {
         path: 'workflow logs',
         category: 'Jobs',
         operationType: 'read' as const,
-        describe: 'Get logs for a specific workflow job.',
+        describe: '(Deprecated) Get job/run logs. Use: kb workflow runs logs <runId>',
         longDescription:
-          'Fetches execution logs for a specific job by ID.',
+          'Fetches execution logs for a specific job or run by ID. ' +
+          'DEPRECATED: use "kb workflow runs logs <runId>" for run-level logs.',
         handler: './commands/logs.js#default',
         flags: defineCommandFlags(logsFlags),
         examples: [
@@ -139,10 +143,11 @@ export const manifest = {
         path: 'workflow list',
         category: 'Jobs',
         operationType: 'read' as const,
-        describe: 'List active workflow executions.',
+        describe: '(Deprecated) List active executions. Use: kb workflow runs list',
         longDescription:
           'Lists all currently active workflow executions or cron jobs. Can be filtered by status (running, queued, ' +
-          'completed, failed, cancelled) or type (runs, cron).',
+          'completed, failed, cancelled) or type (runs, cron). ' +
+          'DEPRECATED: use "kb workflow runs list" for run listing.',
         handler: './commands/list.js#default',
         flags: defineCommandFlags(listFlags),
         examples: [
@@ -251,6 +256,38 @@ export const manifest = {
           'kb workflow runs cancel <runId>',
           'kb workflow runs cancel --run-id=<runId>',
           'kb workflow runs cancel <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs logs',
+        category: 'Runs',
+        operationType: 'read' as const,
+        describe: 'Fetch logs for a workflow run.',
+        longDescription:
+          'Fetches execution logs for a run. Use --log-failed to show only failed-step logs. ' +
+          'Use --step to filter to a specific step. Accepts a positional run ID or --run-id flag.',
+        handler: './commands/runs-logs.js#default',
+        flags: defineCommandFlags(runsLogsFlags),
+        examples: [
+          'kb workflow runs logs <runId>',
+          'kb workflow runs logs <runId> --log-failed',
+          'kb workflow runs logs <runId> --step=build',
+          'kb workflow runs logs <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs status',
+        category: 'Runs',
+        operationType: 'read' as const,
+        describe: 'Show status summary for a workflow run.',
+        longDescription:
+          'Displays the status of a run including jobs and steps. Accepts a positional run ID or --run-id flag.',
+        handler: './commands/runs-status.js#default',
+        flags: defineCommandFlags(runsStatusFlags),
+        examples: [
+          'kb workflow runs status <runId>',
+          'kb workflow runs status --run-id=<runId>',
+          'kb workflow runs status <runId> --json',
         ],
       },
       {
