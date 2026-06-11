@@ -1,135 +1,176 @@
-Now I have everything needed to write the plan.
+Now I have everything I need. Here is the implementation plan:
 
 ---
 
 ## Summary
 
-Add a dedicated `POST /api/v1/runs/:runId/rerun` daemon endpoint that accepts `{ failedOnly?: boolean }`, implement the filtering logic in the host service, update the HTTP client, and wire the CLI command to use it instead of the current two-step workaround that ignores the flag.
+Add `workflow runs logs <runId>` and `workflow runs status <runId>` as canonical commands under the existing `workflow runs` namespace, then add deprecation warnings to the three legacy top-level commands (`workflow logs`, `workflow status`, `workflow list`) that point users to the new paths.
 
 ## Root cause / context
 
-The CLI command `runs-rerun` currently implements the rerun as a two-step workaround: `getRun(runId)` to extract the workflow ID and inputs, then `runWorkflow(workflowId, { inputs })`. The `--failed-only` flag is parsed and shown in the dry-run intent but is never forwarded to the daemon — there is an explicit "not yet supported" info message and the flag is dropped. No dedicated rerun endpoint exists in the daemon, and `WorkflowRunRequest` has no `failedOnly` field. The engine supports `runFromSpec(spec, input)` which accepts a `WorkflowSpec`; filtering jobs is done by modifying the spec's `jobs` record before passing it to the engine.
+The `workflow runs` group already follows the GitHub CLI namespace pattern and has six subcommands (`list`, `view`, `watch`, `rerun`, `cancel`, `approve`). Two run-scoped operations — fetching logs and checking status — were left as top-level commands (`workflow logs`, `workflow status`) and are inconsistent with this pattern. A third, `workflow list`, is superseded by the already-existing `workflow runs list`. None of the three legacy commands currently emit any deprecation signal.
 
 ## Implementation steps
 
-### 1. `plugins/workflow/contracts/src/rest-api.ts`
+### 1. Add flag definitions — `plugins/workflow/entry/src/flags.ts`
 
-Add a new request interface and Zod schema after `WorkflowRunRequestSchema`:
+Append two new flag sets at the bottom of the file (before `lintFlags`):
 
 ```ts
-export interface WorkflowRerunRequest {
-  failedOnly?: boolean;
+export const runsLogsFlags = {
+  'run-id': { type: 'string', description: 'Run ID (alias for positional argument)' },
+  json:     { type: 'boolean', description: OUTPUT_JSON_DESCRIPTION, default: false },
+  follow:   { type: 'boolean', description: 'Follow log output', default: false },
+  step:     { type: 'string',  description: 'Filter logs to a specific step name' },
+  'log-failed': { type: 'boolean', description: 'Show only logs from failed steps', default: false },
+} as const;
+export type RunsLogsFlags = typeof runsLogsFlags;
+
+export const runsStatusFlags = {
+  'run-id': { type: 'string', description: 'Run ID (alias for positional argument)' },
+  json:     { type: 'boolean', description: OUTPUT_JSON_DESCRIPTION, default: false },
+} as const;
+export type RunsStatusFlags = typeof runsStatusFlags;
+```
+
+### 2. Create `plugins/workflow/entry/src/commands/runs-logs.ts`
+
+New command, id `workflow:runs-logs`. Takes `argv[0]` or `--run-id`. Calls `client.getRunLogs(runId, { stepId, failedOnly })` (matching the existing `http-client` signature). Renders via the same `renderLogs` helper pattern from `logs.ts`. Validates that a run ID is present (exitCode 1 + validationError if missing).
+
+```ts
+// pattern sketch
+const runId = flags['run-id'] ?? input.argv?.[0];
+if (!runId) {
+  validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs logs <runId>', outputJson);
+  return { exitCode: 1 };
 }
-
-export const WorkflowRerunRequestSchema = z.object({
-  failedOnly: z.boolean().optional(),
+const logs = await client.getRunLogs(runId, {
+  stepId: flags.step,
+  failedOnly: flags['log-failed'],
 });
+renderLogs(ctx, logs, outputJson);   // inline or imported helper
 ```
 
-### 2. `plugins/workflow/daemon/src/host/workflow-host-service.ts`
+### 3. Create `plugins/workflow/entry/src/commands/runs-status.ts`
 
-Add a `rerunWorkflow(runId: string, request: WorkflowRerunRequest): Promise<{ runId: string; status: string }>` method after `runWorkflow`:
-
-- Call `engine.getRun(runId)` — throw `'Run not found'` if null.
-- Extract `workflowId` from `run.metadata?.workflowId ?? run.name`.
-- Load the workflow via `workflowService.get(workflowId)` — throw `'Workflow not found'` if null.
-- Build `spec` from `workflow.input` as before in `runWorkflow`.
-- If `request.failedOnly === true`:
-  - Collect failed job names: `run.jobs` entries where `job.status === 'failed' || job.status === 'interrupted'`.
-  - If no failed jobs exist, throw `'No failed jobs to rerun'` (400 at API layer).
-  - Filter `spec.jobs` to only those keys; for each included job, strip from its `needs` array any job name not present in the filtered set (avoids dangling dependency references).
-- Call `engine.runFromSpec(filteredSpec, { trigger: { type: 'manual', actor: 'cli-rerun', payload: run.inputs ?? {} }, inputs: run.inputs ?? {} })`.
-- Return `{ runId: newRun.id, status: newRun.status }`.
-
-Add `WorkflowRerunRequest` to the imports from `@kb-labs/workflow-contracts`.
-
-### 3. `plugins/workflow/daemon/src/api/workflows-api.ts`
-
-Add a new route after the cancel endpoint:
+New command, id `workflow:runs-status`. Takes `argv[0]` or `--run-id`. Calls `client.getRun(runId)` (returns full run object with jobs/steps, same shape used by `runs-view`). Renders a status summary (run-level — not job-level like the legacy `workflow status`). Validates run ID present.
 
 ```ts
-// POST /api/v1/runs/:runId/rerun — Rerun a workflow run, optionally only failed jobs
-server.post<{ Params: { runId: string }; Body: WorkflowRerunRequest }>(
-  '/api/v1/runs/:runId/rerun',
-  { schema: { tags: ['Runs'], summary: 'Rerun a workflow run' } },
-  async (request, reply) => {
-    try {
-      const { runId } = request.params;
-      const response = await observability.observeOperation(
-        'workflow.run.rerun',
-        () => hostService.rerunWorkflow(runId, request.body ?? {}),
-      );
-      return ok(response);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to rerun workflow';
-      if (message === 'Run not found' || message === 'Workflow not found') return fail(reply, 404, message);
-      if (message === 'No failed jobs to rerun') return fail(reply, 400, message);
-      logger.error('[workflows-api] Error rerunning workflow', error instanceof Error ? error : undefined);
-      return fail(reply, 500, message);
-    }
-  },
-);
+const runId = flags['run-id'] ?? input.argv?.[0];
+if (!runId) {
+  validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs status <runId>', outputJson);
+  return { exitCode: 1 };
+}
+const run = await client.getRun(runId);
+if (outputJson) {
+  ctx.ui?.json?.({ ok: true, data: run });
+} else {
+  // render id, status, workflow, trigger, started, finished, duration, error
+}
 ```
 
-Add `WorkflowRerunRequest` to imports from `@kb-labs/workflow-contracts`.
+### 4. Add deprecation warnings to three legacy commands
 
-### 4. `plugins/workflow/entry/src/http-client.ts`
+**`plugins/workflow/entry/src/commands/logs.ts`** — add as the first line inside `execute`, before any flag parsing:
+```ts
+ctx.ui?.warn?.('workflow logs is deprecated; use: kb workflow runs logs <runId>');
+```
 
-Add a `rerunWorkflow(runId: string, request?: WorkflowRerunRequest): Promise<{ runId: string; status: string }>` method that `POST`s to `/api/v1/runs/${encodeURIComponent(runId)}/rerun` with `JSON.stringify(request ?? {})`. Follow the same error-unwrap pattern as `runWorkflow`.
+**`plugins/workflow/entry/src/commands/status.ts`** — same pattern:
+```ts
+ctx.ui?.warn?.('workflow status is deprecated; use: kb workflow runs status <runId>');
+```
 
-Add `WorkflowRerunRequest` to the contract imports.
+**`plugins/workflow/entry/src/commands/list.ts`** — same pattern (emit only when the command is used for run listing, i.e. `typeFilter !== 'cron'`, to avoid a misleading notice when users legitimately do `workflow list --type=cron` which has no `runs` equivalent):
+```ts
+if (typeFilter !== 'cron') {
+  ctx.ui?.warn?.('workflow list is deprecated; use: kb workflow runs list');
+}
+```
 
-### 5. `plugins/workflow/entry/src/commands/runs-rerun.ts`
+### 5. Register new commands in `plugins/workflow/entry/src/manifest.ts`
 
-- Remove the `client.getRun()` prefetch and the `workflowId` extraction logic.
-- Replace the two-step call with `client.rerunWorkflow(runId, { failedOnly })`.
-- Remove the `"Note: --failed-only is not yet supported"` info message.
-- Keep the success output block, substituting `workflowId` references with the run ID (since we no longer have the workflowId at CLI level — or keep a simplified message).
-- The manifest description note `"(not yet supported by daemon)"` in `plugins/workflow/entry/src/manifest.ts` should also be removed.
+**Top of file** — add imports:
+```ts
+import { runsLogsFlags, runsStatusFlags } from './flags';
+```
 
-### 6. `plugins/workflow/entry/src/__tests__/cli/runs-rerun.cli.test.ts`
+**In `cli.commands` array**, add two entries after `workflow runs rerun` (or at the end of the Runs category block):
 
-Update mock setup: replace `getRun` + `runWorkflow` mocks with a `rerunWorkflow` mock (matching the new client API). Update existing tests RRR-01 through RRR-04 accordingly.
+```ts
+{
+  path: 'workflow runs logs',
+  category: 'Runs',
+  operationType: 'read' as const,
+  describe: 'Fetch logs for a workflow run.',
+  longDescription: 'Fetches execution logs for a run. Use --log-failed to show only failed-step logs. Accepts a positional run ID or --run-id flag.',
+  handler: './commands/runs-logs.js#default',
+  flags: defineCommandFlags(runsLogsFlags),
+  examples: [
+    'kb workflow runs logs <runId>',
+    'kb workflow runs logs <runId> --log-failed',
+    'kb workflow runs logs <runId> --step=build --json',
+  ],
+},
+{
+  path: 'workflow runs status',
+  category: 'Runs',
+  operationType: 'read' as const,
+  describe: 'Show status summary for a workflow run.',
+  longDescription: 'Displays the status of a run including jobs and steps. Accepts a positional run ID or --run-id flag.',
+  handler: './commands/runs-status.js#default',
+  flags: defineCommandFlags(runsStatusFlags),
+  examples: [
+    'kb workflow runs status <runId>',
+    'kb workflow runs status --run-id=<runId> --json',
+  ],
+},
+```
 
-Add two new tests:
-
-- **RRR-07**: `--failed-only` passes `failedOnly: true` to `rerunWorkflow`. Mock `rerunWorkflow` with a spy; assert it is called with `{ failedOnly: true }` and `exitCode` is 0.
-- **RRR-08**: without `--failed-only`, `rerunWorkflow` is called with `{ failedOnly: false }` (or `falsy`) and `exitCode` is 0.
-
-### 7. `plugins/workflow/daemon/src/host/__tests__/workflow-host-service.rerun.test.ts` *(new file)*
-
-Unit tests for `WorkflowHostService.rerunWorkflow`:
-
-- **Test A** (`failedOnly=false`): mock `engine.getRun` returning a run with jobs `[{jobName:'build',status:'success'},{jobName:'test',status:'failed'}]`; mock `workflowService.get` returning a spec with both jobs; assert `engine.runFromSpec` is called with the full spec (both jobs present).
-- **Test B** (`failedOnly=true`, mixed jobs): same setup; assert `engine.runFromSpec` is called with only the `test` job in `spec.jobs`, and that job's `needs` referencing `build` is stripped.
-- **Test C** (`failedOnly=true`, no failed jobs): mock all jobs as `success`; assert the method throws `'No failed jobs to rerun'`.
-- **Test D** (`failedOnly=true`, run not found): mock `engine.getRun` returning `null`; assert throws `'Run not found'`.
+**Update describe text** for the three deprecated commands to make the canonical path visible in `--help`:
+- `workflow status`: `'(Deprecated) Get job status. Use workflow runs status <runId> instead.'`
+- `workflow logs`: `'(Deprecated) Get job/run logs. Use workflow runs logs <runId> instead.'`
+- `workflow list`: `'(Deprecated) List active executions. Use workflow runs list instead.'`
 
 ## Tests / verification
 
+### New command tests
+
+**`plugins/workflow/entry/src/__tests__/cli/runs-logs.cli.test.ts`** — naming prefix `RLG-`:
+- `RLG-01`: positional runId → calls `getRunLogs`, exitCode 0, renders log lines
+- `RLG-02`: `--run-id` flag form → same behaviour
+- `RLG-03`: `--json` → `{ ok: true, data: { logs } }`
+- `RLG-04`: no runId (empty argv, no flag) → exitCode 1, error emitted
+- `RLG-05`: `--log-failed` → passes `failedOnly: true` to `getRunLogs`
+- `RLG-06`: daemon throws → exitCode 1
+
+**`plugins/workflow/entry/src/__tests__/cli/runs-status.cli.test.ts`** — naming prefix `RST-`:
+- `RST-01`: positional runId → calls `getRun`, exitCode 0, success rendered
+- `RST-02`: `--run-id` flag form → same behaviour
+- `RST-03`: `--json` → `{ ok: true, data: <run> }`
+- `RST-04`: no runId → exitCode 1, error emitted
+- `RST-05`: daemon throws → exitCode 1
+
+### Updated legacy tests (add one case each)
+
+**`logs.cli.test.ts`** — add `CLG-07: emits deprecation warning`:
+```ts
+expect(captured.warnings.some(w => w.includes('deprecated'))).toBe(true);
+```
+
+**`status.cli.test.ts`** (create if it doesn't exist, or add to existing) — add `CST-XX: emits deprecation warning`.
+
+**`list.cli.test.ts`** — add `CLI-XX: emits deprecation warning when listing runs (not cron)`:
+```ts
+// no --type=cron → deprecation expected
+expect(captured.warnings.some(w => w.includes('deprecated'))).toBe(true);
+```
+And a complementary case: `--type=cron` does NOT emit the deprecation warning.
+
+### Run
+
 ```bash
-# Run CLI handler unit tests
 pnpm --filter @kb-labs/workflow-entry run test:cli
-
-# Run daemon host service unit tests
-pnpm --filter @kb-labs/workflow-daemon run test
-
-# Type-check both packages
-pnpm --filter @kb-labs/workflow-entry type-check
-pnpm --filter @kb-labs/workflow-daemon type-check
-pnpm --filter @kb-labs/workflow-contracts type-check
-
-# Build affected packages
-kb-devkit run build --affected
 ```
 
-For integration verification with a running daemon:
-```bash
-# Start services
-kb-dev start
-
-# Trigger a workflow run and grab the run ID of a partially-failed run, then:
-pnpm kb workflow runs rerun <runId> --failed-only
-# Verify: new run created, only failed jobs appear in the run's job list
-pnpm kb workflow runs view <newRunId>
-```
+All existing tests must continue to pass. The six new/updated deprecation cases should pass after the code changes.
