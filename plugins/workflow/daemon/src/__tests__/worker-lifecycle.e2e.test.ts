@@ -418,6 +418,92 @@ describe('workflow worker lifecycle', () => {
     expect(envVars[injectedKey!]).toBe(dangerousTitle);
   });
 
+  it('BUG-001: with.env object input coerced to JSON string, not [object Object]', async () => {
+    // Regression: when a step uses `with: { env: { KEY: '${{ inputs.payload }}' } }`
+    // and inputs.payload is an object, worker.ts must apply coerceToString so the
+    // env var receives valid JSON — not the string "[object Object]".
+    // This is the secondary path distinct from buildShellSafeCommand's _WF_* vars.
+    const runId = `run-env-coerce-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+    const invoicePayload = { vendor: 'Acme Corp', amount: 15000, currency: 'USD' };
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      env: {},
+      inputs: { invoice_payload: invoicePayload },
+      metadata: {},
+      trigger: { type: 'manual' },
+      jobs: [{
+        id: jobId,
+        jobName: 'env-coerce-job',
+        status: 'queued',
+        attempt: 0,
+        steps: [{
+          id: 'step-1',
+          status: 'pending',
+          spec: {
+            uses: 'builtin:shell',
+            with: {
+              command: 'jq --argjson payload "${KB_INVOICE_PAYLOAD}" .',
+              env: { KB_INVOICE_PAYLOAD: '${{ inputs.invoice_payload }}' },
+            },
+          },
+        }],
+      }],
+    };
+
+    const completion = createDeferred<void>();
+    let queueDrained = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) { return id === runId ? run : null; },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markJobCompleted() { run.jobs[0].status = 'success'; completion.resolve(); },
+      async markJobFailed(_r: string, _j: string, error: Error) { completion.reject(error); },
+      async markStepStarted() {},
+      async markStepCompleted() {},
+      async markStepFailed() {},
+      async markJobInterrupted() {},
+      getStateStore: vi.fn(() => ({ updateStep: vi.fn(async () => {}) })),
+    };
+
+    const logger = mockLogger();
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger,
+      workspaceRoot: '/tmp/test-workspace',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+    });
+
+    const startPromise = worker.start();
+    await Promise.race([
+      completion.promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10_000)),
+    ]);
+    await worker.stop();
+    await startPromise;
+
+    expect(run.jobs[0].status).toBe('success');
+    const call = mockRunnerExecute.mock.calls[0]?.[0];
+    const envVars = call.spec.with.env as Record<string, string>;
+
+    // Must be valid JSON — not "[object Object]"
+    expect(envVars['KB_INVOICE_PAYLOAD']).toBe(JSON.stringify(invoicePayload));
+    expect(envVars['KB_INVOICE_PAYLOAD']).not.toContain('[object Object]');
+    // Must be parseable by jq (i.e., valid JSON string)
+    expect(() => JSON.parse(envVars['KB_INVOICE_PAYLOAD']!)).not.toThrow();
+  });
+
   it('debugMode emits verbose [debug] logs for expr context and interpolation', async () => {
     const runId = `run-debug-${Date.now().toString(36)}`;
     const jobId = `${runId}:job`;

@@ -139,6 +139,10 @@ export const workflowRunFlags = {
     type: 'string',
     description: 'JSON string of workflow input payload',
   },
+  inputs: {
+    type: 'string',
+    description: 'Deprecated alias for --input. Use --input instead.',
+  },
   isolation: {
     type: 'string',
     description: 'Isolation profile: strict, balanced, or relaxed',
