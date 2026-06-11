@@ -752,7 +752,7 @@ export async function createWorkflowWorker(
    */
   async function workerLoop(): Promise<void> {
     // IMPORTANT: This is a polling loop, must run sequentially
-     
+
     while (isRunning && !stopRequested) {
       try {
         const processed = await processJob();
@@ -779,7 +779,7 @@ export async function createWorkflowWorker(
         await sleep(5000); // Wait longer on error
       }
     }
-     
+
 
     logger.info('Worker loop stopped');
   }

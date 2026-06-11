@@ -2,6 +2,7 @@
  * workflow:runs-rerun <runId> command — like `gh run rerun`
  *
  * Reruns a workflow by re-submitting it with the same inputs and trigger.
+ * With --failed-only, only jobs that failed or were interrupted are requeued.
  */
 
 import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
@@ -42,33 +43,13 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
       try {
         const client = new WorkflowDaemonClient();
 
-        // Get original run to extract workflow ID and inputs
-        const run = await client.getRun(runId);
-        const workflowId = (run.metadata as Record<string, unknown> | undefined)?.['workflowId'] as string | undefined
-          ?? run.name;
-
-        if (!workflowId) {
-          throw new Error('Cannot determine workflow ID from run metadata');
-        }
-
-        if (failedOnly) {
-          ctx.ui?.info?.(`Note: --failed-only is not yet supported by the daemon. Rerunning entire workflow.`);
-        }
-
-        // Rerun by submitting the same workflow with the same inputs
-        const result = await client.runWorkflow(workflowId, {
-          inputs: run.inputs as Record<string, unknown> | undefined,
-          trigger: {
-            type: 'manual',
-            user: 'cli-rerun',
-          },
-        });
+        const result = await client.rerunWorkflow(runId, { failedOnly });
 
         if (outputJson) {
           ctx.ui?.json?.({ ok: true, data: result });
         } else {
           ctx.ui?.success?.('Workflow Rerun Triggered', {
-            title: workflowId,
+            title: runId,
             sections: [
               {
                 header: 'Details',
@@ -76,6 +57,7 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
                   `New run ID: ${result.runId}`,
                   `Status: ${result.status}`,
                   `Original run: ${runId}`,
+                  ...(failedOnly ? ['Mode: failed jobs only'] : []),
                   ``,
                   `Watch: kb workflow runs-watch ${result.runId}`,
                   `View:  kb workflow runs-view ${result.runId}`,

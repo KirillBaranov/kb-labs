@@ -228,7 +228,7 @@ export const manifest = {
         describe: 'Rerun a workflow run.',
         longDescription:
           'Reruns a workflow by re-submitting it with the same inputs. ' +
-          'Use --failed-only to skip jobs that already succeeded (not yet supported by daemon).',
+          'Use --failed-only to requeue only jobs that failed or were interrupted.',
         handler: './commands/runs-rerun.js#default',
         flags: defineCommandFlags(runsRerunFlags),
         examples: [

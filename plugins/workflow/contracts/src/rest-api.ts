@@ -314,6 +314,18 @@ export const WorkflowRunRequestSchema = z.object({
 })
 
 /**
+ * Workflow rerun request (POST /api/v1/runs/:runId/rerun)
+ */
+export interface WorkflowRerunRequest {
+  /** When true, only jobs with status failed or interrupted are requeued */
+  failedOnly?: boolean;
+}
+
+export const WorkflowRerunRequestSchema = z.object({
+  failedOnly: z.boolean().optional(),
+})
+
+/**
  * Dashboard stats response (GET /api/v1/stats)
  */
 export interface DashboardStatsResponse {
