@@ -355,7 +355,12 @@ export const runsLogsFlags = {
   },
 } as const;
 
-export type RunsLogsFlags = typeof runsLogsFlags;
+export interface RunsLogsFlags {
+  'run-id'?: string;
+  json?: boolean;
+  step?: string;
+  'log-failed'?: boolean;
+}
 
 /**
  * Flags for workflow:runs-status command
@@ -372,7 +377,10 @@ export const runsStatusFlags = {
   },
 } as const;
 
-export type RunsStatusFlags = typeof runsStatusFlags;
+export interface RunsStatusFlags {
+  'run-id'?: string;
+  json?: boolean;
+}
 
 /**
  * Flags for workflow:lint command
