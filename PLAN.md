@@ -1,159 +1,194 @@
+Теперь у меня достаточно данных. Напишу план.
+
+---
+
 ## Summary
 
-Add a "resume from step" capability to the workflow engine: given an existing failed run and a target step ID, reset that step and all subsequent steps in the same job to `queued` (preserving prior step outputs), then re-enqueue the job — so the worker's existing skip-completed logic naturally picks up execution from the target step.
+Add a `resume` operation to the workflow engine that restarts a failed run from a specific step, inheriting all prior step outputs — without re-executing steps that already succeeded.
 
 ## Root cause / context
 
-The worker's step loop in `daemon/src/worker.ts:280` already skips steps with `status === 'success'`. The gate restart in `applyGateRestart()` (`worker.ts:983–1134`) uses exactly this mechanism: it resets steps from an index onward to `queued`, clears their timing/outputs, and re-enqueues the job — while previously-completed steps stay `success` with their outputs intact.
+Every run is modelled as an immutable snapshot in Redis (`kb:run:<id>`) containing the full `WorkflowRun` tree including per-step `outputs`, `status`, and `resolvedInputs`. The engine already writes step outputs on success, so all state needed for a resumable restart is available — it just isn't used. There is no API endpoint, no engine method, and no CLI command to initiate a partial restart; the only option today is `rerun`, which discards all prior outputs and starts from step 0.
 
-The existing `runs-rerun` command (`entry/src/commands/runs-rerun.ts`) creates an entirely new run and loses all prior outputs. What's missing is a targeted "resume" path that mutates the existing run in place, analogous to what `applyGateRestart` does — but triggered via CLI/API rather than internally by a gate step.
+The following new surfaces are required:
+
+| Layer | Change |
+|---|---|
+| `state-store` | `resetStepsFromIndex(runId, jobId, fromIndex)` — zeroes state for step N onward |
+| `engine` | `resumeFromStep(runId, fromStepId, jobId?)` — validates + resets + re-enqueues |
+| `contracts` | `WorkflowResumeRequest` schema |
+| `daemon/api` | `POST /api/v1/runs/:runId/resume` |
+| `host-service` | `resumeRunFromStep()` facade |
+| `entry/http-client` | `resumeRun()` |
+| `entry/commands` | `runs-resume.ts` CLI command |
 
 ## Implementation steps
 
-### 1. Contracts — add `ResumeRunInput` type
+### 1. `plugins/workflow/engine/src/state-store.ts` — add `resetStepsFromIndex`
 
-**File**: `plugins/workflow/contracts/src/schemas.ts`
-
-Add a new schema after the existing `RerunWorkflowRequestSchema`:
+Add a method that finds the job by `jobId`, then iterates its `steps` from `fromIndex` (inclusive) and resets each step to `queued` state (clear `startedAt`, `finishedAt`, `durationMs`, `error`, `outputs`). Also reset the enclosing job to `queued` and clear `finishedAt` / `error`. Persist via the existing `updateRun` atomic pattern.
 
 ```ts
-export const ResumeRunRequestSchema = z.object({
-  fromStepId: z.string().min(1),  // spec.id of the step to restart from
-  jobId: z.string().optional(),    // required only when run has multiple jobs with the same step id
-});
-export type ResumeRunRequest = z.infer<typeof ResumeRunRequestSchema>;
+async resetStepsFromIndex(
+  runId: string,
+  jobId: string,
+  fromIndex: number,
+): Promise<WorkflowRun | null>
 ```
 
-Export it from `plugins/workflow/contracts/src/index.ts`.
+Steps at indices `< fromIndex` are untouched so their `outputs` remain available for expression resolution downstream.
 
-### 2. Engine — add `resumeFromStep` helper to state-store
-
-**File**: `plugins/workflow/engine/src/state-store.ts`
-
-Add a method `resetStepsFromIndex(runId, jobId, fromIndex)`:
-
-- Load the run.
-- Find the job by `jobId`.
-- For each step with `index >= fromIndex`:
-  - Set `status = 'queued'`
-  - Clear `startedAt`, `finishedAt`, `durationMs`, `error`, `outputs`, `skipReason`
-  - Preserve `spec`, `resolvedInputs` (will be re-interpolated by the worker).
-- Set the job's `status = 'queued'`, clear `startedAt`, `finishedAt`, `durationMs`, `error`.
-- Save and return the updated run.
-
-This is a direct extraction of the same mutation pattern used in `applyGateRestart` (lines 1097–1133).
-
-### 3. Host service — add `resumeRunFromStep` method
-
-**File**: `plugins/workflow/daemon/src/host/workflow-host-service.ts`
-
-Add method `resumeRunFromStep(runId: string, req: ResumeRunRequest)`:
-
-1. Load run via `stateStore.getRun(runId)`. Throw `404` if not found.
-2. Validate run status is `failed` or `interrupted` (reject `running` / `success`).
-3. Locate the target step:
-   - If `req.jobId` is provided, find that job; otherwise scan all jobs.
-   - Find the step where `step.spec.id === req.fromStepId`. Throw `400` if not found or if multiple matches without a `jobId`.
-4. Validate the step was actually reached (status is not `queued` — must be `running`, `failed`, or `success`).
-5. Call `stateStore.resetStepsFromIndex(runId, job.id, step.index)`.
-6. Mark the run itself as `queued` (clear `finishedAt`, `durationMs`, set `status = 'running'`).
-7. Re-enqueue the job via `scheduler.enqueueJob(run.id, job.id, job.priority ?? 'normal')`.
-8. Return the mutated run.
-
-### 4. REST API — new endpoint
-
-**File**: `plugins/workflow/daemon/src/api/workflows-api.ts`
-
-Add after the existing `/runs/:runId/rerun` handler:
-
-```
-POST /api/v1/runs/:runId/resume
-Body: ResumeRunRequest
-Response: 200 Run
-```
-
-Parse and validate the body with `ResumeRunRequestSchema`. Delegate to `hostService.resumeRunFromStep(runId, req)`.
-
-### 5. HTTP client — add `resumeRun` method
-
-**File**: `plugins/workflow/client/src/workflow-client.ts` (or wherever `rerunWorkflow` is defined)
+### 2. `plugins/workflow/engine/src/engine.ts` — add `resumeFromStep`
 
 ```ts
-async resumeRun(runId: string, req: ResumeRunRequest): Promise<Run> {
-  return this.post(`/api/v1/runs/${runId}/resume`, req);
+async resumeFromStep(
+  runId: string,
+  fromStepId: string,
+  jobId?: string,
+): Promise<WorkflowRun>
+```
+
+Logic:
+
+1. Load run; throw `WorkflowEngineError` if not found.
+2. Guard: reject if `run.status` is `'running'` or `'queued'` (active run — caller must cancel first).
+3. Guard: reject if `run.status` is `'success'` (nothing to resume).
+4. Locate target step:
+   - If `jobId` supplied, search only that job.
+   - Otherwise search all jobs; if more than one job contains a step with `spec.id === fromStepId`, throw an ambiguity error asking the caller to supply `--job-id`.
+5. Guard: reject if `targetStep.status === 'queued'` (step was never executed — nothing to re-run from here).
+6. Call `this.stateStore.resetStepsFromIndex(runId, job.id, targetStep.index)`.
+7. Patch run: clear `finishedAt`, `durationMs`, `result`; set `status = 'running'`.
+8. Save via `updateRun`.
+9. Call `this.scheduler.enqueueJob(runId, job.id, job.priority ?? 'normal')`.
+10. Publish `EVENT_NAMES.run.resumed` event (new event name).
+11. Return the updated run.
+
+### 3. `plugins/workflow/contracts/src/rest-api.ts` — add request/response types
+
+```ts
+export interface WorkflowResumeRequest {
+  fromStepId: string;   // spec.id of the step to restart from
+  jobId?: string;       // disambiguate when same spec.id exists in multiple jobs
 }
 ```
 
-Export `ResumeRunRequest` from the client package's public index.
+Response reuses the existing `{ runId: string; status: string }` shape (same as `rerun`).
 
-### 6. CLI command — `workflow:runs-resume`
+### 4. `plugins/workflow/daemon/src/host/workflow-host-service.ts` — add facade method
 
-**File**: `plugins/workflow/entry/src/commands/runs-resume.ts` (new file)
+```ts
+async resumeRunFromStep(
+  runId: string,
+  request: WorkflowResumeRequest,
+): Promise<{ runId: string; status: string }> {
+  const resolved = await this.resolveRunId(runId);
+  const run = await this.engine.resumeFromStep(
+    resolved, request.fromStepId, request.jobId,
+  );
+  return { runId: run.id, status: run.status };
+}
+```
 
-Model after `runs-rerun.ts`. Flags:
+Map engine errors to HTTP 400/404 in the API layer (next step).
 
-| Flag | Description |
-|---|---|
-| `--from-step <stepId>` | Required. The `spec.id` of the step to restart from. |
-| `--job-id <jobId>` | Optional. Disambiguate when multiple jobs contain the same step id. |
+### 5. `plugins/workflow/daemon/src/api/workflows-api.ts` — register HTTP endpoint
 
-Flow:
-1. Resolve `runId` from positional arg.
-2. Validate `--from-step` is provided.
-3. Call `client.resumeRun(runId, { fromStepId, jobId })`.
-4. Print confirmation: `Run <runId> resuming from step '<stepId>'`.
+Register `POST /api/v1/runs/:runId/resume` after the existing `/cancel` and `/rerun` handlers:
 
-Register the command in the plugin's manifest / command index.
+```ts
+router.post('/runs/:runId/resume', async (req, res) => {
+  const { runId } = req.params;
+  const body = req.body as WorkflowResumeRequest;
+  try {
+    const result = await hostService.resumeRunFromStep(runId, body);
+    res.json(result);
+  } catch (err) {
+    if (err instanceof WorkflowEngineError) {
+      if (err.code === 'NOT_FOUND') return res.status(404).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+});
+```
 
-### 7. Type safety — update `runs view` output (optional, low-risk)
+### 6. `plugins/workflow/entry/src/http-client.ts` — add `resumeRun`
 
-**File**: `plugins/workflow/entry/src/commands/runs-view.ts`
+```ts
+async resumeRun(
+  runId: string,
+  request: WorkflowResumeRequest,
+): Promise<{ runId: string; status: string }> {
+  return this.post(`/api/v1/runs/${runId}/resume`, request);
+}
+```
 
-No schema changes needed — the step's `status` and `outputs` fields already exist on `StepRun`. Ensure the view renders `queued` steps as pending (not failed) so resumed runs display correctly. Verify no assumptions about monotonically-increasing step statuses.
+### 7. `plugins/workflow/entry/src/commands/runs-resume.ts` — new CLI command
+
+```
+kb workflow runs resume <runId> --from-step <stepId> [--job-id <jobId>] [--json]
+```
+
+- `runId`: positional argument (required).
+- `--from-step`: step `spec.id` to restart from (required).
+- `--job-id`: optional disambiguation.
+- `--json`: machine-readable output.
+
+Use the standard `defineCommand` / `intent` + `execute` pattern from the SDK. In `execute()`:
+
+1. Parse positional `runId` and flag `fromStep`.
+2. Validate both are non-empty; throw `CLIError` otherwise.
+3. Call `client.resumeRun(runId, { fromStepId: fromStep, jobId })`.
+4. Render success or JSON output.
+
+### 8. `plugins/workflow/entry/src/manifest.ts` — register command
+
+Add `runs-resume` to the `runs` command group's subcommand list.
+
+### 9. `plugins/workflow/entry/src/flags.ts` — add shared flag definitions
+
+Add `fromStep` (string, required-when-used) and optionally `jobId` to the shared flags map if other commands may reuse them.
 
 ## Tests / verification
 
-### Unit test — state mutation
+### Unit — state store (`engine/src/__tests__/state-store.test.ts`)
 
-**File**: `plugins/workflow/engine/src/__tests__/state-store.test.ts` (or nearest existing test file)
+- **Happy path**: create a run with 3 steps (all `success`), call `resetStepsFromIndex(fromIndex=1)`, assert step[0] unchanged, step[1] and step[2] are `queued` with cleared `outputs`/`error`/timestamps, job is `queued`.
+- **Boundary**: `fromIndex === 0` resets all steps.
+- **No-op guard**: `fromIndex >= steps.length` returns unchanged run.
 
-- Seed a run with 5 steps: steps 0–2 `success` with outputs, step 3 `failed`, step 4 `queued`.
-- Call `resetStepsFromIndex(runId, jobId, 3)`.
-- Assert: steps 0–2 unchanged (status `success`, outputs intact); steps 3–4 have status `queued`, cleared `startedAt`/`finishedAt`/`outputs`/`error`.
+### Unit — engine (`engine/src/__tests__/engine.test.ts`)
 
-### Unit test — host service validation
+- `resumeFromStep` on an active (`running`) run throws.
+- `resumeFromStep` on a `success` run throws.
+- `resumeFromStep` with unexecuted step (`queued`) throws.
+- `resumeFromStep` with ambiguous step ID (no `jobId`) throws.
+- Happy path: failed run, step[1] failed → resume from step[1] → run is `running`, scheduler receives enqueue call, steps[0] outputs preserved.
 
-**File**: `plugins/workflow/daemon/src/__tests__/host/workflow-host-service.test.ts`
+### Handler test — CLI (`entry/src/__tests__/cli/runs-resume.cli.test.ts`)
 
-- Running run → expect `400`/`409`.
-- Step id not found → expect `400`.
-- Step never reached (still `queued`) → expect `400`.
-- Happy path → confirm scheduler receives `enqueueJob` call with correct args.
+Use `mockCLIInput<ResumeFlags>()` + `createMockContext()` pattern. Test:
 
-### Handler test — CLI command
+- Missing `--from-step` flag → `CLIError`.
+- Successful call → `client.resumeRun()` called with correct args → success output.
+- API 400 error → clear message printed.
+- `--json` flag → machine-readable JSON output.
 
-**File**: `plugins/workflow/entry/src/__tests__/cli/runs-resume.test.ts`
-
-Using `mockCLIInput` + `createMockContext`:
-- Missing `--from-step` → expect validation error printed.
-- API returns success → expect success message printed.
-- API returns 404 → expect error message printed.
-
-### Manual verification
+### Integration / manual
 
 ```bash
-# 1. Start a multi-step workflow that fails at step N
-kb workflow:run --workflow-id github-issue-to-pr --input '{"issue": "123"}'
+# Start a known-failing 3-step workflow run, capture its runId
+kb workflow runs list --status failed
 
-# 2. Note the run ID and the failing step id (from kb workflow:runs-view <runId>)
-kb workflow:runs-view <runId>
+# Inspect step IDs
+kb workflow runs get <runId> --json | jq '.jobs[0].steps'
 
-# 3. Resume from the failed step
-kb workflow:runs-resume <runId> --from-step <stepId>
+# Resume from step 2
+kb workflow runs resume <runId> --from-step step-2-spec-id
 
-# 4. Watch the run — steps before the target should appear as 'success' immediately,
-#    and execution should proceed from the target step
-kb workflow:runs-view <runId> --watch
+# Verify run is running and step[0] output is preserved
+kb workflow runs get <runId> --json | jq '.jobs[0].steps[0].outputs'
 ```
 
-Expected: the resumed run skips steps 0..N-1 (their outputs appear in context), executes from step N, and completes without re-running prior work.
+Daemon logs should show `[engine] resumeFromStep runId=<id> fromStepId=step-2-spec-id` and subsequent step execution events starting from step 2.
