@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import type { ExecutionTarget, IsolationProfile } from './types'
+import type { RunState } from '@kb-labs/workflow-constants'
 
 /**
  * Job submission request (POST /api/jobs)
@@ -324,6 +325,28 @@ export interface WorkflowRerunRequest {
 export const WorkflowRerunRequestSchema = z.object({
   failedOnly: z.boolean().optional(),
 })
+
+/**
+ * Workflow restart request (POST /api/v1/runs/:runId/restart)
+ * Replays a run from a snapshot, optionally resuming from a specific step.
+ */
+export interface WorkflowRestartRequest {
+  /** Step ID to restart from; all preceding steps inherit their stored outputs */
+  fromStepId?: string;
+  /** Optional env overrides merged on top of the snapshot env */
+  env?: Record<string, string>;
+}
+
+export const WorkflowRestartRequestSchema = z.object({
+  fromStepId: z.string().optional(),
+  env: z.record(z.string()).optional(),
+})
+
+export interface WorkflowRestartResponse {
+  runId: string;
+  status: RunState;
+  fromStepId?: string;
+}
 
 /**
  * Dashboard stats response (GET /api/v1/stats)

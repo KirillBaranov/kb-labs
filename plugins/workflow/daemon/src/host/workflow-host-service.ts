@@ -17,6 +17,8 @@ import type {
   WorkflowRun,
   WorkflowRunHistoryResponse,
   WorkflowRerunRequest,
+  WorkflowRestartRequest,
+  WorkflowRestartResponse,
   WorkflowRunRequest,
 } from '@kb-labs/workflow-contracts';
 import type { JobBroker } from '../job-broker.js';
@@ -376,6 +378,43 @@ export class WorkflowHostService {
     return {
       runId: run.id,
       status: run.status,
+    };
+  }
+
+  async restartRun(
+    runId: string,
+    request: WorkflowRestartRequest,
+  ): Promise<WorkflowRestartResponse> {
+    const resolved = await this.resolveRunId(runId);
+    if (!resolved) {
+      throw new Error('Run not found or snapshot not available');
+    }
+
+    // Guard: restarting an active run would race with the live worker over the
+    // same run ID, corrupting step state. Caller must cancel the run first.
+    const currentRun = await this.options.engine.getRun(resolved);
+    if (!currentRun) {
+      throw new Error('Run not found or snapshot not available');
+    }
+    if (currentRun.status === 'running' || currentRun.status === 'queued') {
+      throw new Error(
+        `Cannot restart an active run (status: ${currentRun.status}); cancel it first`,
+      );
+    }
+
+    const run = await this.options.engine.replayRun(resolved, {
+      fromStepId: request.fromStepId,
+      env: request.env,
+    });
+
+    if (!run) {
+      throw new Error('Run not found or snapshot not available');
+    }
+
+    return {
+      runId: run.id,
+      status: run.status,
+      fromStepId: request.fromStepId,
     };
   }
 
