@@ -609,4 +609,41 @@ describe('WorkflowHostService.listRuns — hasPendingApproval', () => {
     const { runs } = await service.listRuns({});
     expect(runs[0]?.currentStepName).toBe('compile (+1)');
   });
+
+  // ── resumeRunFromStep ────────────────────────────────────────────────
+
+  it('RRS-01: delegates to engine.resumeFromStep and returns runId + status', async () => {
+    const resumeFromStep = vi.fn(async () => ({ id: 'run-abc', status: 'running' }));
+    const service = createService({ engine: { resumeFromStep } });
+
+    const result = await service.resumeRunFromStep('run-abc', { fromStepId: 'compile' });
+
+    expect(result).toEqual({ runId: 'run-abc', status: 'running' });
+    expect(resumeFromStep).toHaveBeenCalledWith('run-abc', 'compile', undefined);
+  });
+
+  it('RRS-02: passes jobId when provided', async () => {
+    const resumeFromStep = vi.fn(async () => ({ id: 'run-abc', status: 'running' }));
+    const service = createService({ engine: { resumeFromStep } });
+
+    await service.resumeRunFromStep('run-abc', { fromStepId: 'compile', jobId: 'job-build' });
+
+    expect(resumeFromStep).toHaveBeenCalledWith('run-abc', 'compile', 'job-build');
+  });
+
+  it('RRS-03: propagates "Run not found" error from engine', async () => {
+    const resumeFromStep = vi.fn(async () => { throw new Error('Run not found'); });
+    const service = createService({ engine: { resumeFromStep } });
+
+    await expect(service.resumeRunFromStep('ghost', { fromStepId: 'step1' }))
+      .rejects.toThrow('Run not found');
+  });
+
+  it('RRS-04: propagates validation errors from engine', async () => {
+    const resumeFromStep = vi.fn(async () => { throw new Error("Step 'missing-step' has not been reached yet"); });
+    const service = createService({ engine: { resumeFromStep } });
+
+    await expect(service.resumeRunFromStep('run-x', { fromStepId: 'missing-step' }))
+      .rejects.toThrow('has not been reached yet');
+  });
 });

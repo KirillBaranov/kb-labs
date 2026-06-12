@@ -136,6 +136,36 @@ export class StateStore {
     return updatedStep
   }
 
+  async resetStepsFromIndex(
+    runId: string,
+    jobId: string,
+    fromIndex: number,
+  ): Promise<WorkflowRun | null> {
+    return this.updateRun(runId, (run) => {
+      const job = run.jobs.find((j: JobRun) => j.id === jobId)
+      if (!job) {
+        return
+      }
+      for (const step of job.steps) {
+        if (step.index >= fromIndex) {
+          step.status = 'queued'
+          step.startedAt = undefined
+          step.finishedAt = undefined
+          step.durationMs = undefined
+          step.error = undefined
+          step.outputs = undefined
+          step.skipReason = undefined
+        }
+      }
+      job.status = 'queued'
+      job.attempt = 0
+      job.startedAt = undefined
+      job.finishedAt = undefined
+      job.durationMs = undefined
+      job.error = undefined
+    })
+  }
+
   async releaseBlockedJobs(
     runId: string,
     completedJobName: string,

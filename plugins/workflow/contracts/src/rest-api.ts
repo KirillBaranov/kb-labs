@@ -326,6 +326,21 @@ export const WorkflowRerunRequestSchema = z.object({
 })
 
 /**
+ * Workflow resume request (POST /api/v1/runs/:runId/resume)
+ */
+export interface WorkflowResumeRequest {
+  /** spec.id of the step to restart from (inclusive) */
+  fromStepId: string;
+  /** Job ID — required only when multiple jobs contain a step with the same spec.id */
+  jobId?: string;
+}
+
+export const WorkflowResumeRequestSchema = z.object({
+  fromStepId: z.string().trim().min(1),
+  jobId: z.string().optional(),
+})
+
+/**
  * Dashboard stats response (GET /api/v1/stats)
  */
 export interface DashboardStatsResponse {

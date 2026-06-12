@@ -3,6 +3,7 @@
  */
 import type {
   WorkflowRerunRequest,
+  WorkflowResumeRequest,
   WorkflowRunRequest,
   JobStatusInfo,
   JobStepsResponse,
@@ -492,6 +493,35 @@ export class WorkflowDaemonClient {
         error?: string;
       };
       throw new Error(error.error || `Failed to run workflow: ${response.statusText}`);
+    }
+
+    const payload = await this.parseJsonResponse<{ ok: boolean; data?: { runId: string; status: string } }>(response);
+    return this.unwrapData<{ runId: string; status: string }>(payload);
+  }
+
+  /**
+   * Resume a workflow run from a specific step by ID
+   */
+  async resumeRun(
+    runId: string,
+    request: WorkflowResumeRequest,
+  ): Promise<{ runId: string; status: string }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/runs/${encodeURIComponent(runId)}/resume`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      },
+    );
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({ error: response.statusText }))) as {
+        error?: string;
+      };
+      throw new Error(error.error || `Failed to resume workflow run: ${response.statusText}`);
     }
 
     const payload = await this.parseJsonResponse<{ ok: boolean; data?: { runId: string; status: string } }>(response);

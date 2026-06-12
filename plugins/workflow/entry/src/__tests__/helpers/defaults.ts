@@ -1,6 +1,6 @@
 import type { WorkflowDaemonClient } from '../../http-client.js';
 import type { WorkflowRunSummary, WorkflowRunDetail, JobStatusDetail } from '../../http-client.js';
-import type { WorkflowRerunRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import type { WorkflowRerunRequest, WorkflowResumeRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 
 type WorkflowClientInstance = InstanceType<typeof WorkflowDaemonClient>;
 
@@ -28,6 +28,8 @@ export const defaultWorkflowClient: WorkflowDaemonClient = {
   runWorkflow: async (_id: string, _req: WorkflowRunRequest) => ({ runId: 'run-test-123', status: 'queued' }),
 
   rerunWorkflow: async (_runId: string, _req: WorkflowRerunRequest) => ({ runId: 'run-test-rerun-123', status: 'queued' }),
+
+  resumeRun: async (_runId: string, _req: WorkflowResumeRequest) => ({ runId: 'run-test-resume-123', status: 'running' }),
 
   listRuns: async () => [],
 

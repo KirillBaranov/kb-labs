@@ -18,6 +18,7 @@ export const EVENT_NAMES = {
     finished: 'run.finished',
     cancelled: 'run.cancelled',
     failed: 'run.failed',
+    resumed: 'run.resumed',
   },
   job: {
     queued: 'job.queued',

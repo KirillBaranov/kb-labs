@@ -5,7 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
-import type { WorkflowRerunRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import type { WorkflowRerunRequest, WorkflowResumeRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import type { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
 import type { OperationObserver } from '@kb-labs/shared-http';
 import type { WorkflowHostService } from '../host/workflow-host-service.js';
@@ -183,6 +183,40 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
         return fail(reply, 400, message);
       }
       logger.error('[workflows-api] Error rerunning workflow', error instanceof Error ? error : undefined);
+      return fail(reply, 500, message);
+    }
+  });
+
+  // POST /api/v1/runs/:runId/resume — Resume a run from a specific step
+  server.post<{
+    Params: { runId: string };
+    Body: WorkflowResumeRequest;
+  }>('/api/v1/runs/:runId/resume', { schema: { tags: ['Runs'], summary: 'Resume a workflow run from a specific step' } }, async (request, reply) => {
+    try {
+      const { runId } = request.params;
+      const body = request.body;
+      if (!body?.fromStepId?.trim()) {
+        return fail(reply, 400, 'Missing required field: fromStepId');
+      }
+      const response = await observability.observeOperation('workflow.run.resume', () =>
+        hostService.resumeRunFromStep(runId, body),
+      );
+      return ok(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to resume workflow run';
+      if (message === 'Run not found') {
+        return fail(reply, 404, message);
+      }
+      if (
+        message.startsWith('Cannot resume run') ||
+        message.startsWith('Step not found') ||
+        message.startsWith('Job not found') ||
+        message.startsWith('Ambiguous step') ||
+        message.startsWith("Step '")
+      ) {
+        return fail(reply, 400, message);
+      }
+      logger.error('[workflows-api] Error resuming workflow run', error instanceof Error ? error : undefined);
       return fail(reply, 500, message);
     }
   });

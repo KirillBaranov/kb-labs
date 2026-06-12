@@ -17,6 +17,7 @@ import type {
   WorkflowRun,
   WorkflowRunHistoryResponse,
   WorkflowRerunRequest,
+  WorkflowResumeRequest,
   WorkflowRunRequest,
 } from '@kb-labs/workflow-contracts';
 import type { JobBroker } from '../job-broker.js';
@@ -372,6 +373,25 @@ export class WorkflowHostService {
       },
       inputs: resolvedInputs,
     });
+
+    return {
+      runId: run.id,
+      status: run.status,
+    };
+  }
+
+  async resumeRunFromStep(
+    runId: string,
+    request: WorkflowResumeRequest,
+  ): Promise<{ runId: string; status: string }> {
+    const resolved = await this.resolveRunId(runId);
+    const effectiveRunId = resolved ?? runId;
+
+    const run = await this.options.engine.resumeFromStep(
+      effectiveRunId,
+      request.fromStepId,
+      request.jobId,
+    );
 
     return {
       runId: run.id,

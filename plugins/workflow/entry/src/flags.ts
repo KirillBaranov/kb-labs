@@ -276,6 +276,36 @@ export interface RunsRerunFlags {
 }
 
 /**
+ * Flags for workflow:runs-resume command
+ */
+export const runsResumeFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to resume (alias for positional argument)',
+  },
+  'from-step': {
+    type: 'string',
+    description: 'spec.id of the step to restart from (inclusive)',
+  },
+  'job-id': {
+    type: 'string',
+    description: 'Job ID — required when multiple jobs contain a step with the same spec.id',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export interface RunsResumeFlags {
+  'run-id'?: string;
+  'from-step'?: string;
+  'job-id'?: string;
+  json?: boolean;
+}
+
+/**
  * Flags for workflow:runs-cancel command
  */
 export const runsCancelFlags = {

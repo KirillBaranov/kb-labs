@@ -2,6 +2,7 @@ import type {
   WorkflowRun,
   WorkflowSpec,
   JobRun,
+  StepRun,
   ExpressionContext,
 } from '@kb-labs/workflow-contracts'
 import { evaluateExpression } from '@kb-labs/workflow-contracts'
@@ -710,6 +711,116 @@ export class WorkflowEngine {
    */
   getScheduler(): Scheduler {
     return this.scheduler
+  }
+
+  /**
+   * Resume a failed run from a specific step.
+   * Resets the target step and all subsequent steps in the same job to queued,
+   * preserving outputs of steps that completed before the target.
+   */
+  async resumeFromStep(
+    runId: string,
+    fromStepId: string,
+    jobId?: string,
+  ): Promise<WorkflowRun> {
+    const run = await this.getRun(runId)
+    if (!run) {
+      throw new Error('Run not found')
+    }
+
+    if (run.status === 'running' || run.status === 'queued') {
+      throw new Error(`Cannot resume run in status '${run.status}': run is still active`)
+    }
+    if (run.status === 'success') {
+      throw new Error(`Cannot resume run in status 'success': run already completed successfully`)
+    }
+    if (run.status === 'cancelled') {
+      throw new Error(`Cannot resume run in status 'cancelled': run was cancelled`)
+    }
+
+    // Locate the target job and step
+    let targetJob: JobRun | undefined
+    let targetStep: StepRun | undefined
+
+    if (jobId) {
+      targetJob = run.jobs.find((j) => j.id === jobId || j.jobName === jobId)
+      if (!targetJob) {
+        throw new Error(`Job not found: ${jobId}`)
+      }
+      targetStep = targetJob.steps.find((s) => s.spec?.id === fromStepId)
+    } else {
+      for (const j of run.jobs) {
+        const s = j.steps.find((step) => step.spec?.id === fromStepId)
+        if (s) {
+          if (targetStep) {
+            throw new Error(
+              `Ambiguous step ID '${fromStepId}': found in multiple jobs. Specify jobId to disambiguate.`,
+            )
+          }
+          targetJob = j
+          targetStep = s
+        }
+      }
+    }
+
+    if (!targetJob || !targetStep) {
+      throw new Error(`Step not found: '${fromStepId}'`)
+    }
+
+    if (targetStep.status === 'queued') {
+      throw new Error(
+        `Step '${fromStepId}' has not been reached yet (status: queued). Only steps that have been executed can be used as resume points.`,
+      )
+    }
+
+    // Reset steps from target index onward and reset job state
+    await this.stateStore.resetStepsFromIndex(run.id, targetJob.id, targetStep.index)
+
+    // Reset downstream cancelled jobs so they can run after the resumed job completes
+    await this.stateStore.updateRun(run.id, (draft) => {
+      for (const job of draft.jobs) {
+        if (job.id === targetJob!.id) continue
+        if (job.status !== 'cancelled') continue
+        if (!job.needs?.includes(targetJob!.name ?? '')) continue
+        job.status = 'queued'
+        job.attempt = 0
+        job.startedAt = undefined
+        job.finishedAt = undefined
+        job.durationMs = undefined
+        job.error = undefined
+        job.blocked = true
+        const deps = job.needs ?? []
+        job.pendingDependencies = deps.filter((d: string) => d !== (targetJob!.name ?? ''))
+      }
+    })
+
+    // Clear run terminal state so the worker can re-enter it
+    await this.stateStore.updateRun(run.id, (draft) => {
+      draft.status = 'running'
+      draft.finishedAt = undefined
+      draft.durationMs = undefined
+      draft.result = undefined
+    })
+
+    // Re-enqueue the job
+    const updatedRun = await this.getRun(run.id)
+    const updatedJob = updatedRun?.jobs.find((j) => j.id === targetJob!.id)
+    if (updatedJob) {
+      await this.scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal')
+    }
+
+    const finalRun = (await this.getRun(run.id)) ?? run
+    await this.events.publish({
+      type: EVENT_NAMES.run.resumed,
+      runId: run.id,
+      payload: {
+        fromStepId,
+        jobId: targetJob!.id,
+        status: finalRun.status,
+      },
+    })
+
+    return finalRun
   }
 
   /**

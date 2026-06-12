@@ -235,4 +235,131 @@ describe('StateStore', () => {
     const reloaded = await store.getRun('run-1');
     expect(reloaded!.jobs[0]!.pendingDependencies).toEqual(['test']);
   });
+
+  // ── resetStepsFromIndex ──────────────────────────────────────────────
+
+  function makeRunWithSteps(): WorkflowRun {
+    const now = '2026-01-01T00:00:00Z';
+    return {
+      id: 'run-r',
+      name: 'resume-workflow',
+      version: '1.0.0',
+      status: 'failed',
+      createdAt: now,
+      queuedAt: now,
+      trigger: { type: 'manual' },
+      jobs: [
+        {
+          id: 'run-r:build',
+          jobName: 'build',
+          status: 'failed',
+          startedAt: now,
+          finishedAt: now,
+          durationMs: 5000,
+          steps: [
+            {
+              id: 'run-r:build:0',
+              name: 'checkout',
+              index: 0,
+              status: 'success',
+              startedAt: now,
+              finishedAt: now,
+              outputs: { sha: 'abc123' },
+              spec: { id: 'checkout', uses: 'builtin:shell', run: 'echo ok' },
+            },
+            {
+              id: 'run-r:build:1',
+              name: 'compile',
+              index: 1,
+              status: 'success',
+              startedAt: now,
+              finishedAt: now,
+              outputs: { artifact: 'dist/app.js' },
+              spec: { id: 'compile', uses: 'builtin:shell', run: 'tsc' },
+            },
+            {
+              id: 'run-r:build:2',
+              name: 'test',
+              index: 2,
+              status: 'failed',
+              startedAt: now,
+              finishedAt: now,
+              error: { message: 'Tests failed', code: 'TESTS_FAILED' },
+              spec: { id: 'test', uses: 'builtin:shell', run: 'vitest' },
+            },
+            {
+              id: 'run-r:build:3',
+              name: 'deploy',
+              index: 3,
+              status: 'queued',
+              spec: { id: 'deploy', uses: 'builtin:shell', run: 'deploy.sh' },
+            },
+          ],
+        } as unknown as JobRun,
+      ],
+    } as WorkflowRun;
+  }
+
+  it('SSR-01: resets steps from fromIndex onward, preserves steps before', async () => {
+    const run = makeRunWithSteps();
+    await store.saveRun(run);
+
+    await store.resetStepsFromIndex('run-r', 'run-r:build', 2);
+
+    const reloaded = await store.getRun('run-r');
+    const steps = reloaded!.jobs[0]!.steps;
+
+    // Steps 0 and 1 are unchanged
+    expect(steps[0]!.status).toBe('success');
+    expect(steps[0]!.outputs).toEqual({ sha: 'abc123' });
+    expect(steps[0]!.finishedAt).toBe('2026-01-01T00:00:00Z');
+
+    expect(steps[1]!.status).toBe('success');
+    expect(steps[1]!.outputs).toEqual({ artifact: 'dist/app.js' });
+
+    // Steps 2 and 3 are reset
+    expect(steps[2]!.status).toBe('queued');
+    expect(steps[2]!.startedAt).toBeUndefined();
+    expect(steps[2]!.finishedAt).toBeUndefined();
+    expect(steps[2]!.error).toBeUndefined();
+    expect(steps[2]!.outputs).toBeUndefined();
+
+    expect(steps[3]!.status).toBe('queued');
+  });
+
+  it('SSR-02: resets job status and clears timing', async () => {
+    const run = makeRunWithSteps();
+    await store.saveRun(run);
+
+    await store.resetStepsFromIndex('run-r', 'run-r:build', 2);
+
+    const reloaded = await store.getRun('run-r');
+    const job = reloaded!.jobs[0]!;
+
+    expect(job.status).toBe('queued');
+    expect(job.startedAt).toBeUndefined();
+    expect(job.finishedAt).toBeUndefined();
+    expect(job.durationMs).toBeUndefined();
+    expect(job.error).toBeUndefined();
+  });
+
+  it('SSR-03: resetting from index 0 resets all steps', async () => {
+    const run = makeRunWithSteps();
+    await store.saveRun(run);
+
+    await store.resetStepsFromIndex('run-r', 'run-r:build', 0);
+
+    const reloaded = await store.getRun('run-r');
+    const steps = reloaded!.jobs[0]!.steps;
+
+    for (const step of steps) {
+      expect(step.status).toBe('queued');
+      expect(step.outputs).toBeUndefined();
+    }
+  });
+
+  it('SSR-04: returns null for non-existent run', async () => {
+    const result = await store.resetStepsFromIndex('ghost-run', 'job-id', 0);
+    expect(result).toBeNull();
+  });
 });

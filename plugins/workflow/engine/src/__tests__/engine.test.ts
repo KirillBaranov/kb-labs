@@ -104,7 +104,7 @@ class MockCache implements ICache {
 class MockEventBus implements IEventBus {
   publishedEvents: any[] = [];
 
-  async publish(event: any): Promise<void> {
+  async publish(_topic: string, event: any): Promise<void> {
     this.publishedEvents.push(event);
   }
 
@@ -565,6 +565,161 @@ describe('WorkflowEngine', () => {
         'Job skipped: if condition false',
         expect.objectContaining({ runId: run.id, condition: 'false' }),
       );
+    });
+  });
+
+  // ── resumeFromStep ─────────────────────────────────────────────────────────
+
+  describe('resumeFromStep', () => {
+    const resumeSpec: WorkflowSpec = {
+      name: 'Resume Test',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        build: {
+          runsOn: 'local',
+          steps: [
+            { id: 'checkout', name: 'Checkout', uses: 'builtin:shell', with: { run: 'echo checkout' } },
+            { id: 'compile',  name: 'Compile',  uses: 'builtin:shell', with: { run: 'echo compile'  } },
+            { id: 'test',     name: 'Test',     uses: 'builtin:shell', with: { run: 'echo test'     } },
+          ],
+        },
+      },
+    };
+
+    async function makeFailedRun() {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      // Simulate the run reaching 'failed' state
+      await (engine as any).stateStore.updateRun(run.id, (draft: WorkflowRun) => {
+        draft.status = 'failed';
+        draft.finishedAt = new Date().toISOString();
+        const job = draft.jobs[0]!;
+        job.status = 'failed';
+        job.startedAt = new Date().toISOString();
+        job.finishedAt = new Date().toISOString();
+        // Mark first two steps as completed, third as failed
+        job.steps[0]!.status = 'success';
+        job.steps[0]!.outputs = { sha: 'abc' };
+        job.steps[1]!.status = 'success';
+        job.steps[1]!.outputs = { artifact: 'dist/app.js' };
+        job.steps[2]!.status = 'failed';
+        job.steps[2]!.error = { message: 'Tests exploded' };
+      });
+      return await engine.getRun(run.id) as WorkflowRun;
+    }
+
+    // RFS-01: guard — active run (running)
+    it('RFS-01: throws when run is still running', async () => {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      // status is 'queued' after creation — test with 'running' explicitly
+      await (engine as any).stateStore.updateRun(run.id, (draft: WorkflowRun) => {
+        draft.status = 'running';
+      });
+      await expect(engine.resumeFromStep(run.id, 'test')).rejects.toThrow(
+        "Cannot resume run in status 'running': run is still active",
+      );
+    });
+
+    // RFS-02: guard — active run (queued)
+    it('RFS-02: throws when run is queued', async () => {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      await expect(engine.resumeFromStep(run.id, 'test')).rejects.toThrow(
+        "Cannot resume run in status 'queued': run is still active",
+      );
+    });
+
+    // RFS-03: guard — already succeeded
+    it('RFS-03: throws when run already succeeded', async () => {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      await (engine as any).stateStore.updateRun(run.id, (draft: WorkflowRun) => {
+        draft.status = 'success';
+      });
+      await expect(engine.resumeFromStep(run.id, 'test')).rejects.toThrow(
+        "Cannot resume run in status 'success': run already completed successfully",
+      );
+    });
+
+    // RFS-04: guard — cancelled run must be blocked
+    it('RFS-04: throws when run is cancelled', async () => {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      await (engine as any).stateStore.updateRun(run.id, (draft: WorkflowRun) => {
+        draft.status = 'cancelled';
+        draft.finishedAt = new Date().toISOString();
+      });
+      await expect(engine.resumeFromStep(run.id, 'test')).rejects.toThrow(
+        "Cannot resume run in status 'cancelled': run was cancelled",
+      );
+    });
+
+    // RFS-05: guard — run not found
+    it('RFS-05: throws when run does not exist', async () => {
+      await expect(engine.resumeFromStep('ghost-run-id', 'test')).rejects.toThrow('Run not found');
+    });
+
+    // RFS-06: guard — step not found
+    it('RFS-06: throws when step ID does not exist in the run', async () => {
+      const run = await makeFailedRun();
+      await expect(engine.resumeFromStep(run.id, 'nonexistent-step')).rejects.toThrow(
+        "Step not found: 'nonexistent-step'",
+      );
+    });
+
+    // RFS-07: guard — step not yet reached (queued)
+    it('RFS-07: throws when target step has not been reached yet (still queued)', async () => {
+      const run = await engine.createRun({ spec: resumeSpec, trigger: { type: 'manual' } });
+      // Put run in failed with first step done, remaining two queued
+      await (engine as any).stateStore.updateRun(run.id, (draft: WorkflowRun) => {
+        draft.status = 'failed';
+        draft.finishedAt = new Date().toISOString();
+        const job = draft.jobs[0]!;
+        job.status = 'failed';
+        job.steps[0]!.status = 'success';
+        // steps[1] and steps[2] remain 'queued'
+      });
+      await expect(engine.resumeFromStep(run.id, 'compile')).rejects.toThrow(
+        "Step 'compile' has not been reached yet",
+      );
+    });
+
+    // RFS-08: happy path — run transitions to 'running', steps reset
+    it('RFS-08: resets target step onward and transitions run to running', async () => {
+      const run = await makeFailedRun();
+      const resumed = await engine.resumeFromStep(run.id, 'test');
+
+      expect(resumed.status).toBe('running');
+      expect(resumed.finishedAt).toBeUndefined();
+
+      const job = resumed.jobs[0]!;
+      // Steps before target must stay intact
+      expect(job.steps[0]!.status).toBe('success');
+      expect(job.steps[0]!.outputs).toEqual({ sha: 'abc' });
+      expect(job.steps[1]!.status).toBe('success');
+      // Target step and beyond are reset
+      expect(job.steps[2]!.status).toBe('queued');
+      expect(job.steps[2]!.error).toBeUndefined();
+      expect(job.steps[2]!.finishedAt).toBeUndefined();
+    });
+
+    // RFS-09: run.resumed event is published so SSE watchers are notified
+    it('RFS-09: publishes run.resumed event after successful resume', async () => {
+      const run = await makeFailedRun();
+      events.publishedEvents = [];
+
+      await engine.resumeFromStep(run.id, 'test');
+
+      const resumedEvent = events.publishedEvents.find((e: any) => e.type === 'run.resumed');
+      expect(resumedEvent).toBeDefined();
+      expect(resumedEvent.runId).toBe(run.id);
+      expect(resumedEvent.payload.fromStepId).toBe('test');
+    });
+
+    // RFS-10: disambiguate by jobId
+    it('RFS-10: accepts explicit jobId to disambiguate when multiple jobs could match', async () => {
+      const run = await makeFailedRun();
+      const jobId = run.jobs[0]!.id;
+
+      const resumed = await engine.resumeFromStep(run.id, 'test', jobId);
+      expect(resumed.status).toBe('running');
     });
   });
 });

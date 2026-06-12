@@ -19,6 +19,7 @@ import {
   runsViewFlags,
   runsWatchFlags,
   runsRerunFlags,
+  runsResumeFlags,
   runsCancelFlags,
   runsApproveFlags,
   lintFlags,
@@ -241,6 +242,22 @@ export const manifest = {
           'kb workflow runs rerun --run-id=<runId>',
           'kb workflow runs rerun <runId> --failed-only',
           'kb workflow runs rerun <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs resume',
+        category: 'Runs',
+        operationType: 'mutate' as const,
+        describe: 'Resume a failed workflow run from a specific step.',
+        longDescription:
+          'Resumes a failed run from the specified step, preserving all outputs of steps that ' +
+          'completed before the target. Steps after the target are reset and re-executed.',
+        handler: './commands/runs-resume.js#default',
+        flags: defineCommandFlags(runsResumeFlags),
+        examples: [
+          'kb workflow runs resume <runId> --from-step <stepId>',
+          'kb workflow runs resume <runId> --from-step <stepId> --job-id <jobId>',
+          'kb workflow runs resume <runId> --from-step <stepId> --json',
         ],
       },
       {
