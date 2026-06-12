@@ -27,6 +27,7 @@ export interface WorkflowRunSummary {
   finishedAt?: string;
   durationMs?: number;
   inputs?: Record<string, unknown>;
+  hasPendingApproval?: boolean;
 }
 
 /** Full workflow run detail returned by GET /api/v1/runs/:runId */

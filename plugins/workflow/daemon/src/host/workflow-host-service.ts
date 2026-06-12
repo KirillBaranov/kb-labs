@@ -157,7 +157,9 @@ export class WorkflowHostService {
     runId: string,
     options?: { stepId?: string; limit?: number; offset?: number; level?: string },
   ): Promise<Array<Record<string, unknown>>> {
-    const logs = await this.options.jobBroker.getRunLogs(runId, options);
+    const resolved = await this.resolveRunId(runId);
+    if (!resolved) { throw new Error('Run not found'); }
+    const logs = await this.options.jobBroker.getRunLogs(resolved, options);
     return logs as Array<Record<string, unknown>>;
   }
 
@@ -312,7 +314,8 @@ export class WorkflowHostService {
     runId: string,
     request: WorkflowRerunRequest,
   ): Promise<{ runId: string; status: string }> {
-    const sourceRun = (await this.options.engine.getRun(runId)) as WorkflowRun | null;
+    const resolved = await this.resolveRunId(runId);
+    const sourceRun = resolved ? (await this.options.engine.getRun(resolved)) as WorkflowRun | null : null;
     if (!sourceRun) {
       throw new Error('Run not found');
     }
@@ -547,15 +550,27 @@ export class WorkflowHostService {
     };
   }
 
+  async resolveRunId(idOrPrefix: string): Promise<string | null> {
+    const run = (await this.options.engine.getRun(idOrPrefix)) as WorkflowRun | null;
+    if (run) { return run.id; }
+    if (idOrPrefix.length <= 8 && !idOrPrefix.includes('-')) {
+      const all = (await this.options.engine.getAllRuns()) as WorkflowRun[];
+      return all.find(r => r.id.startsWith(idOrPrefix))?.id ?? null;
+    }
+    return null;
+  }
+
   async getRun(runId: string): Promise<WorkflowRun | null> {
-    return (await this.options.engine.getRun(runId)) as WorkflowRun | null;
+    const resolved = await this.resolveRunId(runId);
+    if (!resolved) { return null; }
+    return (await this.options.engine.getRun(resolved)) as WorkflowRun | null;
   }
 
   async listRuns(filters?: {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ runs: WorkflowRun[]; total: number }> {
+  }): Promise<{ runs: Array<WorkflowRun & { hasPendingApproval: boolean }>; total: number }> {
     const allRuns = (await this.options.engine.getAllRuns()) as WorkflowRun[];
 
     let runs = allRuns;
@@ -571,18 +586,25 @@ export class WorkflowHostService {
     const start = filters?.offset ?? 0;
     const end = filters?.limit ? start + filters.limit : runs.length;
 
-    return { runs: runs.slice(start, end), total };
+    const page = runs.slice(start, end).map(run => ({
+      ...run,
+      hasPendingApproval: run.status === 'running' &&
+        (run.jobs ?? []).flatMap(j => j.steps ?? []).some(s => s.status === 'waiting_approval'),
+    }));
+
+    return { runs: page, total };
   }
 
   async cancelRun(runId: string): Promise<void> {
-    const run = await this.options.engine.getRun(runId);
+    const resolved = await this.resolveRunId(runId);
+    const run = resolved ? await this.options.engine.getRun(resolved) : null;
     if (!run) {
       throw new Error('Run not found');
     }
     if (run.status !== 'running' && run.status !== 'queued') {
       throw new Error(`Cannot cancel run with status "${run.status}"`);
     }
-    await this.options.engine.cancelRun(runId);
+    await this.options.engine.cancelRun(resolved!);
   }
 
   private requireWorkflowService(): WorkflowService {

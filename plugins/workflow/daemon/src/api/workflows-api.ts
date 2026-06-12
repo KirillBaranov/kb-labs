@@ -261,7 +261,8 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
   server.get<{
     Params: { runId: string };
   }>('/api/v1/runs/:runId/events', { schema: { hide: true } }, async (request, reply) => {
-    const { runId } = request.params;
+    const { runId: rawId } = request.params;
+    const runId = await hostService.resolveRunId(rawId) ?? rawId;
 
     const run = await observability.observeOperation('workflow.run.events', () => engine.getRun(runId));
     if (!run) {

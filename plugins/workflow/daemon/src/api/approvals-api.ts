@@ -11,10 +11,12 @@ import type { FastifyInstance } from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
 import type { WorkflowEngine } from '@kb-labs/workflow-engine';
 import type { OperationObserver } from '@kb-labs/shared-http';
+import type { WorkflowHostService } from '../host/workflow-host-service.js';
 import { fail, ok } from './response.js';
 
 export interface ApprovalsAPIOptions {
   server: FastifyInstance;
+  hostService: WorkflowHostService;
   engine: WorkflowEngine;
   logger: ILogger;
   observability: OperationObserver;
@@ -28,15 +30,15 @@ export interface ApprovalsAPIOptions {
  * - POST /api/v1/runs/:runId/approvals/resolve - Approve or reject a pending step
  */
 export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
-  const { server, engine, logger, observability } = options;
+  const { server, hostService, engine, logger, observability } = options;
 
   // GET /api/v1/runs/:runId/approvals
   server.get<{
     Params: { runId: string };
   }>('/api/v1/runs/:runId/approvals', { schema: { tags: ['Approvals'], summary: 'List pending approvals for a run' } }, async (request, reply) => {
     try {
-      const { runId } = request.params;
-      const run = await observability.observeOperation('workflow.approval.list', () => engine.getRun(runId));
+      const { runId: rawId } = request.params;
+      const run = await observability.observeOperation('workflow.approval.list', () => hostService.getRun(rawId));
 
       if (!run) {
         return fail(reply, 404, 'Run not found');
@@ -66,7 +68,7 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
         }
       }
 
-      return ok({ runId, pending });
+      return ok({ runId: run.id, pending });
     } catch (error) {
       logger.error('[approvals-api] Error listing pending approvals', error instanceof Error ? error : undefined);
       return fail(reply, 500, error instanceof Error ? error.message : 'Failed to list pending approvals');
@@ -85,7 +87,7 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
     };
   }>('/api/v1/runs/:runId/approvals/resolve', { schema: { tags: ['Approvals'], summary: 'Approve or reject a pending step' } }, async (request, reply) => {
     try {
-      const { runId } = request.params;
+      const { runId: rawId } = request.params;
       const { jobId, stepId, action, comment, data } = request.body;
 
       if (!jobId || !stepId || !action) {
@@ -96,7 +98,7 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
         return fail(reply, 400, 'action must be "approve" or "reject"');
       }
 
-      const run = await observability.observeOperation('workflow.approval.get', () => engine.getRun(runId));
+      const run = await observability.observeOperation('workflow.approval.get', () => hostService.getRun(rawId));
       if (!run) {
         return fail(reply, 404, 'Run not found');
       }
@@ -116,11 +118,11 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
       }
 
       await observability.observeOperation('workflow.approval.resolve', () =>
-        engine.resolveApproval(runId, jobId, stepId, action, data, comment),
+        engine.resolveApproval(run.id, jobId, stepId, action, data, comment),
       );
 
       logger.info('[approvals-api] Approval resolved', {
-        runId,
+        runId: run.id,
         jobId,
         stepId,
         action,
@@ -128,7 +130,7 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
       });
 
       return ok({
-        runId,
+        runId: run.id,
         jobId,
         stepId,
         action,
