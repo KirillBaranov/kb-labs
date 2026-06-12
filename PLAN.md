@@ -1,67 +1,84 @@
+Теперь у меня достаточно информации для полного плана.
+
+---
+
 ## Summary
 
-Consolidate `workflow list`, `workflow logs`, and `workflow status` legacy top-level commands under the `workflow runs` namespace (GitHub CLI style), keeping legacy aliases with deprecation warnings.
+Add a `currentStepName` field to the `WorkflowRunSummary` type and populate it in the daemon's `listRuns` method by finding the currently-executing step; then display it as a new "Step" column in the `runs list` table, visible only for RUNNING runs.
+
+---
 
 ## Root cause / context
 
-The workflow plugin grew `kb workflow list/logs/status` as ad-hoc top-level commands before the `runs` sub-namespace existed. Now that `workflow runs` is the canonical pattern (already has `runs list`, `runs view`, `runs watch`, `runs rerun`, `runs cancel`, `runs approve`), the three legacy commands are inconsistent. The issue asks to add `runs logs` and `runs status`, and emit deprecation warnings from the legacy commands pointing users to the new paths.
+The `GET /api/v1/runs` endpoint already returns full `WorkflowRun` objects (with `jobs[].steps[]`) to `workflow-host-service.ts`, but `listRuns` only surfaces `hasPendingApproval` as a derived field — it discards all step-level data before sending the response. The CLI's `runs-list.ts` therefore has no step information to display. The data is available; it just isn't forwarded.
+
+---
 
 ## Implementation steps
 
-1. **Create `plugins/workflow/entry/src/commands/runs-logs.ts`**
-   - Copy flag shape from existing `logs.ts` (`LogsFlags` → rename to `RunsLogsFlags` in `flags.ts`)
-   - Accept `--run-id <id>` (or positional `argv[0]`) — drop the job-id path that belongs to `workflow job logs`
-   - Call `WorkflowDaemonClient.getRunLogs(runId)` and stream/render output
-   - No deprecation warning here (this is the canonical path)
+### 1. Add `currentStepName` to `WorkflowRunSummary` — `plugins/workflow/entry/src/http-client.ts` lines 15–31
 
-2. **Create `plugins/workflow/entry/src/commands/runs-status.ts`**
-   - Copy flag shape from `status.ts` (`StatusFlags` → rename to `RunsStatusFlags` in `flags.ts`)
-   - Accept `--run-id <id>` (or positional `argv[0]`)
-   - Call `WorkflowDaemonClient.getRun(runId)`, render status summary table
-   - No deprecation warning here
+Add one optional field to the interface:
+```ts
+currentStepName?: string;   // name of the actively-executing step (RUNNING runs only)
+```
 
-3. **Update `plugins/workflow/entry/src/flags.ts`**
-   - Add `RunsLogsFlags` interface (mirrors `LogsFlags` but scoped to run-id only)
-   - Add `RunsStatusFlags` interface (mirrors `StatusFlags` but scoped to run-id only)
+### 2. Compute `currentStepName` in the daemon — `plugins/workflow/daemon/src/host/workflow-host-service.ts` lines 589–593
 
-4. **Update `plugins/workflow/entry/src/commands/list.ts`**
-   - At top of `execute()`: `ctx.ui?.warn?.('workflow list is deprecated; use: kb workflow runs list')`
+Inside the `.map()` that already computes `hasPendingApproval`, add:
 
-5. **Update `plugins/workflow/entry/src/commands/logs.ts`**
-   - At top of `execute()`: `ctx.ui?.warn?.('workflow logs is deprecated; use: kb workflow runs logs <runId>')`
+```ts
+const allSteps = (run.jobs ?? []).flatMap(j => j.steps ?? []);
+const activeStep = allSteps.find(s => s.status === 'running');
+// …
+currentStepName: run.status === 'running' ? (activeStep?.name ?? undefined) : undefined,
+```
 
-6. **Update `plugins/workflow/entry/src/commands/status.ts`**
-   - At top of `execute()`: `ctx.ui?.warn?.('workflow status is deprecated; use: kb workflow runs status <runId>')`
+Return type becomes `WorkflowRun & { hasPendingApproval: boolean; currentStepName?: string }`.
 
-7. **Register new commands in `plugins/workflow/entry/src/manifest.ts`**
-   - Add entries for `workflow runs logs` and `workflow runs status` alongside existing `runs-*` commands
-   - Keep existing `workflow list/logs/status` entries — they stay in the manifest, just with deprecation in their handlers
-   - `groupMeta` for `workflow runs` already exists; no change needed there
+### 3. Propagate `currentStepName` through the API response type — `plugins/workflow/daemon/src/host/workflow-host-service.ts` line 573
 
-8. **Update help text in manifest entries** for legacy commands
-   - Set `describe` to include `"(deprecated — use workflow runs logs)"` etc.
+Update the `Promise<…>` return type annotation to include `currentStepName?: string`.
+
+### 4. Add "Step" column to the CLI table — `plugins/workflow/entry/src/commands/runs-list.ts` lines 72–94
+
+In the `runs.map()` row builder (after `'Status'`):
+
+```ts
+'Step': run.status === 'running' && run.currentStepName ? run.currentStepName : '',
+```
+
+Add the column descriptor after `'Status'`:
+```ts
+{ header: 'Step', key: 'Step' },
+```
+
+Place it between `'Status'` and `'Dur'` so it only occupies space when non-empty; since `ctx.ui?.table` already omits blank columns (or they collapse visually), this is non-disruptive for finished runs.
+
+### 5. Expose `currentStepName` in JSON output (no code change needed)
+
+The JSON path (`ctx.ui?.json?.({ ok: true, data: runs })`) already serialises the full `runs` array, so `currentStepName` will appear in `--json` output automatically once step 2 is done.
+
+---
 
 ## Tests / verification
 
-**New handler tests** (one file per new command, matching the pattern in `__tests__/cli/`):
+**Unit test** (handler level) — `plugins/workflow/entry/src/__tests__/cli/runs-list.test.ts` (create if not present):
+- Mock `WorkflowDaemonClient.listRuns` to return one run with `status: 'running'` and `currentStepName: 'build-image'`.
+- Assert the rendered table row contains `'build-image'` in the Step column.
+- Mock a second run with `status: 'success'` and `currentStepName: undefined`; assert Step column is empty/absent.
 
-- `plugins/workflow/entry/src/__tests__/cli/runs-logs.cli.test.ts`
-  - Happy path: valid `--run-id`, mock client returns logs, exit 0
-  - Missing run-id: exit 1 + error message
-  - `--json` flag: JSON output format
+**Unit test** (daemon) — in `workflow-host-service.test.ts` or equivalent:
+- Provide an engine stub returning a run with `jobs[0].steps = [{ name: 'unit-tests', status: 'running' }, { name: 'deploy', status: 'queued' }]`.
+- Assert `listRuns()` result has `currentStepName === 'unit-tests'`.
+- For a run with all steps `queued`, assert `currentStepName === undefined`.
 
-- `plugins/workflow/entry/src/__tests__/cli/runs-status.cli.test.ts`
-  - Happy path: valid `--run-id`, mock client returns run detail, renders table, exit 0
-  - Unknown run: client 404 → exit 1 + error message
-  - `--json` flag: JSON output format
-
-**Deprecation tests** (add to existing test files):
-
-- `list.cli.test.ts`: assert `capturedUI.warnings` contains the deprecation string
-- `logs.cli.test.ts`: same
-- `status.cli.test.ts`: same
-
-**Run tests:**
+**Manual verification**:
 ```bash
-pnpm --filter @kb-labs/workflow-entry run test:cli
+kb-dev start
+# start a long-running workflow, then immediately:
+pnpm kb runs list
+# ➜ RUNNING row should show the active step name in the Step column
+pnpm kb runs list --json | jq '.[0].currentStepName'
+# ➜ "build-image" (or whatever the active step is)
 ```
