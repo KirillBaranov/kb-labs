@@ -78,6 +78,7 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
               'Trigger': run.trigger?.type ?? 'manual',
               'When': relativeTime(run.startedAt ?? run.createdAt),
               'Status': displayStatus.toUpperCase().replace(/_/g, ' '),
+              'Step': run.status === 'running' && run.currentStepName ? run.currentStepName : '',
               'Dur': formatDuration(run.durationMs),
               'ID': run.id.slice(0, 8),
             };
@@ -88,6 +89,7 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
             { header: 'Trigger', key: 'Trigger' },
             { header: 'When', key: 'When' },
             { header: 'Status', key: 'Status' },
+            { header: 'Step', key: 'Step' },
             { header: 'Dur', key: 'Dur' },
             { header: 'ID', key: 'ID' },
           ],

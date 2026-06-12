@@ -570,7 +570,7 @@ export class WorkflowHostService {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ runs: Array<WorkflowRun & { hasPendingApproval: boolean }>; total: number }> {
+  }): Promise<{ runs: Array<WorkflowRun & { hasPendingApproval: boolean; currentStepName?: string }>; total: number }> {
     const allRuns = (await this.options.engine.getAllRuns()) as WorkflowRun[];
 
     let runs = allRuns;
@@ -586,11 +586,23 @@ export class WorkflowHostService {
     const start = filters?.offset ?? 0;
     const end = filters?.limit ? start + filters.limit : runs.length;
 
-    const page = runs.slice(start, end).map(run => ({
-      ...run,
-      hasPendingApproval: run.status === 'running' &&
-        (run.jobs ?? []).flatMap(j => j.steps ?? []).some(s => s.status === 'waiting_approval'),
-    }));
+    const page = runs.slice(start, end).map(run => {
+      const allSteps = (run.jobs ?? []).flatMap(j => j.steps ?? []);
+      const activeSteps = allSteps.filter(s => s.status === 'running');
+      let currentStepName: string | undefined;
+      if (run.status === 'running' && activeSteps.length > 0) {
+        // With parallel jobs multiple steps may run simultaneously; show first + overflow count
+        currentStepName = activeSteps.length === 1
+          ? activeSteps[0]!.name
+          : `${activeSteps[0]!.name} (+${activeSteps.length - 1})`;
+      }
+      return {
+        ...run,
+        hasPendingApproval: run.status === 'running' &&
+          allSteps.some(s => s.status === 'waiting_approval'),
+        currentStepName,
+      };
+    });
 
     return { runs: page, total };
   }

@@ -463,4 +463,150 @@ describe('WorkflowHostService.listRuns — hasPendingApproval', () => {
     const { runs } = await service.listRuns({});
     expect(runs[0]).toMatchObject({ id: 'run-clean', hasPendingApproval: false });
   });
+
+  it('OBS-006: currentStepName is the name of the active running step', async () => {
+    const run = {
+      id: 'run-active',
+      name: 'ci',
+      version: '1.0.0',
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [{
+        id: 'j1',
+        jobName: 'build',
+        status: 'running',
+        runId: 'run-active',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 1,
+        artifacts: {},
+        steps: [
+          { id: 's1', name: 'unit-tests', status: 'success' },
+          { id: 's2', name: 'build-image', status: 'running' },
+          { id: 's3', name: 'deploy', status: 'queued' },
+        ],
+      }],
+    };
+
+    const getAllRuns = vi.fn(async () => [run]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs[0]?.currentStepName).toBe('build-image');
+  });
+
+  it('OBS-007: currentStepName is undefined when all steps are queued (no active step)', async () => {
+    const run = {
+      id: 'run-queued',
+      name: 'ci',
+      version: '1.0.0',
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [{
+        id: 'j1',
+        jobName: 'build',
+        status: 'running',
+        runId: 'run-queued',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 1,
+        artifacts: {},
+        steps: [
+          { id: 's1', name: 'unit-tests', status: 'queued' },
+        ],
+      }],
+    };
+
+    const getAllRuns = vi.fn(async () => [run]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs[0]?.currentStepName).toBeUndefined();
+  });
+
+  it('OBS-008: currentStepName is undefined for non-RUNNING runs', async () => {
+    const run = {
+      id: 'run-done',
+      name: 'ci',
+      version: '1.0.0',
+      status: 'success',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [{
+        id: 'j1',
+        jobName: 'build',
+        status: 'success',
+        runId: 'run-done',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 1,
+        artifacts: {},
+        steps: [
+          { id: 's1', name: 'unit-tests', status: 'success' },
+        ],
+      }],
+    };
+
+    const getAllRuns = vi.fn(async () => [run]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs[0]?.currentStepName).toBeUndefined();
+  });
+
+  it('OBS-009: parallel jobs — currentStepName shows first active step with overflow count', async () => {
+    const run = {
+      id: 'run-parallel',
+      name: 'ci-parallel',
+      version: '1.0.0',
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [
+        {
+          id: 'j1',
+          jobName: 'build',
+          status: 'running',
+          runId: 'run-parallel',
+          tenantId: 't1',
+          runsOn: 'local',
+          queuedAt: new Date().toISOString(),
+          attempt: 1,
+          artifacts: {},
+          steps: [{ id: 's1', name: 'compile', status: 'running' }],
+        },
+        {
+          id: 'j2',
+          jobName: 'test',
+          status: 'running',
+          runId: 'run-parallel',
+          tenantId: 't1',
+          runsOn: 'local',
+          queuedAt: new Date().toISOString(),
+          attempt: 1,
+          artifacts: {},
+          steps: [{ id: 's2', name: 'lint', status: 'running' }],
+        },
+      ],
+    };
+
+    const getAllRuns = vi.fn(async () => [run]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs[0]?.currentStepName).toBe('compile (+1)');
+  });
 });

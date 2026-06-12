@@ -155,6 +155,38 @@ describe('workflow:runs list', () => {
     expect(result.exitCode).toBe(0);
   });
 
+  it('CL-11: RUNNING run with currentStepName shows step name in Step column', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [
+        { id: 'r-run', name: 'ci', status: 'running', createdAt: new Date().toISOString(), currentStepName: 'build-image' },
+      ],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    const row = captured.table[0]!.rows[0]!;
+    expect(row['Step']).toBe('build-image');
+  });
+
+  it('CL-12: non-RUNNING run has empty Step column', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [
+        { id: 'r-done', name: 'ci', status: 'success', createdAt: new Date().toISOString(), currentStepName: undefined },
+      ],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    const row = captured.table[0]!.rows[0]!;
+    expect(row['Step']).toBe('');
+  });
+
   it('CL-10: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
     MockedClient.mockImplementation(() => makeClient({
       listRuns: async () => [
