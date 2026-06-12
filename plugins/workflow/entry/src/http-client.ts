@@ -2,6 +2,7 @@
  * HTTP client for interacting with Workflow Daemon
  */
 import type {
+  WorkflowRerunRequest,
   WorkflowRunRequest,
   JobStatusInfo,
   JobStepsResponse,
@@ -353,6 +354,7 @@ export class WorkflowDaemonClient {
     if (params.stepId) { query.set('stepId', params.stepId); }
     if (params.level) { query.set('level', params.level); }
     if (params.limit) { query.set('limit', String(params.limit)); }
+    if (params.failedOnly) { query.set('failedOnly', 'true'); }
 
     const encodedId = encodeURIComponent(runId);
     const qs = query.toString();
@@ -488,6 +490,35 @@ export class WorkflowDaemonClient {
         error?: string;
       };
       throw new Error(error.error || `Failed to run workflow: ${response.statusText}`);
+    }
+
+    const payload = await this.parseJsonResponse<{ ok: boolean; data?: { runId: string; status: string } }>(response);
+    return this.unwrapData<{ runId: string; status: string }>(payload);
+  }
+
+  /**
+   * Rerun a workflow run by ID, optionally only failed jobs
+   */
+  async rerunWorkflow(
+    runId: string,
+    request: WorkflowRerunRequest = {},
+  ): Promise<{ runId: string; status: string }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/runs/${encodeURIComponent(runId)}/rerun`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      },
+    );
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({ error: response.statusText }))) as {
+        error?: string;
+      };
+      throw new Error(error.error || `Failed to rerun workflow: ${response.statusText}`);
     }
 
     const payload = await this.parseJsonResponse<{ ok: boolean; data?: { runId: string; status: string } }>(response);

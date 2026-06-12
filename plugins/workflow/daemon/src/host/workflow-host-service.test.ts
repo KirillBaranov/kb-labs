@@ -265,3 +265,95 @@ describe('WorkflowHostService', () => {
     });
   });
 });
+
+describe('WorkflowHostService.rerunWorkflow', () => {
+  const baseRun = {
+    id: 'run-src',
+    name: 'my-workflow',
+    version: '1.0.0',
+    status: 'success',
+    createdAt: new Date().toISOString(),
+    queuedAt: new Date().toISOString(),
+    trigger: { type: 'manual' },
+    env: {},
+    inputs: { branch: 'main' },
+    metadata: { workflowId: 'my-workflow' },
+    jobs: [
+      { id: 'j1', jobName: 'build', status: 'success', runId: 'run-src', tenantId: 't1', runsOn: 'local', queuedAt: new Date().toISOString(), attempt: 0, artifacts: {}, steps: [] },
+      { id: 'j2', jobName: 'test', status: 'failed', runId: 'run-src', tenantId: 't1', runsOn: 'local', queuedAt: new Date().toISOString(), attempt: 0, artifacts: {}, steps: [] },
+    ],
+  };
+
+  const baseWorkflow = {
+    id: 'my-workflow',
+    input: {
+      name: 'my-workflow',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        build: { runsOn: 'local', steps: [] },
+        test: { runsOn: 'local', needs: ['build'], steps: [] },
+      },
+    },
+  };
+
+  it('RW-A: failedOnly=false reruns all jobs (full spec passed to engine)', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-new', status: 'queued' }));
+    const service = createService({
+      engine: { getRun: vi.fn(async () => baseRun), runFromSpec },
+      workflowService: { get: vi.fn(async () => baseWorkflow) },
+    });
+
+    const result = await service.rerunWorkflow('run-src', { failedOnly: false });
+
+    expect(result.runId).toBe('run-new');
+    expect(runFromSpec).toHaveBeenCalledOnce();
+    const [specArg] = (runFromSpec as any).mock.calls[0] as [Record<string, unknown>];
+    const jobs = specArg['jobs'] as Record<string, unknown>;
+    expect(Object.keys(jobs)).toEqual(['build', 'test']);
+  });
+
+  it('RW-B: failedOnly=true filters to only failed jobs and strips satisfied needs', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-new', status: 'queued' }));
+    const service = createService({
+      engine: { getRun: vi.fn(async () => baseRun), runFromSpec },
+      workflowService: { get: vi.fn(async () => baseWorkflow) },
+    });
+
+    await service.rerunWorkflow('run-src', { failedOnly: true });
+
+    const [specArg] = (runFromSpec as any).mock.calls[0] as [Record<string, unknown>];
+    const jobs = specArg['jobs'] as Record<string, unknown>;
+    // build succeeded — must not be rerun
+    expect(Object.keys(jobs)).not.toContain('build');
+    // test failed — must be rerun
+    expect(Object.keys(jobs)).toContain('test');
+    // 'build' stripped from test.needs since it is not in the filtered set
+    const testJob = jobs['test'] as Record<string, unknown>;
+    expect(testJob['needs']).toEqual([]);
+  });
+
+  it('RW-C: failedOnly=true throws when no jobs have failed', async () => {
+    const allSuccessRun = {
+      ...baseRun,
+      jobs: [
+        { ...baseRun.jobs[0], status: 'success' },
+        { ...baseRun.jobs[1], status: 'success' },
+      ],
+    };
+    const service = createService({
+      engine: { getRun: vi.fn(async () => allSuccessRun) },
+      workflowService: { get: vi.fn(async () => baseWorkflow) },
+    });
+
+    await expect(service.rerunWorkflow('run-src', { failedOnly: true })).rejects.toThrow('No failed jobs to rerun');
+  });
+
+  it('RW-D: throws when run is not found', async () => {
+    const service = createService({
+      engine: { getRun: vi.fn(async () => null) },
+    });
+
+    await expect(service.rerunWorkflow('missing-run', { failedOnly: false })).rejects.toThrow('Run not found');
+  });
+});

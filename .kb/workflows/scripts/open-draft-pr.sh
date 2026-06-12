@@ -5,7 +5,7 @@ set -e
 
 REPO_FULL="$OWNER/$REPO"
 
-git add PLAN.md
+git add -f PLAN.md
 git commit -m "plan: implementation plan for issue #${ISSUE_NUMBER}" 2>/dev/null || true
 git push origin "HEAD:refs/heads/${BRANCH_NAME}" --force
 

@@ -109,4 +109,28 @@ describe('workflow:list', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('CLI-07: emits deprecation warning when listing runs (not cron)', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      getExecutions: async () => sampleExecutions,
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await listCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(captured.warnings.some((w: { message: string }) => w.message.includes('deprecated'))).toBe(true);
+  });
+
+  it('CLI-08: does NOT emit deprecation warning when --type=cron', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      getCronJobs: async () => ({ crons: [] }),
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await listCommand.execute(ctx, mockCLIInput({ flags: { type: 'cron' } }));
+
+    expect(captured.warnings.some((w: { message: string }) => w.message.includes('deprecated'))).toBe(false);
+  });
 });

@@ -16,6 +16,7 @@ import type {
   WorkflowListResponse,
   WorkflowRun,
   WorkflowRunHistoryResponse,
+  WorkflowRerunRequest,
   WorkflowRunRequest,
 } from '@kb-labs/workflow-contracts';
 import type { JobBroker } from '../job-broker.js';
@@ -297,6 +298,74 @@ export class WorkflowHostService {
         type: triggerType,
         actor: request.trigger?.user,
         payload: userInputs,
+      },
+      inputs: resolvedInputs,
+    });
+
+    return {
+      runId: run.id,
+      status: run.status,
+    };
+  }
+
+  async rerunWorkflow(
+    runId: string,
+    request: WorkflowRerunRequest,
+  ): Promise<{ runId: string; status: string }> {
+    const sourceRun = (await this.options.engine.getRun(runId)) as WorkflowRun | null;
+    if (!sourceRun) {
+      throw new Error('Run not found');
+    }
+
+    const workflowId =
+      (sourceRun.metadata as Record<string, unknown> | undefined)?.['workflowId'] as string | undefined
+      ?? sourceRun.name;
+
+    const workflowService = this.requireWorkflowService();
+    const workflow = await workflowService.get(workflowId);
+    if (!workflow) {
+      throw new Error('Workflow not found');
+    }
+
+    const specInput = workflow.input as Record<string, unknown>;
+    let spec = {
+      ...specInput,
+    } as unknown as import('@kb-labs/workflow-contracts').WorkflowSpec;
+
+    if (request.failedOnly) {
+      const failedJobNames = new Set(
+        (sourceRun.jobs ?? [])
+          .filter((job: JobRun) => job.status === 'failed' || job.status === 'interrupted')
+          .map((job: JobRun) => job.jobName),
+      );
+
+      if (failedJobNames.size === 0) {
+        throw new Error('No failed jobs to rerun');
+      }
+
+      const filteredJobs: Record<string, unknown> = {};
+      for (const [name, jobSpec] of Object.entries(spec.jobs)) {
+        if (failedJobNames.has(name)) {
+          const js = jobSpec as Record<string, unknown>;
+          const needs = Array.isArray(js['needs'])
+            ? (js['needs'] as string[]).filter((dep) => failedJobNames.has(dep))
+            : undefined;
+          filteredJobs[name] = needs !== undefined && needs.length < (js['needs'] as string[]).length
+            ? { ...js, needs }
+            : js;
+        }
+      }
+
+      spec = { ...spec, jobs: filteredJobs } as unknown as import('@kb-labs/workflow-contracts').WorkflowSpec;
+    }
+
+    const resolvedInputs = (sourceRun.inputs ?? {}) as Record<string, unknown>;
+
+    const run = await this.options.engine.runFromSpec(spec, {
+      trigger: {
+        type: 'manual',
+        actor: 'cli-rerun',
+        payload: resolvedInputs,
       },
       inputs: resolvedInputs,
     });

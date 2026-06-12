@@ -100,4 +100,16 @@ describe('workflow:logs', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('CLG-07: emits deprecation warning on every invocation', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      getRunLogs: async () => sampleLogs,
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await logsCommand.execute(ctx, mockCLIInput({ flags: { 'run-id': 'r-123' } }));
+
+    expect(captured.warnings.some((w: { message: string }) => w.message.includes('deprecated'))).toBe(true);
+  });
 });

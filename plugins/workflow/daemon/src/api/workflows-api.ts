@@ -5,7 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
-import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import type { WorkflowRerunRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import type { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
 import type { OperationObserver } from '@kb-labs/shared-http';
 import type { WorkflowHostService } from '../host/workflow-host-service.js';
@@ -159,6 +159,30 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
         return fail(reply, 409, message);
       }
       logger.error('[workflows-api] Error cancelling run', error instanceof Error ? error : undefined);
+      return fail(reply, 500, message);
+    }
+  });
+
+  // POST /api/v1/runs/:runId/rerun — Rerun a workflow run, optionally only failed jobs
+  server.post<{
+    Params: { runId: string };
+    Body: WorkflowRerunRequest;
+  }>('/api/v1/runs/:runId/rerun', { schema: { tags: ['Runs'], summary: 'Rerun a workflow run' } }, async (request, reply) => {
+    try {
+      const { runId } = request.params;
+      const response = await observability.observeOperation('workflow.run.rerun', () =>
+        hostService.rerunWorkflow(runId, request.body ?? {}),
+      );
+      return ok(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to rerun workflow';
+      if (message === 'Run not found' || message === 'Workflow not found') {
+        return fail(reply, 404, message);
+      }
+      if (message === 'No failed jobs to rerun') {
+        return fail(reply, 400, message);
+      }
+      logger.error('[workflows-api] Error rerunning workflow', error instanceof Error ? error : undefined);
       return fail(reply, 500, message);
     }
   });

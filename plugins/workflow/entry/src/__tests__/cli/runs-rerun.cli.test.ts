@@ -19,15 +19,7 @@ describe('workflow:runs rerun', () => {
   it('RRR-01: reruns a workflow and prints new run ID', async () => {
     MockedClient.mockImplementation(() => makeClient({
       ...defaultWorkflowClient,
-      getRun: async () => ({
-        id: 'run-abc',
-        name: 'build',
-        status: 'success' as const,
-        createdAt: new Date().toISOString(),
-        metadata: { workflowId: 'build' },
-        inputs: { branch: 'main' },
-      }),
-      runWorkflow: async () => ({ runId: 'run-new-001', status: 'queued' }),
+      rerunWorkflow: async () => ({ runId: 'run-new-001', status: 'queued' }),
     }));
 
     const { ui, captured } = createCapturedUI();
@@ -45,14 +37,7 @@ describe('workflow:runs rerun', () => {
   it('RRR-02: --json outputs { ok, data }', async () => {
     MockedClient.mockImplementation(() => makeClient({
       ...defaultWorkflowClient,
-      getRun: async () => ({
-        id: 'run-abc',
-        name: 'build',
-        status: 'success' as const,
-        createdAt: new Date().toISOString(),
-        metadata: { workflowId: 'build' },
-      }),
-      runWorkflow: async () => ({ runId: 'run-new-002', status: 'queued' }),
+      rerunWorkflow: async () => ({ runId: 'run-new-002', status: 'queued' }),
     }));
 
     const { ui, captured } = createCapturedUI();
@@ -69,14 +54,7 @@ describe('workflow:runs rerun', () => {
   it('RRR-02b: --run-id flag works as alias for positional arg', async () => {
     MockedClient.mockImplementation(() => makeClient({
       ...defaultWorkflowClient,
-      getRun: async () => ({
-        id: 'run-abc',
-        name: 'build',
-        status: 'success' as const,
-        createdAt: new Date().toISOString(),
-        metadata: { workflowId: 'build' },
-      }),
-      runWorkflow: async () => ({ runId: 'run-new-alias', status: 'queued' }),
+      rerunWorkflow: async () => ({ runId: 'run-new-alias', status: 'queued' }),
     }));
 
     const { ui, captured } = createCapturedUI();
@@ -105,7 +83,7 @@ describe('workflow:runs rerun', () => {
   it('RRR-04: daemon error returns exitCode 1', async () => {
     MockedClient.mockImplementation(() => makeClient({
       ...defaultWorkflowClient,
-      getRun: async () => { throw new Error('daemon unavailable'); },
+      rerunWorkflow: async () => { throw new Error('daemon unavailable'); },
     }));
 
     const { ui, captured } = createCapturedUI();
@@ -120,8 +98,8 @@ describe('workflow:runs rerun', () => {
   });
 
   it('RRR-05: --dry-run shows intent, daemon is NOT called', async () => {
-    const getRun = vi.fn();
-    MockedClient.mockImplementation(() => makeClient({ ...defaultWorkflowClient, getRun }));
+    const rerunWorkflow = vi.fn();
+    MockedClient.mockImplementation(() => makeClient({ ...defaultWorkflowClient, rerunWorkflow }));
 
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });
@@ -131,7 +109,7 @@ describe('workflow:runs rerun', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(getRun).not.toHaveBeenCalled();
+    expect(rerunWorkflow).not.toHaveBeenCalled();
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('run-abc');
@@ -146,5 +124,35 @@ describe('workflow:runs rerun', () => {
     );
 
     expect(captured.infos[0]?.message).toContain('failed');
+  });
+
+  it('RRR-07: --failed-only passes failedOnly: true to rerunWorkflow', async () => {
+    const rerunWorkflow = vi.fn().mockResolvedValue({ runId: 'run-new-007', status: 'queued' });
+    MockedClient.mockImplementation(() => makeClient({ ...defaultWorkflowClient, rerunWorkflow }));
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsRerunCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['run-abc'], flags: { 'failed-only': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(rerunWorkflow).toHaveBeenCalledWith('run-abc', { failedOnly: true });
+  });
+
+  it('RRR-08: without --failed-only, rerunWorkflow is called with failedOnly: false', async () => {
+    const rerunWorkflow = vi.fn().mockResolvedValue({ runId: 'run-new-008', status: 'queued' });
+    MockedClient.mockImplementation(() => makeClient({ ...defaultWorkflowClient, rerunWorkflow }));
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsRerunCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['run-abc'], flags: {} }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(rerunWorkflow).toHaveBeenCalledWith('run-abc', { failedOnly: false });
   });
 });

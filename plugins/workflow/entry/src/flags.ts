@@ -332,6 +332,57 @@ export interface RunsApproveFlags {
 }
 
 /**
+ * Flags for workflow:runs-logs command
+ */
+export const runsLogsFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID (alias for positional argument)',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+  step: {
+    type: 'string',
+    description: 'Filter logs to a specific step name',
+  },
+  'log-failed': {
+    type: 'boolean',
+    description: 'Show only logs from failed steps',
+    default: false,
+  },
+} as const;
+
+export interface RunsLogsFlags {
+  'run-id'?: string;
+  json?: boolean;
+  step?: string;
+  'log-failed'?: boolean;
+}
+
+/**
+ * Flags for workflow:runs-status command
+ */
+export const runsStatusFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID (alias for positional argument)',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export interface RunsStatusFlags {
+  'run-id'?: string;
+  json?: boolean;
+}
+
+/**
  * Flags for workflow:lint command
  */
 export const lintFlags = {

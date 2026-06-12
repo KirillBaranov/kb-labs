@@ -34,6 +34,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
 
   handler: {
     async execute(ctx: PluginContextV3, input: LogsInput): Promise<{ exitCode: number }> {
+      ctx.ui?.warn?.('workflow logs is deprecated; use: kb workflow runs logs <runId>');
       const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
       const jobId = flags['job-id'];
