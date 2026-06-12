@@ -1,117 +1,143 @@
-Now I have enough context. Let me write the implementation plan.
-
----
-
 ## Summary
 
-Add first-class display of step outputs (structured key-value results) and step stdout/stderr to `kb workflow runs view` for completed runs: surface `run.result.outputs` in the summary, honour the `--step` filter when combined with `--output`, remove the 20-line inline cap when a single step is targeted, and fix step-name resolution in log lines.
-
----
+`engine.replayRun()` with `fromStepId` support is fully implemented internally but never exposed: no REST endpoint, no CLI command, and no snapshot is created when a run fails. This issue is purely about wiring the existing machinery to a user-facing surface.
 
 ## Root cause / context
 
-`runs view` already retrieves step-level `outputs` from the run detail and prints them, and has an `--output` flag that loads all run logs and groups them by `step.id`. However three gaps remain after a run completes:
+Three gaps prevent the feature from working end-to-end:
 
-1. **`run.result.outputs` is never shown** — the workflow-level final outputs stored in `WorkflowRun.result.outputs` (`ExecutionResultSchema`) are returned by `GET /api/v1/runs/:runId` but `renderRun()` never reads `run.result`.
-2. **`--step` is ignored in `--output` mode** — when the user passes both `--output` and `--step <name>`, `stepFilter` is used only for the `--log` code path (lines 202-203 in `runs-view.ts`); the `--output` block fetches all logs and renders all steps regardless.
-3. **20-line hard cap hides the full stdout** — the inline `[OUT]/[ERR]` display is capped at 20 lines per step unconditionally, making it insufficient for debugging; when `--step` targets a single step the cap should be lifted (or made much larger).
-4. **`stepName` is never resolved** — `getRunLogs` returns `stepId` from log metadata but `stepName` is always undefined in practice (job-broker only sets `fields['stepId']`, not `fields['stepName']`), so the log formatter falls back to raw IDs.
+1. **No snapshot on failure.** `RunSnapshotStorage.createSnapshot()` exists but is never called automatically when a run fails. Without a snapshot there is nothing to replay from.
+2. **No REST endpoint.** `engine.replayRun()` is never reachable over HTTP — `POST /api/v1/runs/:runId/rerun` creates a fresh run, it does not call `replayRun`.
+3. **No CLI command.** `workflow:runs-rerun` creates a new run; there is no `runs-replay` command that accepts `--from-step`.
 
----
+The existing `replayRun(runId, { fromStepId, stepOutputs, env })` implementation already handles all the hard parts: it loads the snapshot, marks preceding steps as `success`, resets the target step and downstream steps to `queued`, merges env overrides, and re-schedules the jobs.
 
 ## Implementation steps
 
-### 1. `plugins/workflow/daemon/src/job-broker.ts` — emit `stepName` in log metadata
+### 1 — Auto-create a snapshot when a run completes or fails
 
-Locate the loop that emits logs (around line 195). Add `stepName` extraction by building a `stepId → name` lookup from the run snapshot before returning logs.
+**File:** `plugins/workflow/engine/src/engine.ts`
 
-```
-async getRunLogs(runId, options):
-  1. fetch run snapshot from engine (already done for time-window calc)
-  2. build Map<stepId, stepName> from run.jobs[*].steps[*]
-  3. in the mapped result, set  stepName: stepNameMap.get(entry.stepId)
-```
+In `markRunCompleted()` and `markRunFailed()` (wherever the run status is set to `success` or `failed`), call `this.createSnapshot()` immediately after persisting the final run state.
 
-File: `plugins/workflow/daemon/src/job-broker.ts`
-- Read the existing `_queryLogs` private method (~line 123).
-- In the final `.map()` that constructs each log entry, look up the step name from the run's job/step tree.
-
-### 2. `plugins/workflow/entry/src/http-client.ts` — no interface changes needed
-
-`getRunLogs` return type already has `stepName?: string` — the field will be populated after step 1. No changes required here.
-
-### 3. `plugins/workflow/entry/src/commands/runs-view.ts` — three targeted fixes
-
-**3a. Show `run.result.outputs` in the summary section** (`renderRun`, ~line 50)
-
-After the `Inputs:` line in the summary block, add:
-
-```typescript
-if (run.result?.outputs && Object.keys(run.result.outputs).length > 0) {
-  summary.push(`Outputs:  ${JSON.stringify(run.result.outputs)}`);
-}
-if (run.result?.summary) {
-  summary.push(`Result:   ${run.result.summary}`);
-}
+```ts
+// after engine.updateRun sets status = 'failed' / 'success'
+await this.createSnapshot(updatedRun)
 ```
 
-**3b. Apply `--step` filter when building `stepLogs` in `--output` mode** (~line 276)
-
-The existing `--output` block ignores `stepFilter`. Change it:
-
-```typescript
-if (showOutput) {
-  const allLogs = await client.getRunLogs(runId, stepFilter ? { stepId: stepFilter } : {});
-  stepLogs = {};
-  for (const l of allLogs) {
-    const sid = l.stepId ?? ...;
-    if (!sid) continue;
-    (stepLogs[sid] ??= []).push({ ... });
-  }
-}
-```
-
-**3c. Lift the 20-line cap when a single step is targeted** (`renderRun`, ~line 121)
-
-```typescript
-const MAX_LINES = stepLogs && Object.keys(stepLogs).length === 1 ? Infinity : 20;
-```
-
-Pass `stepLogs` keys count down through `renderRun` — simplest approach: add a second parameter `opts?: { maxStdoutLines?: number }` to `renderRun` and pass `maxStdoutLines: stepFilter ? undefined : 20` from the caller.
-
-**3d. Use `stepName` in log display when available**
-
-In the `--log` / `--log-failed` formatter (~line 260), the existing code already reads `l['stepName']`. After step 1, this will be populated automatically.
-
-### 4. Tests — `plugins/workflow/entry/src/__tests__/cli/runs-view.cli.test.ts`
-
-Add three test cases (all handler-level, mock HTTP client):
-
-**Test A — `run.result.outputs` shown in summary**
-- Mock `getRun` to return a run with `result: { outputs: { report: 'ok' }, summary: 'done' }`
-- Assert `sideBox` sections contain `Outputs:  {"report":"ok"}` and `Result:   done`
-
-**Test B — `--output --step <id>` only shows stdout for the targeted step**
-- Mock `getRunLogs` to verify it is called with `{ stepId: '<id>' }`
-- Assert only the targeted step's `[OUT]` lines appear
-
-**Test C — stdout cap lifted when `--step` is specified**
-- Mock logs returning 30 entries for a single step
-- Assert all 30 appear (no "N earlier lines" truncation hint)
+`createSnapshot` already collects `stepOutputs` from the run's nested step objects — no additional plumbing needed.
 
 ---
 
-## Tests / verification
+### 2 — Add a REST endpoint for replay
 
-```bash
-# Run handler tests (no daemon required)
-pnpm --filter @kb-labs/workflow-entry run test:cli
+**File:** `plugins/workflow/daemon/src/api/workflows-api.ts`
 
-# Manual smoke test against a live run (needs kb-dev start):
-kb workflow runs view <runId>                  # should show Outputs: / Result: in summary
-kb workflow runs view <runId> --output         # all steps with stdout
-kb workflow runs view <runId> --output --step <stepId>   # only that step, no 20-line cap
-kb workflow runs view <runId> --log-failed     # step names instead of IDs
+Add a new route alongside the existing `/rerun`:
+
+```
+POST /api/v1/runs/:runId/replay
+Body: { fromStepId?: string; env?: Record<string, string> }
 ```
 
-Each test case listed in step 4 must **fail before** the corresponding fix and **pass after** per the project's bug-fix rule.
+Handler body:
+
+```ts
+const { fromStepId, env } = req.body
+const run = await engine.replayRun(runId, { fromStepId, env })
+if (!run) return res.status(404).json({ error: 'Snapshot not found for this run' })
+res.json(run)
+```
+
+---
+
+### 3 — Expose replay in the REST API contract
+
+**File:** `plugins/workflow/contracts/src/api.ts` (or wherever API types live)
+
+Add `ReplayRunBody` and `ReplayRunResponse` Zod schemas so the gateway can validate the request and the SDK can type-check callers.
+
+---
+
+### 4 — Add a `runs-replay` CLI command
+
+**File (new):** `plugins/workflow/entry/src/commands/runs-replay.ts`
+
+Mirror the structure of `runs-rerun.ts`. Flags:
+
+| Flag | Description |
+|---|---|
+| `--run <id>` | Run ID to replay (required) |
+| `--from-step <id>` | Step ID to restart from (optional; omit = restart from beginning using snapshot) |
+| `--env <K=V>` | Override env vars (repeatable) |
+
+Implementation: call the new REST endpoint via the existing HTTP client, then stream/print the new run's event log (reuse `runs-watch` logic).
+
+**File:** `plugins/workflow/entry/src/index.ts`
+
+Register the new command in the plugin manifest.
+
+---
+
+### 5 — Wire snapshot deletion on run expiry
+
+**File:** `plugins/workflow/engine/src/engine.ts`
+
+In `cleanupStaleRuns()` (the startup cleanup path), call `this.deleteSnapshot(runId)` when a run is abandoned so stale snapshots don't accumulate beyond the existing 7-day TTL.
+
+---
+
+### 6 — Surface step IDs in the run detail output
+
+**File:** `plugins/workflow/entry/src/commands/runs-get.ts` (or equivalent)
+
+Make sure `kb workflow runs get <id>` prints each step's `spec.id` (not just its name/index) so users know which ID to pass to `--from-step`.
+
+---
+
+### 7 — Guard: snapshot existence check before replay
+
+**File:** `plugins/workflow/engine/src/engine.ts` — already returns `null` when no snapshot exists. The REST handler (step 2) converts that to a clear `404`. No additional change needed.
+
+## Tests / verification
+
+### Unit — snapshot created on failure
+
+**File (new):** `plugins/workflow/engine/src/__tests__/snapshot-on-failure.test.ts`
+
+- Stub `StateStore` and `RunSnapshotStorage`
+- Trigger `engine.markRunFailed()`
+- Assert `RunSnapshotStorage.createSnapshot` was called with the correct `runId` and step outputs
+
+### Unit — `replayRun` step state transitions (already testable, add assertions)
+
+**File:** `plugins/workflow/engine/src/__tests__/engine.replay.test.ts` (create if absent)
+
+- Create a fake run with 5 steps, all `success` except step 3 (`failed`)
+- Call `engine.replayRun(runId, { fromStepId: 'step-3' })`
+- Assert steps 1–2 remain `success`, step 3 is `queued`, steps 4–5 are `queued`
+
+### Handler test — REST endpoint
+
+**File (new):** `plugins/workflow/entry/src/__tests__/cli/runs-replay.test.ts`
+
+- Mock HTTP client to return a replayed run
+- Call `mockCLIInput<RunsReplayFlags>({ run: 'run-abc', fromStep: 'step-3' })`
+- Assert HTTP client received `POST /api/v1/runs/run-abc/replay` with `{ fromStepId: 'step-3' }`
+
+### Manual / journey
+
+```bash
+# 1. Start a long pipeline that fails at step 3
+kb workflow runs trigger github-issue-to-pr --input issue=999
+
+# 2. Note the run ID and the failing step ID from the output
+kb workflow runs get <runId>        # verify step IDs are visible
+
+# 3. Replay from the failed step
+kb workflow runs replay --run <runId> --from-step <stepId>
+
+# 4. Verify the new run shows steps 1-2 as inherited (no re-execution events)
+# and step 3 onwards produce fresh execution events
+kb workflow runs watch <newRunId>
+```
