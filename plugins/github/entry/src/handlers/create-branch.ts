@@ -40,7 +40,17 @@ export default defineHandler<unknown, CreateBranchInput, CreateBranchOutput>({
 
       if (!createRes.ok) {
         if (createRes.status === 422) {
-          // Branch already exists — use it as-is (idempotent).
+          // Branch already exists — force-reset it to fromBranch SHA so the
+          // new run starts clean without contamination from previous runs.
+          const patchRes = await ctx.runtime.fetch(
+            `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branchName}`,
+            {
+              method: 'PATCH',
+              headers: hdrs,
+              body: JSON.stringify({ sha, force: true }),
+            },
+          )
+          if (!patchRes.ok) throw new Error(`GitHub ${patchRes.status}: ${await patchRes.text()}`)
           return {
             branchName,
             sha,
