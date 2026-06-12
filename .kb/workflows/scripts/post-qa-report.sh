@@ -6,7 +6,8 @@ set -e
 source "$(dirname "$0")/lib-sanitize.sh"
 
 REPO_FULL="$OWNER/$REPO"
-REPORT=$(cat "/tmp/kb-qa-report-${ISSUE_NUMBER}.md" 2>/dev/null || echo "Report not available")
+REPORT="${QA_REPORT:-$(cat "/tmp/kb-qa-report-${ISSUE_NUMBER}.md" 2>/dev/null)}"
+[ -z "$REPORT" ] && REPORT="Report not available"
 
 ICON="✅"
 [ "$QA_VERDICT" = "BUGS_FOUND" ] && ICON="🐛"

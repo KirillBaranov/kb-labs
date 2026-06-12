@@ -60,4 +60,9 @@ fi
 
 printf '%s' "$REVIEW_TEXT" > "${ARTIFACTS_DIR}/architect-rerun-${ISSUE_NUMBER}.md"
 
-echo "::kb-output::{\"decision\":\"$DECISION\",\"blockers_count\":\"$BLOCKERS_COUNT\",\"codeHash\":\"$CURR_CODE_HASH\",\"findingsHash\":\"$CURR_FINDINGS_HASH\",\"summary\":\"$SUMMARY\"}"
+KB_OUTPUT=$(node -e "
+const d='$DECISION', b='$BLOCKERS_COUNT', c='$CURR_CODE_HASH', f='$CURR_FINDINGS_HASH';
+const s=require('fs').readFileSync('/dev/stdin','utf8');
+process.stdout.write('::kb-output::' + JSON.stringify({decision:d,blockers_count:b,codeHash:c,findingsHash:f,summary:s.trim()}) + '\n');
+" <<< "$SUMMARY")
+echo "$KB_OUTPUT"

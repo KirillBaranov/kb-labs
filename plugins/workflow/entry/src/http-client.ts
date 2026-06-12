@@ -351,7 +351,7 @@ export class WorkflowDaemonClient {
     level?: string;
     limit?: number;
     failedOnly?: boolean;
-  } = {}): Promise<Array<{ level: string; message: string; timestamp: string; stepId?: string; stepName?: string; [key: string]: unknown }>> {
+  } = {}): Promise<Array<{ level: string; message: string; timestamp: string; stepId?: string; stepName?: string; stream?: string; [key: string]: unknown }>> {
     const query = new URLSearchParams();
     if (params.stepId) { query.set('stepId', params.stepId); }
     if (params.level) { query.set('level', params.level); }

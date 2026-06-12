@@ -16,6 +16,7 @@ interface RunsViewFlags {
   log?: boolean;
   'log-failed'?: boolean;
   step?: string;
+  output?: boolean;
 }
 
 const STEP_ICON: Record<string, string> = {
@@ -40,7 +41,13 @@ interface RunSection {
   items: string[];
 }
 
-function renderRun(run: WorkflowRunDetail): RunSection[] {
+type StepLogEntry = { message: string; level: string; stream?: string };
+
+interface RenderRunOpts {
+  maxStdoutLines?: number;
+}
+
+function renderRun(run: WorkflowRunDetail, stepLogs?: Record<string, StepLogEntry[]>, opts?: RenderRunOpts): RunSection[] {
   const sections: RunSection[] = [];
 
   // Summary
@@ -55,6 +62,12 @@ function renderRun(run: WorkflowRunDetail): RunSection[] {
   if (dur) { summary.push(`Duration: ${dur}`); }
   if (run.inputs && Object.keys(run.inputs).length > 0) {
     summary.push(`Inputs:   ${JSON.stringify(run.inputs)}`);
+  }
+  if (run.result?.outputs && Object.keys(run.result.outputs).length > 0) {
+    summary.push(`Outputs:  ${JSON.stringify(run.result.outputs)}`);
+  }
+  if (run.result?.summary) {
+    summary.push(`Result:   ${run.result.summary}`);
   }
   sections.push({ header: run.name, items: summary });
 
@@ -100,8 +113,30 @@ function renderRun(run: WorkflowRunDetail): RunSection[] {
         }
       }
 
-      if (step.status === 'success' && step.outputs && Object.keys(step.outputs).length > 0) {
-        jobItems.push(`   Outputs: ${Object.keys(step.outputs).join(', ')}`);
+      if (step.outputs && Object.keys(step.outputs).length > 0) {
+        for (const [k, v] of Object.entries(step.outputs)) {
+          let raw: string;
+          if (typeof v === 'string') {
+            raw = v;
+          } else {
+            try { raw = JSON.stringify(v); } catch { raw = '[circular]'; }
+          }
+          const display = raw.length > 120 ? raw.slice(0, 117) + '…' : raw;
+          jobItems.push(`   ${k}: ${display}`);
+        }
+      }
+
+      const logs = stepLogs?.[step.id];
+      if (logs?.length) {
+        const maxLines = opts?.maxStdoutLines ?? 20;
+        const shown = maxLines === Infinity ? logs : logs.slice(-maxLines);
+        for (const l of shown) {
+          const tag = l.stream === 'stderr' ? 'ERR' : 'OUT';
+          jobItems.push(`   [${tag}] ${l.message}`);
+        }
+        if (maxLines !== Infinity && logs.length > maxLines) {
+          jobItems.push(`   … ${logs.length - maxLines} earlier lines (use --log --step=${step.id})`);
+        }
       }
     }
 
@@ -140,6 +175,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
 
       const showLogFailed = flags?.['log-failed'] ?? false;
       const showLog = flags?.log ?? false;
+      const showOutput = flags?.output ?? false;
       const stepFilter = flags?.step;
 
       try {
@@ -245,8 +281,29 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
           return { exitCode: 0 };
         }
 
-        // Default: show run tree
-        const sections = renderRun(run);
+        // Default: show run tree (optionally with per-step stdout)
+        let stepLogs: Record<string, StepLogEntry[]> | undefined;
+        if (showOutput) {
+          try {
+            const allLogs = await client.getRunLogs(runId, stepFilter ? { stepId: stepFilter } : {});
+            stepLogs = {};
+            for (const l of allLogs) {
+              const sid = l.stepId ?? (l['context'] as Record<string, unknown> | undefined)?.['stepId'] as string | undefined;
+              if (!sid) { continue; }
+              (stepLogs[sid] ??= []).push({
+                message: String(l.message ?? ''),
+                level: String(l.level ?? 'info'),
+                stream: l.stream ?? (l['context'] as Record<string, unknown> | undefined)?.['logSource'] as string | undefined,
+              });
+            }
+          } catch {
+            // getRunLogs failure is non-fatal — render tree without step logs
+          }
+        }
+
+        // When a single step is targeted via --step, lift the inline stdout cap
+        const maxStdoutLines = stepFilter ? Infinity : 20;
+        const sections = renderRun(run, stepLogs, { maxStdoutLines });
         const exitCode = run.status === 'failed' ? 1 : 0;
         const status = exitCode === 1 ? 'error' : 'success';
 

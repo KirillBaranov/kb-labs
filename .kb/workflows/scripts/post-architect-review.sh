@@ -6,7 +6,8 @@ set -e
 source "$(dirname "$0")/lib-sanitize.sh"
 
 REPO_FULL="$OWNER/$REPO"
-REVIEW=$(cat "/tmp/kb-architect-review-${ISSUE_NUMBER}.md" 2>/dev/null || echo "Review not available")
+REVIEW="${ARCHITECT_REVIEW:-$(cat "/tmp/kb-architect-review-${ISSUE_NUMBER}.md" 2>/dev/null)}"
+[ -z "$REVIEW" ] && REVIEW="Review not available"
 
 ICON="✅"
 [ "$ARCHITECT_VERDICT" = "NEEDS_FIXES" ] && ICON="⚠️"
