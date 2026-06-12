@@ -49,10 +49,15 @@ fi
 
 sleep 15
 
-# --- Get HEAD SHA for this branch (filters out stale checks from old pushes) ---
-SHA=$(cd "${KB_WORKSPACE_ROOT:-$(pwd)}" && git rev-parse HEAD 2>/dev/null)
+# --- Get HEAD SHA for the PR branch from GitHub (authoritative source) ---
+# Using the PR head directly avoids relying on the local workspace branch,
+# which may be on a different branch than the PR (e.g. main workspace on main).
+SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO_FULL" --json headRefOid --jq '.headRefOid' 2>/dev/null)
 if [ -z "$SHA" ]; then
   SHA=$(gh api "repos/$REPO_FULL/git/refs/heads/$BRANCH_NAME" --jq '.object.sha' 2>/dev/null)
+fi
+if [ -z "$SHA" ]; then
+  SHA=$(cd "${KB_WORKSPACE_ROOT:-$(pwd)}" && git rev-parse HEAD 2>/dev/null)
 fi
 echo "HEAD SHA: ${SHA:0:12}..."
 

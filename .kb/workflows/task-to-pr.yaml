@@ -472,6 +472,16 @@ jobs:
           BASE_BRANCH: '${{ inputs.baseBranch }}'
         run: bash .kb/workflows/scripts/resolve-conflicts.sh
 
+      - name: Agent Resolves Conflicts
+        id: conflicts_agent
+        timeoutMs: 3600000
+        if: ${{ steps.conflicts.outputs.needs_agent == true || steps.conflicts.outputs.needs_agent == 'true' }}
+        env:
+          CONFLICT_FILES: '${{ steps.conflicts.outputs.conflicts }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: bash .kb/workflows/scripts/resolve-conflicts-agent.sh
+
       - name: Agent Fixes CI
         id: ci_fix
         timeoutMs: 3600000
