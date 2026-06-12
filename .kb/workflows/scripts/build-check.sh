@@ -6,17 +6,23 @@ cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
 
 echo "Building affected packages..."
 BUILD_OUT=$(mktemp)
-# studio's fork-dev-worker hangs indefinitely; run with 4-minute timeout and kill stragglers
-timeout 240 kb-devkit run build --affected 2>&1 | tee "$BUILD_OUT"
-BUILD_EXIT=${PIPESTATUS[0]}
 
-# kill any lingering studio fork-dev-worker processes (they survive after timeout)
+# studio's fork-dev-worker hangs indefinitely; enforce 4-minute cap via background+timer
+# (timeout command is not available on macOS without coreutils)
+kb-devkit run build --affected 2>&1 | tee "$BUILD_OUT" &
+BUILD_PID=$!
+( sleep 240; kill "$BUILD_PID" 2>/dev/null ) &
+TIMER_PID=$!
+wait "$BUILD_PID"
+BUILD_EXIT=$?
+kill "$TIMER_PID" 2>/dev/null || true
+
+# kill any lingering studio fork-dev-worker processes (they survive after the kill)
 pkill -9 -f "fork-dev-worker" 2>/dev/null || true
 pkill -9 -f "pnpm run build:studio" 2>/dev/null || true
 
-# exit code 124 = timeout (studio hung but non-studio packages may have built fine)
-# check if any actual build errors occurred (not just timeout)
-if [ "$BUILD_EXIT" -ne 0 ] && [ "$BUILD_EXIT" -ne 124 ]; then
+# BUILD_EXIT 143 = SIGTERM from timer (studio hung but non-studio packages may have built fine)
+if [ "$BUILD_EXIT" -ne 0 ] && [ "$BUILD_EXIT" -ne 143 ]; then
   if [ -n "$PR_NUMBER" ] && [ -n "$OWNER" ] && [ -n "$REPO" ]; then
     gh pr comment "$PR_NUMBER" --repo "$OWNER/$REPO" \
       --body "## ❌ Build Check Failed
