@@ -598,4 +598,5 @@ jobs:
           ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
+          CLICKUP_TASK_ID: '${{ steps.prepare.outputs.clickupTaskId }}'
         run: bash .kb/workflows/scripts/close-issue.sh
