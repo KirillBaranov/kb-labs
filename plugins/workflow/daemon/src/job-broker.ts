@@ -103,7 +103,7 @@ export class JobBroker {
   async getRunLogs(
     runId: string,
     options?: { stepId?: string; limit?: number; offset?: number; level?: string },
-  ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
+  ): Promise<Array<{ timestamp: string; level: string; message: string; stepId?: string; stepName?: string; stream?: string; context?: Record<string, unknown> }>> {
     return this._queryLogs(runId, options);
   }
 
@@ -115,7 +115,7 @@ export class JobBroker {
   async getJobLogs(
     runId: string,
     options?: { limit?: number; offset?: number; level?: string },
-  ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
+  ): Promise<Array<{ timestamp: string; level: string; message: string; stepId?: string; stepName?: string; stream?: string; context?: Record<string, unknown> }>> {
     return this._queryLogs(runId, options);
   }
 
@@ -125,11 +125,21 @@ export class JobBroker {
   private async _queryLogs(
     runId: string,
     options?: { stepId?: string; limit?: number; offset?: number; level?: string },
-  ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
+  ): Promise<Array<{ timestamp: string; level: string; message: string; stepId?: string; stepName?: string; stream?: string; context?: Record<string, unknown> }>> {
     const run = await this.engine.getRun(runId);
 
     if (!run) {
       return [];
+    }
+
+    // Build stepId → stepName lookup from the run snapshot for human-readable log lines
+    const stepNameMap = new Map<string, string>();
+    for (const job of run.jobs ?? []) {
+      for (const step of job.steps ?? []) {
+        if (step.id && step.name) {
+          stepNameMap.set(step.id, step.name);
+        }
+      }
     }
 
     const limit = options?.limit ?? 100;
@@ -191,11 +201,17 @@ export class JobBroker {
     // Paginate
     const page = filtered.slice(offset, offset + limit);
 
-    return page.map((log) => ({
-      timestamp: new Date(log.timestamp).toISOString(),
-      level: log.level,
-      message: log.message,
-      context: log.fields,
-    }));
+    return page.map((log) => {
+      const stepId = log.fields['stepId'] as string | undefined;
+      return {
+        timestamp: new Date(log.timestamp).toISOString(),
+        level: log.level,
+        message: log.message,
+        stepId,
+        stepName: stepId ? stepNameMap.get(stepId) : undefined,
+        stream: log.fields['logSource'] as string | undefined,
+        context: log.fields,
+      };
+    });
   }
 }
