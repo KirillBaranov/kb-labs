@@ -1,0 +1,585 @@
+name: task-to-pr
+version: 8.0.0
+description: 'Autonomous implementation pipeline — task → plan → implement → audit loops → verify → CI → merge'
+
+on:
+  manual: true
+
+inputs:
+  owner:
+    type: string
+    description: 'GitHub repo owner'
+    required: true
+  repo:
+    type: string
+    description: 'GitHub repo name'
+    required: true
+  issueNumber:
+    type: number
+    description: 'GitHub issue number (mutually exclusive with clickupTaskId)'
+    required: false
+  clickupTaskId:
+    type: string
+    description: 'ClickUp task ID — creates a GitHub issue from it automatically'
+    required: false
+  baseBranch:
+    type: string
+    description: 'Base branch'
+    default: main
+
+jobs:
+  task-to-pr:
+    runsOn: local
+    steps:
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 1 — PLANNING
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Prepare Task
+        id: prepare
+        env:
+          CLICKUP_TASK_ID: '${{ inputs.clickupTaskId }}'
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+        run: bash .kb/workflows/scripts/prepare-task.sh
+
+      - name: Fetch Issue
+        id: issue
+        uses: 'plugin:@kb-labs/github/fetch-issue'
+        with:
+          owner: '${{ inputs.owner }}'
+          repo: '${{ inputs.repo }}'
+          issueNumber: '${{ steps.prepare.outputs.issueNumber }}'
+        artifacts:
+          issueLink:
+            type: link
+            source: outputs.url
+            label: 'GitHub Issue'
+            showInSummary: true
+
+      - name: Create Branch
+        id: branch
+        uses: 'plugin:@kb-labs/github/create-branch'
+        with:
+          owner: '${{ inputs.owner }}'
+          repo: '${{ inputs.repo }}'
+          branchName: 'issue-${{ steps.prepare.outputs.issueNumber }}-auto'
+          fromBranch: '${{ inputs.baseBranch }}'
+
+      - name: Agent Plans
+        id: plan
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          ISSUE_BODY: '${{ steps.issue.outputs.body }}'
+          PLAN_FEEDBACK: '${{ trigger.payload.planFeedback }}'
+        artifacts:
+          agentPlan:
+            type: markdown
+            source: outputs.plan
+            label: Implementation Plan
+            showInSummary: true
+        run: bash .kb/workflows/scripts/agent-plans.sh
+
+      - name: Open Draft PR with Plan
+        id: pr
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+        artifacts:
+          prLink:
+            type: link
+            source: outputs.prUrl
+            label: 'Draft PR'
+            showInSummary: true
+        run: bash .kb/workflows/scripts/open-draft-pr.sh
+
+      - name: Approve Plan
+        id: planApproval
+        uses: builtin:approval
+        with:
+          message: |
+            Plan ready. Approve to implement, or reject with corrections for the agent to replan.
+
+            Issue: #${{ steps.prepare.outputs.issueNumber }} — ${{ steps.issue.outputs.title }}
+            Draft PR: ${{ steps.pr.outputs.prUrl }}
+
+      - name: Plan Gate
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.planApproval.outputs.action }}
+          routes:
+            approve: continue
+            reject:
+              restartFrom: plan
+              context:
+                planFeedback: ${{ steps.planApproval.outputs.comment }}
+          maxIterations: 5
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 2 — IMPLEMENTATION
+      # Agent is the primary quality owner: implements, builds, tests, verifies.
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Agent Implements
+        id: impl
+        timeoutMs: 7200000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          PLAN_SESSION_ID: '${{ steps.plan.outputs.sessionId }}'
+          IMPL_FEEDBACK: '${{ trigger.payload.implFeedback }}'
+        artifacts:
+          implSummary:
+            type: markdown
+            source: outputs.summary
+            label: Implementation Summary
+            showInSummary: true
+        run: bash .kb/workflows/scripts/agent-implements.sh
+
+      - name: Build Check
+        id: build_check
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+        run: bash .kb/workflows/scripts/build-check.sh
+
+      - name: Post Implementation
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          IMPL_SUMMARY: '${{ steps.impl.outputs.summary }}'
+        run: bash .kb/workflows/scripts/post-impl-summary.sh
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 3 — CODE REVIEW LOOP
+      # Independent auditor. Agent self-verifies fixes before handing back.
+      # Deadlock detection: same code hash + same findings twice → escalate.
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: AI Review
+        id: review
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+        artifacts:
+          reviewReport:
+            type: markdown
+            source: outputs.summary
+            label: Code Review
+            showInSummary: true
+        run: bash .kb/workflows/scripts/ai-review.sh
+
+      - name: Post AI Review
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          REVIEW_PASSED: '${{ steps.review.outputs.passed }}'
+          REVIEW_ISSUES_COUNT: '${{ steps.review.outputs.issues_count }}'
+          REVIEW_SUMMARY: '${{ steps.review.outputs.summary }}'
+        run: bash .kb/workflows/scripts/post-ai-review.sh
+
+      - name: Agent Fixes Review
+        id: review_fix
+        timeoutMs: 7200000
+        if: ${{ steps.review.outputs.passed == 'false' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          REVIEW_ISSUES: '${{ steps.review.outputs.issues }}'
+          IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+        run: bash .kb/workflows/scripts/agent-fixes-review.sh
+
+      - name: AI Review Re-run
+        id: review_rerun
+        timeoutMs: 3600000
+        if: ${{ steps.review.outputs.passed == 'false' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+          PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
+        run: bash .kb/workflows/scripts/ai-review-rerun.sh
+
+      - name: Post Review Delta
+        if: ${{ steps.review.outputs.passed == 'false' }}
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          AUDIT_TYPE: 'Code Review'
+          PREV_COUNT: '${{ steps.review.outputs.issues_count }}'
+          CURR_COUNT: '${{ steps.review_rerun.outputs.issues_count }}'
+          CURR_VERDICT: '${{ steps.review_rerun.outputs.decision }}'
+          CURR_SUMMARY: '${{ steps.review_rerun.outputs.summary }}'
+        run: bash .kb/workflows/scripts/post-audit-delta.sh
+
+      - name: Review Loop Gate
+        if: ${{ steps.review.outputs.passed == 'false' }}
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.review_rerun.outputs.decision }}
+          routes:
+            passed: continue
+            still_issues:
+              restartFrom: review_fix
+              context:
+                prevCodeHash: ${{ steps.review_rerun.outputs.codeHash }}
+                prevFindingsHash: ${{ steps.review_rerun.outputs.findingsHash }}
+            deadlock: fail
+          maxIterations: 20
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 4 — ARCHITECTURE REVIEW LOOP
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Architect Review
+        id: architect
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+        artifacts:
+          architectReport:
+            type: markdown
+            source: outputs.review
+            label: Architect Review
+            showInSummary: true
+        run: bash .kb/workflows/scripts/architect-review.sh
+
+      - name: Post Architect Review
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          ARCHITECT_VERDICT: '${{ steps.architect.outputs.verdict }}'
+          ARCHITECT_BLOCKERS_COUNT: '${{ steps.architect.outputs.blockers_count }}'
+          ARCHITECT_REVIEW: '${{ steps.architect.outputs.review }}'
+        run: bash .kb/workflows/scripts/post-architect-review.sh
+
+      - name: Agent Fixes Architect
+        id: architect_fix
+        timeoutMs: 7200000
+        if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          ARCHITECT_REVIEW: '${{ steps.architect.outputs.review }}'
+          IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+        run: bash .kb/workflows/scripts/agent-fixes-architect.sh
+
+      - name: Architect Re-run
+        id: architect_rerun
+        timeoutMs: 3600000
+        if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+          PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
+        run: bash .kb/workflows/scripts/architect-rerun.sh
+
+      - name: Post Architect Delta
+        if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          AUDIT_TYPE: 'Architect Review'
+          PREV_COUNT: '${{ steps.architect.outputs.blockers_count }}'
+          CURR_COUNT: '${{ steps.architect_rerun.outputs.blockers_count }}'
+          CURR_VERDICT: '${{ steps.architect_rerun.outputs.decision }}'
+          CURR_SUMMARY: '${{ steps.architect_rerun.outputs.summary }}'
+        run: bash .kb/workflows/scripts/post-audit-delta.sh
+
+      - name: Architect Loop Gate
+        if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.architect_rerun.outputs.decision }}
+          routes:
+            passed: continue
+            still_issues:
+              restartFrom: architect_fix
+              context:
+                prevCodeHash: ${{ steps.architect_rerun.outputs.codeHash }}
+                prevFindingsHash: ${{ steps.architect_rerun.outputs.findingsHash }}
+            deadlock: fail
+          maxIterations: 20
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 5 — ADVERSARIAL QA LOOP
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Adversarial QA
+        id: qa_adversarial
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+        artifacts:
+          qaReport:
+            type: markdown
+            source: outputs.report
+            label: Adversarial QA Report
+            showInSummary: true
+        run: bash .kb/workflows/scripts/adversarial-qa.sh
+
+      - name: Post QA Report
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          QA_VERDICT: '${{ steps.qa_adversarial.outputs.verdict }}'
+          QA_BUGS_COUNT: '${{ steps.qa_adversarial.outputs.bugs_count }}'
+          QA_REPORT: '${{ steps.qa_adversarial.outputs.report }}'
+        run: bash .kb/workflows/scripts/post-qa-report.sh
+
+      - name: Agent Fixes QA
+        id: qa_fix
+        timeoutMs: 7200000
+        if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          QA_REPORT: '${{ steps.qa_adversarial.outputs.report }}'
+          IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+        run: bash .kb/workflows/scripts/agent-fixes-qa.sh
+
+      - name: QA Re-run
+        id: qa_rerun
+        timeoutMs: 3600000
+        if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
+          PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
+        run: bash .kb/workflows/scripts/qa-rerun.sh
+
+      - name: Post QA Delta
+        if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          AUDIT_TYPE: 'Adversarial QA'
+          PREV_COUNT: '${{ steps.qa_adversarial.outputs.bugs_count }}'
+          CURR_COUNT: '${{ steps.qa_rerun.outputs.bugs_count }}'
+          CURR_VERDICT: '${{ steps.qa_rerun.outputs.decision }}'
+          CURR_SUMMARY: '${{ steps.qa_rerun.outputs.summary }}'
+        run: bash .kb/workflows/scripts/post-audit-delta.sh
+
+      - name: QA Loop Gate
+        if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.qa_rerun.outputs.decision }}
+          routes:
+            passed: continue
+            still_issues:
+              restartFrom: qa_fix
+              context:
+                prevCodeHash: ${{ steps.qa_rerun.outputs.codeHash }}
+                prevFindingsHash: ${{ steps.qa_rerun.outputs.findingsHash }}
+            deadlock: fail
+          maxIterations: 20
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 6 — FUNCTIONAL VERIFICATION
+      # Evidence that the feature actually works: real commands, real output.
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Functional Verification
+        id: functional_verify
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          ISSUE_BODY: '${{ steps.issue.outputs.body }}'
+        artifacts:
+          verificationReport:
+            type: markdown
+            source: outputs.report
+            label: Functional Verification Report
+            showInSummary: true
+        run: bash .kb/workflows/scripts/functional-verification.sh
+
+      - name: Post Functional Verification
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          VERIFY_VERDICT: '${{ steps.functional_verify.outputs.verdict }}'
+          VERIFY_CRITERIA_TOTAL: '${{ steps.functional_verify.outputs.criteria_total }}'
+          VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
+          VERIFY_REPORT: '${{ steps.functional_verify.outputs.report }}'
+        run: bash .kb/workflows/scripts/post-functional-verification.sh
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 7 — STATIC GATES
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Type Check
+        id: type_check
+        env:
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: bash .kb/workflows/scripts/type-check.sh
+
+      - name: Run Tests
+        id: run_tests
+        env:
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+        run: bash .kb/workflows/scripts/run-tests.sh
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 8 — COMMIT & CI
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Commit and Push
+        id: commit
+        env:
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+        run: bash .kb/workflows/scripts/commit-push.sh
+
+      - name: Resolve Conflicts
+        id: conflicts
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: bash .kb/workflows/scripts/resolve-conflicts.sh
+
+      - name: Agent Fixes CI
+        id: ci_fix
+        timeoutMs: 3600000
+        if: ${{ trigger.payload.hasLogs == true || trigger.payload.hasLogs == 'true' }}
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
+          CI_LOGS_FILE: '${{ trigger.payload.ciLogsFile }}'
+        run: bash .kb/workflows/scripts/agent-fixes-ci.sh
+
+      - name: Check CI
+        id: ci_wait
+        timeoutMs: 3600000
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
+          CI_TIMEOUT_SECONDS: '3600'
+          CI_MIN_CHECKS: '3'
+        run: bash .kb/workflows/scripts/check-ci.sh
+
+      - name: CI Gate
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.ci_wait.outputs.decision }}
+          routes:
+            passed: continue
+            pending:
+              restartFrom: ci_wait
+              context:
+                hasLogs: false
+                ciLogsFile: ''
+            fix_needed:
+              restartFrom: ci_fix
+              context:
+                hasLogs: ${{ steps.ci_wait.outputs.hasLogs }}
+                ciLogsFile: ${{ steps.ci_wait.outputs.ciLogsFile }}
+            needs_rebase:
+              restartFrom: conflicts
+              context:
+                hasLogs: false
+                ciLogsFile: ''
+          default: fail
+          maxIterations: 1440
+
+      # ═══════════════════════════════════════════════════════════════════════
+      # PHASE 9 — FINAL APPROVAL & MERGE
+      # ═══════════════════════════════════════════════════════════════════════
+
+      - name: Post Timeline
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          REVIEW_PASSED: '${{ steps.review.outputs.passed }}'
+          REVIEW_ISSUES_COUNT: '${{ steps.review.outputs.issues_count }}'
+          ARCHITECT_VERDICT: '${{ steps.architect.outputs.verdict }}'
+          ARCHITECT_BLOCKERS_COUNT: '${{ steps.architect.outputs.blockers_count }}'
+          QA_VERDICT: '${{ steps.qa_adversarial.outputs.verdict }}'
+          QA_BUGS_COUNT: '${{ steps.qa_adversarial.outputs.bugs_count }}'
+          VERIFY_VERDICT: '${{ steps.functional_verify.outputs.verdict }}'
+          VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
+          VERIFY_CRITERIA_TOTAL: '${{ steps.functional_verify.outputs.criteria_total }}'
+        run: bash .kb/workflows/scripts/post-timeline.sh
+
+      - name: Mark PR Ready
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+        run: |
+          gh pr ready "$PR_NUMBER" --repo "$OWNER/$REPO" 2>/dev/null || true
+
+      - name: Final Approval
+        id: finalApproval
+        uses: builtin:approval
+        with:
+          message: |
+            Implementation complete. CI passed. All audits passed.
+
+            PR: ${{ steps.pr.outputs.prUrl }}
+
+            Review the timeline in the PR comments, then approve to merge.
+
+      - name: Final Gate
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.finalApproval.outputs.action }}
+          routes:
+            approve: continue
+            reject:
+              restartFrom: impl
+              context:
+                implFeedback: ${{ steps.finalApproval.outputs.comment }}
+          default: fail
+          maxIterations: 10
+
+      - name: Merge PR
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+        run: bash .kb/workflows/scripts/merge-pr.sh
+
+      - name: Close Issue
+        env:
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+        run: bash .kb/workflows/scripts/close-issue.sh

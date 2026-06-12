@@ -8,6 +8,15 @@ cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
 
 RESULT_FILE=$(mktemp)
 
+SELF_VERIFY_INSTRUCTIONS="
+Self-verification (do this before finishing):
+1. Run: kb-devkit run build --affected
+   If build fails, fix all errors before proceeding.
+2. Run tests for affected packages: pnpm --filter <affected-package> run test:cli 2>/dev/null
+   If tests fail, fix them — do not skip or delete tests to make them pass.
+3. Do a quick smoke check: try the feature manually if a service is running.
+Only finish when you are personally confident the implementation is correct."
+
 if [ -n "$IMPL_FEEDBACK" ]; then
   PROMPT="The user reviewed the implementation and requested corrections. Write in English.
 
@@ -17,8 +26,9 @@ Working directory: $(pwd)
 
 Look at git diff HEAD~1 to understand what was previously implemented.
 Make the requested changes.
+$SELF_VERIFY_INSTRUCTIONS
 Do NOT commit — just make the changes.
-End with a short summary (2-3 sentences) of what you changed."
+End with a short summary of what you changed and how you verified it."
 
   claude \
     -p "$PROMPT" \
@@ -34,8 +44,10 @@ Working directory: $(pwd)
 Instructions:
 1. Follow your plan step by step — do not deviate.
 2. Make all necessary code changes.
-3. Do NOT commit — just make the changes.
-4. End with a short summary (2-3 sentences) of what you changed."
+3. Write or update tests that cover the new behaviour.
+$SELF_VERIFY_INSTRUCTIONS
+4. Do NOT commit — just make the changes.
+End with a short summary of what you changed and how you verified it."
 
   RESUME_FLAG=""
   [ -n "$PLAN_SESSION_ID" ] && RESUME_FLAG="--resume $PLAN_SESSION_ID"

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Step: Commit and Push
-# Env: ISSUE_NUMBER, ISSUE_TITLE, BRANCH_NAME, IMPL_FEEDBACK
+# Env: ISSUE_NUMBER, ISSUE_TITLE, BRANCH_NAME
 set -e
 
-# Run in the provisioned worktree (or project root when no worktree is used)
 cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
 
 git add -A
@@ -14,14 +13,9 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-if [ -n "$IMPL_FEEDBACK" ]; then
-  COMMIT_MSG="fix: address review feedback for issue #${ISSUE_NUMBER}"
-else
-  COMMIT_MSG="feat: implement issue #${ISSUE_NUMBER} — ${ISSUE_TITLE}
+# Use the commit plugin to generate a meaningful conventional commit message
+# from the actual diff, instead of a generic hardcoded message.
+pnpm kb commit commit --yes 2>/dev/null
 
-Closes #${ISSUE_NUMBER}"
-fi
-
-git commit -m "$COMMIT_MSG"
 git push origin "HEAD:refs/heads/${BRANCH_NAME}" --force
 echo "::kb-output::{\"committed\":true}"

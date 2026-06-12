@@ -14,10 +14,9 @@ REVIEW_RESULT=$(pnpm kb review run \
 
 echo "$REVIEW_RESULT"
 
-PASSED=$(echo "$REVIEW_RESULT"  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).passed===false?'false':'true')}catch{console.log('true')}})")
-SUMMARY=$(echo "$REVIEW_RESULT" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).summary||'')}catch{console.log('')}})")
-ISSUES=$(echo "$REVIEW_RESULT"  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.stringify(JSON.parse(d).issues||[]))}catch{console.log('[]')}})")
+PASSED=$(echo "$REVIEW_RESULT"       | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).passed===false?'false':'true')}catch{console.log('true')}})")
+SUMMARY=$(echo "$REVIEW_RESULT"      | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).summary||'')}catch{console.log('')}})")
+ISSUES=$(echo "$REVIEW_RESULT"       | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.stringify(JSON.parse(d).issues||[]))}catch{console.log('[]')}})")
+ISSUES_COUNT=$(echo "$REVIEW_RESULT" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const r=JSON.parse(d);console.log((r.issues||[]).length)}catch{console.log('0')}})")
 
-echo "Review passed: $PASSED"
-echo "Summary: $SUMMARY"
-echo "::kb-output::{\"passed\":$PASSED,\"summary\":\"$SUMMARY\",\"issues\":$ISSUES}"
+echo "::kb-output::{\"passed\":$PASSED,\"issues_count\":$ISSUES_COUNT,\"summary\":\"$SUMMARY\",\"issues\":$ISSUES}"

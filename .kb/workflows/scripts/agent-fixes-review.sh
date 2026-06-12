@@ -8,18 +8,22 @@ cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
 
 RESULT_FILE=$(mktemp)
 
-PROMPT="The AI code review found blocking issues in your implementation. Fix them now.
+PROMPT="The AI code review found blocking issues in your implementation. Fix them now. Write in English.
 
 Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
 
-Review findings (JSON):
+Review findings:
 ${REVIEW_ISSUES}
 
 Instructions:
 1. Fix every blocker and high severity issue listed above.
 2. Do NOT change anything unrelated to the findings.
-3. Do NOT commit — just fix the code.
-4. End with a short summary of what you fixed."
+3. After fixing, self-verify:
+   - Run kb-devkit run build --affected to confirm it still compiles.
+   - Run tests for affected packages to confirm nothing broke.
+   - Only finish when you are confident the issues are resolved.
+4. Do NOT commit — just fix the code.
+End with a summary of what you fixed and how you confirmed the fixes work."
 
 RESUME_FLAG=""
 [ -n "$IMPL_SESSION_ID" ] && RESUME_FLAG="--resume $IMPL_SESSION_ID"

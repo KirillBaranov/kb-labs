@@ -127,6 +127,7 @@ e2e/*/test-results/
 # ...except the shared autonomous pipeline (committed infra)
 !.kb/workflows/github-issue-to-pr.yaml
 !.kb/workflows/03-dev-cycle.yml
+!.kb/workflows/task-to-pr.yaml
 !.kb/workflows/scripts/
 !.kb/workflows/scripts/**
 
