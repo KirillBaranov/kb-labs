@@ -27,9 +27,11 @@ fi
 
 # Functional verification
 if [ "$VERIFY_VERDICT" = "PASSED" ]; then
+  VERIFY_PHASE="✅"
   VERIFY_LINE="✅ **Functional Verification** — ${VERIFY_CRITERIA_PASSED}/${VERIFY_CRITERIA_TOTAL} acceptance criteria passed"
 else
-  VERIFY_LINE="⚠️ **Functional Verification** — ${VERIFY_CRITERIA_PASSED}/${VERIFY_CRITERIA_TOTAL} acceptance criteria passed"
+  VERIFY_PHASE="❌ Failed (${VERIFY_CRITERIA_PASSED:-?}/${VERIFY_CRITERIA_TOTAL:-?} criteria)"
+  VERIFY_LINE="❌ **Functional Verification** — ${VERIFY_CRITERIA_PASSED:-?}/${VERIFY_CRITERIA_TOTAL:-?} acceptance criteria passed"
 fi
 
 BODY="## 📋 Pipeline Timeline — Issue #${ISSUE_NUMBER}
@@ -45,7 +47,7 @@ BODY="## 📋 Pipeline Timeline — Issue #${ISSUE_NUMBER}
 | 3 | Code Review | ✅ |
 | 4 | Architect Review | ✅ |
 | 5 | Adversarial QA | ✅ |
-| 6 | Functional Verification | ✅ |
+| 6 | Functional Verification | ${VERIFY_PHASE} |
 | 7 | Static Gates (type-check + tests) | ✅ |
 | 8 | CI | ✅ Green |
 

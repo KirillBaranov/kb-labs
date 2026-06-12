@@ -19,6 +19,7 @@ import {
   runsViewFlags,
   runsWatchFlags,
   runsRerunFlags,
+  runsRestartFlags,
   runsCancelFlags,
   runsApproveFlags,
   lintFlags,
@@ -241,6 +242,23 @@ export const manifest = {
           'kb workflow runs rerun --run-id=<runId>',
           'kb workflow runs rerun <runId> --failed-only',
           'kb workflow runs rerun <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow runs restart',
+        category: 'Runs',
+        operationType: 'mutate' as const,
+        describe: 'Restart a run from a specific step.',
+        longDescription:
+          'Restores the run from a snapshot and re-executes from the given step. ' +
+          'All preceding steps inherit their stored outputs without being re-run. ' +
+          'Omitting --from-step restarts from step 1 using the snapshot env.',
+        handler: './commands/runs-restart.js#default',
+        flags: defineCommandFlags(runsRestartFlags),
+        examples: [
+          'kb workflow runs restart <runId>',
+          'kb workflow runs restart <runId> --from-step=<stepId>',
+          'kb workflow runs restart <runId> --from-step=<stepId> --json',
         ],
       },
       {

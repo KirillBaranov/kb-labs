@@ -276,6 +276,31 @@ export interface RunsRerunFlags {
 }
 
 /**
+ * Flags for workflow:runs-restart command
+ */
+export const runsRestartFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to restart (alias for positional argument)',
+  },
+  'from-step': {
+    type: 'string',
+    description: 'Step ID to restart from; all preceding steps inherit their stored outputs',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export interface RunsRestartFlags {
+  'run-id'?: string;
+  'from-step'?: string;
+  json?: boolean;
+}
+
+/**
  * Flags for workflow:runs-cancel command
  */
 export const runsCancelFlags = {

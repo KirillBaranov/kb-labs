@@ -396,6 +396,195 @@ describe('WorkflowEngine', () => {
     });
   });
 
+  describe('replayRun step-transition logic', () => {
+    const snapshotSpec: WorkflowSpec = {
+      name: 'Snapshot Test',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        main: {
+          runsOn: 'local',
+          steps: [
+            { id: 'step-a', name: 'Step A', uses: 'builtin:shell', with: { run: 'echo a' } },
+            { id: 'step-b', name: 'Step B', uses: 'builtin:shell', with: { run: 'echo b' } },
+            { id: 'step-c', name: 'Step C', uses: 'builtin:shell', with: { run: 'echo c' } },
+          ],
+        },
+      },
+    };
+
+    async function createFinishedRun(): Promise<WorkflowRun> {
+      const run = await engine.createRun({ spec: snapshotSpec, trigger: { type: 'manual' } });
+      // Simulate finalizing so snapshot is created
+      await engine.finalizeRun(run.id, 'failed', {});
+      return (await engine.getRun(run.id))!;
+    }
+
+    it('REPLAY-01: returns a new run ID (does not overwrite original)', async () => {
+      const original = await createFinishedRun();
+      const replayed = await engine.replayRun(original.id);
+
+      expect(replayed).not.toBeNull();
+      expect(replayed!.id).not.toBe(original.id);
+
+      // Original run must still exist and be unchanged
+      const stillThere = await engine.getRun(original.id);
+      expect(stillThere).not.toBeNull();
+      expect(stillThere!.status).toBe('failed');
+    });
+
+    it('REPLAY-02: replayed run starts as queued', async () => {
+      const original = await createFinishedRun();
+      const replayed = await engine.replayRun(original.id);
+
+      expect(replayed!.status).toBe('queued');
+      expect(replayed!.startedAt).toBeUndefined();
+      expect(replayed!.finishedAt).toBeUndefined();
+    });
+
+    it('REPLAY-03: fromStepId resets target step and later steps to queued', async () => {
+      const original = await createFinishedRun();
+      const stepBId = original.jobs[0]!.steps[1]!.id;
+
+      const replayed = await engine.replayRun(original.id, { fromStepId: stepBId });
+
+      const steps = replayed!.jobs[0]!.steps;
+      expect(steps[0]!.status).toBe('success'); // step-a: before — left as-is
+      expect(steps[1]!.status).toBe('queued');  // step-b: target — reset
+      expect(steps[2]!.status).toBe('queued');  // step-c: after — reset
+    });
+
+    it('REPLAY-04: fromStepId marks preceding running/queued steps as success', async () => {
+      const original = await createFinishedRun();
+
+      // Force step-a to 'queued' in the snapshot to test the marking logic
+      const stateStore = (engine as any).stateStore as import('../state-store.js').StateStore;
+      const jobId = original.jobs[0]!.id;
+      const stepAId = original.jobs[0]!.steps[0]!.id;
+      const stepBId = original.jobs[0]!.steps[1]!.id;
+      await stateStore.updateStep(original.id, jobId, stepAId, (draft) => {
+        draft.status = 'queued';
+        draft.finishedAt = undefined;
+      });
+      // Re-create snapshot with step-a in queued state
+      await engine.deleteSnapshot(original.id);
+      const updatedRun = (await engine.getRun(original.id))!;
+      await engine.createSnapshot(original.id, {}, updatedRun.env ?? {});
+
+      const replayed = await engine.replayRun(original.id, { fromStepId: stepBId });
+      const steps = replayed!.jobs[0]!.steps;
+      expect(steps[0]!.status).toBe('success'); // step-a was queued, now forced to success
+    });
+
+    it('REPLAY-05: non-existent fromStepId throws with "Step not found"', async () => {
+      const original = await createFinishedRun();
+
+      await expect(
+        engine.replayRun(original.id, { fromStepId: 'ghost-step-id' }),
+      ).rejects.toThrow('Step not found: ghost-step-id');
+    });
+
+    it('REPLAY-06: non-existent fromStepId does NOT save a broken run state', async () => {
+      const original = await createFinishedRun();
+      const runsBefore = (await engine.getAllRuns()).length;
+
+      await expect(
+        engine.replayRun(original.id, { fromStepId: 'does-not-exist' }),
+      ).rejects.toThrow();
+
+      // No extra run should have been created
+      const runsAfter = (await engine.getAllRuns()).length;
+      expect(runsAfter).toBe(runsBefore);
+    });
+
+    it('REPLAY-07: without fromStepId all steps are reset to queued', async () => {
+      const original = await createFinishedRun();
+      const replayed = await engine.replayRun(original.id);
+
+      const steps = replayed!.jobs[0]!.steps;
+      for (const step of steps) {
+        expect(step.status).toBe('queued');
+        expect(step.startedAt).toBeUndefined();
+        expect(step.finishedAt).toBeUndefined();
+      }
+    });
+
+    it('REPLAY-08: fromStepId in job-a resets steps in subsequent jobs to queued (not success)', async () => {
+      // Multi-job spec: job-a has step-a, job-b depends on job-a and has step-b
+      const multiJobSpec: WorkflowSpec = {
+        name: 'Multi-job Replay Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          'job-a': {
+            runsOn: 'local',
+            steps: [
+              { id: 'step-a1', name: 'Step A1', uses: 'builtin:shell', with: { run: 'echo a1' } },
+              { id: 'step-a2', name: 'Step A2', uses: 'builtin:shell', with: { run: 'echo a2' } },
+            ],
+          },
+          'job-b': {
+            runsOn: 'local',
+            needs: ['job-a'],
+            steps: [
+              { id: 'step-b1', name: 'Step B1', uses: 'builtin:shell', with: { run: 'echo b1' } },
+            ],
+          },
+        },
+      };
+      const run = await engine.createRun({ spec: multiJobSpec, trigger: { type: 'manual' } });
+      await engine.finalizeRun(run.id, 'failed', {});
+      const original = (await engine.getRun(run.id))!;
+
+      // Restart from step-a2 (in job-a)
+      const stepA2Id = original.jobs[0]!.steps[1]!.id;
+      const replayed = await engine.replayRun(original.id, { fromStepId: stepA2Id });
+
+      expect(replayed).not.toBeNull();
+      // step-a1 is before fromStepId — should remain success
+      expect(replayed!.jobs[0]!.steps[0]!.status).toBe('success');
+      // step-a2 is fromStepId — should be queued
+      expect(replayed!.jobs[0]!.steps[1]!.status).toBe('queued');
+      // step-b1 is in a subsequent job — must be queued (not success)
+      expect(replayed!.jobs[1]!.steps[0]!.status).toBe('queued');
+    });
+
+    it('REPLAY-09: downstream jobs have blocked=true and correct pendingDependencies after replay', async () => {
+      // Multi-job spec: job-a → job-b (needs job-a)
+      const multiJobSpec: WorkflowSpec = {
+        name: 'Multi-job Blocking Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          'job-a': {
+            runsOn: 'local',
+            steps: [
+              { id: 'dep-step-a', name: 'Dep Step A', uses: 'builtin:shell', with: { run: 'echo a' } },
+            ],
+          },
+          'job-b': {
+            runsOn: 'local',
+            needs: ['job-a'],
+            steps: [
+              { id: 'dep-step-b', name: 'Dep Step B', uses: 'builtin:shell', with: { run: 'echo b' } },
+            ],
+          },
+        },
+      };
+      const run = await engine.createRun({ spec: multiJobSpec, trigger: { type: 'manual' } });
+      await engine.finalizeRun(run.id, 'failed', {});
+      const original = (await engine.getRun(run.id))!;
+
+      // Full replay (no fromStepId) — job-a has queued steps, so job-b must be blocked
+      const replayed = await engine.replayRun(original.id);
+
+      expect(replayed).not.toBeNull();
+      const jobB = replayed!.jobs.find(j => j.jobName === 'job-b')!;
+      expect(jobB.blocked).toBe(true);
+      expect(jobB.pendingDependencies).toEqual(['job-a']);
+    });
+  });
+
   describe('Job-level if: condition (BUG-002)', () => {
     // Helper: build a two-job spec where job-b depends on job-a.
     // job-b has an optional `if` condition.

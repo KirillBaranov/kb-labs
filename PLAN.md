@@ -1,117 +1,225 @@
-Now I have enough context. Let me write the implementation plan.
-
----
+## Resumable Pipeline Runs: Restart from a Specific Step
 
 ## Summary
 
-Add first-class display of step outputs (structured key-value results) and step stdout/stderr to `kb workflow runs view` for completed runs: surface `run.result.outputs` in the summary, honour the `--step` filter when combined with `--output`, remove the 20-line inline cap when a single step is targeted, and fix step-name resolution in log lines.
+Add a `kb workflow runs-restart <runId> --from-step <stepId>` command that restores a failed run's completed step outputs from a snapshot and re-executes only from the specified step onward. The engine already has a `replayRun(runId, { fromStepId })` method, but snapshots are never automatically saved, and no CLI/HTTP surface exposes step-level restart.
 
 ---
 
-## Root cause / context
+## Root Cause / Context
 
-`runs view` already retrieves step-level `outputs` from the run detail and prints them, and has an `--output` flag that loads all run logs and groups them by `step.id`. However three gaps remain after a run completes:
+Three gaps exist between the desired UX and the current code:
 
-1. **`run.result.outputs` is never shown** — the workflow-level final outputs stored in `WorkflowRun.result.outputs` (`ExecutionResultSchema`) are returned by `GET /api/v1/runs/:runId` but `renderRun()` never reads `run.result`.
-2. **`--step` is ignored in `--output` mode** — when the user passes both `--output` and `--step <name>`, `stepFilter` is used only for the `--log` code path (lines 202-203 in `runs-view.ts`); the `--output` block fetches all logs and renders all steps regardless.
-3. **20-line hard cap hides the full stdout** — the inline `[OUT]/[ERR]` display is capped at 20 lines per step unconditionally, making it insufficient for debugging; when `--step` targets a single step the cap should be lifted (or made much larger).
-4. **`stepName` is never resolved** — `getRunLogs` returns `stepId` from log metadata but `stepName` is always undefined in practice (job-broker only sets `fields['stepId']`, not `fields['stepName']`), so the log formatter falls back to raw IDs.
+1. **Snapshots are never saved automatically.** `RunSnapshotStorage.createSnapshot()` and `engine.replayRun()` exist in `engine/src/engine.ts` (lines ~958–1087) and `engine/src/run-snapshot.ts`, but nothing in the run lifecycle calls `createSnapshot`. The existing `rerun` path (`POST /api/v1/runs/:runId/rerun`, `runs-rerun.ts`) ignores snapshots entirely — it clones the spec and creates a brand-new run from step 1.
+
+2. **`replayRun()` is correct but unreachable.** The method already handles `fromStepId`: marks preceding steps `success`, resets target and following steps to `queued`, and re-schedules. The worker's step loop already skips steps with `status === 'success'`. The plumbing is sound — it just has no entry point.
+
+3. **No HTTP route or CLI command exposes step-level restart.** The contract type `WorkflowRerunRequest` has no `fromStepId` field; the HTTP client has no `restartRun()` method; there is no `runs-restart` command.
 
 ---
 
-## Implementation steps
+## Implementation Steps
 
-### 1. `plugins/workflow/daemon/src/job-broker.ts` — emit `stepName` in log metadata
+### 1. Save snapshot automatically on run finish
 
-Locate the loop that emits logs (around line 195). Add `stepName` extraction by building a `stepId → name` lookup from the run snapshot before returning logs.
+**File:** `plugins/workflow/engine/src/engine.ts`
 
-```
-async getRunLogs(runId, options):
-  1. fetch run snapshot from engine (already done for time-window calc)
-  2. build Map<stepId, stepName> from run.jobs[*].steps[*]
-  3. in the mapped result, set  stepName: stepNameMap.get(entry.stepId)
-```
-
-File: `plugins/workflow/daemon/src/job-broker.ts`
-- Read the existing `_queryLogs` private method (~line 123).
-- In the final `.map()` that constructs each log entry, look up the step name from the run's job/step tree.
-
-### 2. `plugins/workflow/entry/src/http-client.ts` — no interface changes needed
-
-`getRunLogs` return type already has `stepName?: string` — the field will be populated after step 1. No changes required here.
-
-### 3. `plugins/workflow/entry/src/commands/runs-view.ts` — three targeted fixes
-
-**3a. Show `run.result.outputs` in the summary section** (`renderRun`, ~line 50)
-
-After the `Inputs:` line in the summary block, add:
+In the `finalizeRun()` (or equivalent run-completion block, ~lines 473–546), after setting `run.status` to `'success'` or `'failed'` and before emitting the finish event, call `createSnapshot`:
 
 ```typescript
-if (run.result?.outputs && Object.keys(run.result.outputs).length > 0) {
-  summary.push(`Outputs:  ${JSON.stringify(run.result.outputs)}`);
-}
-if (run.result?.summary) {
-  summary.push(`Result:   ${run.result.summary}`);
-}
-```
-
-**3b. Apply `--step` filter when building `stepLogs` in `--output` mode** (~line 276)
-
-The existing `--output` block ignores `stepFilter`. Change it:
-
-```typescript
-if (showOutput) {
-  const allLogs = await client.getRunLogs(runId, stepFilter ? { stepId: stepFilter } : {});
-  stepLogs = {};
-  for (const l of allLogs) {
-    const sid = l.stepId ?? ...;
-    if (!sid) continue;
-    (stepLogs[sid] ??= []).push({ ... });
+// Collect step outputs from all jobs
+const stepOutputs: Record<string, Record<string, unknown>> = {}
+for (const job of run.jobs) {
+  for (const step of job.steps) {
+    if (step.outputs && Object.keys(step.outputs).length > 0) {
+      stepOutputs[step.id] = step.outputs
+    }
   }
 }
+await this.snapshotStorage.createSnapshot(run.id, stepOutputs, run.env ?? {})
 ```
 
-**3c. Lift the 20-line cap when a single step is targeted** (`renderRun`, ~line 121)
-
-```typescript
-const MAX_LINES = stepLogs && Object.keys(stepLogs).length === 1 ? Infinity : 20;
-```
-
-Pass `stepLogs` keys count down through `renderRun` — simplest approach: add a second parameter `opts?: { maxStdoutLines?: number }` to `renderRun` and pass `maxStdoutLines: stepFilter ? undefined : 20` from the caller.
-
-**3d. Use `stepName` in log display when available**
-
-In the `--log` / `--log-failed` formatter (~line 260), the existing code already reads `l['stepName']`. After step 1, this will be populated automatically.
-
-### 4. Tests — `plugins/workflow/entry/src/__tests__/cli/runs-view.cli.test.ts`
-
-Add three test cases (all handler-level, mock HTTP client):
-
-**Test A — `run.result.outputs` shown in summary**
-- Mock `getRun` to return a run with `result: { outputs: { report: 'ok' }, summary: 'done' }`
-- Assert `sideBox` sections contain `Outputs:  {"report":"ok"}` and `Result:   done`
-
-**Test B — `--output --step <id>` only shows stdout for the targeted step**
-- Mock `getRunLogs` to verify it is called with `{ stepId: '<id>' }`
-- Assert only the targeted step's `[OUT]` lines appear
-
-**Test C — stdout cap lifted when `--step` is specified**
-- Mock logs returning 30 entries for a single step
-- Assert all 30 appear (no "N earlier lines" truncation hint)
+This makes every completed or failed run replayable for 7 days (existing TTL).
 
 ---
 
-## Tests / verification
+### 2. Add `WorkflowRestartRequest` / `WorkflowRestartResponse` contract types
 
-```bash
-# Run handler tests (no daemon required)
-pnpm --filter @kb-labs/workflow-entry run test:cli
+**File:** `plugins/workflow/contracts/src/schemas.ts`
 
-# Manual smoke test against a live run (needs kb-dev start):
-kb workflow runs view <runId>                  # should show Outputs: / Result: in summary
-kb workflow runs view <runId> --output         # all steps with stdout
-kb workflow runs view <runId> --output --step <stepId>   # only that step, no 20-line cap
-kb workflow runs view <runId> --log-failed     # step names instead of IDs
+Add alongside the existing `WorkflowRerunRequest`:
+
+```typescript
+export const WorkflowRestartRequestSchema = z.object({
+  fromStepId: z.string().optional(),
+  env: z.record(z.string()).optional(),
+})
+export type WorkflowRestartRequest = z.infer<typeof WorkflowRestartRequestSchema>
+
+export const WorkflowRestartResponseSchema = z.object({
+  runId: z.string(),
+  status: RunStatusSchema,
+  fromStepId: z.string().optional(),
+})
+export type WorkflowRestartResponse = z.infer<typeof WorkflowRestartResponseSchema>
 ```
 
-Each test case listed in step 4 must **fail before** the corresponding fix and **pass after** per the project's bug-fix rule.
+Export both from `contracts/src/index.ts`.
+
+---
+
+### 3. Add `restartRun()` to `WorkflowHostService`
+
+**File:** `plugins/workflow/daemon/src/host/workflow-host-service.ts`
+
+Add method next to `rerunWorkflow()`:
+
+```typescript
+async restartRun(
+  runId: string,
+  options: WorkflowRestartRequest,
+): Promise<WorkflowRestartResponse> {
+  const run = await this.engine.replayRun(runId, {
+    fromStepId: options.fromStepId,
+    env: options.env,
+  })
+  if (!run) throw new Error('Run not found or snapshot not available')
+  return { runId: run.id, status: run.status, fromStepId: options.fromStepId }
+}
+```
+
+---
+
+### 4. Add REST route `POST /api/v1/runs/:runId/restart`
+
+**File:** `plugins/workflow/daemon/src/api/workflows-api.ts`
+
+Add after the existing `/rerun` route (~line 188):
+
+```typescript
+server.post<{ Params: { runId: string }; Body: WorkflowRestartRequest }>(
+  '/api/v1/runs/:runId/restart',
+  { schema: { tags: ['Runs'], summary: 'Restart a run from a specific step' } },
+  async (request, reply) => {
+    try {
+      const response = await hostService.restartRun(request.params.runId, request.body ?? {})
+      return ok(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to restart run'
+      if (message.includes('not found') || message.includes('snapshot not available')) {
+        return fail(reply, 404, message)
+      }
+      return fail(reply, 500, message)
+    }
+  },
+)
+```
+
+---
+
+### 5. Add `restartRun()` to the HTTP client
+
+**File:** `plugins/workflow/entry/src/http-client.ts`
+
+Add alongside `rerunWorkflow()`:
+
+```typescript
+async restartRun(
+  runId: string,
+  options: WorkflowRestartRequest = {},
+): Promise<WorkflowRestartResponse> {
+  return this.post(`/api/v1/runs/${runId}/restart`, options)
+}
+```
+
+---
+
+### 6. Create `runs-restart` CLI command
+
+**File:** `plugins/workflow/entry/src/commands/runs-restart.ts` (new file)
+
+```typescript
+import type { CLIInput } from '@kb-labs/sdk'
+import type { WorkflowRestartRequest } from '@kb-labs/workflow-contracts'
+
+const flagsDef = {
+  'from-step': { type: 'string' as const, description: 'Step ID to restart from' },
+  json: { type: 'boolean' as const, default: false },
+} as const
+
+export const runsRestartCommand = {
+  name: 'runs-restart',
+  description: 'Restart a run from a specific step (inherits outputs of all preceding steps)',
+  args: [{ name: 'runId', required: true }],
+  flags: flagsDef,
+
+  async execute(input: CLIInput<typeof flagsDef>, { client, ui }) {
+    const runId = input.args[0]
+    const fromStepId = input.flags['from-step']
+
+    ui.info(`Restarting run ${runId}${fromStepId ? ` from step "${fromStepId}"` : ''}...`)
+
+    const body: WorkflowRestartRequest = { fromStepId }
+    const result = await client.restartRun(runId, body)
+
+    if (input.flags.json) {
+      ui.json(result)
+      return
+    }
+
+    ui.success(`Run restarted — new execution ID: ${result.runId}`)
+    if (result.fromStepId) {
+      ui.info(`Resuming from step: ${result.fromStepId}`)
+    }
+  },
+}
+```
+
+Register the command in `plugins/workflow/entry/src/index.ts` alongside the other `runs-*` commands.
+
+---
+
+### 7. Expose `replayRun` on the engine's public interface
+
+**File:** `plugins/workflow/engine/src/index.ts` (or wherever `IWorkflowEngine` is declared)
+
+Ensure `replayRun(runId, options)` is part of the exported interface so `WorkflowHostService` can call it without casting.
+
+---
+
+## Tests / Verification
+
+### Handler unit test (required by bug-fix rule)
+
+**File:** `plugins/workflow/entry/src/__tests__/cli/runs-restart.test.ts` (new)
+
+Verify:
+- `runs-restart <runId> --from-step checkout` calls `client.restartRun(runId, { fromStepId: 'checkout' })` exactly once
+- Output includes the returned `runId`
+- `runs-restart <runId>` (no `--from-step`) calls `client.restartRun(runId, {})` — full restart via snapshot
+
+Use `mockCLIInput<typeof flagsDef>()` and `createMockContext()` from `@kb-labs/shared-testing-e2e`.
+
+### Integration check (manual, with daemon running)
+
+```bash
+# 1. Run a 13-step workflow that will fail at step 5
+kb workflow run ./github-issue-to-pr.yaml
+
+# 2. Note the runId and failing stepId from runs-view
+kb workflow runs-view <runId>
+
+# 3. Fix whatever caused the failure, then restart from step 5
+kb workflow runs-restart <runId> --from-step <stepId>
+
+# 4. Confirm new run shows steps 1–4 as 'success' (inherited) and step 5 starts executing
+kb workflow runs-watch <newRunId>
+```
+
+### Snapshot auto-save regression check
+
+```bash
+# After a run completes (success or failure), verify snapshot exists in Redis
+redis-cli get "workflow:snapshot:<runId>"
+# Should return non-null JSON with stepOutputs populated
+```

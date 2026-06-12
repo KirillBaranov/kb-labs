@@ -394,6 +394,85 @@ describe('WorkflowHostService.resolveRunId', () => {
   });
 });
 
+describe('WorkflowHostService.restartRun', () => {
+  const makeFinishedRun = (id: string, status: 'failed' | 'success' | 'cancelled') => ({
+    id,
+    name: 'my-workflow',
+    version: '1.0.0',
+    status,
+    createdAt: new Date().toISOString(),
+    queuedAt: new Date().toISOString(),
+    trigger: { type: 'manual' },
+    env: {},
+    jobs: [],
+  });
+
+  it('RST-HS-01: throws "Cannot restart an active run" when run is running (Bug 1 guard)', async () => {
+    const activeRun = { id: 'run-live', status: 'running' };
+    const service = createService({
+      engine: { getRun: vi.fn(async () => activeRun) },
+    });
+
+    await expect(service.restartRun('run-live', {})).rejects.toThrow(
+      /Cannot restart an active run \(status: running\)/,
+    );
+  });
+
+  it('RST-HS-02: throws "Cannot restart an active run" when run is queued (Bug 1 guard)', async () => {
+    const queuedRun = { id: 'run-queued', status: 'queued' };
+    const service = createService({
+      engine: { getRun: vi.fn(async () => queuedRun) },
+    });
+
+    await expect(service.restartRun('run-queued', {})).rejects.toThrow(
+      /Cannot restart an active run \(status: queued\)/,
+    );
+  });
+
+  it('RST-HS-03: propagates "Step not found" when fromStepId is invalid (Bug 2 guard)', async () => {
+    const finishedRun = makeFinishedRun('run-done', 'failed');
+    const replayRun = vi.fn(async () => { throw new Error('Step not found: ghost-step'); });
+    const service = createService({
+      engine: {
+        getRun: vi.fn(async () => finishedRun),
+        replayRun,
+      },
+    });
+
+    await expect(service.restartRun('run-done', { fromStepId: 'ghost-step' })).rejects.toThrow(
+      'Step not found: ghost-step',
+    );
+    expect(replayRun).toHaveBeenCalledWith('run-done', { fromStepId: 'ghost-step', env: undefined });
+  });
+
+  it('RST-HS-04: returns new runId and queued status on successful restart', async () => {
+    const finishedRun = makeFinishedRun('run-done', 'failed');
+    const newRun = { id: 'run-new-uuid', status: 'queued' };
+    const replayRun = vi.fn(async () => newRun);
+    const service = createService({
+      engine: {
+        getRun: vi.fn(async () => finishedRun),
+        replayRun,
+      },
+    });
+
+    const result = await service.restartRun('run-done', { fromStepId: 'step-b' });
+    expect(result.runId).toBe('run-new-uuid');
+    expect(result.status).toBe('queued');
+    expect(result.fromStepId).toBe('step-b');
+  });
+
+  it('RST-HS-05: throws when run is not found', async () => {
+    const service = createService({
+      engine: { getRun: vi.fn(async () => null) },
+    });
+
+    await expect(service.restartRun('no-such-run-id-1234', {})).rejects.toThrow(
+      'Run not found or snapshot not available',
+    );
+  });
+});
+
 describe('WorkflowHostService.listRuns — hasPendingApproval', () => {
   it('OBS-004: hasPendingApproval is true when a step is waiting_approval', async () => {
     const runWithApproval = {

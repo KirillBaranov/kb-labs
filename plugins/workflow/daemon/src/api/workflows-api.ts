@@ -5,7 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
-import type { WorkflowRerunRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import type { WorkflowRerunRequest, WorkflowRestartRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import type { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
 import type { OperationObserver } from '@kb-labs/shared-http';
 import type { WorkflowHostService } from '../host/workflow-host-service.js';
@@ -183,6 +183,30 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
         return fail(reply, 400, message);
       }
       logger.error('[workflows-api] Error rerunning workflow', error instanceof Error ? error : undefined);
+      return fail(reply, 500, message);
+    }
+  });
+
+  // POST /api/v1/runs/:runId/restart — Restart a run from a snapshot, optionally from a specific step
+  server.post<{
+    Params: { runId: string };
+    Body: WorkflowRestartRequest;
+  }>('/api/v1/runs/:runId/restart', { schema: { tags: ['Runs'], summary: 'Restart a run from a specific step (snapshot-based)' } }, async (request, reply) => {
+    try {
+      const { runId } = request.params;
+      const response = await observability.observeOperation('workflow.run.restart', () =>
+        hostService.restartRun(runId, request.body ?? {}),
+      );
+      return ok(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to restart run';
+      if (message.includes('not found') || message.includes('snapshot not available')) {
+        return fail(reply, 404, message);
+      }
+      if (message.startsWith('Cannot restart an active run')) {
+        return fail(reply, 409, message);
+      }
+      logger.error('[workflows-api] Error restarting run', error instanceof Error ? error : undefined);
       return fail(reply, 500, message);
     }
   });

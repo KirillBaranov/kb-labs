@@ -426,6 +426,7 @@ jobs:
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
           VERIFY_VERDICT: '${{ steps.functional_verify.outputs.verdict }}'
           VERIFY_CRITERIA_TOTAL: '${{ steps.functional_verify.outputs.criteria_total }}'
           VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
@@ -522,6 +523,17 @@ jobs:
       # PHASE 9 — FINAL APPROVAL & MERGE
       # ═══════════════════════════════════════════════════════════════════════
 
+      - name: Review Doc Threads
+        id: doc_review
+        timeoutMs: 1800000
+        env:
+          OWNER: '${{ inputs.owner }}'
+          REPO: '${{ inputs.repo }}'
+          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
+        run: bash .kb/workflows/scripts/review-doc-threads.sh
+
       - name: Post Timeline
         env:
           ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
@@ -577,6 +589,8 @@ jobs:
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
+          ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
+          ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
         run: bash .kb/workflows/scripts/merge-pr.sh
 
       - name: Close Issue
@@ -584,4 +598,5 @@ jobs:
           ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
+          CLICKUP_TASK_ID: '${{ steps.prepare.outputs.clickupTaskId }}'
         run: bash .kb/workflows/scripts/close-issue.sh

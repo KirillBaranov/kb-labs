@@ -91,4 +91,18 @@ REPORT=$(cat "$RESULT_FILE")
 rm -f "$RESULT_FILE"
 
 printf '%s' "$REPORT" > "${ARTIFACTS_DIR}/functional-verification-${ISSUE_NUMBER}.md"
-echo "$REPORT"
+# Print report without its embedded ::kb-output:: line — our node-generated line below is authoritative
+echo "$REPORT" | grep -v '^::kb-output::'
+
+VERDICT=$(echo "$REPORT" | grep -o '"verdict":"[^"]*"' | tail -1 | grep -o 'PASSED\|FAILED' || echo "FAILED")
+CRITERIA_TOTAL=$(echo "$REPORT" | grep -o '"criteria_total":[0-9]*' | tail -1 | grep -o '[0-9]*' || echo "0")
+CRITERIA_PASSED=$(echo "$REPORT" | grep -o '"criteria_passed":[0-9]*' | tail -1 | grep -o '[0-9]*' || echo "0")
+
+# Use node for safe JSON serialization of report summary
+REPORT_SUMMARY=$(printf '%s' "$REPORT" | tail -c 2000)
+KB_OUTPUT=$(node -e "
+const v='$VERDICT', ct='$CRITERIA_TOTAL', cp='$CRITERIA_PASSED';
+const s=require('fs').readFileSync('/dev/stdin','utf8');
+process.stdout.write('::kb-output::' + JSON.stringify({verdict:v,criteria_total:ct,criteria_passed:cp,report:s.trim()}) + '\n');
+" <<< "$REPORT_SUMMARY")
+echo "$KB_OUTPUT"

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type {
   WorkflowRun,
   WorkflowSpec,
@@ -906,6 +907,22 @@ export class WorkflowEngine {
             : EVENT_NAMES.run.finished,
         updated,
       )
+
+      // Persist snapshot so the run can be replayed from any step later.
+      // Only snapshot terminal states that carry meaningful step output data.
+      if (status === 'success' || status === 'failed') {
+        const stepOutputs: Record<string, Record<string, unknown>> = {}
+        for (const job of updated.jobs) {
+          for (const step of job.steps) {
+            if (step.outputs && Object.keys(step.outputs).length > 0) {
+              stepOutputs[step.id] = step.outputs
+            }
+          }
+        }
+        await this.snapshotStorage.createSnapshot(updated, stepOutputs, updated.env ?? {}).catch((err) => {
+          this.logger.warn('Failed to create run snapshot', { runId, error: err instanceof Error ? err.message : String(err) })
+        })
+      }
     }
 
     return updated
@@ -1026,20 +1043,29 @@ export class WorkflowEngine {
       restoredRun.env = snapshot.env
     }
 
-    // If fromStepId is specified, mark all steps before it as completed
+    // Validate fromStepId before any state mutation — a non-existent ID must be
+    // a hard error (404), not a silent success that saves a broken run state.
     if (options.fromStepId) {
+      const stepExists = restoredRun.jobs.some(job =>
+        job.steps.some(s => s.id === options.fromStepId),
+      )
+      if (!stepExists) {
+        throw new Error(`Step not found: ${options.fromStepId}`)
+      }
+    }
+
+    // If fromStepId is specified, mark all steps before it as completed.
+    // foundStep is declared outside the job loop so jobs after the job
+    // containing fromStepId have all their steps correctly reset to queued.
+    if (options.fromStepId) {
+      let foundStep = false
       for (const job of restoredRun.jobs) {
-        let foundStep = false
         for (const step of job.steps) {
           if (step.id === options.fromStepId) {
-            // Found the step to start from
             foundStep = true
-            // Reset this step and all following steps
-            if (step.status !== 'queued') {
-              step.status = 'queued'
-              step.startedAt = undefined
-              step.finishedAt = undefined
-            }
+            step.status = 'queued'
+            step.startedAt = undefined
+            step.finishedAt = undefined
             continue
           }
           if (!foundStep) {
@@ -1067,23 +1093,57 @@ export class WorkflowEngine {
       }
     }
 
-    // Update run status
-    restoredRun.status = 'running'
-    restoredRun.startedAt = restoredRun.startedAt ?? new Date().toISOString()
-    restoredRun.finishedAt = undefined
+    // Reconstruct job.blocked and job.pendingDependencies based on the reset
+    // step state. In a completed run all jobs have blocked=false, so without
+    // this step scheduleRun would enqueue all jobs simultaneously, ignoring
+    // declared dependency ordering (needs: [...]).
+    const isJobComplete = (job: JobRun): boolean =>
+      job.steps.every(s => s.status === 'success' || s.status === 'skipped')
 
-    // Save restored run
-    await this.stateStore.saveRun(restoredRun)
+    for (const job of restoredRun.jobs) {
+      if (!job.needs || job.needs.length === 0) {
+        job.blocked = false
+        job.pendingDependencies = []
+        continue
+      }
+      const pendingDeps = job.needs.filter(depName => {
+        const depJob = restoredRun.jobs.find(j => j.jobName === depName)
+        return depJob !== undefined && !isJobComplete(depJob)
+      })
+      job.pendingDependencies = pendingDeps
+      job.blocked = pendingDeps.length > 0
+    }
 
-    // Schedule the run
-    await this.scheduler.scheduleRun(restoredRun)
+    // Create a new run ID so the original run's history is preserved.
+    // Overwriting the same ID would destroy history and corrupt state if the
+    // original run's worker is still live (race condition).
+    const newRunId = randomUUID()
+    const newNow = new Date().toISOString()
+    const newRun: WorkflowRun = {
+      ...restoredRun,
+      id: newRunId,
+      status: 'queued',
+      createdAt: newNow,
+      queuedAt: newNow,
+      startedAt: undefined,
+      finishedAt: undefined,
+      durationMs: undefined,
+      result: undefined,
+    }
 
-    this.logger.info('Run replayed from snapshot', {
-      runId,
+    // Save the new run (original run at its own ID is untouched)
+    await this.stateStore.saveRun(newRun)
+
+    // Schedule the new run
+    await this.scheduler.scheduleRun(newRun)
+
+    this.logger.info('Run replayed as new run from snapshot', {
+      originalRunId: runId,
+      newRunId,
       fromStepId: options.fromStepId,
     })
 
-    return restoredRun
+    return newRun
   }
 
   /**
