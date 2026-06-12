@@ -120,7 +120,7 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
         registerWorkflowsAPI({ server, hostService, engine, workflowService, logger, observability });
       }
 
-      registerApprovalsAPI({ server, engine, logger, observability });
+      registerApprovalsAPI({ server, hostService, engine, logger, observability });
       registerStatsAPI({ server, hostService, cronScheduler, logger });
 
       // Custom observability routes (workflow-specific data from hostService)

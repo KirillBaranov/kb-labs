@@ -18,6 +18,7 @@ const STATUS_ICON: Record<string, string> = {
   running: '◆',
   queued: '○',
   cancelled: '⊘',
+  waiting_approval: '…',
 };
 
 function relativeTime(isoStr?: string): string {
@@ -69,15 +70,18 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
         }
 
         ctx.ui?.table?.(
-          runs.map(run => ({
-            ' ': STATUS_ICON[run.status] ?? '?',
-            'Workflow': run.name,
-            'Trigger': run.trigger?.type ?? 'manual',
-            'When': relativeTime(run.startedAt ?? run.createdAt),
-            'Status': run.status.toUpperCase(),
-            'Dur': formatDuration(run.durationMs),
-            'ID': run.id.slice(0, 8),
-          })),
+          runs.map(run => {
+            const displayStatus = run.hasPendingApproval ? 'waiting_approval' : run.status;
+            return {
+              ' ': STATUS_ICON[displayStatus] ?? '?',
+              'Workflow': run.name,
+              'Trigger': run.trigger?.type ?? 'manual',
+              'When': relativeTime(run.startedAt ?? run.createdAt),
+              'Status': displayStatus.toUpperCase().replace(/_/g, ' '),
+              'Dur': formatDuration(run.durationMs),
+              'ID': run.id.slice(0, 8),
+            };
+          }),
           [
             { header: ' ', key: ' ', width: 1 },
             { header: 'Workflow', key: 'Workflow' },

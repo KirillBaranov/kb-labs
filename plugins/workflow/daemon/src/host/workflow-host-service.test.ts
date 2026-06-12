@@ -87,7 +87,10 @@ describe('WorkflowHostService', () => {
   it('getRunLogs delegates to jobBroker.getRunLogs with stepId filter', async () => {
     const mockLog = { timestamp: '2026-01-01T00:00:00.000Z', level: 'info', message: 'Executing step', context: { runId: 'r1', stepId: 's1' } };
     const getRunLogs = vi.fn(async () => [mockLog]);
-    const service = createService({ jobBroker: { getRunLogs } });
+    const service = createService({
+      engine: { getRun: vi.fn(async () => ({ id: 'run-1', status: 'running', jobs: [] })) },
+      jobBroker: { getRunLogs },
+    });
 
     const result = await service.getRunLogs('run-1', { stepId: 'step-1', level: 'info', limit: 50 });
 
@@ -97,7 +100,10 @@ describe('WorkflowHostService', () => {
 
   it('getRunLogs works without options (returns all logs for run)', async () => {
     const getRunLogs = vi.fn(async () => []);
-    const service = createService({ jobBroker: { getRunLogs } });
+    const service = createService({
+      engine: { getRun: vi.fn(async () => ({ id: 'run-42', status: 'running', jobs: [] })) },
+      jobBroker: { getRunLogs },
+    });
 
     await service.getRunLogs('run-42');
 
@@ -355,5 +361,106 @@ describe('WorkflowHostService.rerunWorkflow', () => {
     });
 
     await expect(service.rerunWorkflow('missing-run', { failedOnly: false })).rejects.toThrow('Run not found');
+  });
+});
+
+describe('WorkflowHostService.resolveRunId', () => {
+  it('OBS-001: returns full UUID when exact match exists', async () => {
+    const fullId = 'abc12345-abcd-4000-8000-000000000001';
+    const run = { id: fullId, status: 'running' } as any;
+    const service = createService({ engine: { getRun: vi.fn(async () => run) } });
+
+    const resolved = await service.resolveRunId(fullId);
+    expect(resolved).toBe(fullId);
+  });
+
+  it('OBS-002: resolves 8-char prefix to full UUID via getAllRuns prefix search', async () => {
+    const fullId = 'abc12345-abcd-4000-8000-000000000001';
+    const getRun = vi.fn(async () => null);
+    const getAllRuns = vi.fn(async () => [{ id: fullId, status: 'running' }]);
+    const service = createService({ engine: { getRun, getAllRuns } });
+
+    const resolved = await service.resolveRunId('abc12345');
+    expect(resolved).toBe(fullId);
+  });
+
+  it('OBS-003: returns null when prefix matches nothing', async () => {
+    const getRun = vi.fn(async () => null);
+    const getAllRuns = vi.fn(async () => []);
+    const service = createService({ engine: { getRun, getAllRuns } });
+
+    const resolved = await service.resolveRunId('deadbeef');
+    expect(resolved).toBeNull();
+  });
+});
+
+describe('WorkflowHostService.listRuns — hasPendingApproval', () => {
+  it('OBS-004: hasPendingApproval is true when a step is waiting_approval', async () => {
+    const runWithApproval = {
+      id: 'run-approval',
+      name: 'task-to-pr',
+      version: '1.0.0',
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [{
+        id: 'j1',
+        jobName: 'main',
+        status: 'running',
+        runId: 'run-approval',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 1,
+        artifacts: {},
+        steps: [
+          { id: 's1', name: 'Agent Plans', status: 'success' },
+          { id: 's2', name: 'Approve Plan', status: 'waiting_approval' },
+        ],
+      }],
+    };
+
+    const getAllRuns = vi.fn(async () => [runWithApproval]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ id: 'run-approval', hasPendingApproval: true });
+  });
+
+  it('OBS-005: hasPendingApproval is false when no steps are waiting_approval', async () => {
+    const runNoApproval = {
+      id: 'run-clean',
+      name: 'task-to-pr',
+      version: '1.0.0',
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      trigger: { type: 'manual' },
+      env: {},
+      jobs: [{
+        id: 'j1',
+        jobName: 'main',
+        status: 'running',
+        runId: 'run-clean',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 1,
+        artifacts: {},
+        steps: [
+          { id: 's1', name: 'Agent Plans', status: 'success' },
+          { id: 's2', name: 'Agent Implements', status: 'running' },
+        ],
+      }],
+    };
+
+    const getAllRuns = vi.fn(async () => [runNoApproval]);
+    const service = createService({ engine: { getAllRuns } });
+
+    const { runs } = await service.listRuns({});
+    expect(runs[0]).toMatchObject({ id: 'run-clean', hasPendingApproval: false });
   });
 });

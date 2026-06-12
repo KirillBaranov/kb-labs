@@ -24,7 +24,20 @@ function createHostServiceMock() {
     getWorkflow: vi.fn(async () => ({ id: 'w1', name: 'wf', source: 'standalone' })),
     runWorkflow: vi.fn(async () => ({ runId: 'r1', status: 'queued' })),
     listRuns: vi.fn(async () => ({ runs: [{ id: 'r1', status: 'running' }], total: 1 })),
-    getRun: vi.fn(async () => ({ id: 'r1', status: 'running', jobs: [] })),
+    getRun: vi.fn(async () => ({
+      id: 'r1',
+      status: 'running',
+      jobs: [{
+        id: 'j1',
+        steps: [{
+          id: 's1',
+          name: 'approve me',
+          status: 'waiting_approval',
+          startedAt: new Date().toISOString(),
+          spec: { id: 'step-spec-1', with: {} },
+        }],
+      }],
+    })),
     cancelRun: vi.fn(async () => {}),
     listWorkflowRuns: vi.fn(async () => ({ runs: [], total: 0 })),
     getRunLogs: vi.fn(async () => [
@@ -72,7 +85,7 @@ describe('Workflow API Contract Integration', () => {
     registerJobsAPI({ server: app, hostService: hostService as any, logger, observability: observability as any });
     registerCronAPI({ server: app, hostService: hostService as any, logger, observability: observability as any });
     registerWorkflowsAPI({ server: app, hostService: hostService as any, engine: engine as any, logger, observability: observability as any });
-    registerApprovalsAPI({ server: app, engine: engine as any, logger, observability: observability as any });
+    registerApprovalsAPI({ server: app, hostService: hostService as any, engine: engine as any, logger, observability: observability as any });
   });
 
   afterEach(async () => {
@@ -336,13 +349,13 @@ describe('Workflow API Contract Integration', () => {
     });
 
     it('GET /api/v1/runs/:runId/approvals — 404 when run not found', async () => {
-      engine.getRun.mockResolvedValueOnce(null as any);
+      hostService.getRun.mockResolvedValueOnce(null as any);
       const res = await app.inject({ method: 'GET', url: '/api/v1/runs/missing/approvals' });
       expect(res.statusCode).toBe(404);
     });
 
     it('GET /api/v1/runs/:runId/approvals — empty list when no pending steps', async () => {
-      engine.getRun.mockResolvedValueOnce({ id: 'r1', status: 'running', jobs: [{ id: 'j1', steps: [{ id: 's1', status: 'running', spec: {} }] }] } as any);
+      hostService.getRun.mockResolvedValueOnce({ id: 'r1', status: 'running', jobs: [{ id: 'j1', steps: [{ id: 's1', status: 'running', spec: {} }] }] } as any);
       const res = await app.inject({ method: 'GET', url: '/api/v1/runs/r1/approvals' });
       expect(res.statusCode).toBe(200);
       expect(res.json().data.pending).toHaveLength(0);
@@ -385,7 +398,7 @@ describe('Workflow API Contract Integration', () => {
     });
 
     it('POST /api/v1/runs/:runId/approvals/resolve — 404 when run not found', async () => {
-      engine.getRun.mockResolvedValueOnce(null as any);
+      hostService.getRun.mockResolvedValueOnce(null as any);
       const res = await app.inject({
         method: 'POST', url: '/api/v1/runs/missing/approvals/resolve',
         payload: { jobId: 'j1', stepId: 's1', action: 'approve' },
@@ -394,7 +407,7 @@ describe('Workflow API Contract Integration', () => {
     });
 
     it('POST /api/v1/runs/:runId/approvals/resolve — 409 when step not waiting', async () => {
-      engine.getRun.mockResolvedValueOnce({
+      hostService.getRun.mockResolvedValueOnce({
         id: 'r1', status: 'running',
         jobs: [{ id: 'j1', steps: [{ id: 's1', name: 'x', status: 'success', spec: {} }] }],
       } as any);
