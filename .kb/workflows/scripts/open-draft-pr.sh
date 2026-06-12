@@ -11,7 +11,7 @@ git push origin "HEAD:refs/heads/${BRANCH_NAME}" --force
 
 gh pr create \
   --repo "$REPO_FULL" \
-  --title "feat: ${ISSUE_TITLE}" \
+  --title "${ISSUE_TITLE}" \
   --body-file PLAN.md \
   --draft \
   --base "$BASE_BRANCH" \
