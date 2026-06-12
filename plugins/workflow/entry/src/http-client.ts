@@ -3,6 +3,8 @@
  */
 import type {
   WorkflowRerunRequest,
+  WorkflowRestartRequest,
+  WorkflowRestartResponse,
   WorkflowRunRequest,
   JobStatusInfo,
   JobStepsResponse,
@@ -525,5 +527,35 @@ export class WorkflowDaemonClient {
 
     const payload = await this.parseJsonResponse<{ ok: boolean; data?: { runId: string; status: string } }>(response);
     return this.unwrapData<{ runId: string; status: string }>(payload);
+  }
+
+  /**
+   * Restart a run from a snapshot, optionally resuming from a specific step.
+   * Preceding steps inherit their stored outputs; only the target step and beyond are re-executed.
+   */
+  async restartRun(
+    runId: string,
+    request: WorkflowRestartRequest = {},
+  ): Promise<WorkflowRestartResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/runs/${encodeURIComponent(runId)}/restart`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      },
+    );
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({ error: response.statusText }))) as {
+        error?: string;
+      };
+      throw new Error(error.error || `Failed to restart run: ${response.statusText}`);
+    }
+
+    const payload = await this.parseJsonResponse<{ ok: boolean; data?: WorkflowRestartResponse }>(response);
+    return this.unwrapData<WorkflowRestartResponse>(payload);
   }
 }
