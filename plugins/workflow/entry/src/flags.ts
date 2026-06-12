@@ -263,12 +263,17 @@ export const runsRerunFlags = {
   },
   'failed-only': {
     type: 'boolean',
-    description: 'Rerun only failed jobs (not yet supported by daemon)',
+    description: 'Rerun only jobs that failed or were interrupted',
     default: false,
   },
 } as const;
 
-export type RunsRerunFlags = typeof runsRerunFlags;
+export interface RunsRerunFlags {
+  'run-id'?: string;
+  json?: boolean;
+  'failed-only'?: boolean;
+  'dry-run'?: boolean;
+}
 
 /**
  * Flags for workflow:runs-cancel command
