@@ -1,143 +1,159 @@
 ## Summary
 
-`engine.replayRun()` with `fromStepId` support is fully implemented internally but never exposed: no REST endpoint, no CLI command, and no snapshot is created when a run fails. This issue is purely about wiring the existing machinery to a user-facing surface.
+Add a "resume from step" capability to the workflow engine: given an existing failed run and a target step ID, reset that step and all subsequent steps in the same job to `queued` (preserving prior step outputs), then re-enqueue the job — so the worker's existing skip-completed logic naturally picks up execution from the target step.
 
 ## Root cause / context
 
-Three gaps prevent the feature from working end-to-end:
+The worker's step loop in `daemon/src/worker.ts:280` already skips steps with `status === 'success'`. The gate restart in `applyGateRestart()` (`worker.ts:983–1134`) uses exactly this mechanism: it resets steps from an index onward to `queued`, clears their timing/outputs, and re-enqueues the job — while previously-completed steps stay `success` with their outputs intact.
 
-1. **No snapshot on failure.** `RunSnapshotStorage.createSnapshot()` exists but is never called automatically when a run fails. Without a snapshot there is nothing to replay from.
-2. **No REST endpoint.** `engine.replayRun()` is never reachable over HTTP — `POST /api/v1/runs/:runId/rerun` creates a fresh run, it does not call `replayRun`.
-3. **No CLI command.** `workflow:runs-rerun` creates a new run; there is no `runs-replay` command that accepts `--from-step`.
-
-The existing `replayRun(runId, { fromStepId, stepOutputs, env })` implementation already handles all the hard parts: it loads the snapshot, marks preceding steps as `success`, resets the target step and downstream steps to `queued`, merges env overrides, and re-schedules the jobs.
+The existing `runs-rerun` command (`entry/src/commands/runs-rerun.ts`) creates an entirely new run and loses all prior outputs. What's missing is a targeted "resume" path that mutates the existing run in place, analogous to what `applyGateRestart` does — but triggered via CLI/API rather than internally by a gate step.
 
 ## Implementation steps
 
-### 1 — Auto-create a snapshot when a run completes or fails
+### 1. Contracts — add `ResumeRunInput` type
 
-**File:** `plugins/workflow/engine/src/engine.ts`
+**File**: `plugins/workflow/contracts/src/schemas.ts`
 
-In `markRunCompleted()` and `markRunFailed()` (wherever the run status is set to `success` or `failed`), call `this.createSnapshot()` immediately after persisting the final run state.
-
-```ts
-// after engine.updateRun sets status = 'failed' / 'success'
-await this.createSnapshot(updatedRun)
-```
-
-`createSnapshot` already collects `stepOutputs` from the run's nested step objects — no additional plumbing needed.
-
----
-
-### 2 — Add a REST endpoint for replay
-
-**File:** `plugins/workflow/daemon/src/api/workflows-api.ts`
-
-Add a new route alongside the existing `/rerun`:
-
-```
-POST /api/v1/runs/:runId/replay
-Body: { fromStepId?: string; env?: Record<string, string> }
-```
-
-Handler body:
+Add a new schema after the existing `RerunWorkflowRequestSchema`:
 
 ```ts
-const { fromStepId, env } = req.body
-const run = await engine.replayRun(runId, { fromStepId, env })
-if (!run) return res.status(404).json({ error: 'Snapshot not found for this run' })
-res.json(run)
+export const ResumeRunRequestSchema = z.object({
+  fromStepId: z.string().min(1),  // spec.id of the step to restart from
+  jobId: z.string().optional(),    // required only when run has multiple jobs with the same step id
+});
+export type ResumeRunRequest = z.infer<typeof ResumeRunRequestSchema>;
 ```
 
----
+Export it from `plugins/workflow/contracts/src/index.ts`.
 
-### 3 — Expose replay in the REST API contract
+### 2. Engine — add `resumeFromStep` helper to state-store
 
-**File:** `plugins/workflow/contracts/src/api.ts` (or wherever API types live)
+**File**: `plugins/workflow/engine/src/state-store.ts`
 
-Add `ReplayRunBody` and `ReplayRunResponse` Zod schemas so the gateway can validate the request and the SDK can type-check callers.
+Add a method `resetStepsFromIndex(runId, jobId, fromIndex)`:
 
----
+- Load the run.
+- Find the job by `jobId`.
+- For each step with `index >= fromIndex`:
+  - Set `status = 'queued'`
+  - Clear `startedAt`, `finishedAt`, `durationMs`, `error`, `outputs`, `skipReason`
+  - Preserve `spec`, `resolvedInputs` (will be re-interpolated by the worker).
+- Set the job's `status = 'queued'`, clear `startedAt`, `finishedAt`, `durationMs`, `error`.
+- Save and return the updated run.
 
-### 4 — Add a `runs-replay` CLI command
+This is a direct extraction of the same mutation pattern used in `applyGateRestart` (lines 1097–1133).
 
-**File (new):** `plugins/workflow/entry/src/commands/runs-replay.ts`
+### 3. Host service — add `resumeRunFromStep` method
 
-Mirror the structure of `runs-rerun.ts`. Flags:
+**File**: `plugins/workflow/daemon/src/host/workflow-host-service.ts`
+
+Add method `resumeRunFromStep(runId: string, req: ResumeRunRequest)`:
+
+1. Load run via `stateStore.getRun(runId)`. Throw `404` if not found.
+2. Validate run status is `failed` or `interrupted` (reject `running` / `success`).
+3. Locate the target step:
+   - If `req.jobId` is provided, find that job; otherwise scan all jobs.
+   - Find the step where `step.spec.id === req.fromStepId`. Throw `400` if not found or if multiple matches without a `jobId`.
+4. Validate the step was actually reached (status is not `queued` — must be `running`, `failed`, or `success`).
+5. Call `stateStore.resetStepsFromIndex(runId, job.id, step.index)`.
+6. Mark the run itself as `queued` (clear `finishedAt`, `durationMs`, set `status = 'running'`).
+7. Re-enqueue the job via `scheduler.enqueueJob(run.id, job.id, job.priority ?? 'normal')`.
+8. Return the mutated run.
+
+### 4. REST API — new endpoint
+
+**File**: `plugins/workflow/daemon/src/api/workflows-api.ts`
+
+Add after the existing `/runs/:runId/rerun` handler:
+
+```
+POST /api/v1/runs/:runId/resume
+Body: ResumeRunRequest
+Response: 200 Run
+```
+
+Parse and validate the body with `ResumeRunRequestSchema`. Delegate to `hostService.resumeRunFromStep(runId, req)`.
+
+### 5. HTTP client — add `resumeRun` method
+
+**File**: `plugins/workflow/client/src/workflow-client.ts` (or wherever `rerunWorkflow` is defined)
+
+```ts
+async resumeRun(runId: string, req: ResumeRunRequest): Promise<Run> {
+  return this.post(`/api/v1/runs/${runId}/resume`, req);
+}
+```
+
+Export `ResumeRunRequest` from the client package's public index.
+
+### 6. CLI command — `workflow:runs-resume`
+
+**File**: `plugins/workflow/entry/src/commands/runs-resume.ts` (new file)
+
+Model after `runs-rerun.ts`. Flags:
 
 | Flag | Description |
 |---|---|
-| `--run <id>` | Run ID to replay (required) |
-| `--from-step <id>` | Step ID to restart from (optional; omit = restart from beginning using snapshot) |
-| `--env <K=V>` | Override env vars (repeatable) |
+| `--from-step <stepId>` | Required. The `spec.id` of the step to restart from. |
+| `--job-id <jobId>` | Optional. Disambiguate when multiple jobs contain the same step id. |
 
-Implementation: call the new REST endpoint via the existing HTTP client, then stream/print the new run's event log (reuse `runs-watch` logic).
+Flow:
+1. Resolve `runId` from positional arg.
+2. Validate `--from-step` is provided.
+3. Call `client.resumeRun(runId, { fromStepId, jobId })`.
+4. Print confirmation: `Run <runId> resuming from step '<stepId>'`.
 
-**File:** `plugins/workflow/entry/src/index.ts`
+Register the command in the plugin's manifest / command index.
 
-Register the new command in the plugin manifest.
+### 7. Type safety — update `runs view` output (optional, low-risk)
 
----
+**File**: `plugins/workflow/entry/src/commands/runs-view.ts`
 
-### 5 — Wire snapshot deletion on run expiry
-
-**File:** `plugins/workflow/engine/src/engine.ts`
-
-In `cleanupStaleRuns()` (the startup cleanup path), call `this.deleteSnapshot(runId)` when a run is abandoned so stale snapshots don't accumulate beyond the existing 7-day TTL.
-
----
-
-### 6 — Surface step IDs in the run detail output
-
-**File:** `plugins/workflow/entry/src/commands/runs-get.ts` (or equivalent)
-
-Make sure `kb workflow runs get <id>` prints each step's `spec.id` (not just its name/index) so users know which ID to pass to `--from-step`.
-
----
-
-### 7 — Guard: snapshot existence check before replay
-
-**File:** `plugins/workflow/engine/src/engine.ts` — already returns `null` when no snapshot exists. The REST handler (step 2) converts that to a clear `404`. No additional change needed.
+No schema changes needed — the step's `status` and `outputs` fields already exist on `StepRun`. Ensure the view renders `queued` steps as pending (not failed) so resumed runs display correctly. Verify no assumptions about monotonically-increasing step statuses.
 
 ## Tests / verification
 
-### Unit — snapshot created on failure
+### Unit test — state mutation
 
-**File (new):** `plugins/workflow/engine/src/__tests__/snapshot-on-failure.test.ts`
+**File**: `plugins/workflow/engine/src/__tests__/state-store.test.ts` (or nearest existing test file)
 
-- Stub `StateStore` and `RunSnapshotStorage`
-- Trigger `engine.markRunFailed()`
-- Assert `RunSnapshotStorage.createSnapshot` was called with the correct `runId` and step outputs
+- Seed a run with 5 steps: steps 0–2 `success` with outputs, step 3 `failed`, step 4 `queued`.
+- Call `resetStepsFromIndex(runId, jobId, 3)`.
+- Assert: steps 0–2 unchanged (status `success`, outputs intact); steps 3–4 have status `queued`, cleared `startedAt`/`finishedAt`/`outputs`/`error`.
 
-### Unit — `replayRun` step state transitions (already testable, add assertions)
+### Unit test — host service validation
 
-**File:** `plugins/workflow/engine/src/__tests__/engine.replay.test.ts` (create if absent)
+**File**: `plugins/workflow/daemon/src/__tests__/host/workflow-host-service.test.ts`
 
-- Create a fake run with 5 steps, all `success` except step 3 (`failed`)
-- Call `engine.replayRun(runId, { fromStepId: 'step-3' })`
-- Assert steps 1–2 remain `success`, step 3 is `queued`, steps 4–5 are `queued`
+- Running run → expect `400`/`409`.
+- Step id not found → expect `400`.
+- Step never reached (still `queued`) → expect `400`.
+- Happy path → confirm scheduler receives `enqueueJob` call with correct args.
 
-### Handler test — REST endpoint
+### Handler test — CLI command
 
-**File (new):** `plugins/workflow/entry/src/__tests__/cli/runs-replay.test.ts`
+**File**: `plugins/workflow/entry/src/__tests__/cli/runs-resume.test.ts`
 
-- Mock HTTP client to return a replayed run
-- Call `mockCLIInput<RunsReplayFlags>({ run: 'run-abc', fromStep: 'step-3' })`
-- Assert HTTP client received `POST /api/v1/runs/run-abc/replay` with `{ fromStepId: 'step-3' }`
+Using `mockCLIInput` + `createMockContext`:
+- Missing `--from-step` → expect validation error printed.
+- API returns success → expect success message printed.
+- API returns 404 → expect error message printed.
 
-### Manual / journey
+### Manual verification
 
 ```bash
-# 1. Start a long pipeline that fails at step 3
-kb workflow runs trigger github-issue-to-pr --input issue=999
+# 1. Start a multi-step workflow that fails at step N
+kb workflow:run --workflow-id github-issue-to-pr --input '{"issue": "123"}'
 
-# 2. Note the run ID and the failing step ID from the output
-kb workflow runs get <runId>        # verify step IDs are visible
+# 2. Note the run ID and the failing step id (from kb workflow:runs-view <runId>)
+kb workflow:runs-view <runId>
 
-# 3. Replay from the failed step
-kb workflow runs replay --run <runId> --from-step <stepId>
+# 3. Resume from the failed step
+kb workflow:runs-resume <runId> --from-step <stepId>
 
-# 4. Verify the new run shows steps 1-2 as inherited (no re-execution events)
-# and step 3 onwards produce fresh execution events
-kb workflow runs watch <newRunId>
+# 4. Watch the run — steps before the target should appear as 'success' immediately,
+#    and execution should proceed from the target step
+kb workflow:runs-view <runId> --watch
 ```
+
+Expected: the resumed run skips steps 0..N-1 (their outputs appear in context), executes from step N, and completes without re-running prior work.
