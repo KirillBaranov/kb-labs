@@ -611,12 +611,12 @@ export async function createWorkflowWorker(
                   lineNo: entry.lineNo,
                   logSource: entry.stream === 'stderr' ? 'stderr' : 'stdout',
                 });
-                void engine.publishLog(run.id, job.id, step.id, entry);
+                void engine.publishLog(run.id, job.id, step.id, entry, step.name);
               },
               // ctx.logger.* entries: stepLogger base already wrote to SQLite. Only publish for SSE.
               // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
               onLoggerLog: (entry) => {
-                void engine.publishLog(run.id, job.id, step.id, entry);
+                void engine.publishLog(run.id, job.id, step.id, entry, step.name);
               },
             },
             // Scripts (.kb/workflows/scripts/*.sh) live in the project root, not the worktree.

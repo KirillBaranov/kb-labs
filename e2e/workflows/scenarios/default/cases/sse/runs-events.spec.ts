@@ -87,6 +87,23 @@ test('SE-04: invalid runId returns 404, not an SSE stream', async ({ request }) 
   expect(res.status()).toBe(404);
 });
 
+test('SE-06: log.appended events include stepName in payload', async ({ request }) => {
+  const runId = await startRun(request);
+  const events = await collectSseEvents(eventsUrl(runId), { timeoutMs: 30_000 });
+
+  const logEvents = events.filter((e) => eventType(e) === 'log.appended');
+
+  // Workflow may produce zero log events if steps emit nothing — only assert when present
+  if (logEvents.length === 0) { return; }
+
+  // At least one log event must carry stepName (set by engine.publishLog)
+  const withStepName = logEvents.filter((e) => {
+    const payload = (e.json as Record<string, unknown> | undefined)?.payload as Record<string, unknown> | undefined;
+    return typeof payload?.stepName === 'string' && payload.stepName.length > 0;
+  });
+  expect(withStepName.length).toBeGreaterThan(0);
+});
+
 test('SE-05: multiple simultaneous subscribers receive same events', async ({ request }) => {
   const runId = await startRun(request);
   const url = eventsUrl(runId);

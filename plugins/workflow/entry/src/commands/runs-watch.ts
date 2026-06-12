@@ -10,6 +10,7 @@ import { WorkflowDaemonClient } from '../http-client.js';
 interface RunsWatchFlags {
   'run-id'?: string;
   json?: boolean;
+  logs?: boolean;
 }
 
 const STATUS_ICON: Record<string, string> = {
@@ -29,6 +30,7 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
     async execute(ctx: PluginContextV3, input: CLIInput<RunsWatchFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
+      const logsOnly = flags?.logs ?? false;
       let runId = flags?.['run-id'] ?? argv[0];
 
       try {
@@ -87,8 +89,9 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
               // Rendered as compact single lines, not boxes.
               // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
               if (event.type === 'log.appended') {
-                const p = event.payload as { level?: string; message?: string } | undefined;
-                const prefix = event.stepId ? `[${event.stepId}] ` : '';
+                const p = event.payload as { level?: string; message?: string; stepName?: string } | undefined;
+                const label = p?.stepName ?? (event.stepId ? event.stepId.slice(0, 8) : '');
+                const prefix = label ? `[${label}] ` : '';
                 ctx.ui?.log?.({
                   level: (p?.level ?? 'info') as 'info' | 'warn' | 'error' | 'debug',
                   message: `${prefix}${p?.message ?? ''}`,
@@ -96,9 +99,12 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
                 continue;
               }
 
+              // --logs: suppress non-log events
+              if (logsOnly) { continue; }
+
               const icon = STATUS_ICON[(event.payload?.['status'] as string) ?? ''] ?? '·';
-              const step = event.stepId ? ` step:${event.stepId}` : '';
-              const job = event.jobId ? ` job:${event.jobId}` : '';
+              const step = event.stepId ? ` step:${event.stepId.slice(0, 8)}` : '';
+              const job = event.jobId ? ` job:${event.jobId.slice(0, 8)}` : '';
               const summary = event.payload?.['summary'] ?? event.payload?.['error'] ?? '';
 
               ctx.ui?.write?.(`${icon} ${event.type}${job}${step}${summary ? `  —  ${summary}` : ''}`);

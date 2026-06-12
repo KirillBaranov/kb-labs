@@ -12,10 +12,14 @@ import runsWatchCommand from '../../commands/runs-watch.js';
 const MockedClient = vi.mocked(WorkflowDaemonClient);
 
 /** Builds a minimal ReadableStream that emits SSE-formatted lines then closes. */
-function makeSseStream(events: Array<{ type: string; payload?: Record<string, unknown> }>): ReadableStream<Uint8Array> {
+function makeSseStream(events: Array<{ type: string; stepId?: string; payload?: Record<string, unknown> }>): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const lines = events
-    .map((e) => `data: ${JSON.stringify({ type: e.type, payload: e.payload ?? {} })}\n\n`)
+    .map((e) => {
+      const obj: Record<string, unknown> = { type: e.type, payload: e.payload ?? {} };
+      if (e.stepId !== undefined) obj['stepId'] = e.stepId;
+      return `data: ${JSON.stringify(obj)}\n\n`;
+    })
     .join('');
 
   return new ReadableStream({
@@ -27,7 +31,7 @@ function makeSseStream(events: Array<{ type: string; payload?: Record<string, un
 }
 
 /** Mocks globalThis.fetch to return a streaming SSE response. */
-function mockFetchWithSse(events: Array<{ type: string; payload?: Record<string, unknown> }>) {
+function mockFetchWithSse(events: Array<{ type: string; stepId?: string; payload?: Record<string, unknown> }>) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
@@ -156,5 +160,46 @@ describe('workflow:runs watch', () => {
     await runsWatchCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'] }));
 
     expect(captured.logs.some((l) => l.message.includes('Step started'))).toBe(true);
+  });
+
+  it('CW-07: log.appended with stepName in payload uses step name as prefix, not UUID', async () => {
+    mockFetchWithSse([
+      {
+        type: 'log.appended',
+        stepId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        payload: { level: 'info', message: 'Running checks', stepName: 'Check CI' },
+      },
+      { type: 'run.finished', payload: { status: 'success' } },
+    ]);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await runsWatchCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'] }));
+
+    const logLine = captured.logs.find((l) => l.message.includes('Running checks'));
+    expect(logLine).toBeTruthy();
+    // Must use human-readable step name, not UUID
+    expect(logLine?.message).toContain('[Check CI]');
+    expect(logLine?.message).not.toContain('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+  });
+
+  it('CW-08: --logs flag shows only log.appended events, not status events', async () => {
+    mockFetchWithSse([
+      { type: 'run.snapshot', payload: { status: 'running' } },
+      { type: 'step.started', payload: { stepName: 'Build' } },
+      { type: 'log.appended', payload: { level: 'info', message: 'Building...', stepName: 'Build' } },
+      { type: 'log.appended', payload: { level: 'info', message: 'Done', stepName: 'Build' } },
+      { type: 'run.finished', payload: { status: 'success' } },
+    ]);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await runsWatchCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: { logs: true } }));
+
+    // Log lines must appear
+    expect(captured.logs.some((l) => l.message.includes('Building...'))).toBe(true);
+    expect(captured.logs.some((l) => l.message.includes('Done'))).toBe(true);
+    // Status events must NOT appear in writes
+    expect(captured.writes.every((w) => !w.includes('run.snapshot') && !w.includes('step.started'))).toBe(true);
   });
 });

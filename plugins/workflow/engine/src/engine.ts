@@ -959,13 +959,14 @@ export class WorkflowEngine {
     jobId: string,
     stepId: string,
     entry: { level: string; message: string; stream: string; lineNo: number; timestamp: string; meta?: Record<string, unknown> },
+    stepName?: string,
   ): Promise<void> {
     await this.events.publish({
       type: EVENT_NAMES.log.appended,
       runId,
       jobId,
       stepId,
-      payload: entry,
+      payload: stepName ? { ...entry, stepName } : entry,
     })
   }
 
