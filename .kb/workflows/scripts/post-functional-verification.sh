@@ -12,10 +12,13 @@ else
   STATUS="FAILED"
 fi
 
+REPORT="${VERIFY_REPORT:-$(cat ".kb/run-artifacts/functional-verification-${ISSUE_NUMBER}.md" 2>/dev/null)}"
+[ -z "$REPORT" ] && REPORT="Report not available"
+
 BODY="## ${ICON} Functional Verification — ${STATUS}
 
-**Acceptance criteria**: ${VERIFY_CRITERIA_PASSED}/${VERIFY_CRITERIA_TOTAL} passed
+**Acceptance criteria**: ${VERIFY_CRITERIA_PASSED:-?}/${VERIFY_CRITERIA_TOTAL:-?} passed
 
-${VERIFY_REPORT}"
+${REPORT}"
 
 gh pr comment "$PR_NUMBER" --repo "$OWNER/$REPO" --body "$BODY" 2>/dev/null || true
