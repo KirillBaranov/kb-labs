@@ -1,0 +1,25 @@
+name: 04 — Invoice Approval
+description: >
+  Demonstrates passing a JSON object input to a shell step via --argjson.
+  Uses the standard '${{ inputs.X }}' pattern, which the engine rewrites
+  to a double-quoted "${_WF_...}" env var reference so jq receives valid JSON.
+
+inputs:
+  invoice_payload:
+    type: object
+    description: Invoice data (vendor, amount, currency)
+    default:
+      vendor: Acme Corp
+      amount: 1500
+      currency: USD
+
+jobs:
+  process:
+    steps:
+      - name: Parse invoice
+        run: |
+          total=$(jq --argjson payload '${{ inputs.invoice_payload }}' -n '$payload.amount')
+          vendor=$(jq --argjson payload '${{ inputs.invoice_payload }}' -n '-r $payload.vendor')
+          echo "Approving ${total} for ${vendor}"
+          PAYLOAD=$(jq -cn --argjson p '${{ inputs.invoice_payload }}' '{approved: true, vendor: $p.vendor, amount: $p.amount}' | base64)
+          echo "::kb-output:base64::${PAYLOAD}"

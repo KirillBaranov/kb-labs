@@ -413,6 +413,8 @@ describe('coerceToString — object serialization (BUG-001)', () => {
     },
   }
 
+  // NOTE: interpolateString is used for with: fields, NOT for run: blocks.
+  // run: blocks go through buildShellSafeCommand — see 'buildShellSafeCommand — JSON object inputs' suite.
   it('interpolateString: object input serializes to JSON, not [object Object]', () => {
     const result = interpolateString("--argjson payload '${{ inputs.invoice_payload }}'", ctx)
     expect(result).toBe("--argjson payload '{\"vendor\":\"Acme\",\"total\":250}'")
@@ -626,5 +628,42 @@ describe('buildShellSafeCommand', () => {
     const { command, shellEnvVars } = buildShellSafeCommand(raw, ctx)
     expect(command).toBe('echo "${_WF_steps_nonexistent_outputs_value}"')
     expect(shellEnvVars['_WF_steps_nonexistent_outputs_value']).toBe('')
+  })
+})
+
+describe('buildShellSafeCommand — JSON object inputs (BUG-001)', () => {
+  const ctx: ExpressionContext = {
+    env: {},
+    trigger: { type: 'manual' },
+    steps: {},
+    inputs: {
+      invoice_payload: { vendor: 'ACME Corp', amount: 15000, currency: 'USD' },
+    },
+  }
+
+  it("single-quoted ${{ expr }} becomes double-quoted \"${_WF_var}\" — shell expansion works", () => {
+    // ${{ }} written as string concat to avoid JS template literal interpretation
+    const expr = '${{' + ' inputs.invoice_payload ' + '}}'
+    const raw = "jq --argjson payload '" + expr + "' '{\"x\":1}'"
+    const { command } = buildShellSafeCommand(raw, ctx)
+    // Single-quote wrapper must be replaced with double-quote so ${} expands in bash
+    expect(command).toBe('jq --argjson payload "${_WF_inputs_invoice_payload}" \'{"x":1}\'')
+    expect(command).not.toContain("'${_WF_")
+  })
+
+  it('shellEnvVar for object input contains valid JSON string', () => {
+    const expr = '${{' + ' inputs.invoice_payload ' + '}}'
+    const raw = "jq --argjson payload '" + expr + "' -n '$payload'"
+    const { shellEnvVars } = buildShellSafeCommand(raw, ctx)
+    const value = shellEnvVars['_WF_inputs_invoice_payload']
+    expect(() => JSON.parse(value!)).not.toThrow()
+    expect(JSON.parse(value!)).toEqual({ vendor: 'ACME Corp', amount: 15000, currency: 'USD' })
+  })
+
+  it('double-quoted ${{ expr }} remains double-quoted — unaffected', () => {
+    const expr = '${{' + ' inputs.invoice_payload ' + '}}'
+    const raw = 'jq --argjson payload "' + expr + '" -n \'$payload\''
+    const { command } = buildShellSafeCommand(raw, ctx)
+    expect(command).toBe('jq --argjson payload "${_WF_inputs_invoice_payload}" -n \'$payload\'')
   })
 })

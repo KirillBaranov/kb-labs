@@ -263,10 +263,19 @@ export function interpolateString(
  * (backticks, $(), quotes). When content arrives via an env var, shell expansion of
  * the variable does NOT re-evaluate backticks or $() — they are literal characters.
  *
+ * Single-quote context: when ${{ expr }} is wrapped in single quotes — the natural
+ * pattern for `jq --argjson x '${{ inputs.payload }}'` — bash single-quote semantics
+ * would prevent ${_WF_var} from expanding. The single-quoted wrapper is replaced with
+ * a double-quoted reference instead:
+ *
  * Example:
  *   Input:  `echo "${{ steps.issue.outputs.title }}"`
  *   Output: command = `echo "${_WF_steps_issue_outputs_title}"`
  *           shellEnvVars = { _WF_steps_issue_outputs_title: "Add `kb cancel` command" }
+ *
+ *   Input:  `jq --argjson payload '${{ inputs.invoice_payload }}' '{"x":1}'`
+ *   Output: command = `jq --argjson payload "${_WF_inputs_invoice_payload}" '{"x":1}'`
+ *           shellEnvVars = { _WF_inputs_invoice_payload: '{"vendor":"Acme","total":250}' }
  */
 export function buildShellSafeCommand(
   rawRun: string,
@@ -285,7 +294,15 @@ export function buildShellSafeCommand(
     const safeName = '_WF_' + expr.trim().replace(/[^a-zA-Z0-9_]/g, '_')
     shellEnvVars[safeName] = strValue
 
-    // Replace ${{ expr }} with ${_WF_varname} in the command.
+    // Replace '${{ expr }}' (single-quote wrapped) with "${_WF_var}" (double-quoted).
+    // Single quotes in bash prevent ${...} expansion; switching to double quotes fixes it.
+    const sqPattern = new RegExp(
+      `'\\$\\{\\{\\s*${escapeRegex(expr)}\\s*\\}\\}'`,
+      'g',
+    )
+    command = command.replace(sqPattern, `"\${${safeName}}"`)
+
+    // Replace remaining unquoted/double-quoted occurrences with ${_WF_var}.
     const pattern = new RegExp(`\\$\\{\\{\\s*${escapeRegex(expr)}\\s*\\}\\}`, 'g')
     command = command.replace(pattern, `\${${safeName}}`)
   }
