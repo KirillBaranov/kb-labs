@@ -243,6 +243,10 @@ async function shellHandler(
       stdio: 'pipe',
       timeout,
       reject: false, // We handle exit codes ourselves
+      // With shell:true, SIGTERM goes to the shell but not to its children.
+      // Send SIGKILL 1s after timeout so the shell is force-killed if it
+      // doesn't exit on its own, keeping test and production timeouts predictable.
+      forceKillAfterDelay: 1000,
     });
 
     // Stream stdout/stderr line-by-line in real-time.
