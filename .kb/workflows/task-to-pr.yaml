@@ -1,5 +1,5 @@
 name: task-to-pr
-version: 8.0.0
+version: 8.1.0
 description: 'Autonomous implementation pipeline — task → plan → implement → audit loops → verify → CI → merge'
 
 on:
@@ -432,6 +432,18 @@ jobs:
           VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
           VERIFY_REPORT: '${{ steps.functional_verify.outputs.report }}'
         run: bash .kb/workflows/scripts/post-functional-verification.sh
+
+      - name: Functional Verification Gate
+        id: verify_gate
+        env:
+          VERIFY_VERDICT: '${{ steps.functional_verify.outputs.verdict }}'
+        run: |
+          if [ "$VERIFY_VERDICT" != "PASSED" ]; then
+            echo "Functional verification FAILED — the feature does not work as a human would use it."
+            echo "Fix the implementation before this PR can proceed."
+            exit 1
+          fi
+          echo "Functional verification passed."
 
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 7 — STATIC GATES
