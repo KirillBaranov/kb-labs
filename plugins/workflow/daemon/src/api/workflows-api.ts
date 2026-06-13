@@ -213,13 +213,14 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
 
   // GET /api/v1/runs - List all workflow runs (across all workflows)
   server.get<{
-    Querystring: { status?: string; limit?: string; offset?: string };
+    Querystring: { status?: string; workflowId?: string; limit?: string; offset?: string };
   }>('/api/v1/runs', { schema: { tags: ['Runs'], summary: 'List all workflow runs' } }, async (request, reply) => {
     try {
-      const { status, limit, offset } = request.query;
+      const { status, workflowId, limit, offset } = request.query;
       const response = await observability.observeOperation('workflow.run.list', () =>
         hostService.listRuns({
           status,
+          workflowId,
           limit: limit ? parseInt(limit, 10) : 50,
           offset: offset ? parseInt(offset, 10) : 0,
         }),

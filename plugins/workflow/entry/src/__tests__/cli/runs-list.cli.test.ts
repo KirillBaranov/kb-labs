@@ -187,6 +187,46 @@ describe('workflow:runs list', () => {
     expect(row['Step']).toBe('');
   });
 
+  it('CL-13: --workflow filters runs by workflow name', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
+        expect(params.workflowId).toBe('deploy-prod');
+        return [{ id: 'r-dep', name: 'deploy-prod', status: 'success' as const, createdAt: new Date().toISOString() }];
+      },
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { workflow: 'deploy-prod' } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.table[0]!.rows.length).toBe(1);
+    expect(captured.table[0]!.rows[0]!['Workflow']).toBe('deploy-prod');
+  });
+
+  it('CL-14: RUNNING run with waiting_approval step shows step name in Step column', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [
+        {
+          id: 'r-approval',
+          name: 'deploy',
+          status: 'running' as const,
+          createdAt: new Date().toISOString(),
+          hasPendingApproval: true,
+          currentStepName: 'await-gate',
+        },
+      ],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    const row = captured.table[0]!.rows[0]!;
+    expect(row['Step']).toBe('await-gate');
+  });
+
   it('CL-10: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
     MockedClient.mockImplementation(() => makeClient({
       listRuns: async () => [

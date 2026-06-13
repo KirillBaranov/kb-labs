@@ -57,8 +57,10 @@ for attempt in 1 2 3; do
     --model sonnet \
     --dangerously-skip-permissions \
     < "$PROMPT_FILE" \
-    > "$RESULT_FILE" 2>/dev/null && CLAUDE_OK=1 && break
-  echo "claude attempt $attempt failed, retrying..."
+    > "$RESULT_FILE" 2>/dev/null
+  CLAUDE_EXIT=$?
+  [ "$CLAUDE_EXIT" = "0" ] && CLAUDE_OK=1 && break
+  echo "claude attempt $attempt failed (exit $CLAUDE_EXIT), retrying..."
   sleep 3
 done
 rm -f "$PROMPT_FILE"

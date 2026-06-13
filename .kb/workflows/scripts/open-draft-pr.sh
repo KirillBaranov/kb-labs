@@ -3,6 +3,9 @@
 # Env: ISSUE_NUMBER, ISSUE_TITLE, OWNER, REPO, BASE_BRANCH, BRANCH_NAME
 set -e
 
+# Run in the provisioned worktree (same as agent-plans.sh) so PLAN.md is found there
+cd "${KB_WORKSPACE_ROOT:-$(pwd)}"
+
 REPO_FULL="$OWNER/$REPO"
 
 git add -f PLAN.md

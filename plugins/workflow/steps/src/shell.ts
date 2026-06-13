@@ -243,6 +243,10 @@ async function shellHandler(
       stdio: 'pipe',
       timeout,
       reject: false, // We handle exit codes ourselves
+      // With shell:true, SIGTERM goes to the shell but not to its children.
+      // Send SIGKILL 1s after timeout so the shell is force-killed if it
+      // doesn't exit on its own, keeping test and production timeouts predictable.
+      forceKillAfterDelay: 1000,
     });
 
     // Stream stdout/stderr line-by-line in real-time.
@@ -278,11 +282,35 @@ async function shellHandler(
       for (const line of lines) {emitLine('stderr', line);}
     });
 
-    const result = await proc;
+    // With shell:true, the shell may spawn children that inherit the pipe write-end.
+    // When the shell is killed (on timeout), those orphaned children keep the pipe open
+    // and execa's await hangs indefinitely waiting for EOF. We destroy the streams
+    // after timeout + 2s to force execa to resolve so we can inspect result.timedOut.
+    let cleanupTimer: ReturnType<typeof setTimeout> | undefined
+    const orphanCleanup = new Promise<void>((resolve) => {
+      cleanupTimer = setTimeout(() => {
+        proc.stdout?.destroy()
+        proc.stderr?.destroy()
+        resolve()
+      }, timeout + 2000)
+    })
+
+    const result = await Promise.race([
+      proc,
+      orphanCleanup.then(() => proc),
+    ])
+    clearTimeout(cleanupTimer)
 
     // Flush remaining buffered content
     if (stdoutBuf) {emitLine('stdout', stdoutBuf);}
     if (stderrBuf) {emitLine('stderr', stderrBuf);}
+
+    // execa with reject:false does NOT throw on timeout — it sets result.timedOut = true
+    // and returns exitCode: null (process killed). Without this check, null ?? 0 = 0
+    // produces ok:true and an empty stdout, making the step appear successful when it timed out.
+    if ((result as { timedOut?: boolean }).timedOut) {
+      throw new Error(`Shell command timed out after ${timeout}ms`);
+    }
 
     const output: ShellOutput = {
       // Use our accumulated buffers — result.stdout/stderr are empty because

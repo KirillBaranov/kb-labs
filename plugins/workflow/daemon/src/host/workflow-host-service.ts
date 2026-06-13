@@ -607,6 +607,7 @@ export class WorkflowHostService {
 
   async listRuns(filters?: {
     status?: string;
+    workflowId?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ runs: Array<WorkflowRun & { hasPendingApproval: boolean; currentStepName?: string }>; total: number }> {
@@ -618,6 +619,10 @@ export class WorkflowHostService {
       runs = runs.filter((run) => run.status === filters.status);
     }
 
+    if (filters?.workflowId) {
+      runs = runs.filter((run) => run.name === filters.workflowId);
+    }
+
     // Sort newest first
     runs.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
 
@@ -627,7 +632,9 @@ export class WorkflowHostService {
 
     const page = runs.slice(start, end).map(run => {
       const allSteps = (run.jobs ?? []).flatMap(j => j.steps ?? []);
-      const activeSteps = allSteps.filter(s => s.status === 'running');
+      const activeSteps = allSteps.filter(
+        s => s.status === 'running' || s.status === 'waiting_approval',
+      );
       let currentStepName: string | undefined;
       if (run.status === 'running' && activeSteps.length > 0) {
         // With parallel jobs multiple steps may run simultaneously; show first + overflow count

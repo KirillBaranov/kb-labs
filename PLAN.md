@@ -1,165 +1,177 @@
-Now I have a precise understanding of the bug. Here is the plan:
-
----
+Now I have a complete picture. Let me write the implementation plan.
 
 ## Summary
 
-`buildShellSafeCommand` replaces `${{ inputs.foo }}` with `${_WF_foo}` in the shell command, but when the expression is wrapped in single quotes — the natural pattern for `jq --argjson x '${{ inputs.payload }}'` — bash single-quote semantics prevent `${_WF_foo}` from being expanded, so `jq` receives the literal string `${_WF_foo}` instead of JSON. Fix the quoting logic in `buildShellSafeCommand` and create the missing `04-invoice-approval.yml` demo.
-
----
+The `kb workflow runs list` table already has a `Step` column and `currentStepName` computation in the daemon, but the `--workflow` filter flag is silently broken (sent by the CLI but never read by the daemon API), and the `waiting_approval` state doesn't surface a step name. The plan confirms what is complete, fixes the filter gap, and adds the missing approval-step display.
 
 ## Root cause / context
 
-`buildShellSafeCommand` (`plugins/workflow/contracts/src/expressions.ts:271–293`) is the only code path for `run:` blocks. It replaces every `${{ expr }}` with `${_WF_safeName}` and injects the resolved value as a shell env var. This is correct for double-quoted or unquoted contexts. The problem is the single-quote case:
+`currentStepName` is computed in `workflow-host-service.ts:listRuns` (lines 628–644) by scanning `JobRun.steps` for entries with `status === 'running'`. The Step column in `runs-list.ts:81` already renders it. Three gaps remain:
 
-```
-# YAML:
-run: jq --argjson payload '${{ inputs.invoice_payload }}' '{"x":1}'
-
-# After buildShellSafeCommand:
-run: jq --argjson payload '${_WF_inputs_invoice_payload}' '{"x":1}'
-```
-
-Bash single-quotes treat everything literally — `${_WF_...}` is never expanded. `jq --argjson` receives the literal text `${_WF_inputs_invoice_payload}`, which is not valid JSON, producing `jq: invalid JSON text passed to --argjson`.
-
-The existing test `interpolateString: object input serializes to JSON` (line 416–419, `expressions.test.ts`) tests `interpolateString` — a different code path that does raw substitution. It gives false confidence: `run:` blocks go through `buildShellSafeCommand`, not `interpolateString`. The demo YAML `04-invoice-approval.yaml` is not present in the repo (referenced in the issue but never checked in), so the failure was only caught manually.
+1. **`workflowId` filter is dead end-to-end.** `http-client.ts:318` sends `?workflowId=…` but the daemon API handler (`workflows-api.ts:219`) only destructures `status`, `limit`, `offset` — the param is silently dropped, and `hostService.listRuns` doesn't accept `workflowId` either.
+2. **`waiting_approval` runs show no step name.** When a step is waiting for approval its `status` is `'waiting_approval'`, not `'running'`, so `activeSteps` is empty and `currentStepName` is `undefined` — yet `hasPendingApproval` is `true` and the row shows status icon `…` with an empty Step cell.
+3. **Tests CL-11 / CL-12 exist but aren't run against a real daemon** — handler-level coverage is in place but the `--workflow` filter is untested at the handler level.
 
 ---
 
 ## Implementation steps
 
-### 1. Fix `buildShellSafeCommand` to handle single-quote context
+### 1. Wire `workflowId` filter through the daemon
 
-**File**: `plugins/workflow/contracts/src/expressions.ts`
-
-Inside the `for (const expr of expressions)` loop (lines 279–291), before the general-pattern replacement, add a pre-pass that detects `'${{ expr }}'` occurrences and replaces the **entire single-quoted token** (including the quotes) with a double-quoted `"${_WF_var}"` reference. Then the existing general replacement handles any remaining unquoted occurrences.
+**`plugins/workflow/daemon/src/host/workflow-host-service.ts`** — `listRuns` signature and body:
 
 ```ts
-// Replace '${{ expr }}' (single-quote wrapped) → "${_WF_var}"
-// Single quotes in bash prevent ${...} expansion; switch to double quotes.
-const sqPattern = new RegExp(
-  `'\\$\\{\\{\\s*${escapeRegex(expr)}\\s*\\}\\}'`,
-  'g',
-)
-command = command.replace(sqPattern, `"\${${safeName}}"`)
+// Before (line 608):
+async listRuns(filters?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<...>
 
-// Replace remaining unquoted/double-quoted occurrences → ${_WF_var}
-const pattern = new RegExp(`\\$\\{\\{\\s*${escapeRegex(expr)}\\s*\\}\\}`, 'g')
-command = command.replace(pattern, `\${${safeName}}`)
+// After:
+async listRuns(filters?: {
+  status?: string;
+  workflowId?: string;   // ← add
+  limit?: number;
+  offset?: number;
+}): Promise<...>
 ```
 
-Update the JSDoc example to show the `jq --argjson` case:
-```
-Input:  `jq --argjson payload '${{ inputs.invoice_payload }}' '{"x":1}'`
-Output: command = `jq --argjson payload "${_WF_inputs_invoice_payload}" '{"x":1}'`
-        shellEnvVars = { _WF_inputs_invoice_payload: '{"vendor":"Acme","total":250}' }
-```
-
-### 2. Add regression tests for `buildShellSafeCommand` with JSON inputs
-
-**File**: `plugins/workflow/contracts/src/__tests__/expressions.test.ts`
-
-Add to the `describe('buildShellSafeCommand', ...)` block (after line 630). The `ctx` there doesn't have object inputs; add a separate describe block:
+After `if (filters?.status)` block (around line 619), add:
 
 ```ts
-describe('buildShellSafeCommand — JSON object inputs (BUG-001)', () => {
-  const ctx: ExpressionContext = {
-    env: {},
-    trigger: { type: 'manual' },
-    steps: {},
-    inputs: {
-      invoice_payload: { vendor: 'ACME Corp', amount: 15000, currency: 'USD' },
+if (filters?.workflowId) {
+  runs = runs.filter(run => run.name === filters.workflowId);
+}
+```
+
+**`plugins/workflow/daemon/src/api/workflows-api.ts`** — GET `/api/v1/runs` handler (line 215–232):
+
+```ts
+// Before:
+const { status, limit, offset } = request.query;
+const response = await ... hostService.listRuns({
+  status,
+  limit: limit ? parseInt(limit, 10) : 50,
+  offset: offset ? parseInt(offset, 10) : 0,
+});
+
+// After:
+const { status, limit, offset, workflowId } = request.query;   // ← add workflowId
+const response = await ... hostService.listRuns({
+  status,
+  workflowId,           // ← pass through
+  limit: limit ? parseInt(limit, 10) : 50,
+  offset: offset ? parseInt(offset, 10) : 0,
+});
+```
+
+Update the route's `Querystring` generic (same block):
+
+```ts
+server.get<{
+  Querystring: { status?: string; limit?: string; offset?: string; workflowId?: string };
+}>('/api/v1/runs', ...)
+```
+
+### 2. Show step name for `waiting_approval` steps
+
+**`plugins/workflow/daemon/src/host/workflow-host-service.ts`** — `listRuns` mapping (lines 628–644):
+
+```ts
+// Before:
+const activeSteps = allSteps.filter(s => s.status === 'running');
+let currentStepName: string | undefined;
+if (run.status === 'running' && activeSteps.length > 0) {
+  currentStepName = activeSteps.length === 1
+    ? activeSteps[0]!.name
+    : `${activeSteps[0]!.name} (+${activeSteps.length - 1})`;
+}
+
+// After:
+const activeSteps = allSteps.filter(
+  s => s.status === 'running' || s.status === 'waiting_approval',   // ← add waiting_approval
+);
+let currentStepName: string | undefined;
+if (run.status === 'running' && activeSteps.length > 0) {
+  currentStepName = activeSteps.length === 1
+    ? activeSteps[0]!.name
+    : `${activeSteps[0]!.name} (+${activeSteps.length - 1})`;
+}
+```
+
+**`plugins/workflow/entry/src/commands/runs-list.ts`** — Step cell (line 81): no change needed; already renders `run.currentStepName` when `run.status === 'running'`. The `hasPendingApproval` guard is separate (affects icon, not Step).
+
+### 3. Add handler-level tests for the new scenarios
+
+**`plugins/workflow/entry/src/__tests__/cli/runs-list.cli.test.ts`** — add after CL-12:
+
+```ts
+it('CL-13: --workflow filters runs by workflow name', async () => {
+  MockedClient.mockImplementation(() => makeClient({
+    listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
+      expect(params.workflowId).toBe('deploy-prod');
+      return [{ id: 'r-dep', name: 'deploy-prod', status: 'success' as const, createdAt: new Date().toISOString() }];
     },
-  }
+  }));
 
-  it('single-quoted ${{ expr }} becomes double-quoted "${_WF_var}" — shell expansion works', () => {
-    const raw = `jq --argjson payload '${{ inputs.invoice_payload }}' '{"x":1}'`
-    const { command } = buildShellSafeCommand(raw, ctx)
-    // Single-quote wrapper must be replaced with double-quote so ${} expands in bash
-    expect(command).toBe(`jq --argjson payload "\${_WF_inputs_invoice_payload}" '{"x":1}'`)
-    expect(command).not.toContain(`'\${_WF_`) // no single-quote-wrapped ${} references
-  })
+  const { ui, captured } = createCapturedUI();
+  const ctx = createMockContext({ ui });
+  const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { workflow: 'deploy-prod' } }));
 
-  it('shellEnvVar for object input contains valid JSON string', () => {
-    const raw = `jq --argjson payload '${{ inputs.invoice_payload }}' -n '$payload'`
-    const { shellEnvVars } = buildShellSafeCommand(raw, ctx)
-    const value = shellEnvVars['_WF_inputs_invoice_payload']
-    expect(() => JSON.parse(value!)).not.toThrow()
-    expect(JSON.parse(value!)).toEqual({ vendor: 'ACME Corp', amount: 15000, currency: 'USD' })
-  })
+  expect(result.exitCode).toBe(0);
+  expect(captured.table[0]!.rows.length).toBe(1);
+  expect(captured.table[0]!.rows[0]!['Workflow']).toBe('deploy-prod');
+});
 
-  it('double-quoted ${{ expr }} remains double-quoted — unaffected', () => {
-    const raw = `jq --argjson payload "${{ inputs.invoice_payload }}" -n '$payload'`
-    const { command } = buildShellSafeCommand(raw, ctx)
-    expect(command).toBe(`jq --argjson payload "\${_WF_inputs_invoice_payload}" -n '$payload'`)
-  })
-})
+it('CL-14: RUNNING run with waiting_approval step shows step name', async () => {
+  MockedClient.mockImplementation(() => makeClient({
+    listRuns: async () => [
+      {
+        id: 'r-approval',
+        name: 'deploy',
+        status: 'running' as const,
+        createdAt: new Date().toISOString(),
+        hasPendingApproval: true,
+        currentStepName: 'await-gate',
+      },
+    ],
+  }));
+
+  const { ui, captured } = createCapturedUI();
+  const ctx = createMockContext({ ui });
+  const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+  expect(result.exitCode).toBe(0);
+  const row = captured.table[0]!.rows[0]!;
+  expect(row['Step']).toBe('await-gate');
+});
 ```
-
-Also add a note next to the existing `interpolateString` test at line 416 to clarify it tests the non-`run:` code path:
-```ts
-// NOTE: interpolateString is used for with: fields, NOT for run: blocks.
-// run: blocks go through buildShellSafeCommand — see 'buildShellSafeCommand — JSON object inputs' suite.
-```
-
-### 3. Create the missing `04-invoice-approval.yml` demo
-
-**File**: `plugins/workflow/contracts/examples/04-invoice-approval.yml`
-
-Implement a minimal but complete example using the now-correct single-quote pattern, plus the env-var alternative in a comment so users understand both:
-
-```yaml
-name: 04 — Invoice Approval
-description: >
-  Demonstrates passing a JSON object input to a shell step via --argjson.
-  Uses the standard '${{ inputs.X }}' pattern, which the engine rewrites
-  to a double-quoted "${_WF_...}" env var reference so jq receives valid JSON.
-
-inputs:
-  invoice_payload:
-    type: object
-    description: Invoice data (vendor, amount, currency)
-    default:
-      vendor: Acme Corp
-      amount: 1500
-      currency: USD
-
-jobs:
-  process:
-    steps:
-      - name: Parse invoice
-        run: |
-          total=$(jq --argjson payload '${{ inputs.invoice_payload }}' -n '$payload.amount')
-          vendor=$(jq --argjson payload '${{ inputs.invoice_payload }}' -n '-r $payload.vendor')
-          echo "Approving ${total} for ${vendor}"
-          PAYLOAD=$(jq -cn --argjson p '${{ inputs.invoice_payload }}' '{approved: true, vendor: $p.vendor, amount: $p.amount}' | base64)
-          echo "::kb-output:base64::${PAYLOAD}"
-```
-
-### 4. Verify the `worker.ts` env forwarding is correct (no changes needed, just confirm)
-
-**File**: `plugins/workflow/daemon/src/worker.ts` lines 375–403
-
-The worker passes `shellEnvVars` into `with.env` (line 386) and `spec.env` is separately coerced via `coerceToString` (line 401). Both paths are correct once the command string itself no longer wraps the env var reference in single quotes. No changes required here, but confirm via test.
 
 ---
 
 ## Tests / verification
 
-**Unit tests** (run without daemon):
 ```bash
-pnpm --filter @kb-labs/workflow-contracts run test
-```
-All three new `buildShellSafeCommand — JSON object inputs` cases should pass; the existing suite must be green.
+# Run handler tests for the runs-list command
+pnpm --filter @kb-labs/workflow-entry run test:cli
 
-**Manual verification** (with daemon running):
+# Verify all four relevant cases pass:
+# CL-11 — RUNNING + currentStepName → shows in Step column
+# CL-12 — non-RUNNING run → Step column empty
+# CL-13 — --workflow flag passes workflowId to client (NEW)
+# CL-14 — waiting_approval step → currentStepName populated (NEW)
+```
+
+For manual end-to-end verification:
+
 ```bash
 kb-dev start
-pnpm kb workflow run 04-invoice-approval --input '{"invoice_payload":{"vendor":"Test Co","amount":999,"currency":"EUR"}}'
-```
-Expected: step emits `::kb-output:base64::...` with `{"approved":true,"vendor":"Test Co","amount":999}` decoded; `stderr` has no `jq: invalid JSON text passed to --argjson`.
-
-**Regression check**: run the full workflow handler test suite to confirm no existing shell-safety tests regress:
-```bash
-pnpm --filter @kb-labs/workflow-entry run test:cli
+# Trigger a run that has multiple steps
+pnpm kb workflow run <workflow-name>
+# While it's running:
+pnpm kb workflow runs list
+# Expect: Step column shows the active step name (e.g. "build-image")
+pnpm kb workflow runs list --workflow <workflow-name>
+# Expect: filtered to only that workflow's runs
 ```
