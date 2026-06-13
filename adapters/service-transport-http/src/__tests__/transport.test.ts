@@ -70,6 +70,19 @@ describe('connectionInfo()', () => {
     const transport = new HttpServiceTransport({ services: {} });
     expect(transport.connectionInfo('unknown')).toBeUndefined();
   });
+
+  it('throws when socketPath contains an unresolved ${...} placeholder', () => {
+    // Root cause: config-loader uses required=false so ${KB_SOCKET_HASH} may
+    // survive interpolation as a literal string, producing an invalid socket
+    // path that causes a cryptic ECONNREFUSED instead of a clear startup error.
+    const config: HttpServiceTransportConfig = {
+      services: {
+        workflow: { url: 'http://localhost', socketPath: '/tmp/kb-${KB_SOCKET_HASH}/workflow.sock' },
+      },
+    };
+    const transport = new HttpServiceTransport(config);
+    expect(() => transport.connectionInfo('workflow')).toThrow(/unresolved.*placeholder|KB_SOCKET_HASH/i);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -229,5 +242,48 @@ describe('health()', () => {
 
     await transport.destroy?.();
     await app.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listenAddress()
+// ---------------------------------------------------------------------------
+
+describe('listenAddress()', () => {
+  it('returns { socketPath } when socketPath is configured', () => {
+    const config: HttpServiceTransportConfig = {
+      services: {
+        svc: { url: 'http://localhost', socketPath: '/tmp/svc.sock' },
+      },
+    };
+    const transport = new HttpServiceTransport(config);
+    expect(transport.listenAddress('svc')).toEqual({ socketPath: '/tmp/svc.sock' });
+  });
+
+  it('returns { port } for TCP service', () => {
+    const config: HttpServiceTransportConfig = {
+      services: {
+        svc: { url: 'http://127.0.0.1:7778' },
+      },
+    };
+    const transport = new HttpServiceTransport(config);
+    expect(transport.listenAddress('svc')).toEqual({ port: 7778 });
+  });
+
+  it('returns undefined for unknown serviceId', () => {
+    const transport = new HttpServiceTransport({ services: {} });
+    expect(transport.listenAddress('unknown')).toBeUndefined();
+  });
+
+  it('throws when socketPath contains an unresolved ${...} placeholder', () => {
+    // Daemon would bind to literal "${KB_SOCKET_HASH}" path — never matching
+    // the gateway's socket path, causing silent ECONNREFUSED.
+    const config: HttpServiceTransportConfig = {
+      services: {
+        workflow: { url: 'http://localhost', socketPath: '/tmp/kb-${KB_SOCKET_HASH}/workflow.sock' },
+      },
+    };
+    const transport = new HttpServiceTransport(config);
+    expect(() => transport.listenAddress('workflow')).toThrow(/unresolved.*placeholder|KB_SOCKET_HASH/i);
   });
 });

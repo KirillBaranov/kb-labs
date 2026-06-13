@@ -43,6 +43,15 @@ export function applyPortOffset(url: string, offset: number): string {
   }
 }
 
+function assertResolvedSocketPath(socketPath: string, serviceId: string): void {
+  if (/\$\{[^}]+\}/.test(socketPath)) {
+    throw new Error(
+      `Service "${serviceId}" has an unresolved placeholder in socketPath: "${socketPath}". ` +
+      `Check that the required environment variable is set (e.g. KB_SOCKET_HASH).`,
+    );
+  }
+}
+
 export class HttpServiceTransport implements IServiceTransport {
   private readonly pools = new Map<string, Pool>();
   private readonly offset: number;
@@ -64,6 +73,7 @@ export class HttpServiceTransport implements IServiceTransport {
   connectionInfo(serviceId: string): ServiceConnectionInfo | undefined {
     const svc = this.config.services[serviceId];
     if (!svc) return undefined;
+    if (svc.socketPath) assertResolvedSocketPath(svc.socketPath, serviceId);
     const baseUrl = svc.socketPath ? svc.url : applyPortOffset(svc.url, this.offset);
     return { baseUrl, socketPath: svc.socketPath };
   }
@@ -71,7 +81,10 @@ export class HttpServiceTransport implements IServiceTransport {
   listenAddress(serviceId: string): ServiceListenAddress | undefined {
     const svc = this.config.services[serviceId];
     if (!svc) return undefined;
-    if (svc.socketPath) return { socketPath: svc.socketPath };
+    if (svc.socketPath) {
+      assertResolvedSocketPath(svc.socketPath, serviceId);
+      return { socketPath: svc.socketPath };
+    }
     // Same offset as the route, so bind and route ports never drift. Host is
     // omitted — the local adapter doesn't own the bind host; the daemon keeps
     // its own host config. Guard a url without an explicit port (would parse to
