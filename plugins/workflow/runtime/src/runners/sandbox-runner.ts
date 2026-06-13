@@ -31,6 +31,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { createRequire } from 'node:module'
 import type { StepSpec } from '@kb-labs/workflow-contracts'
 import type {
   ExecutionBackend,
@@ -445,7 +446,12 @@ export class SandboxRunner implements Runner {
     }
 
     if (uses === 'builtin:shell') {
-      return this.resolveBuiltinShell(spec, request.workspace)
+      // Use worktree root from context.env (set by worker.ts), not request.workspace (platform root).
+      // Scripts that cd into KB_WORKSPACE_ROOT need the worktree, not the platform directory.
+      return this.resolveBuiltinShell(
+        spec,
+        request.context.env['KB_WORKSPACE_ROOT'] ?? request.workspace,
+      )
     }
 
     if (uses === 'builtin:approval' || uses === 'builtin:gate') {
@@ -587,9 +593,12 @@ export class SandboxRunner implements Runner {
   ): Promise<PluginCommandResolution> {
     // Use import.meta.resolve to find @kb-labs/workflow-steps package
     // This supports ES module exports properly
-    const builtinsUrl = await import.meta.resolve('@kb-labs/workflow-steps')
-    // Convert file:// URL to path and remove /dist/index.js to get package root
-    const builtinsPath = builtinsUrl.replace('file://', '').replace('/dist/index.js', '')
+    // createRequire gives a CJS-style resolver that works both at runtime and in vitest tests
+    // (import.meta.resolve is stubbed out in vitest's SSR transform and throws at test time).
+    // Resolve via package.json subpath (always CJS-resolvable; strip to get the package root).
+    const builtinsPath = createRequire(import.meta.url)
+      .resolve('@kb-labs/workflow-steps/package.json')
+      .replace(/\/package\.json$/, '')
 
     // Extract command from spec.with
     const withBlock = (spec.with ?? {}) as Record<string, unknown>
@@ -612,7 +621,9 @@ export class SandboxRunner implements Runner {
         ...(workspace ? { KB_WORKSPACE_ROOT: workspace } : {}),
         ...(typeof withBlock.env === 'object' ? (withBlock.env as Record<string, string>) : {}),
       },
-      timeout: typeof withBlock.timeout === 'number' ? withBlock.timeout : undefined,
+      // with.timeout takes precedence; fall back to spec.timeoutMs so that the YAML-level
+      // timeoutMs (e.g. 3600000 for claude-agent steps) also caps the shell process.
+      timeout: typeof withBlock.timeout === 'number' ? withBlock.timeout : spec.timeoutMs,
       throwOnError: typeof withBlock.throwOnError === 'boolean' ? withBlock.throwOnError : false,
     }
 
