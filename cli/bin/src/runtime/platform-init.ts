@@ -9,6 +9,7 @@
  * NoOp fallback on failure.
  */
 
+import { createHash } from 'node:crypto';
 import {
   initPlatform,
   loadPlatformConfig,
@@ -19,6 +20,7 @@ import {
   type PlatformLifecycleHooks,
   type PlatformLifecyclePhase,
 } from '@kb-labs/core-runtime';
+import { findRepoRoot } from '@kb-labs/core-sys';
 import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import type { UIFacade } from '@kb-labs/plugin-contracts';
@@ -113,6 +115,16 @@ export async function initializePlatform(
   moduleUrl?: string,
 ): Promise<PlatformInitResult> {
   ensureLifecycleHooksRegistered();
+
+  // Mirror daemon.ts: derive KB_SOCKET_HASH before config is loaded so
+  // ${KB_SOCKET_HASH} placeholders in socket paths resolve without warnings.
+  // kb-dev sets it as a real env var for managed services; the CLI derives the
+  // same value from KB_PROJECT_ROOT (or the repo root) when running standalone.
+  if (!process.env['KB_SOCKET_HASH']) {
+    const repoRoot = await findRepoRoot(cwd).catch(() => cwd);
+    const hashRoot = process.env['KB_PROJECT_ROOT'] ?? repoRoot;
+    process.env['KB_SOCKET_HASH'] = createHash('md5').update(hashRoot).digest('hex').slice(0, 8);
+  }
 
   const uiProvider = createCLIUIProvider();
 
