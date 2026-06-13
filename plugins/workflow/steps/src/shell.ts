@@ -282,7 +282,24 @@ async function shellHandler(
       for (const line of lines) {emitLine('stderr', line);}
     });
 
-    const result = await proc;
+    // With shell:true, the shell may spawn children that inherit the pipe write-end.
+    // When the shell is killed (on timeout), those orphaned children keep the pipe open
+    // and execa's await hangs indefinitely waiting for EOF. We destroy the streams
+    // after timeout + 2s to force execa to resolve so we can inspect result.timedOut.
+    let cleanupTimer: ReturnType<typeof setTimeout> | undefined
+    const orphanCleanup = new Promise<void>((resolve) => {
+      cleanupTimer = setTimeout(() => {
+        proc.stdout?.destroy()
+        proc.stderr?.destroy()
+        resolve()
+      }, timeout + 2000)
+    })
+
+    const result = await Promise.race([
+      proc,
+      orphanCleanup.then(() => proc),
+    ])
+    clearTimeout(cleanupTimer)
 
     // Flush remaining buffered content
     if (stdoutBuf) {emitLine('stdout', stdoutBuf);}
