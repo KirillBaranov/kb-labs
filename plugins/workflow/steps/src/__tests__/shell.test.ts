@@ -7,6 +7,7 @@
 import { describe, it, expect, expectTypeOf, vi } from 'vitest'
 import type { ShellInput, ShellOutput } from '../shell.js'
 import { mergeJsonOutputs, parseOutputMarkerLine } from '../shell.js'
+import shellModule from '../shell.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -373,4 +374,39 @@ describe('ShellOutput type shape', () => {
     expectTypeOf(output.exitCode).toBeNumber()
     expectTypeOf(output.ok).toBeBoolean()
   })
+})
+
+// ---------------------------------------------------------------------------
+// Regression: timeout with reject:false must NOT silently succeed
+// ---------------------------------------------------------------------------
+describe('shellHandler — timeout regression (BUG: timedOut + reject:false = silent success)', () => {
+  function makeMockCtx() {
+    return {
+      cwd: process.cwd(),
+      platform: {
+        logger: {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      },
+      api: {
+        events: {
+          emit: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any
+  }
+
+  it('throws an error when the command times out — must not return ok:true with empty stdout', async () => {
+    // Before the fix: execa with reject:false returned timedOut:true, exitCode:null.
+    // null ?? 0 === 0 → ok:true → silent success with empty stdout.
+    // After the fix: timedOut is detected and thrown as an error.
+    const ctx = makeMockCtx()
+    await expect(
+      shellModule.execute(ctx, { command: 'sleep 10', timeout: 100 }),
+    ).rejects.toThrow(/timed out/i)
+  }, 5000)
 })

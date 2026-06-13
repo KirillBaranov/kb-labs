@@ -284,6 +284,13 @@ async function shellHandler(
     if (stdoutBuf) {emitLine('stdout', stdoutBuf);}
     if (stderrBuf) {emitLine('stderr', stderrBuf);}
 
+    // execa with reject:false does NOT throw on timeout — it sets result.timedOut = true
+    // and returns exitCode: null (process killed). Without this check, null ?? 0 = 0
+    // produces ok:true and an empty stdout, making the step appear successful when it timed out.
+    if ((result as { timedOut?: boolean }).timedOut) {
+      throw new Error(`Shell command timed out after ${timeout}ms`);
+    }
+
     const output: ShellOutput = {
       // Use our accumulated buffers — result.stdout/stderr are empty because
       // we consumed the streams via 'data' listeners above.
