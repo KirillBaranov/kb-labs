@@ -506,6 +506,10 @@ export async function createWorkflowWorker(
               await engine.markStepFailed(run.id, job.id, step.id, decision.error, decision.outputs);
               throw decision.error;
             }
+            if (decision.action === 'skip') {
+              await applyGateSkip(engine, run, job, step, decision, stepLogger);
+              return;
+            }
             // restart
             await applyGateRestart(engine, run, job, step, decision, stepLogger);
             return;
@@ -975,6 +979,65 @@ async function waitForApproval(
 }
 
 type GateRestartDecision = Extract<GateDecision, { action: 'restart' }>;
+type GateSkipDecision = Extract<GateDecision, { action: 'skip' }>;
+
+/**
+ * Apply gate skip: mark the gate and all intermediate steps as skipped, then re-enqueue the job.
+ * The job loop will resume from skipTo because all preceding steps are already 'success'.
+ * Called when GateHandler returns action='skip'.
+ */
+async function applyGateSkip(
+  engine: WorkflowEngine,
+  run: WorkflowRun,
+  job: JobRun,
+  step: Pick<StepRun, 'id' | 'name'>,
+  decision: GateSkipDecision,
+  stepLogger: ILogger,
+): Promise<void> {
+  const { skipTo, outputs } = decision;
+
+  stepLogger.info('[gate] Gate triggered skip-forward', {
+    runId: run.id,
+    stepId: step.id,
+    stepName: step.name,
+    skipTo,
+  });
+
+  const stateStore = engine.getStateStore();
+  const scheduler = engine.getScheduler();
+
+  // Mark the gate step itself as completed
+  await engine.markStepCompleted(run.id, job.id, step.id, outputs);
+
+  // Mark all steps between gate and skipTo target as skipped
+  let pastGate = false;
+  for (const s of job.steps) {
+    if (s.id === step.id) {
+      pastGate = true;
+      continue; // gate is already marked completed above
+    }
+    if (!pastGate) continue;
+    if (s.spec.id === skipTo || s.id === skipTo) break; // stop at target (inclusive — don't skip it)
+    await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
+      draft.status = 'success';
+      draft.outputs = { skipped: true };
+      draft.startedAt = new Date().toISOString();
+      draft.finishedAt = new Date().toISOString();
+    });
+  }
+
+  // Re-enqueue so the job loop restarts from a fresh snapshot and sees updated statuses
+  const freshRun = await engine.getRun(run.id);
+  const freshJob = freshRun?.jobs.find((j) => j.id === job.id);
+  if (freshJob) {
+    await scheduler.enqueueJob(run.id, freshJob, freshJob.priority ?? 'normal');
+  }
+
+  stepLogger.info('[gate] Skip applied — re-enqueued job at skipTo target', {
+    runId: run.id,
+    skipTo,
+  });
+}
 
 /**
  * Apply gate restart: persist iteration counter to step.metadata, reset steps to queued, re-enqueue job.

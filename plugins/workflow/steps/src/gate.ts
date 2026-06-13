@@ -7,6 +7,7 @@
  * - continue: proceed to next step
  * - fail: fail the pipeline
  * - restart: reset steps back to target and re-schedule with context
+ * - skip: mark intermediate steps as skipped and jump forward to a target step
  */
 
 import { resolveValue, type ExpressionContext } from '@kb-labs/workflow-contracts';
@@ -18,10 +19,14 @@ export type GateRouteAction =
   | 'continue'
   | 'fail'
   | {
-      /** Step ID to restart from */
+      /** Step ID to restart from (go backward) */
       restartFrom: string;
       /** Additional context to pass (merged into trigger.payload) */
       context?: Record<string, unknown>;
+    }
+  | {
+      /** Step ID to skip forward to — all steps between gate and target are marked skipped */
+      skipTo: string;
     };
 
 /**
@@ -49,10 +54,13 @@ export interface GateOutput {
   decisionValue: unknown;
 
   /** The action that was taken */
-  action: 'continue' | 'fail' | 'restart';
+  action: 'continue' | 'fail' | 'restart' | 'skip';
 
   /** Step ID that was restarted from (if restart) */
   restartFrom?: string;
+
+  /** Step ID that was skipped to (if skip) */
+  skipTo?: string;
 
   /** Current iteration count */
   iteration: number;
@@ -76,6 +84,11 @@ export type GateDecision =
       context?: Record<string, unknown>;
       outputs: GateOutput;
       nextIteration: number;
+    }
+  | {
+      action: 'skip';
+      skipTo: string;
+      outputs: GateOutput;
     };
 
 /**
@@ -122,6 +135,29 @@ export class GateHandler {
         action: 'fail',
         error: new Error(`Gate failed: ${failReason}`),
         outputs: { decisionValue, action: 'fail', iteration: currentIteration },
+      };
+    }
+
+    // skipTo action — jump forward, marking intermediate steps as skipped
+    if (typeof action === 'object' && 'skipTo' in action) {
+      if (validRestartTargets && !validRestartTargets.includes(action.skipTo)) {
+        return {
+          action: 'fail',
+          error: new Error(
+            `Gate skipTo "${action.skipTo}" matches no step in this job — cannot skip.`,
+          ),
+          outputs: { decisionValue, action: 'fail', iteration: currentIteration },
+        };
+      }
+      return {
+        action: 'skip',
+        skipTo: action.skipTo,
+        outputs: {
+          decisionValue,
+          action: 'skip',
+          skipTo: action.skipTo,
+          iteration: currentIteration,
+        },
       };
     }
 

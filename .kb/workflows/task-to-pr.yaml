@@ -1,5 +1,5 @@
 name: task-to-pr
-version: 8.1.0
+version: 8.2.0
 description: 'Autonomous implementation pipeline — task → plan → implement → audit loops → verify → CI → merge'
 
 on:
@@ -45,6 +45,15 @@ jobs:
           REPO: '${{ inputs.repo }}'
         run: bash .kb/workflows/scripts/prepare-task.sh
 
+      - name: Already Done Gate
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.prepare.outputs.alreadyDone }}
+          routes:
+            'true':
+              skipTo: close_issue
+          default: continue
+
       - name: Fetch Issue
         id: issue
         uses: 'plugin:@kb-labs/github/fetch-issue'
@@ -83,6 +92,15 @@ jobs:
             label: Implementation Plan
             showInSummary: true
         run: bash .kb/workflows/scripts/agent-plans.sh
+
+      - name: Already Implemented Gate
+        uses: builtin:gate
+        with:
+          decision: ${{ steps.plan.outputs.alreadyImplemented }}
+          routes:
+            'true':
+              skipTo: close_issue
+          default: continue
 
       - name: Open Draft PR with Plan
         id: pr

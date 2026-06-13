@@ -29,21 +29,28 @@ node -e "
     body,
     '',
     feedbackSection,
-    'Study the codebase and produce a detailed implementation plan in Markdown:',
+    'First, study the codebase (git log, grep, read relevant files) and determine whether',
+    'this issue is ALREADY FULLY IMPLEMENTED in the current codebase or commit history.',
+    '',
+    'Output format — two parts, no exceptions:',
+    '',
+    'PART 1 (first line only):',
+    '  If already fully done: PIPELINE_STATUS: ALREADY_IMPLEMENTED',
+    '  If work is needed:     PIPELINE_STATUS: NEEDS_IMPLEMENTATION',
+    '',
+    'PART 2 (remaining lines): The implementation plan in Markdown:',
     '',
     '## Summary',
-    '(1-2 sentences what needs to be done)',
+    '(1-2 sentences what needs to be done, or "Already implemented — no action needed.")',
     '',
     '## Root cause / context',
     '(brief analysis)',
     '',
     '## Implementation steps',
-    '(numbered list: file paths, what to add/change, what to create)',
+    '(numbered list: file paths, what to add/change; or empty if already done)',
     '',
     '## Tests / verification',
     '(how to verify the fix works)',
-    '',
-    'Output ONLY the Markdown plan.',
   ].join('\n');
 
   require('fs').writeFileSync(process.argv[1], prompt);
@@ -71,21 +78,52 @@ if [ "$CLAUDE_OK" = "0" ]; then
 fi
 
 SESSION_ID=$(node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).session_id||'')}catch{console.log('')}})" < "$RESULT_FILE")
-PLAN_TEXT=$(node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).result||'')}catch{console.log('')}})" < "$RESULT_FILE")
+RAW_TEXT=$(node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).result||'')}catch{console.log('')}})" < "$RESULT_FILE")
 rm -f "$RESULT_FILE"
+
+# Parse PIPELINE_STATUS from first line; strip it so PLAN.md contains only the Markdown.
+TMP_RAW=$(mktemp)
+printf '%s' "$RAW_TEXT" > "$TMP_RAW"
+
+PARSE_RESULT=$(node -e "
+  const raw   = require('fs').readFileSync(process.argv[1], 'utf8');
+  const lines = raw.split('\n');
+  const first = lines[0] || '';
+  const alreadyImplemented = first.includes('ALREADY_IMPLEMENTED');
+  // Strip the status line; keep the rest as the plan
+  const plan = alreadyImplemented
+    ? lines.slice(1).join('\n').replace(/^\n+/, '')
+    : raw;
+  process.stdout.write(JSON.stringify({ alreadyImplemented, plan }));
+" "$TMP_RAW")
+rm -f "$TMP_RAW"
+
+ALREADY_IMPLEMENTED=$(echo "$PARSE_RESULT" | node -e "
+  let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+    try { console.log(JSON.parse(d).alreadyImplemented ? 'true' : 'false'); }
+    catch { console.log('false'); }
+  })")
+
+PLAN_TEXT=$(echo "$PARSE_RESULT" | node -e "
+  let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+    try { console.log(JSON.parse(d).plan || ''); }
+    catch { console.log(''); }
+  })")
 
 echo "$PLAN_TEXT" > PLAN.md
 echo "=== PLAN ==="
 cat PLAN.md
 echo "Session: $SESSION_ID"
+echo "Already implemented: $ALREADY_IMPLEMENTED"
 
-# Serialize plan + sessionId safely via node (plan may contain newlines/quotes)
+# Serialize plan + sessionId + alreadyImplemented safely via node
 TMP_PLAN=$(mktemp)
 printf '%s' "$PLAN_TEXT" > "$TMP_PLAN"
 OUTPUT_JSON=$(node -e "
-  const plan      = require('fs').readFileSync(process.argv[1], 'utf8');
-  const sessionId = process.argv[2];
-  console.log(JSON.stringify({ sessionId, plan }));
-" "$TMP_PLAN" "$SESSION_ID")
+  const plan               = require('fs').readFileSync(process.argv[1], 'utf8');
+  const sessionId          = process.argv[2];
+  const alreadyImplemented = process.argv[3];
+  console.log(JSON.stringify({ sessionId, plan, alreadyImplemented }));
+" "$TMP_PLAN" "$SESSION_ID" "$ALREADY_IMPLEMENTED")
 rm -f "$TMP_PLAN"
 printf '%s\n' "::kb-output::$OUTPUT_JSON"
