@@ -374,16 +374,24 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.get('/auth/permissions', {
     schema: { tags: ['Auth'], summary: 'List permissions for the authenticated user' },
   }, async (request, reply) => {
-    const ctx = requireUser(request, reply);
-    if (!ctx) {return;}
+    // User cookie auth takes precedence — enumerate via PDP for per-user RBAC.
+    if (request.userAuthContext) {
+      const ctx = request.userAuthContext;
+      const permissions = await pdp.enumeratePermissions({
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        type: 'user',
+      });
+      return reply.send({ permissions });
+    }
 
-    const permissions = await pdp.enumeratePermissions({
-      userId: ctx.userId,
-      tenantId: ctx.tenantId,
-      type: 'user',
-    });
-
-    return reply.send({ permissions });
+    // Machine Bearer auth (including LOCAL_ADMIN when auth is disabled).
+    // Permissions are already embedded in the machine AuthContext.
+    const auth = request.authContext;
+    if (!auth) {
+      return reply.code(401).send({ error: 'Unauthorized', message: 'No active session' });
+    }
+    return reply.send({ permissions: auth.permissions });
   });
 
   // ── POST /auth/activate ─────────────────────────────────────────────────────

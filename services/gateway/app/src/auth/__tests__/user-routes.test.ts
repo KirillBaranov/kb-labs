@@ -84,6 +84,8 @@ interface TestCtx {
 interface BuildAppOpts {
   /** When set, wires a fixed-window rate limiter into the login route. */
   rateLimit?: { loginPerIpPerMinute: number; loginPerEmailPerMinute: number };
+  /** When true, disables auth middleware (LOCAL_ADMIN context injected). */
+  authDisabled?: boolean;
 }
 
 async function buildApp(opts: BuildAppOpts = {}): Promise<TestCtx> {
@@ -165,7 +167,7 @@ async function buildApp(opts: BuildAppOpts = {}): Promise<TestCtx> {
   app.addHook('onRequest', createUserAuthMiddleware({ users, tenantResolver, jwtConfig: JWT }));
 
   // Machine auth middleware — skips if userAuthContext already set.
-  app.addHook('onRequest', createAuthMiddleware(fakeCache, JWT));
+  app.addHook('onRequest', createAuthMiddleware(fakeCache, JWT, { authEnabled: !opts.authDisabled }));
 
   // Machine routes (/auth/register, /auth/token, /auth/refresh with user cookie ext).
   registerAuthRoutes(app, machineAuthService, userExt);
@@ -534,6 +536,21 @@ describe('GET /auth/permissions', () => {
       headers: { host: HOST },
     });
     expect(r.statusCode).toBe(401);
+  });
+
+  it('returns all permissions for LOCAL_ADMIN machine context (auth disabled)', async () => {
+    const localAdminApp = (await buildApp({ authDisabled: true })).app;
+
+    const r = await localAdminApp.inject({
+      method: 'GET',
+      url: '/auth/permissions',
+      headers: { host: HOST },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as { permissions: string[] };
+    expect(Array.isArray(body.permissions)).toBe(true);
+    expect(body.permissions.length).toBeGreaterThan(0);
   });
 });
 
