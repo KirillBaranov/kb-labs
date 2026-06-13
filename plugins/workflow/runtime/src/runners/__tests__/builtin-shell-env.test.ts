@@ -43,6 +43,7 @@ describe('SandboxRunner — builtin:shell KB_WORKSPACE_ROOT routing', () => {
   function makeRequest(overrides?: Partial<StepExecutionRequest>): StepExecutionRequest {
     return {
       spec: {
+        name: 'shell-step',
         uses: 'builtin:shell',
         with: { command: 'echo test' },
       },
@@ -134,6 +135,7 @@ describe('SandboxRunner — builtin:shell KB_WORKSPACE_ROOT routing', () => {
     await runner.execute(
       makeRequest({
         spec: {
+          name: 'shell-step',
           uses: 'builtin:shell',
           with: { command: 'echo test' },
           timeoutMs: 3600000, // 1 hour from YAML
