@@ -816,7 +816,9 @@ export async function registerPluginSnapshotRoutes(
       .code(200)
       .header('Content-Type', MIME[ext] ?? 'application/octet-stream')
       .header('Content-Length', statSync(fullPath).size)
-      .header('Cache-Control', isEntry ? 'public, max-age=10, must-revalidate' : 'public, max-age=31536000, immutable')
+      .header('Cache-Control', isEntry
+        ? 'public, max-age=10, must-revalidate'
+        : process.env.NODE_ENV === 'production' ? 'public, max-age=31536000, immutable' : 'no-cache')
       .send(createReadStream(fullPath));
   });
 

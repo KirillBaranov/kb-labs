@@ -2,13 +2,14 @@
  * Pipeline visualization.
  * Steps are rows, not cards — clean and scannable.
  * Gate rework: shows decision reason + feedback inline below gate row.
+ * Phases collapse when done, animate open/close.
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import type { WorkflowRun, StepRun } from '@kb-labs/workflow-contracts'
 import type { WorkflowLogEvent } from '@kb-labs/workflow-contracts/rest-api'
 import { usePipelineModel } from '../../hooks/use-pipeline-graph'
-import type { PipelineStep } from '../../hooks/use-pipeline-graph'
+import type { PipelineStep, PipelinePhase } from '../../hooks/use-pipeline-graph'
 import { StepDetailDrawer } from './StepDetailDrawer'
 import { useElapsedTimer } from '@kb-labs/sdk/studio'
 
@@ -19,6 +20,7 @@ const ANIM_CSS = `
 @keyframes kb-shimmer     { 0% { left: -60% } 100% { left: 120% } }
 @keyframes kb-step-done   { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.2) } 100% { transform: scale(1); opacity: 1 } }
 @keyframes kb-step-fail   { 0%,100% { transform: translateX(0) } 20%,60% { transform: translateX(-3px) } 40%,80% { transform: translateX(3px) } }
+@keyframes kb-step-in     { 0% { opacity: 0; transform: translateY(-4px) } 100% { opacity: 1; transform: translateY(0) } }
 `
 let injected = false
 function injectCss() {
@@ -29,7 +31,26 @@ function injectCss() {
   document.head.appendChild(s)
 }
 
+// ─── Reduced motion ───────────────────────────────────────────────────────────
+
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return reduced
+}
+
 // ─── Status ───────────────────────────────────────────────────────────────────
+
+const TERMINAL_STATUSES = new Set(['success', 'failed', 'cancelled', 'skipped'])
 
 const S_COLOR: Record<string, string> = {
   queued:           'var(--text-tertiary)',
@@ -197,9 +218,10 @@ interface StepRowProps {
   targetStepName?: string
   onClick: () => void
   rowRef?: (el: HTMLDivElement | null) => void
+  reducedMotion?: boolean
 }
 
-function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepName, onClick, rowRef }: StepRowProps) {
+function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepName, onClick, rowRef, reducedMotion }: StepRowProps) {
   const { stepRun, stepType, iteration } = step
   const status    = stepRun.status
   const isWaiting = status === 'waiting_approval'
@@ -207,6 +229,7 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
   const isRunning = status === 'running'
   const isQueued  = status === 'queued'
   const isSuccess = status === 'success'
+  const isSkipped = status === 'skipped' || status === 'cancelled'
   const isApproval = stepType === 'approval'
   const isGate     = stepType === 'gate'
   const elapsed   = useElapsedTimer(isRunning ? stepRun.startedAt : undefined)
@@ -231,7 +254,7 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
         onClick={onClick}
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           gap: 10,
           padding: highlight ? '10px 14px' : '7px 14px',
           marginLeft: isApproval ? 28 : 0,
@@ -241,7 +264,9 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
           cursor: 'pointer',
           position: 'relative',
           overflow: 'hidden',
-          transition: 'background 0.1s',
+          transition: reducedMotion ? undefined : 'background 0.1s',
+          animation: reducedMotion ? undefined : 'kb-step-in 180ms ease',
+          opacity: isSkipped ? 0.65 : 1,
         }}
         onMouseEnter={e => {
           if (!highlight) {(e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)'}
@@ -258,20 +283,46 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
           }} />
         )}
 
-        <StatusDot status={status} />
+        {/* Align dot with first line of text */}
+        <div style={{ paddingTop: 3, flexShrink: 0 }}>
+          <StatusDot status={status} />
+        </div>
 
-        <span style={{
-          flex: 1,
-          fontSize: 14,
-          color: isQueued ? 'var(--text-tertiary)' : 'var(--text-primary)',
-          fontWeight: isWaiting || isFailed ? 500 : 400,
-          fontStyle: isGate ? 'italic' : 'normal',
-        }}>
-          {isApproval && <span style={{ color: 'var(--info)', marginRight: 5, fontStyle: 'normal', fontSize: 12 }}>⏸</span>}
-          {stepRun.name}
-        </span>
+        {/* Name + optional second line (error preview / skip reason) */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{
+            fontSize: 14,
+            color: isQueued || isSkipped ? 'var(--text-tertiary)' : 'var(--text-primary)',
+            fontWeight: isWaiting || isFailed ? 500 : 400,
+            fontStyle: isGate ? 'italic' : 'normal',
+          }}>
+            {isApproval && <span style={{ color: 'var(--info)', marginRight: 5, fontStyle: 'normal', fontSize: 12 }}>⏸</span>}
+            {stepRun.name}
+          </span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          {isFailed && stepRun.error?.message && (
+            <span style={{
+              display: 'block', fontSize: 11,
+              color: 'var(--error)', opacity: 0.85,
+              marginTop: 2, lineHeight: 1.4,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {(stepRun.error?.message?.split('\n')?.[0] ?? '').slice(0, 90)}
+            </span>
+          )}
+
+          {isSkipped && stepRun.skipReason && (
+            <span style={{
+              display: 'block', fontSize: 11,
+              color: 'var(--text-tertiary)', fontStyle: 'italic',
+              marginTop: 2,
+            }}>
+              {stepRun.skipReason}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 2 }}>
           {isReworkGate && iteration && (
             <span style={{
               fontSize: 11, fontWeight: 600, color: 'var(--warning)',
@@ -281,12 +332,16 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
               ↩ {iteration.current}/{iteration.max}
             </span>
           )}
+          {/* Show elapsed timer while running, final duration when done */}
           {(isRunning && elapsed) ? (
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' }}>
               {elapsed}
             </span>
           ) : formatDuration(stepRun.durationMs) ? (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', animation: isSuccess ? 'kb-step-done 0.3s ease-out' : isFailed ? 'kb-step-fail 0.35s ease-out' : undefined }}>
+            <span style={{
+              fontSize: 12, color: 'var(--text-tertiary)',
+              animation: isSuccess ? 'kb-step-done 0.3s ease-out' : isFailed ? 'kb-step-fail 0.35s ease-out' : undefined,
+            }}>
               {formatDuration(stepRun.durationMs)}
             </span>
           ) : null}
@@ -361,6 +416,189 @@ function ReworkBracket({
   )
 }
 
+// ─── PhaseSection ─────────────────────────────────────────────────────────────
+
+interface PhaseSectionProps {
+  phase: PipelinePhase
+  flatSteps: PipelineStep[]
+  reworkLoop: { gateIndex: number; targetIndex: number; isActive: boolean } | null
+  gateStep: PipelineStep | null
+  targetStep: PipelineStep | null
+  onStepClick: (step: StepRun) => void
+  rowRefs: Map<string, HTMLDivElement>
+  reducedMotion: boolean
+}
+
+function PhaseSection({
+  phase,
+  flatSteps,
+  reworkLoop,
+  gateStep,
+  targetStep,
+  onStepClick,
+  rowRefs,
+  reducedMotion,
+}: PhaseSectionProps) {
+  const color = PHASE_COLOR[phase.label] ?? 'var(--text-tertiary)'
+
+  const isAllDone = phase.steps.every(s => TERMINAL_STATUSES.has(s.stepRun.status))
+  const isActive  = phase.steps.some(s => s.stepRun.status === 'running' || s.stepRun.status === 'waiting_approval')
+  const isPending = phase.steps.every(s => s.stepRun.status === 'queued' || (s.stepRun.status as string) === 'pending')
+  const failCount = phase.steps.filter(s => s.stepRun.status === 'failed').length
+  const doneCount = phase.steps.filter(s => s.stepRun.status === 'success').length
+  const totalDuration = phase.steps.reduce((acc, s) => acc + (s.stepRun.durationMs ?? 0), 0)
+
+  // Start open if active or not yet done; start collapsed if all done
+  const [open, setOpen] = useState(!isAllDone || isActive)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const activeRowRef = useRef<HTMLDivElement>(null)
+
+  // Auto-collapse when phase finishes (500ms delay so user sees completion)
+  useEffect(() => {
+    if (!isAllDone) {return}
+    const timer = setTimeout(() => setOpen(false), 500)
+    return () => clearTimeout(timer)
+  }, [isAllDone])
+
+  // Keep open while active
+  useEffect(() => {
+    if (isActive) {setOpen(true)}
+  }, [isActive])
+
+  // Scroll active step into view
+  useEffect(() => {
+    if (isActive && activeRowRef.current) {
+      activeRowRef.current.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'nearest' })
+    }
+  }, [isActive, reducedMotion])
+
+  const toggle = useCallback(() => setOpen(v => !v), [])
+
+  // Measure body height for smooth animation
+  const bodyHeight = bodyRef.current?.scrollHeight ?? 2000
+  const bodyStyle: React.CSSProperties = reducedMotion
+    ? { display: open ? 'block' : 'none' }
+    : {
+      maxHeight: open ? `${bodyHeight}px` : '0px',
+      opacity: open ? 1 : 0,
+      overflow: 'hidden',
+      transition: 'max-height 300ms ease, opacity 200ms ease',
+    }
+
+  const arrowStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: 'var(--text-tertiary)',
+    transition: reducedMotion ? undefined : 'transform 200ms ease',
+    transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+    display: 'inline-block',
+    flexShrink: 0,
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {/* Phase header — always visible, clickable */}
+      <div
+        onClick={toggle}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '5px 4px',
+          cursor: 'pointer',
+          borderRadius: 4,
+          userSelect: 'none',
+          opacity: isPending ? 0.45 : 1,
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+      >
+        {/* Arrow */}
+        <span style={arrowStyle}>▶</span>
+
+        {/* Color accent bar */}
+        <div style={{ width: 3, height: 12, background: color, borderRadius: 2, flexShrink: 0 }} />
+
+        {/* Phase label */}
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.09em',
+          color,
+        }}>
+          {phase.label}
+        </span>
+
+        {/* Step progress */}
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          {doneCount}/{phase.steps.length}
+        </span>
+
+        {/* Failed badge */}
+        {failCount > 0 && (
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--error)',
+            background: 'color-mix(in srgb, var(--error) 12%, transparent)',
+            padding: '0 5px', borderRadius: 4,
+          }}>
+            ✗ {failCount}
+          </span>
+        )}
+
+        {/* Duration when all done */}
+        {isAllDone && totalDuration > 0 && (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+            {formatDuration(totalDuration)}
+          </span>
+        )}
+
+        {/* Running indicator */}
+        {isActive && (
+          <span style={{
+            marginLeft: 'auto',
+            display: 'inline-block', width: 6, height: 6, flexShrink: 0,
+            border: '2px solid var(--warning)', borderTopColor: 'transparent',
+            borderRadius: '50%', animation: 'kb-spin 0.8s linear infinite',
+          }} />
+        )}
+      </div>
+
+      {/* Step rows — animated */}
+      <div ref={bodyRef} style={bodyStyle}>
+        <div style={{
+          borderLeft: `2px solid color-mix(in srgb, ${color} 25%, var(--border-primary))`,
+          marginLeft: 5,
+          paddingLeft: 12,
+          paddingTop: 2,
+          paddingBottom: 2,
+        }}>
+          {phase.steps.map(step => {
+            const flatIdx = flatSteps.indexOf(step)
+            const isGateWithLoop = reworkLoop?.gateIndex === flatIdx
+            const isActiveStep = step.stepRun.status === 'running' || step.stepRun.status === 'waiting_approval'
+
+            return (
+              <StepRow
+                key={step.stepRun.id}
+                step={step}
+                isReworkGate={isGateWithLoop ?? false}
+                isReworkTarget={reworkLoop?.targetIndex === flatIdx}
+                reworkActive={reworkLoop?.isActive ?? false}
+                targetStepName={isGateWithLoop ? targetStep?.stepRun.name : undefined}
+                onClick={() => onStepClick(step.stepRun)}
+                rowRef={el => {
+                  if (el) {rowRefs.set(step.stepRun.id, el)}
+                  else {rowRefs.delete(step.stepRun.id)}
+                  if (isActiveStep) {
+                    activeRowRef.current = el
+                  }
+                }}
+                reducedMotion={reducedMotion}
+              />
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── PipelineView ─────────────────────────────────────────────────────────────
 
 interface PipelineViewProps {
@@ -374,19 +612,15 @@ export function PipelineView({ run, events, onApprove }: PipelineViewProps) {
   const [selected, setSelected] = useState<StepRun | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-
-  const setRef = (id: string) => (el: HTMLDivElement | null) => {
-    if (el) {rowRefs.current.set(id, el)}
-    else {rowRefs.current.delete(id)}
-  }
+  const reducedMotion = useReducedMotion()
 
   if (!model.steps.length) {
     return <div style={{ padding: '24px 0', color: 'var(--text-tertiary)', fontSize: 14 }}>No execution data yet.</div>
   }
 
   const { reworkLoop } = model
-  const gateStep   = reworkLoop ? model.steps[reworkLoop.gateIndex]   : null
-  const targetStep = reworkLoop ? model.steps[reworkLoop.targetIndex] : null
+  const gateStep   = reworkLoop ? (model.steps[reworkLoop.gateIndex] ?? null)   : null
+  const targetStep = reworkLoop ? (model.steps[reworkLoop.targetIndex] ?? null) : null
   const stepEvents = events.filter(e => e.stepId === selected?.id)
 
   return (
@@ -400,59 +634,19 @@ export function PipelineView({ run, events, onApprove }: PipelineViewProps) {
         />
       )}
 
-      {model.phases.map((phase, pi) => {
-        const color     = PHASE_COLOR[phase.label] ?? 'var(--text-tertiary)'
-        const doneCount = phase.steps.filter(s => s.stepRun.status === 'success').length
-        const isLast    = pi === model.phases.length - 1
-
-        return (
-          <div key={phase.label} style={{ marginBottom: isLast ? 0 : 20 }}>
-            {/* Phase label */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '0 4px', marginBottom: 4,
-            }}>
-              <div style={{ width: 3, height: 12, background: color, borderRadius: 2, flexShrink: 0 }} />
-              <span style={{
-                fontSize: 11, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.09em',
-                color,
-              }}>
-                {phase.label}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>
-                {doneCount}/{phase.steps.length}
-              </span>
-            </div>
-
-            {/* Steps */}
-            <div style={{
-              borderLeft: `2px solid color-mix(in srgb, ${color} 25%, var(--border-primary))`,
-              marginLeft: 5,
-              paddingLeft: 12,
-              paddingTop: 2,
-              paddingBottom: 2,
-            }}>
-              {phase.steps.map(step => {
-                const flatIdx = model.steps.indexOf(step)
-                const isGateWithLoop = reworkLoop?.gateIndex === flatIdx
-                return (
-                  <StepRow
-                    key={step.stepRun.id}
-                    step={step}
-                    isReworkGate={isGateWithLoop ?? false}
-                    isReworkTarget={reworkLoop?.targetIndex === flatIdx}
-                    reworkActive={reworkLoop?.isActive ?? false}
-                    targetStepName={isGateWithLoop ? targetStep?.stepRun.name : undefined}
-                    onClick={() => setSelected(step.stepRun)}
-                    rowRef={setRef(step.stepRun.id)}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
+      {model.phases.map(phase => (
+        <PhaseSection
+          key={phase.label}
+          phase={phase}
+          flatSteps={model.steps}
+          reworkLoop={reworkLoop}
+          gateStep={gateStep}
+          targetStep={targetStep}
+          onStepClick={step => setSelected(step)}
+          rowRefs={rowRefs.current}
+          reducedMotion={reducedMotion}
+        />
+      ))}
 
       <StepDetailDrawer
         step={selected}

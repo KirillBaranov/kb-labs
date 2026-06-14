@@ -743,17 +743,34 @@ export default function WorkflowRunDetail() {
           ) : (
             <Text type="secondary">No metrics recorded.</Text>
           )}
-          {run.result.error && (
-            <UIAlert
-              style={{ marginTop: 16 }}
-              variant="error"
-              message={run.result.error.message}
-              description={
-                run.result.error.details ? JSON.stringify(run.result.error.details, null, 2) : undefined
-              }
-              showIcon
-            />
-          )}
+          {run.result.error && (() => {
+            const err = run.result.error
+            const stack = typeof err.details?.['stack'] === 'string' ? err.details['stack'] as string : null
+            const shortMsg = err.message.split('\n')[0]
+            return (
+              <UIAlert
+                style={{ marginTop: 16 }}
+                variant="error"
+                message={shortMsg}
+                description={stack ? (
+                  <pre style={{
+                    margin: '6px 0 0',
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    maxHeight: 160,
+                    overflowY: 'auto',
+                    color: 'inherit',
+                    opacity: 0.75,
+                  }}>
+                    {stack}
+                  </pre>
+                ) : undefined}
+                showIcon
+              />
+            )
+          })()}
         </UIPageSection>
       )}
 
