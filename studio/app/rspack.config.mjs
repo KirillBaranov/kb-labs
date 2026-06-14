@@ -115,6 +115,8 @@ export default defineConfig({
     hot: true,
     historyApiFallback: true,
     proxy: [
+      // Gateway own auth routes live at /auth/* — rewrite /api/auth/* → /auth/*
+      { context: ['/api/auth'], target: proxyTarget, changeOrigin: true, pathRewrite: { '^/api': '' } },
       { context: ['/api'], target: proxyTarget, changeOrigin: true, ws: true },
       { context: ['/plugins'], target: proxyTarget, changeOrigin: true },
     ],

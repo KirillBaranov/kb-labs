@@ -1,9 +1,10 @@
 /**
  * Dashboard view for a single workflow run.
- * Shows: PhaseProgressBar → Hero block (current step) → Completed steps → Future steps
+ * Shows: StatRow → PhaseProgressBar → Hero block (current step) → Completed steps → Skipped steps → Future steps
  */
 
 import * as React from 'react';
+import { useState } from 'react';
 import {
   UITypographyText,
   UISpace,
@@ -50,6 +51,65 @@ function formatDurationMs(ms: number): string {
   const rem = Math.floor(s % 60);
   return `${m}m ${rem}s`;
 }
+
+// ─── Stat row ─────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  value: number | string;
+  label: string;
+  color?: string;
+}
+
+function StatCard({ value, label, color = 'var(--text-primary)' }: StatCardProps) {
+  return (
+    <div style={{
+      padding: '10px 14px',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 8,
+      textAlign: 'center',
+      background: 'var(--bg-secondary)',
+      flex: '1 1 0',
+      minWidth: 80,
+    }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2 }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+
+interface StatRowProps {
+  allSteps: StepRun[];
+  run: WorkflowRun;
+  isTerminal: boolean;
+}
+
+function StatRow({ allSteps, run, isTerminal }: StatRowProps) {
+  const total     = allSteps.length;
+  const doneCount = allSteps.filter(s => s.status === 'success').length;
+  const failCount = allSteps.filter(s => s.status === 'failed').length;
+  const skipCount = allSteps.filter(s => s.status === 'skipped' || s.status === 'cancelled').length;
+  const durationMs = run.durationMs ?? run.result?.metrics?.timeMs;
+
+  if (total === 0) { return null; }
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 'var(--spacing-section)' }}>
+      <StatCard value={total} label="Total steps" />
+      <StatCard value={doneCount} label="Done" color="var(--success)" />
+      {failCount > 0 && (
+        <StatCard value={failCount} label="Failed" color="var(--error)" />
+      )}
+      {skipCount > 0 && (
+        <StatCard value={skipCount} label="Skipped" color="var(--text-tertiary)" />
+      )}
+      {isTerminal && durationMs != null && durationMs > 0 && (
+        <StatCard value={formatDurationMs(durationMs)} label="Duration" />
+      )}
+    </div>
+  );
+}
+
+// ─── Hero block ───────────────────────────────────────────────────────────────
 
 interface HeroBlockProps {
   step: StepRun;
@@ -219,6 +279,96 @@ function PreparingBlock({ startedAt }: { startedAt?: string }) {
   );
 }
 
+// ─── Skipped section ──────────────────────────────────────────────────────────
+
+const SKIPPED_COLLAPSE_THRESHOLD = 5;
+
+function SkippedSection({ steps }: { steps: StepRun[] }) {
+  const [expanded, setExpanded] = useState(steps.length <= SKIPPED_COLLAPSE_THRESHOLD);
+  const showToggle = steps.length > SKIPPED_COLLAPSE_THRESHOLD;
+  const visibleSteps = expanded ? steps : steps.slice(0, SKIPPED_COLLAPSE_THRESHOLD);
+
+  return (
+    <div style={{ marginBottom: 'var(--spacing-section)' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          marginBottom: 8, cursor: showToggle ? 'pointer' : 'default',
+        }}
+        onClick={showToggle ? () => setExpanded(v => !v) : undefined}
+      >
+        <UITypographyText className="typo-label text-secondary">
+          Skipped ({steps.length})
+        </UITypographyText>
+        {showToggle && (
+          <span style={{
+            fontSize: 10, color: 'var(--text-tertiary)',
+            display: 'inline-block',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 200ms ease',
+          }}>
+            ▶
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {visibleSteps.map((step) => (
+          <div
+            key={step.id}
+            style={{
+              padding: '7px 12px',
+              background: 'transparent',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 6,
+              opacity: 0.65,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UIIcon
+                name="MinusCircleOutlined"
+                style={{ color: 'var(--text-tertiary)', fontSize: 13, flexShrink: 0 }}
+              />
+              <UITypographyText className="typo-body text-secondary">
+                {step.spec?.summary ?? step.name}
+              </UITypographyText>
+              {step.status === 'cancelled' && (
+                <UITag style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.8 }}>cancelled</UITag>
+              )}
+            </div>
+            {step.skipReason && (
+              <UITypographyText
+                className="typo-caption text-tertiary"
+                style={{ display: 'block', marginTop: 3, marginLeft: 21, fontStyle: 'italic' }}
+              >
+                {step.skipReason}
+              </UITypographyText>
+            )}
+          </div>
+        ))}
+
+        {showToggle && !expanded && (
+          <div
+            onClick={() => setExpanded(true)}
+            style={{
+              padding: '5px 12px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              fontSize: 12,
+              color: 'var(--text-tertiary)',
+              borderRadius: 6,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+          >
+            Show {steps.length - SKIPPED_COLLAPSE_THRESHOLD} more
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main view ────────────────────────────────────────────────────
 
 interface DashboardViewProps {
@@ -231,11 +381,14 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
   const allSteps = flatSteps(run);
 
   const isRunActive = run.status === 'running' || run.status === 'queued';
+  const isTerminal  = !isRunActive;
+
   const currentStep = allSteps.find(
     (s) => s.status === 'running' || s.status === 'waiting_approval',
   );
   const completedSteps = allSteps.filter((s) => s.status === 'success');
-  const futureSteps = allSteps.filter(
+  const skippedSteps   = allSteps.filter((s) => s.status === 'skipped' || s.status === 'cancelled');
+  const futureSteps    = allSteps.filter(
     (s) => s.status === 'queued' || (s.status as string) === 'pending',
   );
 
@@ -244,6 +397,9 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
 
   return (
     <div>
+      {/* Stat summary */}
+      <StatRow allSteps={allSteps} run={run} isTerminal={isTerminal} />
+
       {/* Phase bar */}
       {phases.length > 0 && (
         <div style={{
@@ -303,6 +459,11 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
         </div>
       )}
 
+      {/* Skipped / cancelled steps */}
+      {skippedSteps.length > 0 && (
+        <SkippedSection steps={skippedSteps} />
+      )}
+
       {/* Future steps */}
       {futureSteps.length > 0 && (
         <div>
@@ -338,7 +499,7 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
       )}
 
       {/* Empty state */}
-      {!currentStep && completedSteps.length === 0 && futureSteps.length === 0 && (
+      {!currentStep && completedSteps.length === 0 && futureSteps.length === 0 && skippedSteps.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <UITypographyText className="typo-description text-secondary">
             No execution data
