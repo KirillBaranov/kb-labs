@@ -1016,8 +1016,8 @@ async function applyGateSkip(
       pastGate = true;
       continue; // gate is already marked completed above
     }
-    if (!pastGate) continue;
-    if (s.spec.id === skipTo || s.id === skipTo) break; // stop at target (inclusive — don't skip it)
+    if (!pastGate) {continue;}
+    if (s.spec.id === skipTo || s.id === skipTo) {break;} // stop at target (inclusive — don't skip it)
     await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
       draft.status = 'success';
       draft.outputs = { skipped: true };

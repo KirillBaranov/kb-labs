@@ -64,7 +64,7 @@ function buildEngine(runId: string, jobId: string, steps: ReturnType<typeof make
   const stateStore = {
     updateStep: vi.fn(async (_r: string, _j: string, stepId: string, mutator: (d: any) => void) => {
       const s = steps.find(x => x.id === stepId);
-      if (!s) return;
+      if (!s) {return;}
       mutator(s);
     }),
     updateJob: vi.fn(async () => {}),
@@ -107,15 +107,15 @@ function buildEngine(runId: string, jobId: string, steps: ReturnType<typeof make
     },
     async markStepStarted(_r: string, _j: string, stepId: string) {
       const s = steps.find(x => x.id === stepId);
-      if (s) s.status = 'running';
+      if (s) {s.status = 'running';}
     },
     async markStepCompleted(_r: string, _j: string, stepId: string, outputs?: Record<string, unknown>) {
       const s = steps.find(x => x.id === stepId);
-      if (s) { s.status = 'success'; if (outputs) s.outputs = outputs; }
+      if (s) { s.status = 'success'; if (outputs) {s.outputs = outputs;} }
     },
     async markStepFailed(_r: string, _j: string, stepId: string) {
       const s = steps.find(x => x.id === stepId);
-      if (s) s.status = 'failed';
+      if (s) {s.status = 'failed';}
     },
     async markStepWaitingApproval() {},
     async markJobInterrupted() {},
