@@ -15,7 +15,7 @@
  * In production, put nginx/ALB/Cloudflare in front — they handle proxying.
  * This server only serves static files.
  */
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +41,40 @@ const runtimeConfig = Object.fromEntries(
 
 const configScript = `<script>window.__KB_STUDIO_CONFIG__ = ${JSON.stringify(runtimeConfig)};</script>`;
 
+// Dev proxy: /api/* → gateway (strips /api prefix so /api/auth/me → gateway:/auth/me)
+let GATEWAY_ORIGIN;
+try {
+  GATEWAY_ORIGIN = new URL(runtimeConfig.KB_API_BASE_URL).origin;
+} catch {
+  console.error(`[studio] Invalid KB_API_BASE_URL: "${runtimeConfig.KB_API_BASE_URL}" — must be a full URL with scheme (e.g. http://localhost:4000). Proxy disabled.`);
+  GATEWAY_ORIGIN = null;
+}
+
+function proxyToGateway(req, res) {
+  const targetPath = req.url.replace(/^\/api/, '') || '/';
+  const gw = new URL(GATEWAY_ORIGIN);
+  const options = {
+    hostname: gw.hostname,
+    port:     gw.port || 80,
+    path:     targetPath,
+    method:   req.method,
+    headers:  { ...req.headers, host: gw.host },
+  };
+  const proxy = httpRequest(options, (pRes) => {
+    res.writeHead(pRes.statusCode, pRes.headers);
+    pRes.pipe(res, { end: true });
+  });
+  proxy.on('error', (err) => {
+    if (!res.headersSent) {
+      res.writeHead(502);
+      res.end('Bad Gateway');
+    } else {
+      res.destroy(err);
+    }
+  });
+  req.pipe(proxy, { end: true });
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js':   'application/javascript; charset=utf-8',
@@ -55,6 +89,12 @@ const MIME = {
 };
 
 const server = createServer(async (req, res) => {
+  // Dev proxy: forward /api/* to gateway
+  if (req.url.startsWith('/api/') && GATEWAY_ORIGIN) {
+    proxyToGateway(req, res);
+    return;
+  }
+
   // Strip query string
   const url = req.url.split('?')[0];
 

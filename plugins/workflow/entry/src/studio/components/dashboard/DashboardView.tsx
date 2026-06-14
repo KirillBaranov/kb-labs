@@ -1,9 +1,10 @@
 /**
  * Dashboard view for a single workflow run.
- * Shows: PhaseProgressBar → Hero block (current step) → Completed steps → Future steps
+ * Shows: StatRow → PhaseProgressBar → Hero block (current step) → Completed steps → Skipped steps → Future steps
  */
 
 import * as React from 'react';
+import { useState } from 'react';
 import {
   UITypographyText,
   UISpace,
@@ -23,20 +24,6 @@ interface StepRunRuntime extends StepRun {
   progressMessage?: string;
 }
 
-function getPhaseStatuses(run: WorkflowRun): PhaseStatus[] {
-  const model = usePipelineModel(run);
-  return model.phases.map((phase) => {
-    const allDone = phase.steps.every((s) => s.stepRun.status === 'success');
-    const anyActive = phase.steps.some(
-      (s) => s.stepRun.status === 'running' || s.stepRun.status === 'waiting_approval',
-    );
-    return {
-      label: phase.label,
-      status: allDone ? 'done' : anyActive ? 'active' : 'pending',
-    };
-  });
-}
-
 function flatSteps(run: WorkflowRun): StepRun[] {
   return run.jobs.flatMap((j) => j.steps);
 }
@@ -50,6 +37,65 @@ function formatDurationMs(ms: number): string {
   return `${m}m ${rem}s`;
 }
 
+// ─── Stat row ─────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  value: number | string;
+  label: string;
+  color?: string;
+}
+
+function StatCard({ value, label, color = 'var(--text-primary)' }: StatCardProps) {
+  return (
+    <div style={{
+      padding: '10px 14px',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 8,
+      textAlign: 'center',
+      background: 'var(--bg-secondary)',
+      flex: '1 1 0',
+      minWidth: 80,
+    }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2 }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+
+interface StatRowProps {
+  allSteps: StepRun[];
+  run: WorkflowRun;
+  isTerminal: boolean;
+}
+
+function StatRow({ allSteps, run, isTerminal }: StatRowProps) {
+  const total     = allSteps.length;
+  const doneCount = allSteps.filter(s => s.status === 'success').length;
+  const failCount = allSteps.filter(s => s.status === 'failed').length;
+  const skipCount = allSteps.filter(s => s.status === 'skipped' || s.status === 'cancelled').length;
+  const durationMs = run.durationMs ?? run.result?.metrics?.timeMs;
+
+  if (total === 0) { return null; }
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 'var(--spacing-section)' }}>
+      <StatCard value={total} label="Total steps" />
+      <StatCard value={doneCount} label="Done" color="var(--success)" />
+      {failCount > 0 && (
+        <StatCard value={failCount} label="Failed" color="var(--error)" />
+      )}
+      {skipCount > 0 && (
+        <StatCard value={skipCount} label="Skipped" color="var(--text-tertiary)" />
+      )}
+      {isTerminal && durationMs != null && durationMs > 0 && (
+        <StatCard value={formatDurationMs(durationMs)} label="Duration" />
+      )}
+    </div>
+  );
+}
+
+// ─── Hero block ───────────────────────────────────────────────────────────────
+
 interface HeroBlockProps {
   step: StepRun;
   onApprove?: () => void;
@@ -61,7 +107,7 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
   const isRunning = step.status === 'running';
   const elapsed = useElapsedTimer(isRunning || isWaiting ? step.startedAt : undefined);
   // artifacts is Record<name, StepArtifact> in contracts
-  const artifactsMap = (step.spec?.artifacts) as Record<string, StepArtifact> | undefined;
+  const artifactsMap = step.spec?.artifacts as Record<string, StepArtifact> | undefined;
   const artifacts = artifactsMap ? Object.values(artifactsMap) : [];
 
   return (
@@ -79,7 +125,7 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
           {step.spec?.summary ?? step.name}
         </UITypographyText>
         <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
-          {step.durationMs ? formatDurationMs(step.durationMs) : elapsed ?? null}
+          {step.durationMs ? formatDurationMs(step.durationMs) : elapsed ? elapsed : null}
         </UITypographyText>
       </div>
 
@@ -120,7 +166,7 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
             // Resolve dot-path from outputs
             const data = artifact.source.split('.').reduce<unknown>(
               (acc, key) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[key] : undefined),
-              step,
+              step.outputs,
             );
             return (
               <div key={i}>
@@ -155,6 +201,7 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
         </div>
       )}
 
+      {/* Running indicator with elapsed time */}
       {isRunning && !rt.progressMessage && (
         <UISpace className="gap-tight" style={{ marginTop: 6 }}>
           <UIIcon name="LoadingOutlined" spin style={{ color: 'var(--link)', fontSize: 13 }} />
@@ -167,20 +214,48 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
   );
 }
 
+// ─── Preparing block ──────────────────────────────────────────────
+
 function PreparingBlock({ startedAt }: { startedAt?: string }) {
   const elapsed = useElapsedTimer(startedAt);
   return (
-    <div style={{ padding: '20px 24px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 10, marginBottom: 'var(--spacing-section)', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--border-primary)' }}>
-        <div style={{ position: 'absolute', top: 0, height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, var(--link), transparent)', animation: 'kb-prep-slide 1.6s ease-in-out infinite' }} />
+    <div style={{
+      padding: '20px 24px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 10,
+      marginBottom: 'var(--spacing-section)',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Indeterminate shimmer bar at top */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: 'var(--border-primary)',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, height: '100%', width: '40%',
+          background: 'linear-gradient(90deg, transparent, var(--link), transparent)',
+          animation: 'kb-prep-slide 1.6s ease-in-out infinite',
+        }} />
       </div>
-      <style>{`@keyframes kb-prep-slide { 0%{left:-40%} 100%{left:140%} }`}</style>
+      <style>{`
+        @keyframes kb-prep-slide {
+          0%   { left: -40%; }
+          100% { left: 140%; }
+        }
+      `}</style>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <UIIcon name="LoadingOutlined" spin style={{ color: 'var(--link)', fontSize: 14, flexShrink: 0 }} />
         <UITypographyText style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
           Preparing execution environment
         </UITypographyText>
-        {elapsed && <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>{elapsed}</UITypographyText>}
+        {elapsed && (
+          <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
+            {elapsed}
+          </UITypographyText>
+        )}
       </div>
       <UITypographyText className="typo-description text-secondary" style={{ display: 'block', marginTop: 6, marginLeft: 24 }}>
         Provisioning workspace, scheduling steps…
@@ -189,85 +264,136 @@ function PreparingBlock({ startedAt }: { startedAt?: string }) {
   );
 }
 
-interface DashboardViewProps {
-  run: WorkflowRun;
-  onApprove?: (step: StepRun) => void;
-}
+// ─── Skipped section ──────────────────────────────────────────────────────────
 
-const TERMINAL = ['success', 'failed', 'cancelled', 'skipped'];
+const SKIPPED_COLLAPSE_THRESHOLD = 5;
 
-function StatCard({ label, value, color }: { label: string; value: string; color?: string }) {
+function SkippedSection({ steps }: { steps: StepRun[] }) {
+  const [expanded, setExpanded] = useState(steps.length <= SKIPPED_COLLAPSE_THRESHOLD);
+  const showToggle = steps.length > SKIPPED_COLLAPSE_THRESHOLD;
+  const visibleSteps = expanded ? steps : steps.slice(0, SKIPPED_COLLAPSE_THRESHOLD);
+
   return (
-    <div style={{
-      flex: 1,
-      padding: '16px 20px',
-      background: 'var(--bg-secondary)',
-      border: '1px solid var(--border-primary)',
-      borderRadius: 8,
-      minWidth: 0,
-    }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--text-primary)', lineHeight: 1.2 }}>
-        {value}
+    <div style={{ marginBottom: 'var(--spacing-section)' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          marginBottom: 8, cursor: showToggle ? 'pointer' : 'default',
+        }}
+        onClick={showToggle ? () => setExpanded(v => !v) : undefined}
+      >
+        <UITypographyText className="typo-label text-secondary">
+          Skipped ({steps.length})
+        </UITypographyText>
+        {showToggle && (
+          <span style={{
+            fontSize: 10, color: 'var(--text-tertiary)',
+            display: 'inline-block',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 200ms ease',
+          }}>
+            ▶
+          </span>
+        )}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
-        {label}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {visibleSteps.map((step) => (
+          <div
+            key={step.id}
+            style={{
+              padding: '7px 12px',
+              background: 'transparent',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 6,
+              opacity: 0.65,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UIIcon
+                name="MinusCircleOutlined"
+                style={{ color: 'var(--text-tertiary)', fontSize: 13, flexShrink: 0 }}
+              />
+              <UITypographyText className="typo-body text-secondary">
+                {step.spec?.summary ?? step.name}
+              </UITypographyText>
+              {step.status === 'cancelled' && (
+                <UITag style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.8 }}>cancelled</UITag>
+              )}
+            </div>
+            {step.skipReason && (
+              <UITypographyText
+                className="typo-caption text-tertiary"
+                style={{ display: 'block', marginTop: 3, marginLeft: 21, fontStyle: 'italic' }}
+              >
+                {step.skipReason}
+              </UITypographyText>
+            )}
+          </div>
+        ))}
+
+        {showToggle && !expanded && (
+          <div
+            onClick={() => setExpanded(true)}
+            style={{
+              padding: '5px 12px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              fontSize: 12,
+              color: 'var(--text-tertiary)',
+              borderRadius: 6,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+          >
+            Show {steps.length - SKIPPED_COLLAPSE_THRESHOLD} more
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+// ─── Main view ────────────────────────────────────────────────────
+
+interface DashboardViewProps {
+  run: WorkflowRun;
+  onApprove?: (step: StepRun) => void;
+}
+
 export function DashboardView({ run, onApprove }: DashboardViewProps) {
   const model = usePipelineModel(run);
-  const phases = model.phases.map((phase) => {
+  const phases: PhaseStatus[] = model.phases.map((phase) => {
     const allDone = phase.steps.every((s) => s.stepRun.status === 'success');
     const anyActive = phase.steps.some(
       (s) => s.stepRun.status === 'running' || s.stepRun.status === 'waiting_approval',
     );
-    return { label: phase.label, status: allDone ? 'done' : anyActive ? 'active' : 'pending' } as PhaseStatus;
+    return { label: phase.label, status: allDone ? 'done' : anyActive ? 'active' : 'pending' };
   });
 
   const allSteps = flatSteps(run);
-  const isTerminal = TERMINAL.includes(run.status);
 
-  const currentStep = !isTerminal
-    ? allSteps.find((s) => s.status === 'running' || s.status === 'waiting_approval')
-    : null;
+  const isRunActive = run.status === 'running' || run.status === 'queued';
+  const isTerminal  = !isRunActive;
+
+  const currentStep = allSteps.find(
+    (s) => s.status === 'running' || s.status === 'waiting_approval',
+  );
   const completedSteps = allSteps.filter((s) => s.status === 'success');
-  const isPreparing = !isTerminal && !currentStep && completedSteps.length === 0;
-  const failedSteps = allSteps.filter((s) => s.status === 'failed');
-  const futureSteps = allSteps.filter((s) => s.status === 'queued' || (s.status as string) === 'pending');
+  const failedSteps    = allSteps.filter((s) => s.status === 'failed');
+  const skippedSteps   = allSteps.filter((s) => s.status === 'skipped' || s.status === 'cancelled');
+  const futureSteps    = allSteps.filter(
+    (s) => s.status === 'queued' || (s.status as string) === 'pending',
+  );
 
-  // Total duration
-  const totalMs = run.startedAt && run.finishedAt
-    ? new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime()
-    : null;
-
-  // Steps grouped by phase for terminal view
-  const stepsByPhase = model.phases.map((phase) => ({
-    label: phase.label,
-    steps: phase.steps.map((s) => s.stepRun),
-  }));
-  const ungroupedSteps = model.phases.length === 0 ? allSteps : [];
-
-  // Summary artifacts — any completed/failed step with showInSummary: true artifacts
-  // Shown both during active runs (for completed steps) and after terminal
-  const summaryArtifacts: { step: StepRun; artifact: StepArtifact; data: unknown }[] = [];
-  for (const step of allSteps) {
-    if (step.status !== 'success' && step.status !== 'failed') {continue;}
-    const artifactsMap = (step.spec?.artifacts) as Record<string, StepArtifact> | undefined;
-    if (!artifactsMap) {continue;}
-    for (const artifact of Object.values(artifactsMap)) {
-      if (!artifact.showInSummary) {continue;}
-      const data = artifact.source.split('.').reduce<unknown>(
-        (acc, key) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[key] : undefined),
-        step,
-      );
-      summaryArtifacts.push({ step, artifact, data });
-    }
-  }
+  // Show preparing state when run is active but no step has started yet
+  const isPreparing = isRunActive && !currentStep && completedSteps.length === 0;
 
   return (
     <div>
+      {/* Stat summary */}
+      <StatRow allSteps={allSteps} run={run} isTerminal={isTerminal} />
+
       {/* Phase bar */}
       {phases.length > 0 && (
         <div style={{
@@ -275,15 +401,16 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-primary)',
           borderRadius: 8,
-          marginBottom: 16,
+          marginBottom: 'var(--spacing-section)',
         }}>
           <PhaseProgressBar phases={phases} />
         </div>
       )}
 
-      {/* ── ACTIVE RUN: hero block ── */}
+      {/* Preparing: run active but no step started yet */}
       {isPreparing && <PreparingBlock startedAt={run.startedAt} />}
 
+      {/* Hero: current step */}
       {currentStep && (
         <HeroBlock
           step={currentStep}
@@ -291,139 +418,30 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
         />
       )}
 
-      {/* ── Summary artifacts (showInSummary: true) — shown as steps complete ── */}
-      {summaryArtifacts.length > 0 && (() => {
-        const links = summaryArtifacts.filter(a => a.artifact.type === 'link');
-        const rich = summaryArtifacts.filter(a => a.artifact.type !== 'link');
-        return (
-          <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* link artifacts — inline row */}
-            {links.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {links.map(({ artifact, data }, i) => (
-                  <ArtifactViewer key={i} type="link" data={data} label={artifact.label} />
-                ))}
-              </div>
-            )}
-            {/* rich artifacts — full-width blocks */}
-            {rich.length > 0 && (
-              <div style={{
-                padding: '16px 20px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 10,
-                display: 'flex', flexDirection: 'column', gap: 16,
-              }}>
-                {rich.map(({ artifact, data }, i) => (
-                  <div key={i}>
-                    <UITypographyText className="typo-label text-secondary" style={{ display: 'block', marginBottom: 6 }}>
-                      {artifact.label}
-                    </UITypographyText>
-                    <ArtifactViewer type={artifact.type} data={data} label={artifact.label} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ── TERMINAL RUN: summary stats ── */}
-      {isTerminal && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <StatCard label="Total steps" value={String(allSteps.length)} />
-          <StatCard label="Completed" value={String(completedSteps.length)} color="var(--success)" />
-          {failedSteps.length > 0 && (
-            <StatCard label="Failed" value={String(failedSteps.length)} color="var(--error)" />
-          )}
-          {totalMs != null && (
-            <StatCard label="Duration" value={formatDurationMs(totalMs)} />
-          )}
-        </div>
-      )}
-
-      {/* ── TERMINAL RUN: steps by phase ── */}
-      {isTerminal && stepsByPhase.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {stepsByPhase.map((phase) => (
-            <div key={phase.label}>
-              <UITypographyText className="typo-label text-secondary" style={{ display: 'block', marginBottom: 8 }}>
-                {phase.label}
-              </UITypographyText>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {phase.steps.map((step) => (
-                  <div key={step.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '7px 12px',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: 6,
-                  }}>
-                    <UIIcon
-                      name={step.status === 'success' ? 'CheckCircleOutlined' : step.status === 'failed' ? 'CloseCircleOutlined' : 'MinusCircleOutlined'}
-                      style={{ fontSize: 13, color: step.status === 'success' ? 'var(--success)' : step.status === 'failed' ? 'var(--error)' : 'var(--text-tertiary)', flexShrink: 0 }}
-                    />
-                    <UITypographyText className="typo-body" style={{ flex: 1, minWidth: 0 }}>
-                      {step.spec?.summary ?? step.name}
-                    </UITypographyText>
-                    {step.durationMs && (
-                      <UITypographyText className="typo-caption text-tertiary" style={{ flexShrink: 0 }}>
-                        {formatDurationMs(step.durationMs)}
-                      </UITypographyText>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── TERMINAL RUN: no phases — flat list ── */}
-      {isTerminal && ungroupedSteps.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {ungroupedSteps.map((step) => (
-            <div key={step.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '7px 12px',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 6,
-            }}>
-              <UIIcon
-                name={step.status === 'success' ? 'CheckCircleOutlined' : step.status === 'failed' ? 'CloseCircleOutlined' : 'MinusCircleOutlined'}
-                style={{ fontSize: 13, color: step.status === 'success' ? 'var(--success)' : step.status === 'failed' ? 'var(--error)' : 'var(--text-tertiary)', flexShrink: 0 }}
-              />
-              <UITypographyText className="typo-body" style={{ flex: 1 }}>
-                {step.spec?.summary ?? step.name}
-              </UITypographyText>
-              {step.durationMs && (
-                <UITypographyText className="typo-caption text-tertiary">
-                  {formatDurationMs(step.durationMs)}
-                </UITypographyText>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── ACTIVE RUN: completed + upcoming ── */}
-      {!isTerminal && completedSteps.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
+      {/* Completed steps */}
+      {completedSteps.length > 0 && (
+        <div style={{ marginBottom: 'var(--spacing-section)' }}>
           <UITypographyText className="typo-label text-secondary" style={{ display: 'block', marginBottom: 8 }}>
             Completed ({completedSteps.length})
           </UITypographyText>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {completedSteps.map((step) => (
-              <div key={step.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '7px 12px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 6,
-              }}>
+              <div
+                key={step.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 6,
+                }}
+              >
                 <UIIcon name="CheckCircleOutlined" style={{ color: 'var(--success)', fontSize: 13 }} />
-                <UITypographyText className="typo-body">{step.spec?.summary ?? step.name}</UITypographyText>
+                <UITypographyText className="typo-body">
+                  {step.spec?.summary ?? step.name}
+                </UITypographyText>
                 {step.durationMs && (
                   <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
                     {formatDurationMs(step.durationMs)}
@@ -435,22 +453,85 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
         </div>
       )}
 
-      {!isTerminal && futureSteps.length > 0 && (
+      {/* Failed steps */}
+      {failedSteps.length > 0 && (
+        <div style={{ marginBottom: 'var(--spacing-section)' }}>
+          <UITypographyText className="typo-label text-secondary" style={{ display: 'block', marginBottom: 8 }}>
+            Failed ({failedSteps.length})
+          </UITypographyText>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {failedSteps.map((step) => (
+              <div
+                key={step.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  padding: '8px 12px',
+                  background: 'color-mix(in srgb, var(--error) 5%, var(--bg-secondary))',
+                  border: '1px solid color-mix(in srgb, var(--error) 25%, transparent)',
+                  borderRadius: 6,
+                }}
+              >
+                <UIIcon name="CloseCircleOutlined" style={{ color: 'var(--error)', fontSize: 13, flexShrink: 0, paddingTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <UITypographyText className="typo-body" style={{ fontWeight: 500 }}>
+                    {step.spec?.summary ?? step.name}
+                  </UITypographyText>
+                  {step.error?.message && (
+                    <UITypographyText
+                      className="typo-caption"
+                      style={{
+                        display: 'block', marginTop: 3,
+                        color: 'var(--error)', opacity: 0.85,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {(step.error.message.split('\n')[0] ?? '').slice(0, 120)}
+                    </UITypographyText>
+                  )}
+                </div>
+                {step.durationMs && (
+                  <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                    {formatDurationMs(step.durationMs)}
+                  </UITypographyText>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Skipped / cancelled steps */}
+      {skippedSteps.length > 0 && (
+        <SkippedSection steps={skippedSteps} />
+      )}
+
+      {/* Future steps */}
+      {futureSteps.length > 0 && (
         <div>
           <UITypographyText className="typo-label text-secondary" style={{ display: 'block', marginBottom: 8 }}>
             Upcoming ({futureSteps.length})
           </UITypographyText>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {futureSteps.map((step) => (
-              <div key={step.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '7px 12px',
-                border: '1px dashed var(--border-primary)',
-                borderRadius: 6,
-                opacity: 0.5,
-              }}>
+              <div
+                key={step.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: '1px dashed var(--border-primary)',
+                  borderRadius: 6,
+                  opacity: 0.5,
+                }}
+              >
                 <UIIcon name="ClockCircleOutlined" style={{ color: 'var(--text-tertiary)', fontSize: 13 }} />
-                <UITypographyText className="typo-body text-secondary">{step.spec?.summary ?? step.name}</UITypographyText>
+                <UITypographyText className="typo-body text-secondary">
+                  {step.spec?.summary ?? step.name}
+                </UITypographyText>
                 {step.spec?.phase && (
                   <UITag style={{ marginLeft: 'auto', opacity: 0.7 }}>{step.spec.phase}</UITag>
                 )}
@@ -460,9 +541,12 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
         </div>
       )}
 
-      {allSteps.length === 0 && (
+      {/* Empty state */}
+      {!currentStep && completedSteps.length === 0 && failedSteps.length === 0 && futureSteps.length === 0 && skippedSteps.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <UITypographyText className="typo-description text-secondary">No execution data</UITypographyText>
+          <UITypographyText className="typo-description text-secondary">
+            No execution data
+          </UITypographyText>
         </div>
       )}
     </div>
