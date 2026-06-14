@@ -42,10 +42,20 @@ test('AUTH-05: access token expiry → transparent refresh → continues working
 
   // Navigate in the browser — the Studio http-client interceptor handles 401 → refresh → retry.
   // A direct request.get() would bypass the interceptor and always return 401 on expired tokens.
-  await page.goto('/')
+  // Await the successful /auth/me retry (the one that returns 200 after refresh) so that
+  // cookieMap sees the new kb_access cookie. RequireAuth no longer bounces through /login
+  // during loading, so we synchronise on the network response instead.
+  const [authMeResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/auth/me') && r.status() === 200,
+      { timeout: 15_000 },
+    ),
+    page.goto('/'),
+  ])
+  expect(authMeResponse.ok()).toBe(true)
 
-  // Should NOT be redirected to /login (transparent refresh succeeded).
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 })
+  // Should NOT be on /login (transparent refresh succeeded — URL never changed).
+  await expect(page).not.toHaveURL(/\/login/)
 
   // kb_access should have been refreshed (new cookie set by the refresh response).
   const cookiesAfter = await cookieMap(context)

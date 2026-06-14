@@ -42,29 +42,25 @@ export interface RequireAuthProps {
 /**
  * Wraps children that require an authenticated session.
  *
- * - `loading` or `anonymous` → Navigate to /login (with { from: location }
- *   state so LoginPage can navigate back after auth completes).
- * - `authenticated`           → renders children
+ * - `loading`       → renders null (blank screen while session check is in
+ *   flight; prevents a flash of the /login page on every cold load)
+ * - `anonymous`     → Navigate to /login (with { from: location } state so
+ *   LoginPage can navigate back after login completes)
+ * - `authenticated` → renders children
  *
- * Redirecting during 'loading' is intentional for E2E correctness (AUTH-05):
- * when access token expires, RequireAuth immediately redirects to /login.
- * The LoginPage's useEffect then navigates back to '/' once AuthProvider
- * resolves (transparent refresh). This SPA cycle gives Playwright's retrying
- * assertions a natural synchronisation point — the URL only returns to '/'
- * after the refresh completes and new cookies are set. Without the redirect,
- * `not.toHaveURL(/login/)` would pass before the refresh finishes, causing
- * `cookieMap` to see an empty `kb_access`.
- *
- * For activation (AUTH-20) the activateUser() fixture uses
- * `expect(page).toHaveURL('/')` (polling) instead of `waitForURL` (event-driven)
- * so that the '/login' → '/' SPA bounce is fully resolved before the assertion
- * passes. See e2e/auth/fixtures/auth.ts.
+ * AUTH-05 (transparent token refresh): the E2E test synchronises on
+ * `page.waitForResponse('/auth/me')` instead of a URL bounce, so this
+ * guard no longer needs to redirect during loading.
  */
 export function RequireAuth({ children, loginPath = '/login' }: RequireAuthProps) {
   const auth = useAuth();
   const location = useLocation();
 
-  if (auth.status === 'loading' || auth.status === 'anonymous') {
+  if (auth.status === 'loading') {
+    return null;
+  }
+
+  if (auth.status === 'anonymous') {
     return <Navigate to={loginPath} replace state={{ from: location }} />;
   }
 
