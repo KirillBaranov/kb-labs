@@ -42,22 +42,36 @@ const runtimeConfig = Object.fromEntries(
 const configScript = `<script>window.__KB_STUDIO_CONFIG__ = ${JSON.stringify(runtimeConfig)};</script>`;
 
 // Dev proxy: /api/* → gateway (strips /api prefix so /api/auth/me → gateway:/auth/me)
-const GATEWAY_ORIGIN = new URL(runtimeConfig.KB_API_BASE_URL).origin; // http://localhost:4000
+let GATEWAY_ORIGIN;
+try {
+  GATEWAY_ORIGIN = new URL(runtimeConfig.KB_API_BASE_URL).origin;
+} catch {
+  console.error(`[studio] Invalid KB_API_BASE_URL: "${runtimeConfig.KB_API_BASE_URL}" — must be a full URL with scheme (e.g. http://localhost:4000). Proxy disabled.`);
+  GATEWAY_ORIGIN = null;
+}
 
 function proxyToGateway(req, res) {
   const targetPath = req.url.replace(/^\/api/, '') || '/';
+  const gw = new URL(GATEWAY_ORIGIN);
   const options = {
-    hostname: new URL(GATEWAY_ORIGIN).hostname,
-    port:     new URL(GATEWAY_ORIGIN).port || 80,
+    hostname: gw.hostname,
+    port:     gw.port || 80,
     path:     targetPath,
     method:   req.method,
-    headers:  { ...req.headers, host: new URL(GATEWAY_ORIGIN).host },
+    headers:  { ...req.headers, host: gw.host },
   };
   const proxy = httpRequest(options, (pRes) => {
     res.writeHead(pRes.statusCode, pRes.headers);
     pRes.pipe(res, { end: true });
   });
-  proxy.on('error', () => { res.writeHead(502); res.end('Bad Gateway'); });
+  proxy.on('error', (err) => {
+    if (!res.headersSent) {
+      res.writeHead(502);
+      res.end('Bad Gateway');
+    } else {
+      res.destroy(err);
+    }
+  });
   req.pipe(proxy, { end: true });
 }
 
@@ -76,7 +90,7 @@ const MIME = {
 
 const server = createServer(async (req, res) => {
   // Dev proxy: forward /api/* to gateway
-  if (req.url.startsWith('/api/')) {
+  if (req.url.startsWith('/api/') && GATEWAY_ORIGIN) {
     proxyToGateway(req, res);
     return;
   }

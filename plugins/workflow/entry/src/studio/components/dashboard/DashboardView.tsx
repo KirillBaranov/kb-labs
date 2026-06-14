@@ -24,21 +24,6 @@ interface StepRunRuntime extends StepRun {
   progressMessage?: string;
 }
 
-function getPhaseStatuses(run: WorkflowRun): PhaseStatus[] {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const model = usePipelineModel(run);
-  return model.phases.map((phase) => {
-    const allDone = phase.steps.every((s) => s.stepRun.status === 'success');
-    const anyActive = phase.steps.some(
-      (s) => s.stepRun.status === 'running' || s.stepRun.status === 'waiting_approval',
-    );
-    return {
-      label: phase.label,
-      status: allDone ? 'done' : anyActive ? 'active' : 'pending',
-    };
-  });
-}
-
 function flatSteps(run: WorkflowRun): StepRun[] {
   return run.jobs.flatMap((j) => j.steps);
 }
@@ -377,7 +362,15 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ run, onApprove }: DashboardViewProps) {
-  const phases = getPhaseStatuses(run);
+  const model = usePipelineModel(run);
+  const phases: PhaseStatus[] = model.phases.map((phase) => {
+    const allDone = phase.steps.every((s) => s.stepRun.status === 'success');
+    const anyActive = phase.steps.some(
+      (s) => s.stepRun.status === 'running' || s.stepRun.status === 'waiting_approval',
+    );
+    return { label: phase.label, status: allDone ? 'done' : anyActive ? 'active' : 'pending' };
+  });
+
   const allSteps = flatSteps(run);
 
   const isRunActive = run.status === 'running' || run.status === 'queued';

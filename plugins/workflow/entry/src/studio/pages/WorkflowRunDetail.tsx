@@ -515,6 +515,7 @@ function applyStateEvent(run: WorkflowRun, ev: WorkflowLogEvent): WorkflowRun {
       status: eventTypeToStatus(type) as StepRun['status'],
       startedAt: type === 'step.started' ? ((payload?.startedAt as string) ?? s.startedAt) : s.startedAt,
       durationMs: (payload?.durationMs as number) ?? s.durationMs,
+      error: (payload?.error as StepRun['error'] | undefined) ?? s.error,
     })
     return { ...j, steps }
   })

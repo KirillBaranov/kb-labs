@@ -450,7 +450,9 @@ function PhaseSection({
 
   // Start open if active or not yet done; start collapsed if all done
   const [open, setOpen] = useState(!isAllDone || isActive)
+  const [measuredHeight, setMeasuredHeight] = useState(0)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
   const activeRowRef = useRef<HTMLDivElement>(null)
 
   // Auto-collapse when phase finishes (500ms delay so user sees completion)
@@ -474,8 +476,16 @@ function PhaseSection({
 
   const toggle = useCallback(() => setOpen(v => !v), [])
 
-  // Measure body height for smooth animation
-  const bodyHeight = bodyRef.current?.scrollHeight ?? 2000
+  // Track natural content height via ResizeObserver on an unconstrained inner div
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) {return}
+    const ro = new ResizeObserver(() => setMeasuredHeight(el.getBoundingClientRect().height))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const bodyHeight = measuredHeight || 2000
   const bodyStyle: React.CSSProperties = reducedMotion
     ? { display: open ? 'block' : 'none' }
     : {
@@ -561,7 +571,7 @@ function PhaseSection({
 
       {/* Step rows — animated */}
       <div ref={bodyRef} style={bodyStyle}>
-        <div style={{
+        <div ref={innerRef} style={{
           borderLeft: `2px solid color-mix(in srgb, ${color} 25%, var(--border-primary))`,
           marginLeft: 5,
           paddingLeft: 12,
