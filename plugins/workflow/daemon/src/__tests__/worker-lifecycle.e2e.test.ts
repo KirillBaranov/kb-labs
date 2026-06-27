@@ -696,4 +696,119 @@ describe('workflow worker lifecycle', () => {
     // Job must not have completed successfully (was interrupted, not approved)
     expect(run.jobs[0].status).not.toBe('success');
   });
+
+  it('WF-003: cancel during step execution calls markJobInterrupted, not markJobCompleted', async () => {
+    // Regression: when a run is cancelled while steps are executing, the worker
+    // detected the cancellation and broke out of the loop — but then called
+    // markJobCompleted unconditionally. This caused the run to finish as SUCCESS
+    // instead of staying CANCELLED.
+    //
+    // Fix: track wasCancelled flag in the step loop; call markJobInterrupted on
+    // cancel path, markJobCompleted only when the loop finished without cancellation.
+    const runId = `run-cancel-wf003-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      status: 'running',
+      env: {},
+      metadata: {},
+      trigger: { type: 'manual' },
+      inputs: {},
+      jobs: [{
+        id: jobId,
+        jobName: 'job',
+        status: 'queued',
+        attempt: 0,
+        steps: [
+          {
+            id: 'step-1',
+            status: 'pending',
+            spec: { uses: 'plugin:test/handler', with: {} },
+          },
+          {
+            id: 'step-2',
+            status: 'pending',
+            spec: { uses: 'plugin:test/handler', with: {} },
+          },
+        ],
+      }],
+    };
+
+    // After step-1 runs, the run becomes cancelled (simulates user calling cancelRun)
+    let step1Executed = false;
+    mockRunnerExecute.mockImplementation(async () => {
+      step1Executed = true;
+      // Simulate cancellation happening while step-1 was executing
+      run.status = 'cancelled';
+      return { status: 'success', outputs: {} };
+    });
+
+    const markJobCompletedSpy = vi.fn();
+    const markJobInterruptedSpy = vi.fn();
+    const completion = createDeferred<void>();
+
+    let queueDrained = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) {
+        return id === runId ? run : null;
+      },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markJobCompleted() {
+        markJobCompletedSpy();
+        run.jobs[0].status = 'success';
+        completion.resolve();
+      },
+      async markJobFailed(_r: string, _j: string, err: Error) {
+        completion.reject(err);
+      },
+      async markStepStarted() {},
+      async markStepCompleted() {},
+      async markStepFailed() {},
+      async markJobInterrupted() {
+        markJobInterruptedSpy();
+        completion.resolve();
+      },
+      getStateStore: vi.fn(() => ({
+        updateStep: vi.fn(async () => {}),
+      })),
+    };
+
+    const logger = mockLogger();
+
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger,
+      workspaceRoot: '/tmp/test-wf003',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+    });
+
+    const startPromise = worker.start();
+    await Promise.race([
+      completion.promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('WF-003 completion timeout')), 10_000)),
+    ]);
+    await worker.stop();
+    await startPromise;
+
+    // Step-1 executed, then cancellation was detected before step-2
+    expect(step1Executed).toBe(true);
+    // Step-2 must NOT execute — cancelled before reaching it
+    expect(mockRunnerExecute).toHaveBeenCalledTimes(1);
+    // Job must be interrupted (cancelled path), NOT completed (success path)
+    expect(markJobInterruptedSpy).toHaveBeenCalledOnce();
+    expect(markJobCompletedSpy).not.toHaveBeenCalled();
+  });
 });

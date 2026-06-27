@@ -275,7 +275,7 @@ export async function createWorkflowWorker(
         // - Step outputs are inputs for next steps
         // - Steps may have side effects that depend on order
         // - Workflow semantics require sequential execution
-         
+        let wasCancelled = false;
         for (const step of job.steps) {
           if (step.status === 'success') {
             continue; // Skip already completed steps
@@ -289,6 +289,7 @@ export async function createWorkflowWorker(
               runId: run.id,
               jobId: job.id,
             });
+            wasCancelled = true;
             break;
           }
 
@@ -683,7 +684,16 @@ export async function createWorkflowWorker(
         }
          
 
-        // Mark job as completed
+        // Mark job terminal state: interrupted if run was cancelled, completed otherwise.
+        if (wasCancelled) {
+          await engine.markJobInterrupted(run.id, job.id);
+          jobLogger.info('Job interrupted due to run cancellation', {
+            runId: run.id,
+            jobId: job.id,
+          });
+          return;
+        }
+
         await engine.markJobCompleted(run.id, job.id);
 
         const jobDuration = Date.now() - jobStartTime;
