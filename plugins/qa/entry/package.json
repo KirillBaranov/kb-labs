@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.2.0",
     "@kb-labs/qa-contracts": "workspace:*",
     "@kb-labs/qa-core": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
