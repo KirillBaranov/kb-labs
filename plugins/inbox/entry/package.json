@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/inbox-entry",
-  "version": "0.1.0",
+  "version": "2.95.0",
   "type": "module",
   "description": "V3 manifest + CLI commands + REST handlers for inbox plugin",
   "main": "./dist/index.js",
@@ -18,7 +18,9 @@
   "kb": {
     "manifest": "./dist/manifest.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf dist",

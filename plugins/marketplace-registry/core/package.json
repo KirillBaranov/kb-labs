@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/marketplace-registry-core",
   "description": "Registry service for KB Labs Marketplace Registry",
-  "version": "2.94.0",
+  "version": "2.95.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -33,6 +35,9 @@
     "typescript": "^5",
     "vitest": "^3.2.6"
   },
-  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "sideEffects": false
 }

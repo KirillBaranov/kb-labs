@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-kblabs-gateway",
-  "description": "KB Labs Gateway LLM adapter \u2014 OpenAI-compatible with automatic JWT token refresh",
-  "version": "2.94.0",
+  "description": "KB Labs Gateway LLM adapter — OpenAI-compatible with automatic JWT token refresh",
+  "version": "2.95.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
