@@ -162,9 +162,8 @@ pnpm release:sdk
 
 Each script does:
 1. `node scripts/release-preflight.mjs` — token + registry reachability check
-2. `kb-devkit run build` — full topological build of the entire monorepo
-3. `pnpm kb marketplace:clear-cache` — invalidate CLI plugin cache after rebuild
-4. `pnpm kb release run --flow <flow> --skip-build --yes` — pipeline with `--skip-build` (already built)
+2. `kb-devkit run build` — full topological build of the entire monorepo (CLI discovery cache auto-invalidates via content-hash check)
+3. `pnpm kb release run --flow <flow> --skip-build --yes` — pipeline with `--skip-build` (already built)
 
 The preflight reads `NPM_REGISTRY` env var to check the right registry.
 For Verdaccio: `NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:platform`
