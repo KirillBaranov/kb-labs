@@ -54,7 +54,7 @@ async function resolveLLMForTier(tier: LLMTier): Promise<ILLM | undefined> {
  */
 export function registerLLMGatewayRoutes(app: FastifyInstance, logger: ILogger): void {
   // hide: true — can stream SSE (text/event-stream), incompatible with OpenAPI response schema
-  app.post('/llm/v1/chat/completions', { schema: { tags: ['LLM'], summary: 'OpenAI-compatible chat completions', hide: true } }, async (request, reply) => {
+  app.post('/api/v1/llm/chat/completions', { schema: { tags: ['LLM'], summary: 'OpenAI-compatible chat completions', hide: true } }, async (request, reply) => {
     const auth = request.authContext;
     if (!auth) {
       return reply.code(401).send({ error: 'Unauthorized' });

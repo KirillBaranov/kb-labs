@@ -60,6 +60,12 @@ vi.mock('../../middleware/metrics', () => ({
 
 vi.mock('node:fs/promises');
 
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn().mockReturnValue(true),
+  statSync: vi.fn().mockReturnValue({ isFile: () => true, size: 42 }),
+  createReadStream: vi.fn().mockReturnValue(Buffer.from('fake-chunk')),
+}));
+
 const BASE_CONFIG: RestApiConfig = {
   port: 3000,
   basePath: '/api/v1',
@@ -927,5 +933,68 @@ describe('registerPluginSnapshotRoutes', () => {
       pluginId: '@kb-labs/commit',
     });
     expect(payload.message).toContain('discovery diagnostics');
+  });
+
+  describe('widget bundle Cache-Control headers', () => {
+    function makeWidgetSnapshot(pluginRoot: string) {
+      const manifest = createMockManifest({
+        id: '@kb-labs/workflow',
+        studio: { version: 2 } as ManifestV3['studio'],
+      });
+      return createMockSnapshot([
+        { pluginId: '@kb-labs/workflow', manifest, pluginRoot, source: 'workspace' },
+      ]);
+    }
+
+    it('serves remoteEntry.js with short-lived revalidation header', async () => {
+      const cliApi = { snapshot: vi.fn(() => makeWidgetSnapshot('/fake/plugin')) } as unknown as IEntityRegistry;
+      await registerPluginSnapshotRoutes(app, BASE_CONFIG, cliApi);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/plugins/@kb-labs/workflow/widgets/remoteEntry.js',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['cache-control']).toBe('public, max-age=10, must-revalidate');
+    });
+
+    it('serves non-entry chunk with no-cache in dev (was immutable — broke MF hot reload)', async () => {
+      const original = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      try {
+        const cliApi = { snapshot: vi.fn(() => makeWidgetSnapshot('/fake/plugin')) } as unknown as IEntityRegistry;
+        await registerPluginSnapshotRoutes(app, BASE_CONFIG, cliApi);
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/plugins/@kb-labs/workflow/widgets/162.js',
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['cache-control']).toBe('no-cache');
+      } finally {
+        process.env.NODE_ENV = original;
+      }
+    });
+
+    it('serves non-entry chunk with immutable cache in production', async () => {
+      const original = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      try {
+        const cliApi = { snapshot: vi.fn(() => makeWidgetSnapshot('/fake/plugin')) } as unknown as IEntityRegistry;
+        await registerPluginSnapshotRoutes(app, BASE_CONFIG, cliApi);
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/plugins/@kb-labs/workflow/widgets/162.js',
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+      } finally {
+        process.env.NODE_ENV = original;
+      }
+    });
   });
 });

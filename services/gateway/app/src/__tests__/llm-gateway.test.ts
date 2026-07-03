@@ -2,7 +2,7 @@
  * Integration tests for AI Gateway LLM endpoint.
  *
  * Covers:
- *   POST /llm/v1/chat/completions
+ *   POST /api/v1/llm/chat/completions
  *     - 401 without auth
  *     - 400 with invalid body
  *     - 400 with invalid tier
@@ -112,7 +112,7 @@ const MOCK_TOOL_CALL_RESPONSE: LLMToolCallResponse = {
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
-describe('POST /llm/v1/chat/completions', () => {
+describe('POST /api/v1/llm/chat/completions', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
@@ -130,7 +130,7 @@ describe('POST /llm/v1/chat/completions', () => {
   it('returns 401 without auth token', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       payload: makeCompletionPayload(),
     });
 
@@ -142,7 +142,7 @@ describe('POST /llm/v1/chat/completions', () => {
   it('returns 400 with empty body', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: {},
     });
@@ -155,7 +155,7 @@ describe('POST /llm/v1/chat/completions', () => {
   it('returns 400 with invalid tier', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({ model: 'gpt-4o' }), // literal model name, not tier
     });
@@ -166,7 +166,7 @@ describe('POST /llm/v1/chat/completions', () => {
   it('returns 400 with no messages', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({ messages: [] }),
     });
@@ -181,7 +181,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload(),
     });
@@ -207,7 +207,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({ temperature: 0.5, max_tokens: 100 }),
     });
@@ -226,7 +226,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({
         messages: [
@@ -249,7 +249,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({
         tools: [
@@ -293,7 +293,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload({ stream: true }),
     });
@@ -332,7 +332,7 @@ describe('POST /llm/v1/chat/completions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/llm/v1/chat/completions',
+      url: '/api/v1/llm/chat/completions',
       headers: { authorization: TEST_AUTH_HEADER },
       payload: makeCompletionPayload(),
     });
@@ -350,7 +350,7 @@ describe('POST /llm/v1/chat/completions', () => {
     for (const tier of ['small', 'medium', 'large']) {
       const res = await app.inject({
         method: 'POST',
-        url: '/llm/v1/chat/completions',
+        url: '/api/v1/llm/chat/completions',
         headers: { authorization: TEST_AUTH_HEADER },
         payload: makeCompletionPayload({ model: tier }),
       });

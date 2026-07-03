@@ -34,8 +34,11 @@ services:
       # correct: Chromium treats http://localhost as a secure origin (by spec) and WILL
       # send Secure-flagged cookies over the loopback interface. This lets AUTH-02 / AUTH-29
       # verify the Secure attribute while keeping cookies functional in the CI HTTP context.
-      AUTH_ACCESS_TTL_SEC: "${AUTH_ACCESS_TTL_SEC:-900}"
-      AUTH_REFRESH_TTL_SEC: "${AUTH_REFRESH_TTL_SEC:-2592000}"
+      # Short TTLs needed for session-lifecycle tests (AUTH-06 waits for expiry).
+      # The reusable CI workflow sets these env vars only for the pnpm-e2e step,
+      # not for the docker compose up step, so we default to the test values here.
+      AUTH_ACCESS_TTL_SEC: "${AUTH_ACCESS_TTL_SEC:-5}"
+      AUTH_REFRESH_TTL_SEC: "${AUTH_REFRESH_TTL_SEC:-15}"
       AUTH_INVITE_TTL_MS: "${AUTH_INVITE_TTL_MS:-604800000}"
       # Restore production rate-limit defaults for the auth E2E suite. The base
       # docker-compose.yml raises these to 500/200 to avoid false 429s from
