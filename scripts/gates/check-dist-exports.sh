@@ -52,6 +52,9 @@ MISSING=""
 CHECKED=0
 while IFS= read -r entry; do
   [[ -z "$entry" ]] && continue
+  # Wildcard subpath export patterns (e.g. "./dist/*") map a whole directory,
+  # not a single file — nothing concrete to stat, so skip them.
+  [[ "$entry" == *'*'* ]] && continue
   norm="${entry#./}"
   [[ "$norm" != dist/* ]] && continue
   CHECKED=1
