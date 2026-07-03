@@ -223,7 +223,10 @@
             "exclude": [
               "templates/*",
               "{{.Name}}",
-              "@product-name/*"
+              "@product-name/*",
+              "tmp/notifier-test",
+              "tmp/notifier-test/*",
+              "tmp/notifier-test/packages/*"
             ]
           },
           "flows": {
@@ -264,7 +267,10 @@
                   "@kb-labs/sdk",
                   "templates/*",
                   "{{.Name}}",
-                  "@product-name/*"
+                  "@product-name/*",
+                  "tmp/notifier-test",
+                  "tmp/notifier-test/*",
+                  "tmp/notifier-test/packages/*"
                 ]
               },
               "checks": [

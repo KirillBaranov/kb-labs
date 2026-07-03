@@ -1,36 +1,77 @@
 #!/usr/bin/env bash
 # check-dist-exports.sh
-# Verify that dist/index.js exists and contains no bare directory imports.
-# Bare directory imports (e.g. import '...') that resolve to a directory without
-# an explicit /index.js suffix break Node ESM and some bundlers.
+# Verify that every entry point declared in package.json (main, module, types,
+# typings, exports, bin) actually exists in dist/, and that dist/ contains no
+# bare directory imports. Bare directory imports (e.g. import '...') that
+# resolve to a directory without an explicit /index.js suffix break Node ESM
+# and some bundlers.
 #
 # CWD: package directory (set by release manager check runner)
 # Exit 0 = pass, 1 = fail
 
 set -euo pipefail
 
-DIST_ENTRY="dist/index.js"
+# 1. Collect every file path declared as an entry point in package.json.
+ENTRIES=$(node -e '
+const pkg = require("./package.json");
+const out = new Set();
 
-# 1a. SPA packages (no dist/index.js but have dist/index.html) — skip JS checks
-if [[ ! -f "$DIST_ENTRY" ]] && [[ -f "dist/index.html" ]]; then
+function collect(node) {
+  if (typeof node === "string") {
+    out.add(node);
+  } else if (node && typeof node === "object") {
+    for (const v of Object.values(node)) collect(v);
+  }
+}
+
+for (const field of ["main", "module", "types", "typings"]) {
+  if (pkg[field]) out.add(pkg[field]);
+}
+if (pkg.exports) collect(pkg.exports);
+if (pkg.bin) collect(pkg.bin);
+
+process.stdout.write([...out].join("\n"));
+')
+
+# SPA packages (no JS entries, ships an HTML shell) — skip JS checks entirely.
+if [[ -z "$ENTRIES" ]] && [[ -f "dist/index.html" ]]; then
   echo "OK: SPA package detected (dist/index.html exists), skipping JS dist checks."
   exit 0
 fi
 
-# 1b. Packages whose main entry is outside dist/ (e.g. server.js, federation hosts) — skip
-MAIN_ENTRY=$(node -e "process.stdout.write(require('./package.json').main || '')" 2>/dev/null || true)
-if [[ -n "$MAIN_ENTRY" ]] && [[ ! "$MAIN_ENTRY" =~ ^\.?/?dist/ ]]; then
-  echo "OK: main entry '$MAIN_ENTRY' is outside dist/, skipping dist checks."
+# No declared entries at all — fall back to the legacy default so a silently
+# unbuilt package (missing main/exports) still fails instead of passing free.
+if [[ -z "$ENTRIES" ]]; then
+  ENTRIES="dist/index.js"
+fi
+
+# 2. Only entries that resolve under dist/ are this check's concern — entries
+#    outside dist/ (e.g. a root server.js, a federation host) are intentionally
+#    not produced by this build pipeline.
+MISSING=""
+CHECKED=0
+while IFS= read -r entry; do
+  [[ -z "$entry" ]] && continue
+  norm="${entry#./}"
+  [[ "$norm" != dist/* ]] && continue
+  CHECKED=1
+  if [[ ! -f "$norm" ]]; then
+    MISSING+="  - $entry (expected at $norm)"$'\n'
+  fi
+done <<< "$ENTRIES"
+
+if [[ "$CHECKED" -eq 0 ]]; then
+  echo "OK: no declared entry points resolve under dist/, skipping dist checks."
   exit 0
 fi
 
-# 1c. dist/index.js must exist for non-SPA packages
-if [[ ! -f "$DIST_ENTRY" ]]; then
-  echo "ERROR: $DIST_ENTRY not found — did you run 'pnpm build'?" >&2
+if [[ -n "$MISSING" ]]; then
+  echo "ERROR: declared entry point(s) missing from dist/ — did you run 'pnpm build'?" >&2
+  echo -n "$MISSING" >&2
   exit 1
 fi
 
-# 2. No bare directory imports: pattern matches import() or from/require()
+# 3. No bare directory imports: pattern matches import() or from/require()
 #    pointing to a path that ends at a directory name (no .js/.ts/.json/.mjs/.cjs extension)
 #    We allow: ./foo.js  ./foo/index.js  @scope/package
 #    We disallow: ./foo  ../bar  ../../baz (no extension, not a bare specifier)
@@ -52,5 +93,5 @@ if [[ -n "$BAD" ]]; then
   exit 1
 fi
 
-echo "OK: $DIST_ENTRY exists, no bare directory imports detected."
+echo "OK: all declared dist/ entry points exist, no bare directory imports detected."
 exit 0
