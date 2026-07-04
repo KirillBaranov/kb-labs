@@ -61,24 +61,35 @@ export function RegistryV2Provider({
   });
 
   const federationInitialized = React.useRef(false);
+  // Tracks whether initFederation() has actually run for the current `data`.
+  // Kept as separate state (not just a ref) so consumers re-render — and only
+  // mount plugin pages — one commit *after* initFederation() has completed,
+  // instead of racing it: React flushes effects bottom-up (children before
+  // parents), so a child mounted in the same commit as this provider's effect
+  // could call loadRemote() before initFederation() registers the remotes.
+  const [federationReady, setFederationReady] = React.useState(false);
 
   // Initialize Module Federation once when registry is first loaded.
   // Cache invalidation is handled lazily at navigation time via syncRemoteEntry()
   // inside loadPageComponent — so the running page is never disrupted mid-session.
   React.useEffect(() => {
-    if (data && data.plugins.length > 0 && !federationInitialized.current) {
-      initFederation(data.plugins);
+    if (!data) { return; }
+    if (!federationInitialized.current) {
+      if (data.plugins.length > 0) {
+        initFederation(data.plugins);
+      }
       federationInitialized.current = true;
     }
+    setFederationReady(true);
   }, [data]);
 
   const value = React.useMemo<RegistryV2ContextValue>(
     () => ({
       registry: data ?? EMPTY_REGISTRY,
-      loading: isLoading,
+      loading: isLoading || !federationReady,
       error: error instanceof Error ? error : null,
     }),
-    [data, isLoading, error],
+    [data, isLoading, error, federationReady],
   );
 
   return (
