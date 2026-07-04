@@ -29,7 +29,7 @@
   "dependencies": {
     "@kb-labs/devlink-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
