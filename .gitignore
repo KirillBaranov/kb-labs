@@ -145,3 +145,6 @@ PLAN.md
 plugins/**/.kb/
 tools/**/.kb/
 **/.npmrc
+
+# Module Federation dev-mode type cache (Rspack)
+**/.__mf__temp/
