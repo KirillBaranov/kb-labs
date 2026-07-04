@@ -1,177 +1,25 @@
-Now I have a complete picture. Let me write the implementation plan.
+PIPELINE_STATUS: NEEDS_IMPLEMENTATION
 
 ## Summary
-
-The `kb workflow runs list` table already has a `Step` column and `currentStepName` computation in the daemon, but the `--workflow` filter flag is silently broken (sent by the CLI but never read by the daemon API), and the `waiting_approval` state doesn't surface a step name. The plan confirms what is complete, fixes the filter gap, and adds the missing approval-step display.
+The bug is real and confirmed in current code: Studio's `AuthProvider` calls `fetch('/api/auth/*')` with hardcoded literal paths instead of the app's own configurable auth HTTP client, and gateway registers auth routes at bare `/auth/*` without the `/api/v1` prefix used by the rest of the API — and the dev server's raw proxy in `server.js` only strips `/api` (not `/api/v1`), so even proxied requests land on the wrong path and 404, causing Studio to always fall back to `anonymous` auth state and redirect to `/login`.
 
 ## Root cause / context
+- `studio/app/src/auth/auth-provider.tsx` (lines 129, 145, 152, 164, 209, 238): calls `fetchFn('/api/auth/me')`, `/api/auth/refresh`, `/api/auth/permissions`, `/api/auth/login`, `/api/auth/logout` as literal strings, ignoring `window.__KB_STUDIO_CONFIG__.KB_API_BASE_URL` entirely (unlike `studio/hooks/src/use-data.ts:144-171`, which correctly derives `getApiOrigin()` from that config).
+- `studio/app/src/auth/http-client.ts:79-80` already has a configurable `baseURL`/`refreshPath` design (`createAuthHttpClient`), but `AuthProvider` never uses it — it calls `fetchFn` directly, bypassing the abstraction that was clearly built for this purpose.
+- `services/gateway/app/src/auth/user-routes.ts` (234, 266, 355, 374) and `services/gateway/app/src/auth/routes.ts:104` register auth routes with no prefix; `services/gateway/app/src/server.ts:216` registers the containing plugin without `{ prefix: '/api/v1' }`, so routes live at `/auth/me` not `/api/v1/auth/me`, diverging from the rest of the gateway API surface.
+- `studio/app/server.js:44-96` does proxy `/api/*` to the gateway origin, but only strips the `/api` prefix from the incoming URL, not `/api/v1` (which is baked into `KB_API_BASE_URL`), so requests forwarded for auth end up hitting `/v1/auth/me` on the gateway — still a 404 against the bare-root registration.
 
-`currentStepName` is computed in `workflow-host-service.ts:listRuns` (lines 628–644) by scanning `JobRun.steps` for entries with `status === 'running'`. The Step column in `runs-list.ts:81` already renders it. Three gaps remain:
-
-1. **`workflowId` filter is dead end-to-end.** `http-client.ts:318` sends `?workflowId=…` but the daemon API handler (`workflows-api.ts:219`) only destructures `status`, `limit`, `offset` — the param is silently dropped, and `hostService.listRuns` doesn't accept `workflowId` either.
-2. **`waiting_approval` runs show no step name.** When a step is waiting for approval its `status` is `'waiting_approval'`, not `'running'`, so `activeSteps` is empty and `currentStepName` is `undefined` — yet `hasPendingApproval` is `true` and the row shows status icon `…` with an empty Step cell.
-3. **Tests CL-11 / CL-12 exist but aren't run against a real daemon** — handler-level coverage is in place but the `--workflow` filter is untested at the handler level.
-
----
+Net effect: three independent path mismatches compound into every non-proxied-by-nginx install always failing auth and redirecting to `/login`, regardless of `auth.enabled` setting.
 
 ## Implementation steps
-
-### 1. Wire `workflowId` filter through the daemon
-
-**`plugins/workflow/daemon/src/host/workflow-host-service.ts`** — `listRuns` signature and body:
-
-```ts
-// Before (line 608):
-async listRuns(filters?: {
-  status?: string;
-  limit?: number;
-  offset?: number;
-}): Promise<...>
-
-// After:
-async listRuns(filters?: {
-  status?: string;
-  workflowId?: string;   // ← add
-  limit?: number;
-  offset?: number;
-}): Promise<...>
-```
-
-After `if (filters?.status)` block (around line 619), add:
-
-```ts
-if (filters?.workflowId) {
-  runs = runs.filter(run => run.name === filters.workflowId);
-}
-```
-
-**`plugins/workflow/daemon/src/api/workflows-api.ts`** — GET `/api/v1/runs` handler (line 215–232):
-
-```ts
-// Before:
-const { status, limit, offset } = request.query;
-const response = await ... hostService.listRuns({
-  status,
-  limit: limit ? parseInt(limit, 10) : 50,
-  offset: offset ? parseInt(offset, 10) : 0,
-});
-
-// After:
-const { status, limit, offset, workflowId } = request.query;   // ← add workflowId
-const response = await ... hostService.listRuns({
-  status,
-  workflowId,           // ← pass through
-  limit: limit ? parseInt(limit, 10) : 50,
-  offset: offset ? parseInt(offset, 10) : 0,
-});
-```
-
-Update the route's `Querystring` generic (same block):
-
-```ts
-server.get<{
-  Querystring: { status?: string; limit?: string; offset?: string; workflowId?: string };
-}>('/api/v1/runs', ...)
-```
-
-### 2. Show step name for `waiting_approval` steps
-
-**`plugins/workflow/daemon/src/host/workflow-host-service.ts`** — `listRuns` mapping (lines 628–644):
-
-```ts
-// Before:
-const activeSteps = allSteps.filter(s => s.status === 'running');
-let currentStepName: string | undefined;
-if (run.status === 'running' && activeSteps.length > 0) {
-  currentStepName = activeSteps.length === 1
-    ? activeSteps[0]!.name
-    : `${activeSteps[0]!.name} (+${activeSteps.length - 1})`;
-}
-
-// After:
-const activeSteps = allSteps.filter(
-  s => s.status === 'running' || s.status === 'waiting_approval',   // ← add waiting_approval
-);
-let currentStepName: string | undefined;
-if (run.status === 'running' && activeSteps.length > 0) {
-  currentStepName = activeSteps.length === 1
-    ? activeSteps[0]!.name
-    : `${activeSteps[0]!.name} (+${activeSteps.length - 1})`;
-}
-```
-
-**`plugins/workflow/entry/src/commands/runs-list.ts`** — Step cell (line 81): no change needed; already renders `run.currentStepName` when `run.status === 'running'`. The `hasPendingApproval` guard is separate (affects icon, not Step).
-
-### 3. Add handler-level tests for the new scenarios
-
-**`plugins/workflow/entry/src/__tests__/cli/runs-list.cli.test.ts`** — add after CL-12:
-
-```ts
-it('CL-13: --workflow filters runs by workflow name', async () => {
-  MockedClient.mockImplementation(() => makeClient({
-    listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
-      expect(params.workflowId).toBe('deploy-prod');
-      return [{ id: 'r-dep', name: 'deploy-prod', status: 'success' as const, createdAt: new Date().toISOString() }];
-    },
-  }));
-
-  const { ui, captured } = createCapturedUI();
-  const ctx = createMockContext({ ui });
-  const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { workflow: 'deploy-prod' } }));
-
-  expect(result.exitCode).toBe(0);
-  expect(captured.table[0]!.rows.length).toBe(1);
-  expect(captured.table[0]!.rows[0]!['Workflow']).toBe('deploy-prod');
-});
-
-it('CL-14: RUNNING run with waiting_approval step shows step name', async () => {
-  MockedClient.mockImplementation(() => makeClient({
-    listRuns: async () => [
-      {
-        id: 'r-approval',
-        name: 'deploy',
-        status: 'running' as const,
-        createdAt: new Date().toISOString(),
-        hasPendingApproval: true,
-        currentStepName: 'await-gate',
-      },
-    ],
-  }));
-
-  const { ui, captured } = createCapturedUI();
-  const ctx = createMockContext({ ui });
-  const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
-
-  expect(result.exitCode).toBe(0);
-  const row = captured.table[0]!.rows[0]!;
-  expect(row['Step']).toBe('await-gate');
-});
-```
-
----
+1. **Gateway**: in `services/gateway/app/src/server.ts:216`, register the auth routes plugin with `{ prefix: '/api/v1' }` (or equivalent) so `/api/v1/auth/me`, `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/auth/permissions`, `/api/v1/auth/refresh` are the canonical paths. Update the literal route strings in `services/gateway/app/src/auth/user-routes.ts` and `routes.ts` only if the prefix isn't handled purely at plugin-registration level (check for any other consumer — internal or e2e tests — hardcoding bare `/auth/*` and update those call sites too).
+2. **Studio frontend**: rewrite `studio/app/src/auth/auth-provider.tsx` to build all auth URLs from `getApiOrigin()`/`KB_API_BASE_URL` (reuse the pattern in `studio/hooks/src/use-data.ts:144-171`), or better, route all calls through `createAuthHttpClient` from `studio/app/src/auth/http-client.ts` (which already supports configurable `baseURL`/`refreshPath`) instead of calling `fetchFn` with literal strings. Replace all six hardcoded occurrences (lines 129, 145, 152, 164, 209, 238).
+3. **Dev server proxy**: fix `studio/app/server.js:44-96` `proxyToGateway()` so the prefix stripped from `req.url` matches whatever prefix is actually part of `GATEWAY_ORIGIN`/`KB_API_BASE_URL` (currently strips only `/api`, but the origin already includes `/api/v1`, causing a double-prefix `/v1/...` mismatch). Simplest fix: derive the strip-prefix from the parsed `KB_API_BASE_URL` pathname rather than hardcoding `'/api'`.
+4. Ensure config parity end-to-end after the fixes: `KB_API_BASE_URL` (default `http://localhost:4000/api/v1`) + gateway's `/api/v1` prefix + studio dev-proxy's strip logic + `AuthProvider`'s base-URL-derived paths must all agree on one canonical path scheme.
+5. Check for any other hardcoded `/api/auth/*` references across `studio/**` (e.g. tests, storybook mocks, other hooks) and update them consistently.
 
 ## Tests / verification
-
-```bash
-# Run handler tests for the runs-list command
-pnpm --filter @kb-labs/workflow-entry run test:cli
-
-# Verify all four relevant cases pass:
-# CL-11 — RUNNING + currentStepName → shows in Step column
-# CL-12 — non-RUNNING run → Step column empty
-# CL-13 — --workflow flag passes workflowId to client (NEW)
-# CL-14 — waiting_approval step → currentStepName populated (NEW)
-```
-
-For manual end-to-end verification:
-
-```bash
-kb-dev start
-# Trigger a run that has multiple steps
-pnpm kb workflow run <workflow-name>
-# While it's running:
-pnpm kb workflow runs list
-# Expect: Step column shows the active step name (e.g. "build-image")
-pnpm kb workflow runs list --workflow <workflow-name>
-# Expect: filtered to only that workflow's runs
-```
+- Add a unit/integration test for `AuthProvider` (e.g. `studio/app/src/auth/__tests__/auth-provider.test.tsx` or similar) asserting the fetch URL passed to `fetchFn` is derived from `KB_API_BASE_URL`/config rather than a hardcoded `/api/auth/...` literal — this test should fail before the fix (asserting old hardcoded path) and pass after.
+- Add/extend a gateway route test confirming `GET /api/v1/auth/me` returns 200 and the old bare `/auth/me` behaves per the chosen canonical scheme.
+- Manual repro from the issue: fresh `kb-create` install into a directory with no reverse proxy, `auth.enabled=false`, `gateway.host=127.0.0.1`; start via `kb-dev start`; open `http://localhost:3000` and confirm no redirect to `/login`, `GET /api/auth/me` (proxied through `studio/app/server.js`) returns real JSON (`{userId: 'local-admin', ...}`) rather than the SPA shell.
+- Add an e2e journey test under `e2e/studio` (or wherever Studio e2e specs live) covering the bare-server (no-nginx) local install path specifically, since this is the scenario that silently broke.
