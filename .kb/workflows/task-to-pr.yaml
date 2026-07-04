@@ -43,7 +43,7 @@ jobs:
           ISSUE_NUMBER: '${{ inputs.issueNumber }}'
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
-        run: bash .kb/workflows/scripts/prepare-task.sh
+        run: node .kb/workflows/scripts/prepare-task.mjs
 
       - name: Already Done Gate
         uses: builtin:gate
@@ -91,7 +91,7 @@ jobs:
             source: outputs.plan
             label: Implementation Plan
             showInSummary: true
-        run: bash .kb/workflows/scripts/agent-plans.sh
+        run: node .kb/workflows/scripts/agent-plans.mjs
 
       - name: Already Implemented Gate
         uses: builtin:gate
@@ -117,7 +117,7 @@ jobs:
             source: outputs.prUrl
             label: 'Draft PR'
             showInSummary: true
-        run: bash .kb/workflows/scripts/open-draft-pr.sh
+        run: node .kb/workflows/scripts/open-draft-pr.mjs
 
       - name: Approve Plan
         id: planApproval
@@ -160,7 +160,7 @@ jobs:
             source: outputs.summary
             label: Implementation Summary
             showInSummary: true
-        run: bash .kb/workflows/scripts/agent-implements.sh
+        run: node .kb/workflows/scripts/agent-implements.mjs
 
       - name: Build Check
         id: build_check
@@ -168,7 +168,7 @@ jobs:
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
-        run: bash .kb/workflows/scripts/build-check.sh
+        run: node .kb/workflows/scripts/build-check.mjs
 
       - name: Post Implementation
         env:
@@ -176,7 +176,7 @@ jobs:
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
           IMPL_SUMMARY: '${{ steps.impl.outputs.summary }}'
-        run: bash .kb/workflows/scripts/post-impl-summary.sh
+        run: node .kb/workflows/scripts/post-impl-summary.mjs
 
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 3 — CODE REVIEW LOOP
@@ -196,7 +196,7 @@ jobs:
             source: outputs.summary
             label: Code Review
             showInSummary: true
-        run: bash .kb/workflows/scripts/ai-review.sh
+        run: node .kb/workflows/scripts/ai-review.mjs
 
       - name: Post AI Review
         env:
@@ -206,7 +206,7 @@ jobs:
           REVIEW_PASSED: '${{ steps.review.outputs.passed }}'
           REVIEW_ISSUES_COUNT: '${{ steps.review.outputs.issues_count }}'
           REVIEW_SUMMARY: '${{ steps.review.outputs.summary }}'
-        run: bash .kb/workflows/scripts/post-ai-review.sh
+        run: node .kb/workflows/scripts/post-ai-review.mjs
 
       - name: Agent Fixes Review
         id: review_fix
@@ -218,7 +218,7 @@ jobs:
           REVIEW_ISSUES: '${{ steps.review.outputs.issues }}'
           IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
-        run: bash .kb/workflows/scripts/agent-fixes-review.sh
+        run: node .kb/workflows/scripts/agent-fixes-review.mjs
 
       - name: AI Review Re-run
         id: review_rerun
@@ -229,7 +229,7 @@ jobs:
           ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
           PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
-        run: bash .kb/workflows/scripts/ai-review-rerun.sh
+        run: node .kb/workflows/scripts/ai-review-rerun.mjs
 
       - name: Post Review Delta
         if: ${{ steps.review.outputs.passed == 'false' }}
@@ -242,7 +242,7 @@ jobs:
           CURR_COUNT: '${{ steps.review_rerun.outputs.issues_count }}'
           CURR_VERDICT: '${{ steps.review_rerun.outputs.decision }}'
           CURR_SUMMARY: '${{ steps.review_rerun.outputs.summary }}'
-        run: bash .kb/workflows/scripts/post-audit-delta.sh
+        run: node .kb/workflows/scripts/post-audit-delta.mjs
 
       - name: Review Loop Gate
         if: ${{ steps.review.outputs.passed == 'false' }}
@@ -275,7 +275,7 @@ jobs:
             source: outputs.review
             label: Architect Review
             showInSummary: true
-        run: bash .kb/workflows/scripts/architect-review.sh
+        run: node .kb/workflows/scripts/architect-review.mjs
 
       - name: Post Architect Review
         env:
@@ -286,7 +286,7 @@ jobs:
           ARCHITECT_VERDICT: '${{ steps.architect.outputs.verdict }}'
           ARCHITECT_BLOCKERS_COUNT: '${{ steps.architect.outputs.blockers_count }}'
           ARCHITECT_REVIEW: '${{ steps.architect.outputs.review }}'
-        run: bash .kb/workflows/scripts/post-architect-review.sh
+        run: node .kb/workflows/scripts/post-architect-review.mjs
 
       - name: Agent Fixes Architect
         id: architect_fix
@@ -298,7 +298,7 @@ jobs:
           ARCHITECT_REVIEW: '${{ steps.architect.outputs.review }}'
           IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
-        run: bash .kb/workflows/scripts/agent-fixes-architect.sh
+        run: node .kb/workflows/scripts/agent-fixes-architect.mjs
 
       - name: Architect Re-run
         id: architect_rerun
@@ -309,7 +309,7 @@ jobs:
           ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
           PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
-        run: bash .kb/workflows/scripts/architect-rerun.sh
+        run: node .kb/workflows/scripts/architect-rerun.mjs
 
       - name: Post Architect Delta
         if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
@@ -322,7 +322,7 @@ jobs:
           CURR_COUNT: '${{ steps.architect_rerun.outputs.blockers_count }}'
           CURR_VERDICT: '${{ steps.architect_rerun.outputs.decision }}'
           CURR_SUMMARY: '${{ steps.architect_rerun.outputs.summary }}'
-        run: bash .kb/workflows/scripts/post-audit-delta.sh
+        run: node .kb/workflows/scripts/post-audit-delta.mjs
 
       - name: Architect Loop Gate
         if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
@@ -355,7 +355,7 @@ jobs:
             source: outputs.report
             label: Adversarial QA Report
             showInSummary: true
-        run: bash .kb/workflows/scripts/adversarial-qa.sh
+        run: node .kb/workflows/scripts/adversarial-qa.mjs
 
       - name: Post QA Report
         env:
@@ -366,7 +366,7 @@ jobs:
           QA_VERDICT: '${{ steps.qa_adversarial.outputs.verdict }}'
           QA_BUGS_COUNT: '${{ steps.qa_adversarial.outputs.bugs_count }}'
           QA_REPORT: '${{ steps.qa_adversarial.outputs.report }}'
-        run: bash .kb/workflows/scripts/post-qa-report.sh
+        run: node .kb/workflows/scripts/post-qa-report.mjs
 
       - name: Agent Fixes QA
         id: qa_fix
@@ -378,7 +378,7 @@ jobs:
           QA_REPORT: '${{ steps.qa_adversarial.outputs.report }}'
           IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
-        run: bash .kb/workflows/scripts/agent-fixes-qa.sh
+        run: node .kb/workflows/scripts/agent-fixes-qa.mjs
 
       - name: QA Re-run
         id: qa_rerun
@@ -389,7 +389,7 @@ jobs:
           ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
           PREV_CODE_HASH: '${{ trigger.payload.prevCodeHash }}'
           PREV_FINDINGS_HASH: '${{ trigger.payload.prevFindingsHash }}'
-        run: bash .kb/workflows/scripts/qa-rerun.sh
+        run: node .kb/workflows/scripts/qa-rerun.mjs
 
       - name: Post QA Delta
         if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
@@ -402,7 +402,7 @@ jobs:
           CURR_COUNT: '${{ steps.qa_rerun.outputs.bugs_count }}'
           CURR_VERDICT: '${{ steps.qa_rerun.outputs.decision }}'
           CURR_SUMMARY: '${{ steps.qa_rerun.outputs.summary }}'
-        run: bash .kb/workflows/scripts/post-audit-delta.sh
+        run: node .kb/workflows/scripts/post-audit-delta.mjs
 
       - name: QA Loop Gate
         if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
@@ -437,7 +437,7 @@ jobs:
             source: outputs.report
             label: Functional Verification Report
             showInSummary: true
-        run: bash .kb/workflows/scripts/functional-verification.sh
+        run: node .kb/workflows/scripts/functional-verification.mjs
 
       - name: Post Functional Verification
         env:
@@ -449,7 +449,7 @@ jobs:
           VERIFY_CRITERIA_TOTAL: '${{ steps.functional_verify.outputs.criteria_total }}'
           VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
           VERIFY_REPORT: '${{ steps.functional_verify.outputs.report }}'
-        run: bash .kb/workflows/scripts/post-functional-verification.sh
+        run: node .kb/workflows/scripts/post-functional-verification.mjs
 
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 7 — STATIC GATES
@@ -459,7 +459,7 @@ jobs:
         id: type_check
         env:
           BASE_BRANCH: '${{ inputs.baseBranch }}'
-        run: bash .kb/workflows/scripts/type-check.sh
+        run: node .kb/workflows/scripts/type-check.mjs
 
       - name: Run Tests
         id: run_tests
@@ -468,7 +468,7 @@ jobs:
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
-        run: bash .kb/workflows/scripts/run-tests.sh
+        run: node .kb/workflows/scripts/run-tests.mjs
 
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 8 — COMMIT & CI
@@ -478,7 +478,7 @@ jobs:
         id: commit
         env:
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
-        run: bash .kb/workflows/scripts/commit-push.sh
+        run: node .kb/workflows/scripts/commit-push.mjs
 
       - name: Resolve Conflicts
         id: conflicts
@@ -488,7 +488,7 @@ jobs:
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
           BASE_BRANCH: '${{ inputs.baseBranch }}'
-        run: bash .kb/workflows/scripts/resolve-conflicts.sh
+        run: node .kb/workflows/scripts/resolve-conflicts.mjs
 
       - name: Agent Resolves Conflicts
         id: conflicts_agent
@@ -498,7 +498,7 @@ jobs:
           CONFLICT_FILES: '${{ steps.conflicts.outputs.conflicts }}'
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
           BASE_BRANCH: '${{ inputs.baseBranch }}'
-        run: bash .kb/workflows/scripts/resolve-conflicts-agent.sh
+        run: node .kb/workflows/scripts/resolve-conflicts-agent.mjs
 
       - name: Agent Fixes CI
         id: ci_fix
@@ -509,7 +509,7 @@ jobs:
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
           IMPL_SESSION_ID: '${{ steps.impl.outputs.sessionId }}'
           CI_LOGS_FILE: '${{ trigger.payload.ciLogsFile }}'
-        run: bash .kb/workflows/scripts/agent-fixes-ci.sh
+        run: node .kb/workflows/scripts/agent-fixes-ci.mjs
 
       - name: Check CI
         id: ci_wait
@@ -521,7 +521,7 @@ jobs:
           BRANCH_NAME: '${{ steps.branch.outputs.branchName }}'
           CI_TIMEOUT_SECONDS: '3600'
           CI_MIN_CHECKS: '3'
-        run: bash .kb/workflows/scripts/check-ci.sh
+        run: node .kb/workflows/scripts/check-ci.mjs
 
       - name: CI Gate
         uses: builtin:gate
@@ -560,7 +560,7 @@ jobs:
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
           ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
           ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
-        run: bash .kb/workflows/scripts/review-doc-threads.sh
+        run: node .kb/workflows/scripts/review-doc-threads.mjs
 
       - name: Post Timeline
         env:
@@ -578,7 +578,7 @@ jobs:
           VERIFY_VERDICT: '${{ steps.functional_verify.outputs.verdict }}'
           VERIFY_CRITERIA_PASSED: '${{ steps.functional_verify.outputs.criteria_passed }}'
           VERIFY_CRITERIA_TOTAL: '${{ steps.functional_verify.outputs.criteria_total }}'
-        run: bash .kb/workflows/scripts/post-timeline.sh
+        run: node .kb/workflows/scripts/post-timeline.mjs
 
       - name: Mark PR Ready
         env:
@@ -619,7 +619,7 @@ jobs:
           PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
           ISSUE_NUMBER: '${{ steps.prepare.outputs.issueNumber }}'
           ISSUE_TITLE: '${{ steps.issue.outputs.title }}'
-        run: bash .kb/workflows/scripts/merge-pr.sh
+        run: node .kb/workflows/scripts/merge-pr.mjs
 
       - name: Close Issue
         env:
@@ -627,4 +627,4 @@ jobs:
           OWNER: '${{ inputs.owner }}'
           REPO: '${{ inputs.repo }}'
           CLICKUP_TASK_ID: '${{ steps.prepare.outputs.clickupTaskId }}'
-        run: bash .kb/workflows/scripts/close-issue.sh
+        run: node .kb/workflows/scripts/close-issue.mjs
