@@ -2165,9 +2165,6 @@ importers:
       '@kb-labs/rest-api-app':
         specifier: workspace:*
         version: link:../../services/rest-api/app
-      '@kb-labs/workflow-studio':
-        specifier: workspace:*
-        version: link:../../plugins/workflow/studio
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.59.1
@@ -5371,67 +5368,6 @@ importers:
         version: 6.1.3
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.15)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.6
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/workflow/studio:
-    dependencies:
-      '@ant-design/icons':
-        specifier: ^5.4.0
-        version: 5.6.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@kb-labs/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/sdk
-      '@kb-labs/workflow-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@tanstack/react-query':
-        specifier: ^5.0.0
-        version: 5.97.0(react@19.2.5)
-      antd:
-        specifier: ^5.21.0
-        version: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      react:
-        specifier: ^19.0.0
-        version: 19.2.5
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.5(react@19.2.5)
-      react-router-dom:
-        specifier: '>=7.14.2'
-        version: 7.17.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@kb-labs/studio-plugin-tools':
-        specifier: workspace:*
-        version: link:../../../studio/plugin-tools
-      '@rspack/cli':
-        specifier: ^1.7.0
-        version: 1.7.11(@rspack/core@1.7.11(@swc/helpers@0.5.15))(@types/express@4.17.25)(tslib@2.8.1)(webpack@5.106.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(postcss@8.5.15))
-      '@rspack/core':
-        specifier: ^1.7.0
-        version: 1.7.11(@swc/helpers@0.5.15)
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.0.0
-        version: 19.2.3(@types/react@19.2.14)
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8
         version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.15)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
       typescript:
         specifier: ^5.6.3

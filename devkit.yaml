@@ -46,7 +46,6 @@ workspace:
     spa:
       match:
         - "studio/app"
-        - "plugins/workflow/studio"
       language: typescript
       preset: spa-app
 
