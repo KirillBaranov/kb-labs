@@ -382,3 +382,38 @@ describe('auth:unauthenticated event', () => {
     expect(screen.getByTestId('permCount').textContent).toBe('0');
   });
 });
+
+// Regression test for issue #246: AuthProvider must build its endpoint URLs
+// through the shared `authUrl()` helper, not hardcoded `/api/auth/...`
+// literals — otherwise the single-source-of-truth path scheme silently
+// drifts again. Mocking the module (rather than spying on the real export)
+// avoids relying on ESM named exports being writable. This fails if
+// AuthProvider reverts to inline string literals, since the mocked
+// authUrl() would never be invoked and the fetch calls below would 404.
+vi.mock('../api-base.js', () => ({
+  authUrl: vi.fn((path: string) => `/api${path}`),
+}));
+
+describe('AuthProvider uses authUrl() (issue #246 regression)', () => {
+  it('resolves me/permissions through authUrl(), not a hardcoded literal', async () => {
+    const { authUrl } = await import('../api-base.js');
+
+    vi.stubGlobal('fetch', mockFetch({
+      '/api/auth/me': { status: 200, body: ME_RESPONSE },
+      '/api/auth/permissions': { status: 200, body: PERMS_RESPONSE },
+    }));
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('status').textContent).toBe('authenticated'),
+    );
+
+    expect(authUrl).toHaveBeenCalledWith('/auth/me');
+    expect(authUrl).toHaveBeenCalledWith('/auth/permissions');
+  });
+});

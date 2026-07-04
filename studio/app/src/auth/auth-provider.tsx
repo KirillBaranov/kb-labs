@@ -30,6 +30,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Permission } from '@kb-labs/core-contracts';
+import { authUrl } from './api-base.js';
 
 // ── Public user type (no role field — CD-3) ───────────────────────────────────
 
@@ -126,7 +127,7 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
 
   const loadPermissions = useCallback(async (): Promise<Set<Permission>> => {
     try {
-      const res = await fetchFn('/api/auth/permissions', { credentials: 'include' });
+      const res = await fetchFn(authUrl('/auth/permissions'), { credentials: 'include' });
       if (!res.ok) return new Set();
       const data = (await res.json()) as { permissions?: string[] };
       return new Set((data.permissions ?? []) as Permission[]);
@@ -142,14 +143,14 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
 
     (async () => {
       try {
-        let res = await fetchFn('/api/auth/me', { credentials: 'include' });
+        let res = await fetchFn(authUrl('/auth/me'), { credentials: 'include' });
         if (cancelled) return;
 
         // If the access token has expired (401), attempt a transparent refresh
         // before giving up. This handles the case where the SPA is loaded fresh
         // after the access TTL elapsed (e.g. returning to a tab after 15 min).
         if (res.status === 401) {
-          const refreshRes = await fetchFn('/api/auth/refresh', {
+          const refreshRes = await fetchFn(authUrl('/auth/refresh'), {
             method: 'POST',
             credentials: 'include',
           });
@@ -161,7 +162,7 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
           }
 
           // Retry /api/auth/me with the newly-issued access cookie.
-          res = await fetchFn('/api/auth/me', { credentials: 'include' });
+          res = await fetchFn(authUrl('/auth/me'), { credentials: 'include' });
           if (cancelled) return;
         }
 
@@ -206,7 +207,7 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
-      const res = await fetchFn('/api/auth/login', {
+      const res = await fetchFn(authUrl('/auth/login'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -235,7 +236,7 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
     // Logout is a mutating endpoint protected by CSRF (double-submit pattern).
     const csrfToken = getCookie('kb_csrf');
     try {
-      await fetchFn('/api/auth/logout', {
+      await fetchFn(authUrl('/auth/logout'), {
         method: 'POST',
         credentials: 'include',
         headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
