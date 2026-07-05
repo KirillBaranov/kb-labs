@@ -462,13 +462,27 @@ describe('WorkflowHostService.restartRun', () => {
     expect(result.fromStepId).toBe('step-b');
   });
 
-  it('RST-HS-05: throws when run is not found', async () => {
+  it('RST-HS-05: throws "Run not found" (not a snapshot error) when run is not found', async () => {
     const service = createService({
       engine: { getRun: vi.fn(async () => null) },
     });
 
     await expect(service.restartRun('no-such-run-id-1234', {})).rejects.toThrow(
-      'Run not found or snapshot not available',
+      'Run not found: no-such-run-id-1234',
+    );
+  });
+
+  it('RST-HS-06: distinguishes "no snapshot" from "run not found" when the run exists but replayRun() returns null', async () => {
+    const finishedRun = makeFinishedRun('run-done', 'failed');
+    const service = createService({
+      engine: {
+        getRun: vi.fn(async () => finishedRun),
+        replayRun: vi.fn(async () => null),
+      },
+    });
+
+    await expect(service.restartRun('run-done', {})).rejects.toThrow(
+      /No replay snapshot for run run-done \(status: failed/,
     );
   });
 });
