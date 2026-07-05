@@ -1,5 +1,6 @@
-import { defineHandler, rethrowForRest, useEnv } from '@kb-labs/sdk'
+import { defineHandler, rethrowForRest } from '@kb-labs/sdk'
 import type { CreateBranchInput, CreateBranchOutput } from '@kb-labs/github-contracts'
+import { resolveGithubToken } from '../lib/token.js'
 
 function headers(token?: string): Record<string, string> {
   const h: Record<string, string> = {
@@ -7,7 +8,7 @@ function headers(token?: string): Record<string, string> {
     'Content-Type': 'application/json',
     'X-GitHub-Api-Version': '2022-11-28',
   }
-  const tok = token ?? useEnv('GITHUB_WORKFLOW_TOKEN')
+  const tok = resolveGithubToken(token)
   if (tok) h.Authorization = `Bearer ${tok}`
   return h
 }

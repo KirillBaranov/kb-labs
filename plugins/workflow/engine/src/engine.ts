@@ -919,8 +919,15 @@ export class WorkflowEngine {
             }
           }
         }
+        // Logged at error (not warn) because this silently disables
+        // `workflow runs restart --from-step` for this run — replayRun()
+        // will report a generic "no snapshot" with no other trace of why.
         await this.snapshotStorage.createSnapshot(updated, stepOutputs, updated.env ?? {}).catch((err) => {
-          this.logger.warn('Failed to create run snapshot', { runId, error: err instanceof Error ? err.message : String(err) })
+          this.logger.error(
+            'Failed to create run snapshot — restart --from-step will not work for this run',
+            err instanceof Error ? err : new Error(String(err)),
+            { runId, status },
+          )
         })
       }
     }

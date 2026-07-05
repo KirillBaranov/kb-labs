@@ -387,14 +387,14 @@ export class WorkflowHostService {
   ): Promise<WorkflowRestartResponse> {
     const resolved = await this.resolveRunId(runId);
     if (!resolved) {
-      throw new Error('Run not found or snapshot not available');
+      throw new Error(`Run not found: ${runId}`);
     }
 
     // Guard: restarting an active run would race with the live worker over the
     // same run ID, corrupting step state. Caller must cancel the run first.
     const currentRun = await this.options.engine.getRun(resolved);
     if (!currentRun) {
-      throw new Error('Run not found or snapshot not available');
+      throw new Error(`Run not found: ${resolved}`);
     }
     if (currentRun.status === 'running' || currentRun.status === 'queued') {
       throw new Error(
@@ -408,7 +408,17 @@ export class WorkflowHostService {
     });
 
     if (!run) {
-      throw new Error('Run not found or snapshot not available');
+      // The run exists, but replayRun() came back empty — this means no
+      // snapshot was persisted, not that the run itself is missing. Snapshots
+      // are only written once a run reaches a terminal state (success/failed)
+      // and creation failures are only logged, not surfaced anywhere else —
+      // so distinguish this from "run not found" to save the operator a trip
+      // through the daemon logs.
+      throw new Error(
+        `No replay snapshot for run ${resolved} (status: ${currentRun.status}, finished: ${currentRun.finishedAt ?? 'n/a'}). `
+        + 'Snapshots are created when a run finishes; if this run finished but has no snapshot, '
+        + "check the workflow daemon logs for \"Failed to create run snapshot\" around that time.",
+      );
     }
 
     return {
