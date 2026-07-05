@@ -30,12 +30,23 @@ describe('GatewayConfigSchema', () => {
     expect(result.upstreams['ui']!.prefix).toBe('/api/ui');
   });
 
-  it('rejects upstream without serviceId', () => {
+  it('rejects upstream with empty serviceId', () => {
     expect(() =>
       GatewayConfigSchema.parse({
         upstreams: { bad: { serviceId: '', prefix: '/api/bad' } },
       }),
     ).toThrow();
+  });
+
+  it('defaults serviceId to the upstream key when omitted (backward compat)', () => {
+    const result = GatewayConfigSchema.parse({
+      upstreams: {
+        rest: { prefix: '/api/v1' },
+        widgets: { serviceId: 'rest', prefix: '/api/v1/widgets' },
+      },
+    });
+    expect(result.upstreams['rest']!.serviceId).toBe('rest');
+    expect(result.upstreams['widgets']!.serviceId).toBe('rest');
   });
 
   it('rejects upstream prefix without leading slash', () => {

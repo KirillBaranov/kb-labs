@@ -1,8 +1,13 @@
 import { z } from 'zod';
 
 export const UpstreamConfigSchema = z.object({
-  /** Key into the transport services map — identifies which service to proxy to */
-  serviceId: z.string().min(1),
+  /**
+   * Key into the transport services map — identifies which service to proxy to.
+   * Optional for backward compatibility with configs written before this field
+   * was introduced; defaults to the upstream's own record key (applied by
+   * GatewayConfigSchema's upstreams transform).
+   */
+  serviceId: z.string().min(1).optional(),
   prefix: z.string().startsWith('/'),
   /** Strip prefix before forwarding. Default: keep prefix as-is. Use "" to strip. */
   rewritePrefix: z.string().optional(),
@@ -138,7 +143,17 @@ export const GatewayConfigSchema = z.object({
    * no-auth Studio is never reachable off the machine.
    */
   host: z.string().optional(),
-  upstreams: z.record(z.string(), UpstreamConfigSchema).default({}),
+  upstreams: z
+    .record(z.string(), UpstreamConfigSchema)
+    .default({})
+    .transform((upstreams) =>
+      Object.fromEntries(
+        Object.entries(upstreams).map(([key, upstream]) => [
+          key,
+          { ...upstream, serviceId: upstream.serviceId ?? key },
+        ]),
+      ),
+    ),
   /** Static tokens seeded into ICache at bootstrap — for dev/service tokens before full auth */
   staticTokens: z.record(z.string(), StaticTokenEntrySchema).default({}),
   /** HTTP pressure control (rate limiting via ResourceBroker). */
