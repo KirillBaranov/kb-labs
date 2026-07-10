@@ -7,6 +7,7 @@ import type {
   ClickUpList,
   ClickUpTask,
   ClickUpComment,
+  ClickUpCommentCreateResult,
   ClickUpStatus,
   CreateTaskInput,
   UpdateTaskInput,
@@ -191,8 +192,8 @@ export async function addTaskComment(
   taskId: string,
   commentText: string,
   options: { assignee?: number; notifyAll?: boolean } = {},
-): Promise<ClickUpComment> {
-  return clickupFetch<ClickUpComment>(`/task/${taskId}/comment`, apiKey, {
+): Promise<ClickUpCommentCreateResult> {
+  return clickupFetch<ClickUpCommentCreateResult>(`/task/${taskId}/comment`, apiKey, {
     method: 'POST',
     body: JSON.stringify({
       comment_text: commentText,

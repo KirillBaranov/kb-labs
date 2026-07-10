@@ -42,7 +42,16 @@ export default defineCommand({
         });
 
         if (input.flags.json) {
-          ctx.ui?.json?.(input.flags.full ? comment : { id: comment.id, comment_text: comment.comment_text, user: comment.user.username, date: comment.date });
+          if (input.flags.full) {
+            ctx.ui?.json?.(comment);
+          } else {
+            ctx.ui?.json?.({
+              id: comment.id,
+              date: comment.date,
+              ...(comment.comment_text !== undefined ? { comment_text: comment.comment_text } : {}),
+              ...(comment.user?.username !== undefined ? { user: comment.user.username } : {}),
+            });
+          }
         } else {
           ctx.ui?.success?.(`Comment added (id: ${comment.id})`);
         }

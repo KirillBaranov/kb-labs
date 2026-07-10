@@ -71,6 +71,18 @@ export interface ClickUpComment {
   resolved: boolean;
 }
 
+/**
+ * Shape actually returned by ClickUp's `POST /task/{id}/comment` endpoint —
+ * sparser than the comment shape returned by `GET /task/{id}/comment` (ClickUpComment).
+ */
+export interface ClickUpCommentCreateResult {
+  id: string;
+  hist_id?: string;
+  date: string;
+  comment_text?: string;
+  user?: ClickUpMember;
+}
+
 export interface ClickUpSpaceFeatures {
   due_dates?: { enabled: boolean };
   time_tracking?: { enabled: boolean };

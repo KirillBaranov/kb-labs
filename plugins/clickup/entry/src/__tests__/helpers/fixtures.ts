@@ -1,6 +1,7 @@
 import type {
   ClickUpTask,
   ClickUpComment,
+  ClickUpCommentCreateResult,
   ClickUpFolder,
   ClickUpList,
   ClickUpSpace,
@@ -50,6 +51,14 @@ export const mockComment: ClickUpComment = {
   user: mockMember,
   date: '1700000000000',
   resolved: false,
+};
+
+// ClickUp's POST /task/{id}/comment endpoint returns a sparser shape than
+// GET /task/{id}/comment — no `user`/`comment_text`/`resolved` fields.
+export const mockCommentCreateResult: ClickUpCommentCreateResult = {
+  id: 'comment-1',
+  hist_id: 'hist-1',
+  date: '1700000000000',
 };
 
 const mockListStatus: ClickUpStatus = {
