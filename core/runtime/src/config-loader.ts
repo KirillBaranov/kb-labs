@@ -109,6 +109,17 @@ export interface LoadPlatformConfigResult {
    */
   rawConfig?: Record<string, unknown>
   /**
+   * Raw contents of the *platform* config file, if one was found and it is a
+   * distinct file from the project config (split-root install). In
+   * `sameLocation` mode this is the same object as `rawConfig` (one physical
+   * file plays both roles). Top-level fields here that aren't part of
+   * `PlatformConfig` (e.g. product sections like `services`) have no
+   * `CONFIG_FIELD_SCOPE` policy and are never merged into `platformConfig` —
+   * this is the only way callers (e.g. `kb config show`) can see
+   * platform-owned product config that the project layer doesn't override.
+   */
+  rawPlatformConfig?: Record<string, unknown>
+  /**
    * Effective full config: `rawConfig` with `.kb/overlays/` applied. This is
    * what product config (`useConfig()` → getConfig) should read so scenario
    * overlays reach plugin config sections, not just the platform slice.
@@ -342,6 +353,7 @@ export async function loadPlatformConfig(
   const platformConfigPath = findConfigAtRoot(roots.platformRoot)
   let platformDefaults: PlatformConfig | undefined
   let platformDefaultsSource: string | undefined
+  let rawPlatformConfig: Record<string, unknown> | undefined
 
   const samePath =
     !!platformConfigPath &&
@@ -354,10 +366,12 @@ export async function loadPlatformConfig(
     // like `adapters`. Project layer is left undefined — the merge is a
     // no-op and `sources.projectConfig` is the only reported source.
     platformDefaults = projectConfigData.platformSection
+    rawPlatformConfig = projectConfigData.rawConfig
     projectPlatformConfig = undefined
   } else if (platformConfigPath) {
-    const { platformSection } = await readConfigFile(platformConfigPath)
+    const { platformSection, rawConfig } = await readConfigFile(platformConfigPath)
     platformDefaults = platformSection
+    rawPlatformConfig = rawConfig
     platformDefaultsSource = platformConfigPath
   }
 
@@ -424,6 +438,7 @@ export async function loadPlatformConfig(
   return {
     platformConfig: effective,
     rawConfig: rawProjectConfig,
+    rawPlatformConfig,
     effectiveConfig,
     platformRoot: roots.platformRoot,
     projectRoot: roots.projectRoot,
