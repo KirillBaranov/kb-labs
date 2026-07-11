@@ -38,6 +38,14 @@ export interface McpTool {
   permissions: PermissionSpec;
 }
 
+/** A command that failed to become an MCP tool — malformed manifest, never a fatal error. */
+export interface ToolBuildDiagnostic {
+  pluginId: string;
+  /** decl.id when present, else the raw (possibly missing) path — whatever identifies the command in the manifest. */
+  commandId: string;
+  error: string;
+}
+
 /**
  * Build and initialize the entity registry. Called ONCE at daemon startup; the
  * returned registry's snapshot() feeds filterTools() on every request.
@@ -105,9 +113,38 @@ function toCommandManifest(
 }
 
 /**
+ * Build one MCP tool from a command declaration. Throws if the declaration
+ * doesn't conform to CliCommandDecl (e.g. missing `path` — seen from manifests
+ * scaffolded against an older/wrong shape). Callers decide what to do with a
+ * throw; this function never partially mutates shared state.
+ */
+function buildTool(entry: RegistrySnapshotManifestEntry, decl: CliCommandDecl): McpTool {
+  if (typeof decl.path !== 'string' || decl.path.trim().length === 0) {
+    throw new Error(
+      `command "${(decl as { id?: string }).id ?? '(unknown)'}" in plugin "${entry.pluginId}" has no "path" field — skipping`,
+    );
+  }
+  return {
+    name: toolName(entry.pluginId, decl.path),
+    description: decl.describe,
+    inputSchema: generateCommandSchema(toCommandManifest(decl, entry)),
+    pluginId: entry.pluginId,
+    pluginRoot: entry.pluginRoot,
+    handlerPath: decl.handler,
+    version: entry.manifest.version ?? '0.0.0',
+    operationType: decl.operationType,
+    permissions: getHandlerPermissions(entry.manifest, 'cli', decl.path),
+  };
+}
+
+/**
  * Project a registry snapshot down to the MCP tools the identity may use.
  * Pure and cheap — safe to call per request. Authorization is delegated entirely
  * to the supplied Permits predicate (PDP seam).
+ *
+ * A malformed command declaration must never fail the whole tools/list call —
+ * it's skipped here. validateManifests() is the place that surfaces it as a
+ * diagnostic (logged + queryable), so this stays silent on purpose.
  */
 export function filterTools(
   snapshot: Pick<RegistrySnapshot, 'manifests'>,
@@ -119,18 +156,39 @@ export function filterTools(
       if (!permits(decl.operationType, entry.pluginId)) {
         continue;
       }
-      tools.push({
-        name: toolName(entry.pluginId, decl.path),
-        description: decl.describe,
-        inputSchema: generateCommandSchema(toCommandManifest(decl, entry)),
-        pluginId: entry.pluginId,
-        pluginRoot: entry.pluginRoot,
-        handlerPath: decl.handler,
-        version: entry.manifest.version ?? '0.0.0',
-        operationType: decl.operationType,
-        permissions: getHandlerPermissions(entry.manifest, 'cli', decl.path),
-      });
+      try {
+        tools.push(buildTool(entry, decl));
+      } catch {
+        // Recorded by validateManifests() at startup — skip silently here.
+      }
     }
   }
   return tools;
+}
+
+/**
+ * Structural validation of every declared command in the snapshot, independent
+ * of any identity's permissions. Run ONCE at startup so broken manifests show
+ * up in logs and via /observability/diagnostics before any caller ever hits
+ * them — permit-gated filterTools() would otherwise hide them until someone
+ * with access to that plugin makes a request.
+ */
+export function validateManifests(
+  snapshot: Pick<RegistrySnapshot, 'manifests'>,
+): ToolBuildDiagnostic[] {
+  const diagnostics: ToolBuildDiagnostic[] = [];
+  for (const entry of snapshot.manifests) {
+    for (const decl of entry.manifest.cli?.commands ?? []) {
+      try {
+        buildTool(entry, decl);
+      } catch (error) {
+        diagnostics.push({
+          pluginId: entry.pluginId,
+          commandId: (decl as { id?: string }).id ?? decl.path ?? '(unknown)',
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+  return diagnostics;
 }

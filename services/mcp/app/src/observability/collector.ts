@@ -23,6 +23,7 @@ import {
   resolveObservabilityInstanceId,
 } from '@kb-labs/shared-http';
 import type { ObservabilityCapability, CanonicalObservabilityMetric } from '@kb-labs/core-contracts';
+import type { ToolBuildDiagnostic } from '../mcp/tool-builder.js';
 
 /** Domain operations tracked at the MCP level. */
 export type McpOperation = 'mcp.tools.list' | 'mcp.tool.call';
@@ -34,6 +35,16 @@ export class McpObservabilityCollector {
   private requestsTotal = 0;
   private errorsTotal = 0;
   private readonly ops = new OperationMetricsTracker();
+  private manifestDiagnostics: ToolBuildDiagnostic[] = [];
+
+  /** Record the manifest diagnostics found by validateManifests() at startup. */
+  setManifestDiagnostics(diagnostics: ToolBuildDiagnostic[]): void {
+    this.manifestDiagnostics = diagnostics;
+  }
+
+  getManifestDiagnostics(): ToolBuildDiagnostic[] {
+    return this.manifestDiagnostics;
+  }
 
   /**
    * Register Fastify hooks that track HTTP-level request counts and duration.
@@ -126,6 +137,14 @@ export class McpObservabilityCollector {
           id: 'execution',
           status: 'ok' as const,
           message: `mode=${executionMode}`,
+        },
+        {
+          id: 'manifests',
+          status: (this.manifestDiagnostics.length === 0 ? 'ok' : 'warn') as 'ok' | 'warn' | 'error',
+          message:
+            this.manifestDiagnostics.length === 0
+              ? 'all commands loaded cleanly'
+              : `${this.manifestDiagnostics.length} command(s) skipped — see /observability/diagnostics`,
         },
       ],
       topOperations: this.ops.getTopOperations(5),
