@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
-    "@rspack/core": "^1.7.0",
+    "@rspack/core": "^2.1.2",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
