@@ -16,6 +16,7 @@ import { logsDiagnose, logsContext, logsSummarize, logsQuery, logsSearch, logsGe
 import { authLogin, authLogout, authStatus, authCreateServiceAccount } from './auth';
 import { platformSyncCommand } from './platform/sync';
 import { webhookProvision, webhookList, webhookRevoke } from './webhook';
+import { configShow } from './config';
 
 /**
  * Info Commands Group
@@ -85,4 +86,14 @@ export const webhookGroup = defineSystemCommandGroup('webhook', 'Webhook managem
   webhookProvision,
   webhookList,
   webhookRevoke,
+]);
+
+/**
+ * Config Commands Group
+ *
+ * Inspect the effective (merged) platform config with per-field provenance.
+ * See ADR-0012 (field scope policy) and ADR-0013 (installer-config-placement).
+ */
+export const configGroup = defineSystemCommandGroup('config', 'Config inspection commands', [
+  configShow,
 ]);

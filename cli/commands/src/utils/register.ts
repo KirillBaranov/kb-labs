@@ -8,6 +8,7 @@ import {
   authGroup,
   platformGroup,
   webhookGroup,
+  configGroup,
 } from "../commands/system/groups";
 import { createCompletionCommand, autoUpdateCompletion } from "../commands/system/completion";
 import { diag } from "../commands/system/diag";
@@ -63,6 +64,7 @@ export async function registerBuiltinCommands(
   registry.registerGroup(authGroup);
   registry.registerGroup(platformGroup);
   registry.registerGroup(webhookGroup);
+  registry.registerGroup(configGroup);
 
   // Standalone system commands
   registry.register(createCompletionCommand(registry));
