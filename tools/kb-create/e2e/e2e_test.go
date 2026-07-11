@@ -1105,6 +1105,15 @@ func TestKbConfigShowSplitRoot(t *testing.T) {
 	// Deliberately (mis)edit the project config to attempt to override a
 	// platform-only field (`execution`). loadPlatformConfig must reject this
 	// and `kb config show` must surface it as an "ignored" row.
+	//
+	// PlatformConfig fields (`adapters`, `adapterOptions`, `core`, `execution`)
+	// are read from the file's top-level `platform` key (see
+	// core/runtime/src/config-loader.ts readConfigFile) -- NOT from top-level
+	// sibling keys of the same name. So the override attempt must be nested
+	// under `platform.execution`, matching how the platform's own scaffolded
+	// config nests these fields (ADR-0013), not written as a bare top-level
+	// `execution` key (which readConfigFile never looks at, so the merge
+	// would silently never see it and never reject it).
 	projCfgPath := filepath.Join(projectDir, ".kb", "kb.config.jsonc")
 	projCfgData, err := os.ReadFile(projCfgPath) // #nosec G304 -- path under t.TempDir()
 	if err != nil {
@@ -1114,7 +1123,19 @@ func TestKbConfigShowSplitRoot(t *testing.T) {
 	if err := json.Unmarshal(stripJSONCLineComments(projCfgData), &projCfg); err != nil {
 		t.Fatalf("project kb.config.jsonc not valid JSONC: %v\n%s", err, projCfgData)
 	}
-	projCfg["execution"] = map[string]any{"mode": "project-attempted-override"}
+	platformSection, _ := projCfg["platform"].(map[string]any)
+	if platformSection == nil {
+		platformSection = map[string]any{}
+	}
+	platformSection["execution"] = map[string]any{"mode": "project-attempted-override"}
+	projCfg["platform"] = platformSection
+	// `services` is a product-config section outside the platform<->project
+	// merge policy (ADR-0012) -- it's unioned from both layers' raw config
+	// instead (see show.ts's "other top-level fields" handling). The
+	// platform's own scaffolded config always defines `services` too (its
+	// own service toggles), so a project-added `services.studio` legitimately
+	// reports as "both", not "project" -- both layers genuinely declare a
+	// `services` section, even though only the project sets `.studio`.
 	projCfg["services"] = map[string]any{"studio": true}
 	rewritten, err := json.Marshal(projCfg)
 	if err != nil {
@@ -1163,8 +1184,11 @@ func TestKbConfigShowSplitRoot(t *testing.T) {
 		}{f.Source, f.Value}
 	}
 
-	if got, ok := byField["services.studio"]; !ok || got.Source != "project" {
-		t.Errorf("expected services.studio attributed to \"project\", got %+v (present=%v)", got, ok)
+	// "both" because the platform's own scaffolded config also declares a
+	// `services` section (its own toggles) -- the project's addition of
+	// `.studio` doesn't change that both layers declare the section itself.
+	if got, ok := byField["services.studio"]; !ok || got.Source != "both" {
+		t.Errorf("expected services.studio attributed to \"both\", got %+v (present=%v)", got, ok)
 	}
 
 	foundIgnored := false
