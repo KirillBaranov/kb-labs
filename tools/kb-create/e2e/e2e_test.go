@@ -1060,3 +1060,108 @@ func TestDemoHintShownAfterZeroFindings(t *testing.T) {
 		t.Errorf("LLM nudge not shown after zero heuristic findings:\n%s", out)
 	}
 }
+
+// ── kb config show: split-root provenance (issue #257) ───────────────────────
+//
+// Reuses TestInstallYes's split-root layout: platformDir and projectDir are
+// two separate t.TempDir()s. Verifies `kb config show --json` (run from
+// projectDir, against the installed platform) correctly attributes:
+//   - platform-only fields (e.g. `execution`) to source "platform"
+//   - a project-added mergeable field (`services.studio`) to "project"
+//   - a project attempt to override a platform-only field to "ignored",
+//     with the platform's own (winning) value surfaced in the row.
+
+func TestKbConfigShowSplitRoot(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	if _, code := run(t, bin, projectDir, "--yes", "--platform", platformDir); code != 0 {
+		t.Fatalf("install failed")
+	}
+
+	// Deliberately (mis)edit the project config to attempt to override a
+	// platform-only field (`execution`). loadPlatformConfig must reject this
+	// and `kb config show` must surface it as an "ignored" row.
+	projCfgPath := filepath.Join(projectDir, ".kb", "kb.config.jsonc")
+	projCfgData, err := os.ReadFile(projCfgPath) // #nosec G304 -- path under t.TempDir()
+	if err != nil {
+		t.Fatalf("reading project kb.config.jsonc: %v", err)
+	}
+	var projCfg map[string]any
+	if err := json.Unmarshal(projCfgData, &projCfg); err != nil {
+		t.Fatalf("project kb.config.jsonc not valid JSON: %v\n%s", err, projCfgData)
+	}
+	projCfg["execution"] = map[string]any{"mode": "project-attempted-override"}
+	projCfg["services"] = map[string]any{"studio": true}
+	rewritten, err := json.Marshal(projCfg)
+	if err != nil {
+		t.Fatalf("marshal project kb.config.jsonc: %v", err)
+	}
+	if err := os.WriteFile(projCfgPath, rewritten, 0o600); err != nil { // #nosec G304
+		t.Fatalf("writing project kb.config.jsonc: %v", err)
+	}
+
+	binJS := filepath.Join(platformDir, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
+	if _, err := os.Stat(binJS); err != nil {
+		t.Fatalf("cli-bin entrypoint missing at %s: %v", binJS, err)
+	}
+
+	cmd := exec.CommandContext(context.Background(), "node", binJS, "config", "show", "--json") // #nosec G204
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "KB_PLATFORM="+platformDir, "KB_PROJECT="+projectDir)
+	rawOut, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("kb config show --json failed: %v\n%s", err, rawOut)
+	}
+
+	var payload struct {
+		SameLocation bool `json:"sameLocation"`
+		Fields       []struct {
+			Source string `json:"source"`
+			Field  string `json:"field"`
+			Value  any    `json:"value"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(rawOut, &payload); err != nil {
+		t.Fatalf("kb config show --json did not print valid JSON: %v\n%s", err, rawOut)
+	}
+	if payload.SameLocation {
+		t.Errorf("expected sameLocation=false for split platformDir/projectDir, got true")
+	}
+
+	byField := map[string]struct {
+		Source string
+		Value  any
+	}{}
+	for _, f := range payload.Fields {
+		byField[f.Field] = struct {
+			Source string
+			Value  any
+		}{f.Source, f.Value}
+	}
+
+	if got, ok := byField["services.studio"]; !ok || got.Source != "project" {
+		t.Errorf("expected services.studio attributed to \"project\", got %+v (present=%v)", got, ok)
+	}
+
+	foundIgnored := false
+	for _, f := range payload.Fields {
+		if strings.HasPrefix(f.Field, "execution.") && f.Source == "ignored" {
+			foundIgnored = true
+			if f.Value == "project-attempted-override" {
+				t.Errorf("ignored row must show the platform's value, not the rejected project value: %+v", f)
+			}
+		}
+	}
+	if !foundIgnored {
+		t.Errorf("expected an \"ignored\" row under execution.* (project's platform-only override attempt was not flagged); fields=%+v", payload.Fields)
+	}
+}
