@@ -489,7 +489,7 @@ export class WorkflowEngine {
 
     // Update run status based on job outcomes
     if (allSuccess) {
-      await this.stateStore.updateRun(runId, (draft) => {
+      const updated = await this.stateStore.updateRun(runId, (draft) => {
         draft.status = 'success'
         draft.finishedAt = new Date().toISOString()
         return draft
@@ -509,12 +509,16 @@ export class WorkflowEngine {
         runId,
         payload: { status: 'success', name: run.name },
       })
+
+      if (updated) {
+        await this.snapshotTerminalRun(updated)
+      }
     } else if (anyFailed) {
       // Surface the failing job's error at the run level so consumers (REST
       // /runs/:id, Studio, e2e) can show *why* the run failed without digging
       // into per-job records.
       const failedJob = run.jobs.find((j) => j.status === 'failed')
-      await this.stateStore.updateRun(runId, (draft) => {
+      const updated = await this.stateStore.updateRun(runId, (draft) => {
         draft.status = 'failed'
         draft.finishedAt = new Date().toISOString()
         if (failedJob?.error) {
@@ -544,6 +548,10 @@ export class WorkflowEngine {
         runId,
         payload: { status: 'failed', name: run.name },
       })
+
+      if (updated) {
+        await this.snapshotTerminalRun(updated)
+      }
     }
   }
 
@@ -908,31 +916,48 @@ export class WorkflowEngine {
         updated,
       )
 
-      // Persist snapshot so the run can be replayed from any step later.
-      // Only snapshot terminal states that carry meaningful step output data.
-      if (status === 'success' || status === 'failed') {
-        const stepOutputs: Record<string, Record<string, unknown>> = {}
-        for (const job of updated.jobs) {
-          for (const step of job.steps) {
-            if (step.outputs && Object.keys(step.outputs).length > 0) {
-              stepOutputs[step.id] = step.outputs
-            }
-          }
-        }
-        // Logged at error (not warn) because this silently disables
-        // `workflow runs restart --from-step` for this run — replayRun()
-        // will report a generic "no snapshot" with no other trace of why.
-        await this.snapshotStorage.createSnapshot(updated, stepOutputs, updated.env ?? {}).catch((err) => {
-          this.logger.error(
-            'Failed to create run snapshot — restart --from-step will not work for this run',
-            err instanceof Error ? err : new Error(String(err)),
-            { runId, status },
-          )
-        })
-      }
+      await this.snapshotTerminalRun(updated)
     }
 
     return updated
+  }
+
+  /**
+   * Persist a snapshot for a run that just reached a terminal state, so it
+   * can be replayed from any step later (`replayRun`, used by both
+   * `workflow runs restart --from-step` and `rerun --failed-only`). Only
+   * 'success'/'failed' carry meaningful step output data worth snapshotting.
+   *
+   * Shared by finalizeRun() and checkRunCompletion() — checkRunCompletion is
+   * the run-completion path actually driven by the worker in production, so
+   * without this call here, no snapshot is ever created outside of tests
+   * that call finalizeRun() directly (issue #263).
+   */
+  private async snapshotTerminalRun(run: WorkflowRun): Promise<void> {
+    if (run.status !== 'success' && run.status !== 'failed') {
+      return
+    }
+
+    const stepOutputs: Record<string, Record<string, unknown>> = {}
+    for (const job of run.jobs) {
+      for (const step of job.steps) {
+        if (step.outputs && Object.keys(step.outputs).length > 0) {
+          stepOutputs[step.id] = step.outputs
+        }
+      }
+    }
+
+    // Logged at error (not warn) because this silently disables
+    // `workflow runs restart --from-step` and `rerun --failed-only` for
+    // this run — replayRun() will report a generic "no snapshot" with no
+    // other trace of why.
+    await this.snapshotStorage.createSnapshot(run, stepOutputs, run.env ?? {}).catch((err) => {
+      this.logger.error(
+        'Failed to create run snapshot — restart --from-step and rerun --failed-only will not work for this run',
+        err instanceof Error ? err : new Error(String(err)),
+        { runId: run.id, status: run.status },
+      )
+    })
   }
 
   async nextJob(): Promise<JobQueueEntry | null> {

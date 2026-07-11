@@ -322,6 +322,10 @@ export class WorkflowHostService {
       throw new Error('Run not found');
     }
 
+    if (request.failedOnly) {
+      return this.rerunFailedOnly(sourceRun.id, sourceRun);
+    }
+
     const workflowId =
       (sourceRun.metadata as Record<string, unknown> | undefined)?.['workflowId'] as string | undefined
       ?? sourceRun.name;
@@ -333,36 +337,9 @@ export class WorkflowHostService {
     }
 
     const specInput = workflow.input as Record<string, unknown>;
-    let spec = {
+    const spec = {
       ...specInput,
     } as unknown as import('@kb-labs/workflow-contracts').WorkflowSpec;
-
-    if (request.failedOnly) {
-      const failedJobNames = new Set(
-        (sourceRun.jobs ?? [])
-          .filter((job: JobRun) => job.status === 'failed' || job.status === 'interrupted')
-          .map((job: JobRun) => job.jobName),
-      );
-
-      if (failedJobNames.size === 0) {
-        throw new Error('No failed jobs to rerun');
-      }
-
-      const filteredJobs: Record<string, unknown> = {};
-      for (const [name, jobSpec] of Object.entries(spec.jobs)) {
-        if (failedJobNames.has(name)) {
-          const js = jobSpec as Record<string, unknown>;
-          const needs = Array.isArray(js['needs'])
-            ? (js['needs'] as string[]).filter((dep) => failedJobNames.has(dep))
-            : undefined;
-          filteredJobs[name] = needs !== undefined && needs.length < (js['needs'] as string[]).length
-            ? { ...js, needs }
-            : js;
-        }
-      }
-
-      spec = { ...spec, jobs: filteredJobs } as unknown as import('@kb-labs/workflow-contracts').WorkflowSpec;
-    }
 
     const resolvedInputs = (sourceRun.inputs ?? {}) as Record<string, unknown>;
 
@@ -374,6 +351,67 @@ export class WorkflowHostService {
       },
       inputs: resolvedInputs,
     });
+
+    return {
+      runId: run.id,
+      status: run.status,
+    };
+  }
+
+  /**
+   * failedOnly reruns resume from the source run's snapshot instead of
+   * starting a brand-new run (via runFromSpec + a job-filtered spec), so
+   * completed step outputs from jobs that are not being rerun are carried
+   * forward into the interpolation context instead of being discarded
+   * (see issue #263: `rerun --failed-only` used to redo the whole run).
+   */
+  private async rerunFailedOnly(
+    resolvedRunId: string,
+    sourceRun: WorkflowRun,
+  ): Promise<{ runId: string; status: string }> {
+    const failedJobNames = new Set(
+      (sourceRun.jobs ?? [])
+        .filter((job: JobRun) => job.status === 'failed' || job.status === 'interrupted')
+        .map((job: JobRun) => job.jobName),
+    );
+
+    if (failedJobNames.size === 0) {
+      throw new Error('No failed jobs to rerun');
+    }
+
+    // Resume from the earliest unfinished step in a failed/interrupted job,
+    // in run order, so that all steps before it (including ones in jobs
+    // that are not being rerun) keep their stored outputs. A job can be
+    // 'interrupted' (e.g. cancelled mid-run) without any of its steps ever
+    // reaching 'failed' — those steps are left 'running'/'queued' — so the
+    // resume point is "first step that didn't succeed", not "first failed
+    // step".
+    let fromStepId: string | undefined;
+    for (const job of sourceRun.jobs ?? []) {
+      if (!failedJobNames.has(job.jobName)) {
+        continue;
+      }
+      const unfinishedStep = (job.steps ?? []).find(
+        (s: StepRun) => s.status !== 'success' && s.status !== 'skipped',
+      );
+      if (unfinishedStep) {
+        fromStepId = unfinishedStep.id;
+        break;
+      }
+    }
+
+    if (!fromStepId) {
+      throw new Error(`Cannot determine resume point: no failed step found in run ${sourceRun.id}`);
+    }
+
+    const run = await this.options.engine.replayRun(resolvedRunId, { fromStepId });
+    if (!run) {
+      throw new Error(
+        `No replay snapshot for run ${resolvedRunId} — cannot rerun failed steps only. `
+        + 'Snapshots are created when a run finishes; check the workflow daemon logs for '
+        + '"Failed to create run snapshot" around that time.',
+      );
+    }
 
     return {
       runId: run.id,
