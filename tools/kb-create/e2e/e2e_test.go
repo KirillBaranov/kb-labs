@@ -18,6 +18,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// stripJSONCLineComments removes "//" line comments from a JSONC document so
+// it can be parsed with encoding/json. Only handles whole-line and
+// end-of-line "//" comments (no "/* */" blocks, no "//" inside string
+// values) — sufficient for kb-create's own scaffolded kb.config.jsonc
+// template, which never emits either of those.
+func stripJSONCLineComments(data []byte) []byte {
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if idx := strings.Index(line, "//"); idx != -1 {
+			lines[i] = line[:idx]
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
+
 // binary returns the path to the kb-create binary, building it if needed.
 func binary(t *testing.T) string {
 	t.Helper()
@@ -1096,8 +1111,8 @@ func TestKbConfigShowSplitRoot(t *testing.T) {
 		t.Fatalf("reading project kb.config.jsonc: %v", err)
 	}
 	var projCfg map[string]any
-	if err := json.Unmarshal(projCfgData, &projCfg); err != nil {
-		t.Fatalf("project kb.config.jsonc not valid JSON: %v\n%s", err, projCfgData)
+	if err := json.Unmarshal(stripJSONCLineComments(projCfgData), &projCfg); err != nil {
+		t.Fatalf("project kb.config.jsonc not valid JSONC: %v\n%s", err, projCfgData)
 	}
 	projCfg["execution"] = map[string]any{"mode": "project-attempted-override"}
 	projCfg["services"] = map[string]any{"studio": true}
