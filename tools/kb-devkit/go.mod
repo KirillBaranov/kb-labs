@@ -2,7 +2,7 @@ module github.com/kb-labs/devkit
 
 go 1.22.0
 
-toolchain go1.25.11
+toolchain go1.25.12
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1

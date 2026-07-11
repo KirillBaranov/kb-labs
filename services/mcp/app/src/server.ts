@@ -38,10 +38,28 @@ import type { IEntityRegistry } from '@kb-labs/core-registry';
 import { createDaemonServer, getListenOptions, type ObservabilityCollectorLike } from '@kb-labs/shared-http';
 import { resolveAuthContext } from './mcp/auth.js';
 import { toIdentity, actionForOperation, type Permits } from './mcp/authz.js';
-import { createToolRegistry } from './mcp/tool-builder.js';
+import { createToolRegistry, validateManifests } from './mcp/tool-builder.js';
 import { type PlatformResolver } from './mcp/tool-router.js';
 import { resolveVisibleTools, executeToolCall } from './mcp/request-handler.js';
 import { McpObservabilityCollector } from './observability/collector.js';
+import type { ToolBuildDiagnostic } from './mcp/tool-builder.js';
+
+/** Built-in diagnostic tool: always visible to authenticated callers, never
+ * derived from a plugin manifest — reports which plugin commands failed to
+ * load as MCP tools so a caller can self-diagnose without SSHing into the box. */
+const DIAGNOSTICS_TOOL = {
+  name: 'kb-labs__mcp_diagnostics',
+  description:
+    'List plugin commands that failed to load as MCP tools (malformed manifests), with the reason for each.',
+  inputSchema: { type: 'object' as const, properties: {} },
+};
+
+function renderManifestDiagnostics(diagnostics: ToolBuildDiagnostic[]): string {
+  if (diagnostics.length === 0) {
+    return 'All plugin commands loaded cleanly — no manifest issues.';
+  }
+  return diagnostics.map((d) => `[${d.pluginId}] ${d.commandId}: ${d.error}`).join('\n');
+}
 
 export interface McpDaemonServerOptions {
   port: number;
@@ -96,6 +114,20 @@ export class McpDaemonServer {
       cache: this.opts.cache,
     });
 
+    // Structural manifest validation runs ONCE here, independent of any
+    // identity's permissions — so broken manifests are visible in logs and
+    // via /observability/diagnostics from boot, not only once someone with
+    // access to the offending plugin happens to call tools/list.
+    const manifestDiagnostics = validateManifests(this.registry.snapshot());
+    this.collector.setManifestDiagnostics(manifestDiagnostics);
+    for (const diag of manifestDiagnostics) {
+      this.opts.logger.warn('MCP tool skipped — invalid manifest command', {
+        pluginId: diag.pluginId,
+        commandId: diag.commandId,
+        error: diag.error,
+      });
+    }
+
     const execMode = process.env.KB_MCP_EXECUTION_MODE ?? 'subprocess';
 
     // Adapter: wraps McpObservabilityCollector to match ObservabilityCollectorLike.
@@ -128,6 +160,13 @@ export class McpDaemonServer {
 
   private async registerMcpRoutes(server: FastifyInstance): Promise<void> {
     const { cache, logger, jwtConfig } = this.opts;
+
+    // ── Diagnostics ──────────────────────────────────────────────────────
+    // Same visibility as /health — no per-tenant data, just which manifest
+    // commands failed to load. Mirrors the kb-labs__mcp_diagnostics MCP tool.
+    server.get('/observability/diagnostics', async () => ({
+      diagnostics: this.collector.getManifestDiagnostics(),
+    }));
 
     // ── MCP JSON-RPC endpoint ──────────────────────────────────────────────
 
@@ -177,15 +216,25 @@ export class McpDaemonServer {
       );
 
       mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
-        tools: visibleTools.map((t) => ({
-          name: t.name,
-          description: t.description,
-          inputSchema: t.inputSchema as { type: 'object' },
-        })),
+        tools: [
+          ...visibleTools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema as { type: 'object' },
+          })),
+          // Authenticated callers only — mirrors the visibility gate above.
+          ...(permits ? [DIAGNOSTICS_TOOL] : []),
+        ],
       }));
 
-      mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) =>
-        executeToolCall({
+      mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
+        if (params.name === DIAGNOSTICS_TOOL.name) {
+          if (!permits) {
+            return { content: [{ type: 'text' as const, text: `Not authorized: ${params.name}` }], isError: true };
+          }
+          return { content: [{ type: 'text' as const, text: renderManifestDiagnostics(this.collector.getManifestDiagnostics()) }], isError: false };
+        }
+        return executeToolCall({
           name: params.name,
           args: (params.arguments ?? {}) as Record<string, unknown>,
           visibleTools,
@@ -194,8 +243,8 @@ export class McpDaemonServer {
           resolvePlatform: this.resolvePlatform,
           analytics: this.opts.platform.analytics,
           collector: this.collector,
-        }),
-      );
+        });
+      });
 
       // 4. Streamable HTTP transport (stateless). Pass Fastify's parsed body —
       //    the raw stream is already consumed, so the SDK must not re-read it.

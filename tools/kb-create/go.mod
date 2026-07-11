@@ -2,7 +2,7 @@ module github.com/kb-labs/create
 
 go 1.24.2
 
-toolchain go1.25.11
+toolchain go1.25.12
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0

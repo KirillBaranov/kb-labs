@@ -14,7 +14,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
 
 import { requireApiKey, addTaskComment } from '@kb-labs/clickup-core';
 import taskCommentAddCommand from '../../commands/task-comment-add.js';
-import { mockComment } from '../helpers/fixtures.js';
+import { mockComment, mockCommentCreateResult } from '../helpers/fixtures.js';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -37,7 +37,27 @@ describe('clickup:task comments add', () => {
     expect(captured.success[0]?.message).toContain('Comment added');
   });
 
-  it('TCA-02: --json outputs slim comment object', async () => {
+  it('TCA-02: --json outputs slim comment object when API returns the sparse create-comment shape', async () => {
+    // ClickUp's real POST /task/{id}/comment response has no `user`/`comment_text`/`resolved` —
+    // regression test for INTERNAL_ERROR: "Cannot read properties of undefined (reading 'username')"
+    vi.mocked(addTaskComment).mockResolvedValue(mockCommentCreateResult);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentAddCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world', json: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const slim = captured.json[0] as Record<string, unknown>;
+    expect(slim.id).toBe('comment-1');
+    expect(slim).not.toHaveProperty('user');
+    expect(slim).not.toHaveProperty('resolved');
+    expect(slim).not.toHaveProperty('comment');
+  });
+
+  it('TCA-02b: --json outputs slim comment object including user when API returns it', async () => {
     vi.mocked(addTaskComment).mockResolvedValue(mockComment);
 
     const { ui, captured } = createCapturedUI();
@@ -55,7 +75,7 @@ describe('clickup:task comments add', () => {
     expect(slim).not.toHaveProperty('comment');
   });
 
-  it('TCA-02b: --json --full outputs raw comment object', async () => {
+  it('TCA-02c: --json --full outputs raw comment object', async () => {
     vi.mocked(addTaskComment).mockResolvedValue(mockComment);
 
     const { ui, captured } = createCapturedUI();
