@@ -18,6 +18,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// stripJSONCLineComments removes "//" line comments from a JSONC document so
+// it can be parsed with encoding/json. Only handles whole-line and
+// end-of-line "//" comments (no "/* */" blocks, no "//" inside string
+// values) — sufficient for kb-create's own scaffolded kb.config.jsonc
+// template, which never emits either of those.
+func stripJSONCLineComments(data []byte) []byte {
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if idx := strings.Index(line, "//"); idx != -1 {
+			lines[i] = line[:idx]
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
+
 // binary returns the path to the kb-create binary, building it if needed.
 func binary(t *testing.T) string {
 	t.Helper()
@@ -1058,5 +1073,134 @@ func TestDemoHintShownAfterZeroFindings(t *testing.T) {
 		!strings.Contains(out, "OPENAI_API_KEY") &&
 		!strings.Contains(out, "kb-create") {
 		t.Errorf("LLM nudge not shown after zero heuristic findings:\n%s", out)
+	}
+}
+
+// ── kb config show: split-root provenance (issue #257) ───────────────────────
+//
+// Reuses TestInstallYes's split-root layout: platformDir and projectDir are
+// two separate t.TempDir()s. Verifies `kb config show --json` (run from
+// projectDir, against the installed platform) correctly attributes:
+//   - platform-only fields (e.g. `execution`) to source "platform"
+//   - a project-added mergeable field (`services.studio`) to "project"
+//   - a project attempt to override a platform-only field to "ignored",
+//     with the platform's own (winning) value surfaced in the row.
+
+func TestKbConfigShowSplitRoot(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	if _, code := run(t, bin, projectDir, "--yes", "--platform", platformDir); code != 0 {
+		t.Fatalf("install failed")
+	}
+
+	// Deliberately (mis)edit the project config to attempt to override a
+	// platform-only field (`execution`). loadPlatformConfig must reject this
+	// and `kb config show` must surface it as an "ignored" row.
+	//
+	// PlatformConfig fields (`adapters`, `adapterOptions`, `core`, `execution`)
+	// are read from the file's top-level `platform` key (see
+	// core/runtime/src/config-loader.ts readConfigFile) -- NOT from top-level
+	// sibling keys of the same name. So the override attempt must be nested
+	// under `platform.execution`, matching how the platform's own scaffolded
+	// config nests these fields (ADR-0013), not written as a bare top-level
+	// `execution` key (which readConfigFile never looks at, so the merge
+	// would silently never see it and never reject it).
+	projCfgPath := filepath.Join(projectDir, ".kb", "kb.config.jsonc")
+	projCfgData, err := os.ReadFile(projCfgPath) // #nosec G304 -- path under t.TempDir()
+	if err != nil {
+		t.Fatalf("reading project kb.config.jsonc: %v", err)
+	}
+	var projCfg map[string]any
+	if err := json.Unmarshal(stripJSONCLineComments(projCfgData), &projCfg); err != nil {
+		t.Fatalf("project kb.config.jsonc not valid JSONC: %v\n%s", err, projCfgData)
+	}
+	platformSection, _ := projCfg["platform"].(map[string]any)
+	if platformSection == nil {
+		platformSection = map[string]any{}
+	}
+	platformSection["execution"] = map[string]any{"mode": "project-attempted-override"}
+	projCfg["platform"] = platformSection
+	// `services` is a product-config section outside the platform<->project
+	// merge policy (ADR-0012) -- it's unioned from both layers' raw config
+	// instead (see show.ts's "other top-level fields" handling). The
+	// platform's own scaffolded config always defines `services` too (its
+	// own service toggles), so a project-added `services.studio` legitimately
+	// reports as "both", not "project" -- both layers genuinely declare a
+	// `services` section, even though only the project sets `.studio`.
+	projCfg["services"] = map[string]any{"studio": true}
+	rewritten, err := json.Marshal(projCfg)
+	if err != nil {
+		t.Fatalf("marshal project kb.config.jsonc: %v", err)
+	}
+	if err := os.WriteFile(projCfgPath, rewritten, 0o600); err != nil { // #nosec G304
+		t.Fatalf("writing project kb.config.jsonc: %v", err)
+	}
+
+	binJS := filepath.Join(platformDir, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
+	if _, err := os.Stat(binJS); err != nil {
+		t.Fatalf("cli-bin entrypoint missing at %s: %v", binJS, err)
+	}
+
+	cmd := exec.CommandContext(context.Background(), "node", binJS, "config", "show", "--json") // #nosec G204
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "KB_PLATFORM="+platformDir, "KB_PROJECT="+projectDir)
+	rawOut, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("kb config show --json failed: %v\n%s", err, rawOut)
+	}
+
+	var payload struct {
+		SameLocation bool `json:"sameLocation"`
+		Fields       []struct {
+			Source string `json:"source"`
+			Field  string `json:"field"`
+			Value  any    `json:"value"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(rawOut, &payload); err != nil {
+		t.Fatalf("kb config show --json did not print valid JSON: %v\n%s", err, rawOut)
+	}
+	if payload.SameLocation {
+		t.Errorf("expected sameLocation=false for split platformDir/projectDir, got true")
+	}
+
+	byField := map[string]struct {
+		Source string
+		Value  any
+	}{}
+	for _, f := range payload.Fields {
+		byField[f.Field] = struct {
+			Source string
+			Value  any
+		}{f.Source, f.Value}
+	}
+
+	// "both" because the platform's own scaffolded config also declares a
+	// `services` section (its own toggles) -- the project's addition of
+	// `.studio` doesn't change that both layers declare the section itself.
+	if got, ok := byField["services.studio"]; !ok || got.Source != "both" {
+		t.Errorf("expected services.studio attributed to \"both\", got %+v (present=%v)", got, ok)
+	}
+
+	foundIgnored := false
+	for _, f := range payload.Fields {
+		if strings.HasPrefix(f.Field, "execution.") && f.Source == "ignored" {
+			foundIgnored = true
+			if f.Value == "project-attempted-override" {
+				t.Errorf("ignored row must show the platform's value, not the rejected project value: %+v", f)
+			}
+		}
+	}
+	if !foundIgnored {
+		t.Errorf("expected an \"ignored\" row under execution.* (project's platform-only override attempt was not flagged); fields=%+v", payload.Fields)
 	}
 }

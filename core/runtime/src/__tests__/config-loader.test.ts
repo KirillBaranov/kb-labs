@@ -200,6 +200,39 @@ describe('loadPlatformConfig', () => {
     )
   })
 
+  it('reports no ignored fields when platformRoot === projectRoot, even for platform-only fields', async () => {
+    // sameLocation: true is the monorepo/dogfooding case — one physical file
+    // plays both roles, so the platform<->project merge is a no-op and
+    // nothing can conflict. This guards against the merge policy accidentally
+    // treating the single file's own platform-only fields (e.g. `execution`)
+    // as a rejected project override of itself.
+    const workspaceRoot = path.join(tmpDir, 'p5b-workspace')
+    makePlatformDir(workspaceRoot, {
+      platform: {
+        adapters: { llm: 'workspace-llm' },
+        execution: { mode: 'worker-pool' },
+      },
+    })
+
+    const result = await loadPlatformConfig({
+      startDir: workspaceRoot,
+      env: {
+        KB_PLATFORM_ROOT: workspaceRoot,
+        KB_PROJECT_ROOT: workspaceRoot,
+      },
+      loadEnvFile: false,
+    })
+
+    expect(result.sameLocation).toBe(true)
+    expect(result.sources.ignoredProjectFields).toBeUndefined()
+    // Every resolved field is attributed to the single (platform) layer —
+    // there's no separate project layer to merge against in this mode.
+    expect(result.sources.fields).toEqual({
+      adapters: 'platform',
+      execution: 'platform',
+    })
+  })
+
   it('silently degrades when config file is malformed JSON', async () => {
     const platformRoot = path.join(tmpDir, 'p6-platform')
     const projectRoot = path.join(tmpDir, 'p6-project')
