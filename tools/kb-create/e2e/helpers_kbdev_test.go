@@ -62,6 +62,41 @@ func runKbDev(t *testing.T, platformDir string, args ...string) (string, string,
 	return string(stdout), string(stderr), code
 }
 
+// runKbDevIn invokes the kb-dev binary at kbDevPath with cwd=dir and no
+// KB_PROJECT_ROOT override, so `config.Discover` resolves the project the
+// same way a real shell invocation would (walking up from cwd, following a
+// kb.config.jsonc "platform.dir" pointer if present). Used by multi-project
+// registry tests, where kb-dev must be invoked "from inside" different
+// registered project directories, not just against a single platform dir —
+// runKbDev above always pins cwd to platformDir, which isn't representative
+// of the register/switch/projects flow this helper exists to test.
+func runKbDevIn(t *testing.T, kbDevPath, dir string, args ...string) (string, string, int) {
+	t.Helper()
+	cmd := exec.CommandContext(context.Background(), kbDevPath, args...) // #nosec G204 -- kbDevPath is derived from t.TempDir()
+	cmd.Dir = dir
+
+	var stdout, stderr []byte
+	var err error
+	stdoutPipe, _ := cmd.StdoutPipe()
+	stderrPipe, _ := cmd.StderrPipe()
+	if err = cmd.Start(); err != nil {
+		return "", err.Error(), -1
+	}
+	stdout, _ = readAll(stdoutPipe)
+	stderr, _ = readAll(stderrPipe)
+	err = cmd.Wait()
+
+	code := 0
+	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else {
+			code = -1
+		}
+	}
+	return string(stdout), string(stderr), code
+}
+
 // kbDevStatusJSON runs `kb-dev status --json` and parses the stdout as JSON.
 // Returns a parsed map so the test can make lightweight assertions without
 // hardcoding a schema (kb-dev's own unit tests cover the strict schema).
