@@ -71,6 +71,31 @@ type Manager struct {
 // SetNetOffset records the virtual-network port offset for spawnEnv passthrough.
 func (m *Manager) SetNetOffset(offset int) { m.netOffset = offset }
 
+// StateDir returns the effective directory for a state category (PIDDir,
+// LogsDir, …) given a rootDir/projectDir pair.
+//
+// When rootDir == projectDir (single-project mode — one devservices.yaml per
+// project, today's only configuration before multi-project registries
+// existed) it's <rootDir>/<base>, byte-identical to the original layout.
+//
+// When they differ — a platform shared across several registered projects
+// via platform.dir — every project resolves to the *same* rootDir, which
+// would otherwise collapse their PID files, lock, logs, and net-offset cache
+// onto one shared directory (project A's Reconcile/Stop would see project
+// B's processes and vice versa). Namespacing by the project's socket-hash
+// (the same hash already used for KB_SOCKET_HASH) keeps them isolated.
+func StateDir(rootDir, projectDir, base string) string {
+	if filepath.Clean(rootDir) == filepath.Clean(projectDir) {
+		return filepath.Join(rootDir, base)
+	}
+	return filepath.Join(rootDir, base, computeSocketHash(projectDir))
+}
+
+// stateDir is the instance-bound convenience wrapper around StateDir.
+func (m *Manager) stateDir(base string) string {
+	return StateDir(m.rootDir, m.projectDir, base)
+}
+
 // New creates a Manager from a parsed config.
 // rootDir is the platform/config directory (where devservices.yaml lives).
 // projectDir is the user's project directory (injected as KB_PROJECT_ROOT).
@@ -139,7 +164,7 @@ func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
 
 // Reconcile checks PID files against running processes and updates service states.
 func (m *Manager) Reconcile() error {
-	pidDir := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir)
+	pidDir := m.stateDir(m.cfg.Settings.PIDDir)
 	alive, err := process.Reconcile(pidDir)
 	if err != nil {
 		return fmt.Errorf("reconcile PIDs: %w", err)
@@ -179,7 +204,7 @@ func (m *Manager) Reconcile() error {
 
 // ResolveEnv loads or creates the environment cache.
 func (m *Manager) ResolveEnv() {
-	cachePath := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir, "env-cache.json")
+	cachePath := filepath.Join(m.stateDir(m.cfg.Settings.PIDDir), "env-cache.json")
 
 	cache, _ := environ.LoadCache(cachePath)
 	if cache != nil && !cache.IsStale() {
@@ -205,7 +230,7 @@ func (m *Manager) GroupMembers(name string) []string {
 // withLock acquires a cross-process file lock for mutation operations.
 // Prevents two concurrent kb-dev instances from starting/stopping the same services.
 func (m *Manager) withLock(fn func() *Result) *Result {
-	lock, err := process.AcquireLock(filepath.Join(m.rootDir, m.cfg.Settings.PIDDir))
+	lock, err := process.AcquireLock(m.stateDir(m.cfg.Settings.PIDDir))
 	if err != nil {
 		return &Result{
 			OK:      false,
@@ -338,7 +363,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 
 	_ = svc.SetState(service.StateStarting, "")
 
-	logsDir := filepath.Join(m.rootDir, m.cfg.Settings.LogsDir)
+	logsDir := m.stateDir(m.cfg.Settings.LogsDir)
 	_ = logger.Clear(logsDir, svc.ID)
 
 	// Run docker command via spawn.
@@ -358,7 +383,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	svc.PGID = spawnResult.PGID
 	svc.StartedAt = start
 
-	pidDir := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir)
+	pidDir := m.stateDir(m.cfg.Settings.PIDDir)
 	pidInfo := process.NewPIDInfo(svc.ID, spawnResult.PID, spawnResult.PGID, svc.Config.Command)
 	_ = process.WritePID(pidDir, pidInfo)
 
@@ -388,8 +413,8 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 	start := time.Now()
 	_ = svc.SetState(service.StateStarting, "")
 
-	logsDir := filepath.Join(m.rootDir, m.cfg.Settings.LogsDir)
-	pidDir := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir)
+	logsDir := m.stateDir(m.cfg.Settings.LogsDir)
+	pidDir := m.stateDir(m.cfg.Settings.PIDDir)
 
 	_ = logger.EnsureDir(logsDir)
 	_ = logger.Clear(logsDir, svc.ID)
@@ -482,7 +507,7 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool
 	}
 
 	var actions []Action
-	pidDir := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir)
+	pidDir := m.stateDir(m.cfg.Settings.PIDDir)
 
 	// Stop in reverse dependency order — dependents first.
 	for i := len(toStop) - 1; i >= 0; i-- {

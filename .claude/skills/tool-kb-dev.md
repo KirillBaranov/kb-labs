@@ -29,6 +29,64 @@ kb-dev watch                 # JSONL streaming events
 kb-dev doctor                # environment diagnostics
 ```
 
+## Multi-project registry (`register` / `switch` / `projects`)
+
+For machines with several local KB Labs projects sharing one platform install
+(`~/kb-platform`), `kb-dev` keeps a small alias→path registry inside the
+platform's `~/kb-platform/.kb/kb.config.jsonc` (`"projects"` section), so you
+can jump between projects from anywhere without `cd`-ing first.
+
+```bash
+kb-dev register my-project              # register CWD under an alias
+kb-dev register my-project ~/code/proj  # register an explicit path
+kb-dev unregister my-project            # remove an alias
+
+kb-dev projects                         # list registered projects + running state
+kb-dev projects --prune                 # stop every registered project that's running
+
+kb-dev switch my-project                # stop other registered projects, start this one
+kb-dev switch my-project --keep-others  # start this one without stopping others
+```
+
+`switch` resolves each project's TCP ports via a deterministic offset derived
+from its alias (`internal/netoffset.DeriveOffset` + a bind-probe that steps
+past anything actually occupied), so two registered projects never collide on
+ports even without `--net-offset`. The resolved offset is cached per project
+under `.kb/tmp/net-offset.json` so it stays stable across restarts.
+
+`switch` always verifies a stop actually succeeded (via `Reconcile`) before
+starting the target — it refuses to pile a second instance on top of a
+project that failed to release its ports, rather than silently leaking
+processes.
+
+Platform directory resolution (for commands run outside any project, e.g.
+`kb-dev switch` from your home directory): `--platform-dir` flag > current
+project's `platform.dir` > `~/.kb/active-platform` (written by `kb-create`
+on install/update).
+
+Process state (PID files, lock, logs, offset cache) is namespaced per project
+whenever a platform is shared across multiple registered projects (their
+`rootDir` — where `devservices.yaml` lives — is otherwise identical), so two
+projects never see each other's PID files. Single-project setups (project ==
+platform dir) are unaffected — same layout as always.
+
+### Auto-switch on `cd` (opt-in, off by default)
+
+Add `"devSwitch": { "autoHook": true }` to a **project's own**
+`.kb/kb.config.json` (not the platform config) to have `cd`-ing into that
+project automatically `switch` to it — only for projects that opt in, and
+only once you install the shell hook yourself:
+
+```bash
+kb-dev hook zsh   # prints a snippet — paste it into ~/.zshrc yourself
+kb-dev hook bash  # same, for ~/.bashrc
+```
+
+`kb-dev` never edits your rc files. The printed snippet runs `kb-dev
+hook-check` in the background on every `cd`; it no-ops instantly unless the
+target directory is a registered project with `autoHook: true` and isn't
+already the active one.
+
 ## Dev Config (`devservices.dev.yaml`)
 
 Проект имеет **два конфига**:

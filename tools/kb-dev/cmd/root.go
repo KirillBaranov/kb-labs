@@ -17,12 +17,13 @@ func outputMode() result.Mode { return result.ResolveMode(jsonMode, agentMode, o
 
 // Global flags accessible to all subcommands.
 var (
-	jsonMode   bool
-	agentMode  bool
-	outputFlag string
-	forceFlag  bool
-	configPath string
-	netOffset  int
+	jsonMode        bool
+	agentMode       bool
+	outputFlag      string
+	forceFlag       bool
+	configPath      string
+	netOffset       int
+	platformDirFlag string
 )
 
 // SetVersionInfo is called from main.go with values injected at build time via -ldflags.
@@ -52,6 +53,10 @@ Commands:
   ensure <targets>     Idempotent desired state (agent-friendly)
   ready <targets>      Block until services are alive (agent-friendly)
   watch                Stream service events (JSONL)
+  register <alias>     Register a project so switch can find it from anywhere
+  unregister <alias>   Remove a project alias
+  projects             List registered projects and running state
+  switch <alias>       Stop other registered projects and start <alias>
 
 Examples:
   kb-dev start                    start all services
@@ -94,6 +99,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&forceFlag, "force", false, "kill port conflicts before starting")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
 	rootCmd.PersistentFlags().IntVar(&netOffset, "net-offset", 0, "shift all TCP ports by this amount (overrides KB_NET_OFFSET); for isolated parallel environments. Socket services untouched.")
+	rootCmd.PersistentFlags().StringVar(&platformDirFlag, "platform-dir", "", "override the KB Labs platform directory (default: current project's platform.dir, then ~/.kb/active-platform)")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")
