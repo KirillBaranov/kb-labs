@@ -173,6 +173,73 @@ func TestReadPlatformOptions_PreservesGatewayAuth(t *testing.T) {
 	}
 }
 
+func TestReadPlatformOptions_PreservesProjects(t *testing.T) {
+	platformDir := t.TempDir()
+
+	projects := map[string]string{
+		"dit-1":     "/Users/x/dit-1",
+		"figma-map": "/Users/x/figma-map",
+	}
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir: platformDir,
+		Projects:    projects,
+	}); err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	got := ReadPlatformOptions(platformDir)
+	if len(got.Projects) != len(projects) {
+		t.Fatalf("Projects not preserved: got %v, want %v", got.Projects, projects)
+	}
+	for alias, path := range projects {
+		if got.Projects[alias] != path {
+			t.Errorf("Projects[%q] = %q, want %q", alias, got.Projects[alias], path)
+		}
+	}
+}
+
+// TestKBCreateUpdate_DoesNotDropProjects simulates the exact `kb-create update`
+// sequence (ReadPlatformOptions of the existing file, then WritePlatformConfig
+// with those options) to guard against the registry being silently wiped when
+// the platform config is regenerated — the specific risk this feature had to
+// solve (kb.config.jsonc is otherwise fully overwritten on every update).
+func TestKBCreateUpdate_DoesNotDropProjects(t *testing.T) {
+	platformDir := t.TempDir()
+
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir: platformDir,
+		Projects:    map[string]string{"dit-1": "/Users/x/dit-1"},
+	}); err != nil {
+		t.Fatalf("initial WritePlatformConfig() error = %v", err)
+	}
+
+	// Simulate `kb-dev register` adding an alias between installer runs by
+	// editing the file directly the way kb-dev's WriteProjects would (splicing
+	// the sentinel block) — here we just re-write via the same Options path
+	// kb-dev would end up producing, since this test lives in kb-create and
+	// shouldn't depend on the kb-dev module.
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir: platformDir,
+		Projects: map[string]string{
+			"dit-1":     "/Users/x/dit-1",
+			"figma-map": "/Users/x/figma-map",
+		},
+	}); err != nil {
+		t.Fatalf("simulated kb-dev register error = %v", err)
+	}
+
+	// Now simulate `kb-create update`: read existing options, write them back.
+	updateOpts := ReadPlatformOptions(platformDir)
+	if err := WritePlatformConfig(platformDir, updateOpts); err != nil {
+		t.Fatalf("simulated kb-create update error = %v", err)
+	}
+
+	final := ReadPlatformOptions(platformDir)
+	if len(final.Projects) != 2 {
+		t.Fatalf("kb-create update dropped projects: got %v", final.Projects)
+	}
+}
+
 func TestWritePlatformConfig_GatewayDefaults(t *testing.T) {
 	platformDir := t.TempDir()
 

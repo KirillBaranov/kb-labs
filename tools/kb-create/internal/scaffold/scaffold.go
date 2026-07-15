@@ -66,6 +66,11 @@ type Options struct {
 	// nil → the canonical default plan is rendered (gateway.DefaultPlan), so an
 	// install that ran no discovery still gets a working gateway section.
 	Gateway *gateway.Plan
+	// Projects is the registry of known local projects (alias → absolute path),
+	// managed by `kb-dev register`/`kb-dev switch`. Preserved verbatim across
+	// `kb-create update` — see ReadPlatformOptions and the "projects" section
+	// in generateFull. Nil/empty is valid (no projects registered yet).
+	Projects map[string]string
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -79,7 +84,14 @@ func WritePlatformConfig(platformDir string, opts Options) error {
 	content := generateFull(opts)
 	path := filepath.Join(dir, "kb.config.jsonc")
 	// #nosec G306 -- platform config is expected to be readable in the workspace.
-	return os.WriteFile(path, []byte(content), 0o644)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return err
+	}
+	// Best-effort: lets `kb-dev switch`/`register` find this platform when
+	// invoked from outside any project directory. Not fatal on failure — the
+	// per-project kb.config.jsonc "platform.dir" pointer still works.
+	_ = RecordActivePlatform(platformDir)
+	return nil
 }
 
 // WriteProjectConfig writes a minimal platform.dir pointer to projectDir/.kb/kb.config.jsonc
@@ -182,10 +194,16 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 				Enabled *bool `json:"enabled"`
 			} `json:"auth"`
 		} `json:"gateway"`
+		Projects map[string]string `json:"projects"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
 	}
+
+	// Preserve the projects registry verbatim — kb-create update must never
+	// silently drop projects that `kb-dev register`/`switch` added between
+	// installer runs.
+	opts.Projects = cfg.Projects
 
 	for name, on := range cfg.Services {
 		if on {
@@ -505,10 +523,54 @@ func generateFull(opts Options) string {
 	writePluginBlock(&b, "scaffold", "Scaffold plugins and adapters.", plugSet, `
       // Output directory for scaffolded entities.
       "outDir": "plugins"`)
-	b.WriteString(`  }
-}
+	b.WriteString(`  },
+
 `)
 
+	// ── projects section ──────────────────────────────────────────────────
+	b.WriteString(renderProjectsSection(opts.Projects))
+
+	return b.String()
+}
+
+// renderProjectsSection renders the "projects" registry (alias → absolute
+// path) as the final top-level key, closing the object.
+//
+// The entries live between two sentinel comment lines
+// (kb-dev:projects:start/end) that `kb-dev register`/`unregister` locate via
+// plain string search and splice in place — this lets kb-dev add or remove a
+// single alias without re-parsing or re-generating the rest of this
+// hand-templated file (which would blow away user-facing comments).
+// Keep the sentinel lines and indentation stable; kb-dev's writer depends on
+// their exact text.
+func renderProjectsSection(projects map[string]string) string {
+	keys := make([]string, 0, len(projects))
+	for k := range projects {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	b.WriteString(`  // ─── Projects ─────────────────────────────────────────────────────────
+  // Registry of known local projects (alias -> absolute path), so you can run
+  // "kb-dev switch <alias>" from anywhere without cd-ing into the project.
+  // Managed by ` + "`kb-dev register`" + `/` + "`kb-dev switch`" + `. Safe to edit by hand too.
+  "projects": {
+    // kb-dev:projects:start
+`)
+	for i, k := range keys {
+		comma := ","
+		if i == len(keys)-1 {
+			comma = ""
+		}
+		keyJSON, _ := json.Marshal(k)
+		valJSON, _ := json.Marshal(projects[k])
+		fmt.Fprintf(&b, "    %s: %s%s\n", keyJSON, valJSON, comma)
+	}
+	b.WriteString(`    // kb-dev:projects:end
+  }
+}
+`)
 	return b.String()
 }
 
