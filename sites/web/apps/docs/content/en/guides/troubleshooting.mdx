@@ -1,7 +1,7 @@
 ---
 title: "Troubleshooting"
 description: "Common issues and their fixes — the FAQ for KB Labs developers."
-updatedAt: "2026-04-07"
+updatedAt: "2026-07-16"
 order: 7
 ---
 
@@ -241,6 +241,38 @@ kill -9 <PID>
 # Or use kb-dev's force flag if the zombie is a platform process:
 kb-dev start rest --force
 ```
+
+### Multiple local projects keep colliding on ports
+
+**Symptom.** You have several project directories sharing one KB Labs platform install. Starting one manually while another is still running fails, or the wrong project's services answer your requests.
+
+**Cause.** Every project's `devservices.yaml` defaults to the same ports (gateway 4000, rest 5050, etc.) — nothing was coordinating which project's instance actually owns them.
+
+**Fix.** Register each project once, then switch between them instead of starting/stopping by hand:
+
+```bash
+kb-dev register project-a
+kb-dev register project-b ~/code/project-b
+
+kb-dev switch project-a   # stops project-b (if running), starts project-a on its own ports
+kb-dev switch project-b
+```
+
+See [kb-dev → Multi-project registry](/services/kb-dev#multi-project-registry).
+
+### "cannot determine the KB Labs platform directory"
+
+**Symptom.** `kb-dev switch`, `projects`, or `register` fails with this error.
+
+**Cause.** The command ran from somewhere that isn't inside a registered project, and `~/.kb/active-platform` (written by `kb-create` on install/update) is missing or stale.
+
+**Fix.** Pass the platform path explicitly:
+
+```bash
+kb-dev projects --platform-dir ~/kb-platform
+```
+
+Or refresh the pointer by running `kb-create update` from inside any project already attached to the platform.
 
 ### "Workspace adapter not configured" warning on workflow daemon startup
 

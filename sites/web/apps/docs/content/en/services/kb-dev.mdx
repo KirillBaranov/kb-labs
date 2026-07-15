@@ -1,7 +1,7 @@
 ---
 title: "kb-dev"
 description: "Local service manager — process tracking, health probes, dependency ordering, and auto-restart for any project."
-updatedAt: "2026-05-31"
+updatedAt: "2026-07-16"
 order: 8
 ---
 
@@ -256,6 +256,45 @@ State icons: `●` alive, `◉` starting, `✕` failed, `○` dead.
 | `--cascade` | Stop/restart dependent services |
 | `--no-cascade` | Skip dependent cascade |
 | `--config <path>` | Explicit config file path |
+
+## Multi-project registry
+
+If one platform install (`~/kb-platform`, or wherever `kb-create --platform` pointed) is shared by several local project checkouts, `kb-dev` can register each one under an alias and switch between them from anywhere — no `cd` required, and no manual port bookkeeping.
+
+```bash
+kb-dev register my-project              # register the current directory
+kb-dev register my-project ~/code/proj  # or an explicit path
+
+kb-dev projects                         # list registered projects + running state
+kb-dev switch my-project                # stop other registered projects, start this one
+kb-dev switch my-project --keep-others  # start this one without stopping others
+
+kb-dev unregister my-project
+kb-dev projects --prune                 # stop every registered project that's running
+```
+
+`switch` derives a deterministic port offset from the alias (probed against real port availability, not just assumed free), so two registered projects never collide even though they share the same `devservices.yaml`. It also verifies a stop actually took effect before starting the target — it refuses to start a second instance on top of a project whose services failed to release their ports, rather than leaking processes.
+
+The registry lives in the platform's own `kb.config.jsonc` (`"projects"` section) and survives `kb-create update`. Commands that don't depend on the current directory (`switch`, `projects`) resolve the platform via, in order: `--platform-dir`, the current project's `platform.dir` pointer, or `~/.kb/active-platform` (written by `kb-create` on install/update).
+
+### Auto-switch on cd
+
+A project can opt in to switching automatically whenever you `cd` into it. Add to that project's own `.kb/kb.config.json` (off by default):
+
+```json
+{
+  "devSwitch": { "autoHook": true }
+}
+```
+
+Then install the shell hook once — `kb-dev` never edits your shell config itself:
+
+```bash
+kb-dev hook zsh    # prints a snippet — paste it into ~/.zshrc
+kb-dev hook bash   # same, for ~/.bashrc
+```
+
+The hook runs `kb-dev hook-check` in the background on every `cd`. It exits immediately unless the target directory is a registered project with `autoHook` on and isn't already the active one.
 
 ## Agent protocol
 
