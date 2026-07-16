@@ -130,6 +130,9 @@ func switchToAlias(ctx context.Context, platformDir, alias string, keepOthers, q
 				out.Info(a.Service + " already running")
 			case "failed":
 				out.Err(a.Service + " failed: " + a.Error)
+				for _, line := range a.LogsTail {
+					out.Detail(line)
+				}
 			}
 		}
 		if startResult.Hint != "" {
@@ -166,23 +169,32 @@ func stopIfRunning(ctx context.Context, path string) (bool, error) {
 		return false, err
 	}
 
-	if !anyAlive(mgr, targets) {
+	if !anyRunning(mgr, targets) {
 		return false, nil
 	}
 
 	mgr.Stop(ctx, targets, true)
 	_ = mgr.Reconcile()
 
-	if anyAlive(mgr, targets) {
+	if anyRunning(mgr, targets) {
 		return true, fmt.Errorf("one or more services are still running after stop")
 	}
 	return true, nil
 }
 
-func anyAlive(mgr *manager.Manager, targets []string) bool {
+// anyRunning reports whether any target has a live PID — "alive" (healthy),
+// "starting", "failed" (PID running but its health check doesn't pass — see
+// Manager.Reconcile), or "stopping" all mean a process is still there and
+// needs to be stopped before another project starts on the same ports.
+// Only "dead" means nothing to do. Checking for "alive" alone would leave an
+// unhealthy-but-running service behind: `switch` wouldn't even attempt to
+// stop it, and the next project could collide with it or its logs. Reusing
+// "dead" as the sole terminal state also matches Reconcile's own semantics
+// (it never emits a bare "not found" state distinct from "dead").
+func anyRunning(mgr *manager.Manager, targets []string) bool {
 	status := mgr.Status()
 	for _, id := range targets {
-		if ss, ok := status.Services[id]; ok && ss.State == "alive" {
+		if ss, ok := status.Services[id]; ok && ss.State != "dead" {
 			return true
 		}
 	}

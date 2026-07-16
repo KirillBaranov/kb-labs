@@ -101,8 +101,9 @@ func runProjects(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// projectRunning reports whether any service of the project at path is alive,
-// without stopping anything (used for the plain listing view).
+// projectRunning reports whether any service of the project at path has a
+// live PID (alive, starting, or failed-but-running — see anyRunning), without
+// stopping anything. Used for the plain listing view.
 func projectRunning(path string) (bool, error) {
 	result, err := config.Discover(path)
 	if err != nil {
@@ -120,5 +121,5 @@ func projectRunning(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return anyAlive(mgr, targets), nil
+	return anyRunning(mgr, targets), nil
 }
