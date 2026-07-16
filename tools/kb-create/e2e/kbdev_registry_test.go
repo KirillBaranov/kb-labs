@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -244,14 +245,9 @@ func TestKbDevRegistrySwitch_MultiProjectSharedPlatform(t *testing.T) {
 		t.Fatalf("switch a failed: exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 	}
 
-	statusA, err := kbDevStatusJSONFrom(t, kbDev, projA)
-	if err != nil {
-		t.Fatalf("status from projA: %v", err)
-	}
-	for id, state := range allServicesState(t, statusA) {
-		if state != "alive" {
-			t.Errorf("after switch a, service %q state = %q, want alive", id, state)
-		}
+	statusA, bad := waitAllAlive(t, kbDev, projA, 30*time.Second)
+	if len(bad) != 0 {
+		t.Fatalf("after switch a, services not alive after waiting: %v", bad)
 	}
 
 	liveAfterA := countLiveKBLabsProcesses(t)
@@ -277,14 +273,9 @@ func TestKbDevRegistrySwitch_MultiProjectSharedPlatform(t *testing.T) {
 		}
 	}
 
-	statusB, err := kbDevStatusJSONFrom(t, kbDev, projB)
-	if err != nil {
-		t.Fatalf("status from projB: %v", err)
-	}
-	for id, state := range allServicesState(t, statusB) {
-		if state != "alive" {
-			t.Errorf("after switch b, service %q state = %q, want alive", id, state)
-		}
+	statusB, bad := waitAllAlive(t, kbDev, projB, 30*time.Second)
+	if len(bad) != 0 {
+		t.Fatalf("after switch b, services not alive after waiting: %v", bad)
 	}
 
 	// Ports must differ between a and b's runs — proves the per-alias
@@ -324,6 +315,41 @@ func TestKbDevRegistrySwitch_MultiProjectSharedPlatform(t *testing.T) {
 	}
 	if live := countLiveKBLabsProcesses(t); live != 0 {
 		t.Errorf("expected 0 live @kb-labs processes after --prune, found %d", live)
+	}
+}
+
+// waitAllAlive polls `kb-dev status --json` from dir until every service is
+// "alive" or timeout elapses. A service can legitimately take a moment past
+// Start()'s own health-check wait to settle under CI resource pressure —
+// tolerating that here matches the rest of this suite's stance (see
+// TestServicesStartStop: "not that the service itself boots all the way up
+// ... depends on runtime deps outside kb-create's scope"). Returns the last
+// observed status and the states that weren't alive when it gave up, if any.
+func waitAllAlive(t *testing.T, kbDevPath, dir string, timeout time.Duration) (map[string]any, map[string]string) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	var lastStatus map[string]any
+	var lastBad map[string]string
+
+	for {
+		status, err := kbDevStatusJSONFrom(t, kbDevPath, dir)
+		if err == nil {
+			lastStatus = status
+			bad := map[string]string{}
+			for id, state := range allServicesState(t, status) {
+				if state != "alive" {
+					bad[id] = state
+				}
+			}
+			lastBad = bad
+			if len(bad) == 0 {
+				return status, nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return lastStatus, lastBad
+		}
+		time.Sleep(2 * time.Second)
 	}
 }
 
