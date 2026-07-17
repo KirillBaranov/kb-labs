@@ -285,8 +285,34 @@ describe('WorkflowHostService.rerunWorkflow', () => {
     inputs: { branch: 'main' },
     metadata: { workflowId: 'my-workflow' },
     jobs: [
-      { id: 'j1', jobName: 'build', status: 'success', runId: 'run-src', tenantId: 't1', runsOn: 'local', queuedAt: new Date().toISOString(), attempt: 0, artifacts: {}, steps: [] },
-      { id: 'j2', jobName: 'test', status: 'failed', runId: 'run-src', tenantId: 't1', runsOn: 'local', queuedAt: new Date().toISOString(), attempt: 0, artifacts: {}, steps: [] },
+      {
+        id: 'j1',
+        jobName: 'build',
+        status: 'success',
+        runId: 'run-src',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 0,
+        artifacts: {},
+        steps: [
+          { id: 's1', runId: 'run-src', jobId: 'j1', name: 'compile', index: 0, status: 'success', queuedAt: new Date().toISOString(), attempt: 0, spec: { uses: 'noop' }, outputs: { artifactPath: '/dist/app' } },
+        ],
+      },
+      {
+        id: 'j2',
+        jobName: 'test',
+        status: 'failed',
+        runId: 'run-src',
+        tenantId: 't1',
+        runsOn: 'local',
+        queuedAt: new Date().toISOString(),
+        attempt: 0,
+        artifacts: {},
+        steps: [
+          { id: 's2', runId: 'run-src', jobId: 'j2', name: 'run-tests', index: 0, status: 'failed', queuedAt: new Date().toISOString(), attempt: 0, spec: { uses: 'noop' } },
+        ],
+      },
     ],
   };
 
@@ -319,24 +345,54 @@ describe('WorkflowHostService.rerunWorkflow', () => {
     expect(Object.keys(jobs)).toEqual(['build', 'test']);
   });
 
-  it('RW-B: failedOnly=true filters to only failed jobs and strips satisfied needs', async () => {
-    const runFromSpec = vi.fn(async () => ({ id: 'run-new', status: 'queued' }));
+  it('RW-B: failedOnly=true resumes from the failed step via replayRun, carrying forward prior step outputs', async () => {
+    const replayRun = vi.fn(async () => ({ id: 'run-new', status: 'queued' }));
+    const runFromSpec = vi.fn();
     const service = createService({
-      engine: { getRun: vi.fn(async () => baseRun), runFromSpec },
+      engine: { getRun: vi.fn(async () => baseRun), replayRun, runFromSpec },
       workflowService: { get: vi.fn(async () => baseWorkflow) },
     });
 
-    await service.rerunWorkflow('run-src', { failedOnly: true });
+    const result = await service.rerunWorkflow('run-src', { failedOnly: true });
 
-    const [specArg] = (runFromSpec as any).mock.calls[0] as [Record<string, unknown>];
-    const jobs = specArg['jobs'] as Record<string, unknown>;
-    // build succeeded — must not be rerun
-    expect(Object.keys(jobs)).not.toContain('build');
-    // test failed — must be rerun
-    expect(Object.keys(jobs)).toContain('test');
-    // 'build' stripped from test.needs since it is not in the filtered set
-    const testJob = jobs['test'] as Record<string, unknown>;
-    expect(testJob['needs']).toEqual([]);
+    expect(result.runId).toBe('run-new');
+    // Must resume via the snapshot, not start a brand-new run from a filtered spec.
+    expect(runFromSpec).not.toHaveBeenCalled();
+    expect(replayRun).toHaveBeenCalledWith('run-src', { fromStepId: 's2' });
+  });
+
+  it('RW-B2: failedOnly=true resumes an interrupted job whose steps never reached failed (still running/queued)', async () => {
+    const interruptedRun = {
+      ...baseRun,
+      jobs: [
+        baseRun.jobs[0],
+        {
+          id: 'j2',
+          jobName: 'test',
+          status: 'interrupted',
+          runId: 'run-src',
+          tenantId: 't1',
+          runsOn: 'local',
+          queuedAt: new Date().toISOString(),
+          attempt: 0,
+          artifacts: {},
+          // Interrupted mid-run: the active step is left 'running', never marked 'failed'.
+          steps: [
+            { id: 's2', runId: 'run-src', jobId: 'j2', name: 'run-tests', index: 0, status: 'running', queuedAt: new Date().toISOString(), attempt: 0, spec: { uses: 'noop' } },
+          ],
+        },
+      ],
+    };
+    const replayRun = vi.fn(async () => ({ id: 'run-new', status: 'queued' }));
+    const service = createService({
+      engine: { getRun: vi.fn(async () => interruptedRun), replayRun },
+      workflowService: { get: vi.fn(async () => baseWorkflow) },
+    });
+
+    const result = await service.rerunWorkflow('run-src', { failedOnly: true });
+
+    expect(result.runId).toBe('run-new');
+    expect(replayRun).toHaveBeenCalledWith('run-src', { fromStepId: 's2' });
   });
 
   it('RW-C: failedOnly=true throws when no jobs have failed', async () => {
@@ -361,6 +417,18 @@ describe('WorkflowHostService.rerunWorkflow', () => {
     });
 
     await expect(service.rerunWorkflow('missing-run', { failedOnly: false })).rejects.toThrow('Run not found');
+  });
+
+  it('RW-E: failedOnly=true throws a clear error when no snapshot exists for the source run', async () => {
+    const replayRun = vi.fn(async () => null);
+    const service = createService({
+      engine: { getRun: vi.fn(async () => baseRun), replayRun },
+      workflowService: { get: vi.fn(async () => baseWorkflow) },
+    });
+
+    await expect(service.rerunWorkflow('run-src', { failedOnly: true })).rejects.toThrow(
+      /No replay snapshot for run run-src/,
+    );
   });
 });
 
