@@ -39,18 +39,33 @@ func DeriveOffset(alias string) int {
 	return baseOffset + int(h%uint32(offsetRange/offsetStep))*offsetStep
 }
 
-// Resolve returns a working offset for alias: it starts from DeriveOffset,
-// re-uses the cached offset from a previous run when its ports are still
-// free, and otherwise probes candidate offsets (stepping by offsetStep) until
-// it finds one where every port in ports is actually bindable. This handles
-// the case where the hash-derived (or previously cached) offset collides
+// Resolve returns a working offset for alias: it re-uses the cached offset
+// from a previous resolution unconditionally, and only probes candidate
+// offsets (stepping by offsetStep, starting from DeriveOffset) when no cache
+// exists yet. This handles the case where the hash-derived offset collides
 // with something else running on the machine — not just other registered
-// kb-labs projects.
+// kb-labs projects — the first time an alias is ever resolved.
+//
+// A cache hit is trusted even when its ports are not currently bindable: once
+// `switch`/`start` has resolved and cached an offset for alias, that alias's
+// own services are expected to be holding those exact ports whenever it's
+// running — re-probing "is this port free" at that point can only ever see
+// "no" (it's genuinely in use, by ourselves) and would otherwise silently
+// reassign a *different* offset out from under an already-running instance.
+// Every subsequent caller (status, reconcile, a repeated switch) would then
+// probe health on the wrong, newly-reassigned ports while the real service
+// keeps listening on the cached ones — every service reporting "process
+// running but health check fails" simultaneously, which is exactly the
+// failure this replaces. A genuine external collision (some other program
+// grabbed the cached port while alias was stopped) still surfaces clearly:
+// Manager.Start's real bind attempt fails per-service with an actionable
+// "port already in use" error instead of Resolve silently remapping ports
+// underneath a caller that expected them to be stable.
 //
 // pidDir is the project's state directory (<rootDir>/.kb/tmp per Settings.PIDDir)
 // used to cache the resolved offset between runs.
 func Resolve(alias string, pidDir string, ports func(offset int) []int) (int, error) {
-	if cached, ok := readCache(pidDir, alias); ok && allFree(ports(cached)) {
+	if cached, ok := readCache(pidDir, alias); ok {
 		return cached, nil
 	}
 
