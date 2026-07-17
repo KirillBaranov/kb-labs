@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -365,6 +366,51 @@ func TestComputeSocketHash_DifferentDirsGiveDifferentHashes(t *testing.T) {
 	}
 	if len(h1) != 8 || len(h2) != 8 {
 		t.Errorf("hash lengths: %d, %d — want 8", len(h1), len(h2))
+	}
+}
+
+// TestStateDir_SingleProjectMode guards backward compatibility: when rootDir
+// == projectDir (today's only configuration before multi-project registries
+// existed), StateDir must be byte-identical to the plain <rootDir>/<base>
+// layout kb-dev has always used — no namespacing, no behavior change for
+// anyone not using platform.dir-shared projects.
+func TestStateDir_SingleProjectMode(t *testing.T) {
+	got := StateDir("/workspace", "/workspace", ".kb/tmp")
+	want := "/workspace/.kb/tmp"
+	if got != want {
+		t.Errorf("StateDir(rootDir==projectDir) = %q, want %q (unnamespaced)", got, want)
+	}
+}
+
+// TestStateDir_SharedPlatformNamespacesByProject guards the fix for the bug
+// where two registered projects sharing one platform.dir (rootDir identical
+// for both) would otherwise collapse their PID/lock/log state onto the same
+// directory — project A's Reconcile/Stop would see project B's processes.
+func TestStateDir_SharedPlatformNamespacesByProject(t *testing.T) {
+	rootDir := "/Users/x/kb-platform"
+	projectA := "/Users/x/dit-1"
+	projectB := "/Users/x/dit-2"
+
+	dirA := StateDir(rootDir, projectA, ".kb/tmp")
+	dirB := StateDir(rootDir, projectB, ".kb/tmp")
+
+	if dirA == dirB {
+		t.Fatalf("two different projects sharing one platform resolved to the same state dir: %q", dirA)
+	}
+	unnamespaced := filepath.Join(rootDir, ".kb/tmp")
+	if dirA == unnamespaced {
+		t.Errorf("StateDir for a shared platform must NOT be the unnamespaced path, got %q", dirA)
+	}
+}
+
+// TestStateDir_Deterministic guards that the same (rootDir, projectDir) pair
+// always resolves to the same path — required for PID files written by one
+// invocation to be found by the next.
+func TestStateDir_Deterministic(t *testing.T) {
+	a := StateDir("/platform", "/project-x", ".kb/tmp")
+	b := StateDir("/platform", "/project-x", ".kb/tmp")
+	if a != b {
+		t.Errorf("StateDir not deterministic: %q != %q", a, b)
 	}
 }
 

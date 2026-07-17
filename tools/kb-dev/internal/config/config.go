@@ -93,6 +93,20 @@ func (c *Config) ApplyOffset(offset int) {
 	}
 }
 
+// TCPPorts returns the base (unshifted) ports of every TCP service (Socket ==
+// "" and Port > 0). Used to probe port availability before committing to a
+// net-offset — see internal/netoffset.Resolve.
+func (c *Config) TCPPorts() []int {
+	ports := make([]int, 0, len(c.Services))
+	for _, svc := range c.Services {
+		if svc.Socket == "" && svc.Port > 0 {
+			ports = append(ports, svc.Port)
+		}
+	}
+	sort.Ints(ports)
+	return ports
+}
+
 // ResolveTarget converts a target string into a list of service IDs.
 // Empty string = all services. Group name = services in that group. Service name = [name].
 func (c *Config) ResolveTarget(target string) ([]string, error) {

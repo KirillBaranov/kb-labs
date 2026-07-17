@@ -35,7 +35,7 @@ func Discover(dir string) (DiscoverResult, error) {
 	}
 
 	// Check for kb.config.jsonc pointing to a separate platform dir.
-	if platformDir := findPlatformDir(abs); platformDir != "" {
+	if platformDir := FindPlatformDir(abs); platformDir != "" {
 		candidate := filepath.Join(platformDir, ".kb", "devservices.yaml")
 		if _, err := os.Stat(candidate); err == nil {
 			return DiscoverResult{ConfigPath: candidate, ProjectDir: abs}, nil

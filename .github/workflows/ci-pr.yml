@@ -176,10 +176,12 @@ jobs:
       - name: Workspace checks (links, SEO, i18n, docs, CLI naming)
         run: ./tools/kb-devkit/kb-devkit check
 
-  # ── 5. kb-create e2e — only if launcher sources changed ────────────────────
+  # ── 5. kb-create e2e — only if launcher or kb-dev sources changed ──────────
   #
   # Runs the Go e2e suite for kb-create against a local Verdaccio instance
   # populated from this PR's built packages — the correct pre-publish cycle.
+  # Also covers tools/kb-dev: the suite installs a real platform and drives
+  # kb-dev's register/switch/projects commands against it.
   #
   # Setup order:
   #   build → pack .tgz → start Verdaccio (Docker, port 4873) →
@@ -232,14 +234,18 @@ jobs:
         run: |
           set -euo pipefail
           changed=$(.devkit/affected.sh || true)
-          if echo "$changed" | grep -qE '^tools/kb-create/'; then
+          # tools/kb-create e2e also exercises tools/kb-dev (the e2e suite
+          # installs a real platform and drives kb-dev's register/switch/
+          # projects commands against it — see e2e/kbdev_registry_test.go),
+          # so a kb-dev-only PR must trigger this job too, not just kb-create.
+          if echo "$changed" | grep -qE '^tools/(kb-create|kb-dev)/'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
       # All steps below are gated — skip the expensive Verdaccio setup when
-      # no kb-create sources changed.
+      # neither kb-create nor kb-dev sources changed.
 
       - uses: actions/download-artifact@v4
         if: steps.gate.outputs.run == 'true'
@@ -347,6 +353,11 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          # Unlimited failure output — kb-devkit's default 50-line truncation
+          # hides exactly the per-service LogsTail/state detail needed to
+          # diagnose a failure here, and this job has no log-upload step
+          # (unlike ci.yml's equivalent) to fall back on.
+          KB_DEVKIT_FAIL_LINES: "0"
 
       # ── Cleanup ──────────────────────────────────────────────────────────
 
