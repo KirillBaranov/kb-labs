@@ -83,8 +83,18 @@ func allFree(ports []int) bool {
 // a dial only detects ports something is actively listening on, whereas a
 // bind also fails when the OS has the port reserved (TIME_WAIT, another
 // process holding it without accepting yet, etc.).
+//
+// Binds "tcp4" on 127.0.0.1 specifically — services are health-probed on
+// localhost (see health/probe.go), and a generic "tcp" bind on ":port"
+// resolves differently across hosts depending on the system's IPv6
+// dual-stack/bindv6only setting: on a host where dual-stack binding isn't
+// available, an IPv6-only listener and an IPv4-only listener can coexist on
+// the same port without ever colliding, so this check would report a port
+// free that a real service (or this package's own tests) is actually using.
+// Pinning both sides to tcp4/127.0.0.1 keeps the check consistent regardless
+// of host IPv6 configuration.
 func isPortFree(port int) bool {
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	ln, err := net.Listen("tcp4", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return false
 	}

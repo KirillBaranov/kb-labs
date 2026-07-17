@@ -55,8 +55,12 @@ func TestResolve_stepsPastOccupiedPort(t *testing.T) {
 
 	derived := DeriveOffset(alias)
 	// Occupy the port the derived offset would land on, forcing Resolve to
-	// step to the next candidate.
-	ln, err := net.Listen("tcp", "")
+	// step to the next candidate. Must match isPortFree's tcp4/127.0.0.1
+	// binding exactly — a generic "tcp"/"" listener can land on an IPv6-only
+	// socket on hosts where dual-stack binding isn't available, which
+	// wouldn't actually collide with isPortFree's tcp4 probe and made this
+	// test flaky in CI.
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Skipf("cannot bind a test listener: %v", err)
 	}
