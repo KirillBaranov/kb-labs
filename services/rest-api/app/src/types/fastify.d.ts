@@ -10,6 +10,11 @@ import type { ContextConfigDefault, RawReplyDefaultExpression, RawRequestDefault
 import type { IEntityRegistry } from '@kb-labs/core-registry';
 import type { ReadinessState } from '../routes/readiness';
 import '@fastify/type-provider-typebox';
+// @fastify/swagger augments FastifySchema with `tags`/`hide`/etc. Previously
+// pulled in transitively via fastify-type-provider-zod@6's peer dependency
+// on @fastify/swagger; 4.0.2 (pinned for Zod v3 compat, see #270) has no
+// such peer, so the augmentation needs an explicit side-effect import here.
+import '@fastify/swagger';
 import type { EventHub } from '../events/hub';
 
 declare module 'fastify/types/instance' {
