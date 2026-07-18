@@ -860,16 +860,25 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "  Setup:     %s\n", focusStyle.Render(preset.Name))
 	}
 
-	// Show selected components.
+	// Show selected components. A component (e.g. "marketplace") can be both
+	// a default service and a default plugin in the manifest, so dedupe by id
+	// while preserving first-seen order.
 	var selected []string
+	seen := make(map[string]bool)
+	addSelected := func(id string) {
+		if !seen[id] {
+			seen[id] = true
+			selected = append(selected, id)
+		}
+	}
 	for _, s := range m.services {
 		if s.checked {
-			selected = append(selected, s.id)
+			addSelected(s.id)
 		}
 	}
 	for _, p := range m.plugins {
 		if p.checked {
-			selected = append(selected, p.id)
+			addSelected(p.id)
 		}
 	}
 	if len(selected) > 0 {

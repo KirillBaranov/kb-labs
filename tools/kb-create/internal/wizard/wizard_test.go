@@ -395,3 +395,27 @@ func TestRunNoTTYAbortsWithoutYes(t *testing.T) {
 		t.Errorf("Run() selection = %+v, want nil on error", sel)
 	}
 }
+
+// TestViewConfirm_DedupesComponentsAppearingAsServiceAndPlugin verifies the
+// "Components:" summary line doesn't list an id twice when it's both a
+// default service and a default plugin in the manifest (e.g. "marketplace").
+func TestViewConfirm_DedupesComponentsAppearingAsServiceAndPlugin(t *testing.T) {
+	m := wizardModel{
+		platformInput:  makeInput("/tmp/platform"),
+		cwdInput:       makeInput("/tmp/project"),
+		selectedPreset: -1,
+		services: []checkItem{
+			{id: "marketplace", checked: true},
+			{id: "rest", checked: true},
+		},
+		plugins: []checkItem{
+			{id: "marketplace", checked: true},
+			{id: "commit", checked: true},
+		},
+	}
+
+	out := m.viewConfirm()
+	if strings.Count(out, "marketplace") != 1 {
+		t.Errorf("viewConfirm() should list \"marketplace\" once, got:\n%s", out)
+	}
+}

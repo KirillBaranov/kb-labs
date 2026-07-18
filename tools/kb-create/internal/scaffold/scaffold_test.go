@@ -760,3 +760,22 @@ func TestWriteProjectConfig_LLMProviderSkip(t *testing.T) {
 		t.Errorf(".env should be empty or absent when LLM skipped, got:\n%s", content)
 	}
 }
+
+// TestEnsureGitignore_ExcludesClaudeDir verifies .gitignore excludes .claude/,
+// which the commit plugin refuses to commit anyway — a plain `git add -A` on a
+// fresh project should not stage Claude Code assets in the first place.
+func TestEnsureGitignore_ExcludesClaudeDir(t *testing.T) {
+	projectDir := t.TempDir()
+
+	if err := ensureGitignore(projectDir); err != nil {
+		t.Fatalf("ensureGitignore: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(projectDir, ".gitignore"))
+	if err != nil {
+		t.Fatalf("read .gitignore: %v", err)
+	}
+	if !strings.Contains(string(data), ".claude/") {
+		t.Errorf(".gitignore should exclude .claude/, got:\n%s", string(data))
+	}
+}

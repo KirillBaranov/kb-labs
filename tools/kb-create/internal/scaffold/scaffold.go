@@ -795,7 +795,7 @@ func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey strin
 func ensureGitignore(projectDir string) error {
 	const (
 		marker = "# kb-labs-ignore"
-		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/commit/\n.kb/mind/\n.kb/database/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# end-kb-labs-ignore\n"
+		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/commit/\n.kb/mind/\n.kb/database/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n"
 	)
 	path := filepath.Join(projectDir, ".gitignore")
 	existing, err := os.ReadFile(path)

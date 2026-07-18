@@ -16,8 +16,8 @@ func TestIsGitRepo_True(t *testing.T) {
 		t.Skipf("git not available: %v", err)
 	}
 
-	if !isGitRepo(dir) {
-		t.Error("isGitRepo() = false, want true for initialized git repo")
+	if !IsGitRepo(dir) {
+		t.Error("IsGitRepo() = false, want true for initialized git repo")
 	}
 }
 
@@ -25,8 +25,8 @@ func TestIsGitRepo_False(t *testing.T) {
 	dir := t.TempDir()
 	// No git init — just an empty directory
 
-	if isGitRepo(dir) {
-		t.Error("isGitRepo() = true, want false for non-git directory")
+	if IsGitRepo(dir) {
+		t.Error("IsGitRepo() = true, want false for non-git directory")
 	}
 }
 

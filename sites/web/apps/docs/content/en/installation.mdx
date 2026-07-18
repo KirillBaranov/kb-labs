@@ -78,7 +78,7 @@ kb-create my-project
 The interactive wizard:
 - Picks a package manager (pnpm recommended)
 - Sets up the platform directory (`~/.kb` by default or project-local)
-- Creates `.kb/kb.config.json` with default adapter stubs
+- Creates `.kb/kb.config.jsonc` with default adapter stubs
 - Runs `pnpm install`
 
 When finished, the workspace is ready:
@@ -103,14 +103,14 @@ KB Labs Installation
   Platform:  @kb-labs/cli v0.1.4
   Node:      v22.1.0
   pnpm:      9.4.0
-  Config:    ./my-project/.kb/kb.config.json ✓
+  Config:    ./my-project/.kb/kb.config.jsonc ✓
 ```
 
 If any component is missing, `kb-create status` will suggest a fix command.
 
 ## Configure LLM access
 
-AI-powered features (Mind RAG, commit generation, AI review) require an LLM adapter. Edit `.kb/kb.config.json`:
+AI-powered features (Mind RAG, commit generation, AI review) require an LLM adapter. Edit `.kb/kb.config.jsonc`:
 
 ```json
 {
