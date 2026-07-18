@@ -100,10 +100,19 @@ func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *Servic
 
 	url := ""
 	healthCheck := manifest.Runtime.HealthCheck
-	if port > 0 && healthCheck != "" && healthCheck[0] == '/' {
+	switch {
+	case port > 0 && healthCheck != "" && healthCheck[0] == '/':
 		// Expand relative path into a localhost URL so kb-dev's HTTP probe works.
 		healthCheck = fmt.Sprintf("http://localhost:%d%s", port, healthCheck)
 		url = fmt.Sprintf("http://localhost:%d", port)
+	case port > 0 && healthCheck == "":
+		// No runtime.healthCheck declared, but the service does bind a port —
+		// fall back to a TCP probe rather than leaving HealthCheck empty.
+		// An empty health_check in devservices.yaml is otherwise indistinguishable
+		// from "no check needed" and lets a service that never started still
+		// read as healthy once it's spawned (kb-dev's manager.go skips the wait
+		// entirely when HealthCheck == "").
+		healthCheck = fmt.Sprintf("localhost:%d", port)
 	}
 
 	return manifest.ID, Service{

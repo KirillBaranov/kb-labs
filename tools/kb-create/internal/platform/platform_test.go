@@ -185,6 +185,79 @@ func TestCopyBinary_SameSymlink(t *testing.T) {
 	}
 }
 
+// ── EnsureInPATH (installation-flow.md "M1: Warn: shell restart needed") ────
+
+// TestEnsureInPATH_NotInPATH_NeedsRestart verifies the soft-warning contract:
+// when binDir isn't already on PATH, EnsureInPATH must append an export line
+// to the shell rc file and report NeedRestart with a non-empty hint — never
+// an error, since PATH setup is a soft-fail path (installer.go continues
+// regardless of this outcome).
+func TestEnsureInPATH_NotInPATH_NeedsRestart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("this platform ships only Linux/macOS install support")
+	}
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("SHELL", "/bin/zsh")
+	// Deliberately exclude binDir from PATH.
+	t.Setenv("PATH", "/usr/bin:/bin")
+
+	binDir := filepath.Join(t.TempDir(), "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir binDir: %v", err)
+	}
+
+	res := EnsureInPATH(binDir)
+
+	if res.AlreadySet {
+		t.Fatal("AlreadySet = true, want false — binDir was deliberately excluded from PATH")
+	}
+	if !res.NeedRestart {
+		t.Error("NeedRestart = false, want true when binDir isn't on PATH")
+	}
+	if res.HintCmd == "" {
+		t.Error("HintCmd is empty, want a shell hint the user can run")
+	}
+
+	rc := filepath.Join(home, ".zshrc")
+	data, err := os.ReadFile(rc) // #nosec G304 -- rc path built from t.TempDir() HOME
+	if err != nil {
+		t.Fatalf("expected .zshrc to be written: %v", err)
+	}
+	if !strings.Contains(string(data), binDir) {
+		t.Errorf(".zshrc does not reference binDir %q:\n%s", binDir, data)
+	}
+}
+
+// TestEnsureInPATH_AlreadyInPATH verifies the no-op path: when binDir is
+// already on PATH, EnsureInPATH must not touch any rc file and must report
+// AlreadySet without a restart hint.
+func TestEnsureInPATH_AlreadyInPATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("this platform ships only Linux/macOS install support")
+	}
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("SHELL", "/bin/zsh")
+
+	binDir := filepath.Join(t.TempDir(), "bin")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+"/usr/bin")
+
+	res := EnsureInPATH(binDir)
+
+	if !res.AlreadySet {
+		t.Error("AlreadySet = false, want true — binDir is already on PATH")
+	}
+	if res.NeedRestart {
+		t.Error("NeedRestart = true, want false when nothing needed to change")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".zshrc")); err == nil {
+		t.Error(".zshrc was created even though PATH already contained binDir")
+	}
+}
+
 // wrapperName returns the OS-specific wrapper filename used by
 // WriteCLIWrapper (`kb` on Unix, `kb.cmd` on Windows).
 func wrapperName() string {

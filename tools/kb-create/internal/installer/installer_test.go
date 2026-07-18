@@ -1,7 +1,10 @@
 package installer
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/internal/config"
@@ -569,6 +572,159 @@ func TestUpdatePreservesSourceRegistryWhenNoRegistry(t *testing.T) {
 
 	if got.Source.Registry != "http://localhost:4873" {
 		t.Errorf("Source.Registry changed unexpectedly: got %q, want %q", got.Source.Registry, "http://localhost:4873")
+	}
+}
+
+// ── negative paths (installation-flow.md hard/soft-fail branches) ───────────
+
+// TestInstall_PMInstallErrorHardFails verifies that a package manager error
+// (e.g. network/registry unreachable) aborts Install entirely — the hard-fail
+// branch ("L1x: Hard fail, telemetry: install_failed") in installation-flow.md.
+// cmd/create.go turns this error into "installation failed: %w" and a
+// non-zero process exit; here we assert the contract at the Installer level.
+func TestInstall_PMInstallErrorHardFails(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	wantErr := errors.New("registry unreachable: ETIMEDOUT")
+	fake := &fakePM{
+		name:    "npm",
+		failOn:  "@kb-labs/cli-bin@latest", // first core package spec
+		failErr: wantErr,
+	}
+	ins := &Installer{PM: fake, Log: discardLogger()}
+	m := sampleManifest()
+	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir}
+
+	result, err := ins.Install(sel, &m)
+	if err == nil {
+		t.Fatalf("Install() error = nil, want error wrapping %v", wantErr)
+	}
+	if !errors.Is(err, wantErr) {
+		t.Errorf("Install() error = %v, want it to wrap %v", err, wantErr)
+	}
+	if result != nil {
+		t.Errorf("Install() result = %+v, want nil on hard failure", result)
+	}
+
+	// No config should have been written — the failure happens before Step 3.
+	if _, readErr := config.Read(platformDir); readErr == nil {
+		t.Error("config.Read() succeeded after a hard PM.Install failure — config must not be written")
+	}
+}
+
+// TestInstall_BinaryDownloadFailSoftContinues verifies the soft-fail branch
+// ("L2x: Warn: services can be started manually, continue") — a failed
+// binary install (e.g. kb-dev download) must not fail Install() as a whole;
+// the rest of the install (config, scan) must still complete.
+func TestInstall_BinaryDownloadFailSoftContinues(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	var lines []string
+	fake := &fakePM{name: "npm"}
+	ins := &Installer{
+		PM:  fake,
+		Log: discardLogger(),
+		OnLine: func(line string) {
+			lines = append(lines, line)
+		},
+	}
+	// Force platform.CopyBinary to fail deterministically: it needs to
+	// os.MkdirAll(platformDir+"/bin", ...) before writing, and MkdirAll
+	// errors when a path component already exists as a regular file. A
+	// missing/dangling LocalPath target would NOT fail here — Unix symlinks
+	// don't validate their target exists, so that alone wouldn't reproduce
+	// the failure this test is meant to exercise.
+	if err := os.WriteFile(filepath.Join(platformDir, "bin"), []byte("not a directory"), 0o600); err != nil {
+		t.Fatalf("seed conflicting file: %v", err)
+	}
+
+	m := sampleManifest()
+	m.Binaries = []manifest.Binary{
+		{ID: "kb-dev", Name: "kb-dev", LocalPath: filepath.Join(t.TempDir(), "kb-dev-stub")},
+	}
+	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir}
+
+	result, err := ins.Install(sel, &m)
+	if err != nil {
+		t.Fatalf("Install() error = %v, want nil (binary failure must be soft)", err)
+	}
+	if result == nil {
+		t.Fatal("Install() result = nil, want a Result on soft-fail continuation")
+	}
+	if len(result.InstalledBinaries) != 0 {
+		t.Errorf("InstalledBinaries = %v, want empty (the one binary failed)", result.InstalledBinaries)
+	}
+
+	found := false
+	for _, l := range lines {
+		if strings.Contains(l, "WARN: binary install failed") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a WARN line about binary install failure, got lines: %v", lines)
+	}
+
+	// The rest of the install must have completed: config written.
+	if _, err := config.Read(platformDir); err != nil {
+		t.Errorf("config.Read() after soft binary failure = %v, want config to still be written", err)
+	}
+}
+
+// TestInstall_ScanErrorSoftContinues verifies the soft-fail branch
+// ("L3x: Warn, continue without marketplace.lock / devservices.yaml") — the
+// manifest scanner shells out to `node`; with no `node` on PATH it fails,
+// and Install() must log a WARN and still return a successful Result rather
+// than aborting the whole install.
+func TestInstall_ScanErrorSoftContinues(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	// Remove `node` from PATH (and everything else) so scan.Run's
+	// `exec.CommandContext(ctx, "node", ...)` fails deterministically,
+	// without touching the real filesystem or network.
+	t.Setenv("PATH", t.TempDir())
+
+	var lines []string
+	fake := &fakePM{name: "npm"}
+	ins := &Installer{
+		PM:  fake,
+		Log: discardLogger(),
+		OnLine: func(line string) {
+			lines = append(lines, line)
+		},
+	}
+	m := sampleManifest()
+	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir}
+
+	result, err := ins.Install(sel, &m)
+	if err != nil {
+		t.Fatalf("Install() error = %v, want nil (scan failure must be soft)", err)
+	}
+	if result == nil {
+		t.Fatal("Install() result = nil, want a Result on soft-fail continuation")
+	}
+	if result.HasServices {
+		t.Error("Result.HasServices = true, want false when scan failed")
+	}
+
+	found := false
+	for _, l := range lines {
+		if strings.Contains(l, "WARN: manifest scan:") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a WARN line about manifest scan failure, got lines: %v", lines)
+	}
+
+	// The rest of the install must have completed despite the scan failure.
+	if _, err := config.Read(platformDir); err != nil {
+		t.Errorf("config.Read() after soft scan failure = %v, want config to still be written", err)
 	}
 }
 
