@@ -146,4 +146,51 @@ describe('qa:e2e-flaky', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors[0]).toContain('No flaky history yet');
   });
+
+  it('QEF-06: --sync and --ingest compose — sync runs instead of being silently skipped by ingest', async () => {
+    // --sync performs real mkdirSync/writeFileSync under cwd, so cwd must be a real dir.
+    const cwd = mkdtempSync(join(tmpdir(), 'qa-e2e-flaky-cwd-'));
+    const dir = mkdtempSync(join(tmpdir(), 'qa-e2e-flaky-ingest-'));
+    mkdirSync(join(dir, 'flaky-report-gateway-1'));
+    writeFileSync(
+      join(dir, 'flaky-report-gateway-1', 'flaky-report.json'),
+      JSON.stringify([{ suite: 'gw', spec: 'a.spec.ts', testId: 'A-1', title: 'A-1', outcome: 'passed', attempts: [] }]),
+    );
+
+    try {
+      const { ui } = createCapturedUI();
+      const ctx = createMockContext({ ui, cwd });
+
+      const result = await e2eFlakyCommand.execute(
+        ctx as never,
+        mockCLIInput<QaE2eFlakyFlags>({ flags: { sync: true, ingest: dir } }),
+      );
+
+      expect(result.exitCode).toBe(0);
+      // Both must have run: sync (git fetch) and ingest (saveE2eFlaky) — sync
+      // must not be silently dropped just because --ingest was also passed.
+      expect(ctx.api.shell.exec).toHaveBeenCalledWith('git', ['fetch', 'origin', 'ci-data'], expect.anything());
+      expect(mockSaveE2eFlaky).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('QEF-07: --ingest with no shard files found errors instead of saving an empty snapshot', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'qa-e2e-flaky-ingest-empty-'));
+
+    try {
+      const { ui, captured } = createCapturedUI();
+      const ctx = createMockContext({ ui, cwd: '/project' });
+
+      const result = await e2eFlakyCommand.execute(ctx as never, mockCLIInput<QaE2eFlakyFlags>({ flags: { ingest: dir } }));
+
+      expect(result.exitCode).toBe(1);
+      expect(captured.errors[0]).toContain('No flaky-report.json files found');
+      expect(mockSaveE2eFlaky).not.toHaveBeenCalled();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

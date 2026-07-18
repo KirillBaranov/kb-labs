@@ -57,14 +57,16 @@ export function buildCaseTimeline(
     ? Math.round((flips / (nonSkipped.length - 1)) * 100) / 100
     : 0;
 
-  const latest = entries[0];
+  // Uses nonSkipped (not entries) so a run of 'skipped' outcomes doesn't
+  // fabricate a passing streak — same exclusion flakyScore applies above.
+  const latest = nonSkipped[0];
   let streakStatus: 'passing' | 'failing' = 'passing';
   let streakCount = 0;
   if (latest) {
     streakStatus = latest.status === 'failed' ? 'failing' : 'passing';
     streakCount = 1;
-    for (let i = 1; i < entries.length; i++) {
-      const s = entries[i]!.status === 'failed' ? 'failing' : 'passing';
+    for (let i = 1; i < nonSkipped.length; i++) {
+      const s = nonSkipped[i]!.status === 'failed' ? 'failing' : 'passing';
       if (s !== streakStatus) {break;}
       streakCount++;
     }
@@ -140,8 +142,15 @@ export function analyzeFlakyCases(
   flakyEntries.sort((a, b) => b.flakyScore - a.flakyScore);
 
   const previousSnaps = history.slice(-2 * window, -window);
+  // Collect previous-window keys independently of `caseKeys` (current window)
+  // — a case that was flaky before but has since disappeared entirely (spec
+  // renamed/deleted) must still be checkable, or it can never show up as "fixed".
+  const previousCaseKeys = new Set<string>();
+  for (const snap of previousSnaps) {
+    for (const c of snap.cases) {previousCaseKeys.add(caseKeyOf(c));}
+  }
   const flakyPreviousKeys = new Set<string>();
-  for (const key of caseKeys) {
+  for (const key of previousCaseKeys) {
     const timeline = buildCaseTimeline(previousSnaps, key);
     if (timeline && timeline.flakyScore > 0) {flakyPreviousKeys.add(key);}
   }

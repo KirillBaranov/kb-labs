@@ -36,6 +36,15 @@ async function runIngest(
     }
   }
 
+  if (cases.length === 0) {
+    // No flaky-report.json files found under any shard — most likely every
+    // shard failed before Playwright's reporter ever ran. Don't push an
+    // empty snapshot into history; it would silently dilute the flip-rate
+    // window with a run that carried no real signal.
+    ctx.ui?.error?.(`No flaky-report.json files found under ${dir} — nothing to ingest.`);
+    return { exitCode: 1 };
+  }
+
   const git = await captureGit(ctx.api.shell, cwd);
   const snap = store.saveE2eFlaky(cases, 0, git);
   ctx.ui?.success?.(`Ingested ${cases.length} e2e case result(s) from ${dir} into flaky history`, {});
@@ -76,13 +85,16 @@ export default defineCommand<unknown, CLIInput<QaE2eFlakyFlags>, { exitCode: num
       const store = new SnapshotStore(cwd, config?.historyMaxEntries);
       const json = flags.agent || flags.json;
 
-      if (flags.ingest) {
-        return runIngest(ctx, cwd, store, flags.ingest);
-      }
-
+      // --sync runs first so --ingest (if also passed) builds on the synced
+      // history instead of silently ignoring --sync — the two compose rather
+      // than one implicitly winning.
       if (flags.sync) {
         const synced = await runSync(ctx, cwd);
         if (!synced) {return { exitCode: 1 };}
+      }
+
+      if (flags.ingest) {
+        return runIngest(ctx, cwd, store, flags.ingest);
       }
 
       const history = store.loadE2eFlakyHistory();

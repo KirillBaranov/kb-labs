@@ -93,6 +93,19 @@ describe('buildCaseTimeline', () => {
     const tl = buildCaseTimeline(history, 'gw/a.spec.ts#A-1');
     expect(tl?.firstFailure).toBe('2024-01-02T00:00:00.000Z');
   });
+
+  it('does not count a run of skipped outcomes as a passing streak', () => {
+    const history = [
+      makeSnap('t1', [makeCase('gw', 'a.spec.ts', 'A-1', 'failed', 'assertion-race')]),
+      makeSnap('t2', [makeCase('gw', 'a.spec.ts', 'A-1', 'skipped')]),
+      makeSnap('t3', [makeCase('gw', 'a.spec.ts', 'A-1', 'skipped')]),
+    ];
+    const tl = buildCaseTimeline(history, 'gw/a.spec.ts#A-1');
+    // The last non-skipped entry (t1) was a failure — skipped runs must not
+    // fabricate a "passing" streak on top of it.
+    expect(tl?.currentStreak.status).toBe('failing');
+    expect(tl?.currentStreak.count).toBe(1);
+  });
 });
 
 describe('analyzeFlakyCases', () => {
@@ -135,6 +148,19 @@ describe('analyzeFlakyCases', () => {
     ];
     const overview = analyzeFlakyCases(history, 2);
     expect(overview.delta.new).toContain('gw/b.spec.ts#B-1');
+    expect(overview.delta.fixed).toContain('gw/a.spec.ts#A-1');
+  });
+
+  it('reports a case as fixed even if it disappears entirely from the current window', () => {
+    const history = [
+      // previous window: A-1 flaky
+      makeSnap('t1', [makeCase('gw', 'a.spec.ts', 'A-1', 'passed')]),
+      makeSnap('t2', [makeCase('gw', 'a.spec.ts', 'A-1', 'flaky', 'infra-timeout')]),
+      // current window: A-1 doesn't appear at all (spec renamed/deleted) — only B-1 runs
+      makeSnap('t3', [makeCase('gw', 'b.spec.ts', 'B-1', 'passed')]),
+      makeSnap('t4', [makeCase('gw', 'b.spec.ts', 'B-1', 'passed')]),
+    ];
+    const overview = analyzeFlakyCases(history, 2);
     expect(overview.delta.fixed).toContain('gw/a.spec.ts#A-1');
   });
 
