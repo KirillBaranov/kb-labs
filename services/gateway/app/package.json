@@ -50,7 +50,7 @@
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
     "fastify": "^5.8.5",
-    "fastify-type-provider-zod": "^6.0.0",
+    "fastify-type-provider-zod": "^4.0.2",
     "ws": "^8.20.1"
   },
   "devDependencies": {

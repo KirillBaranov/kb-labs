@@ -34,7 +34,7 @@
     "@kb-labs/marketplace-npm": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
     "fastify": "^5.8.5",
-    "fastify-type-provider-zod": "^6.0.0",
+    "fastify-type-provider-zod": "^4.0.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
