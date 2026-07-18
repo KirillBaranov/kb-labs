@@ -312,6 +312,15 @@ jobs:
           path: e2e/${{ inputs.suite }}/report/
           retention-days: 14
 
+      - name: Upload flaky report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-report-${{ inputs.suite }}-${{ github.run_id }}
+          path: e2e/${{ inputs.suite }}/flaky-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Show checklist summary
         if: always()
         run: |

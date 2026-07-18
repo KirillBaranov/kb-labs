@@ -2,6 +2,7 @@ import type { Reporter, Suite, TestCase, TestResult } from '@playwright/test/rep
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { matchConventionalId, relativizeSpec } from './spec-id.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -24,14 +25,11 @@ export default class ChecklistReporter implements Reporter {
   private entries: ChecklistEntry[] = []
 
   onTestEnd(test: TestCase, result: TestResult): void {
-    const specFile = path.relative(
-      path.join(__dirname, '..'),
-      test.location.file,
-    )
+    const specFile = relativizeSpec(__dirname, test.location.file)
 
-    const idMatch = test.title.match(/^[\[#]?([A-Z]+-\d+)[:\]]\s*/)
-    const id = idMatch?.[1] ?? '—'
-    const title = idMatch ? test.title.slice(idMatch[0].length) : test.title
+    const parsed = matchConventionalId(test.title)
+    const id = parsed?.id ?? '—'
+    const title = parsed?.rest ?? test.title
 
     let outcome: ChecklistEntry['outcome']
     const skipAnnotation = result.annotations?.find(a => a.type === 'skip')
