@@ -2,8 +2,12 @@ import { test, expect } from '@playwright/test'
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js'
 import { registerAgent, issueToken, getAccessToken } from '@kb-labs/e2e-shared/auth.js'
 
-// Gateway auth applies only to gateway-owned routes (hosts, etc.), not to
-// proxied upstreams. Tests verify auth enforcement and full auth lifecycle.
+// Gateway auth applies to every route, including proxied upstreams
+// (/api/v1/*, /api/exec/*, etc.) — fixed in GHSA-75rf-rhxh-2p52. Auth hooks
+// used to be registered inside a Fastify child scope that ran after the
+// proxy-upstream loop, so they never covered proxied requests; moved to the
+// top-level app, before the proxy loop, so they now cover both.
+// Tests verify auth enforcement and full auth lifecycle.
 
 test('GW-01: invalid token on gateway route → 401', async ({ request }) => {
   const res = await request.get(`${GATEWAY}/hosts`, {
@@ -27,6 +31,24 @@ test('GW-03: auth/token endpoint exists and rejects bad credentials', async ({ r
 test('GW-04: /health is public (no auth required)', async ({ request }) => {
   const res = await request.get(`${GATEWAY}/health`)
   expect(res.status()).toBe(200)
+})
+
+test('GW-04b: proxied upstream route requires auth (regression for GHSA-75rf-rhxh-2p52)', async ({ request }) => {
+  // /api/v1/plugins/registry is proxied through to rest-api, which enforces
+  // no auth of its own — the gateway must be the one rejecting this.
+  const noToken = await request.get(`${GATEWAY}/api/v1/plugins/registry`)
+  expect([401, 403]).toContain(noToken.status())
+
+  const garbageToken = await request.get(`${GATEWAY}/api/v1/plugins/registry`, {
+    headers: { Authorization: 'Bearer totally-fake-garbage-token' },
+  })
+  expect(garbageToken.status()).toBe(401)
+
+  const token = await getAccessToken(request)
+  const authed = await request.get(`${GATEWAY}/api/v1/plugins/registry`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(authed.status()).toBe(200)
 })
 
 test('GW-05: valid token → protected route returns 200', async ({ request }) => {

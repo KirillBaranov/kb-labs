@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { GATEWAY, REST } from '@kb-labs/e2e-shared/urls.js'
+import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
 
 test('P-01: platform plugin registry contains expected plugins after boot', async ({ request }) => {
   // Tests plugin discovery via REST (no auth required).
@@ -22,8 +23,21 @@ test('P-02: rest-api /api/v1/routes lists registered routes', async ({ request }
   expect(res.status()).toBe(200)
 })
 
-test('P-03: unknown gateway route returns 404 not 500', async ({ request }) => {
+test('P-03: unknown gateway route returns 401 (not 500) without auth', async ({ request }) => {
+  // Gateway auth now applies to every route, including ones with no match at
+  // all (GHSA-75rf-rhxh-2p52) — an unauthenticated caller gets 401 before the
+  // router even determines the path doesn't exist. The important assertion
+  // is "no 500", not "404 specifically" — see the next case for the
+  // authenticated 404 behavior.
   const res = await request.get(`${GATEWAY}/this-does-not-exist-e2e`)
+  expect(res.status()).toBe(401)
+})
+
+test('P-03b: unknown gateway route returns 404 (not 500) with valid auth', async ({ request }) => {
+  const token = await getAccessToken(request)
+  const res = await request.get(`${GATEWAY}/this-does-not-exist-e2e`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   expect(res.status()).toBe(404)
 })
 
