@@ -111,7 +111,7 @@ describe('happy path', () => {
     });
     // A second, direct register() with the same handle must now conflict.
     await expect(
-      authService.register({ name: 'Another', handle: CLI_BOOTSTRAP_HANDLE }),
+      authService.register({ name: 'Another', handle: CLI_BOOTSTRAP_HANDLE, capabilities: [] }),
     ).rejects.toMatchObject({ code: 'HANDLE_TAKEN' });
   });
 });
@@ -142,7 +142,7 @@ describe('idempotency', () => {
 describe('handle already registered, file missing', () => {
   it('logs a warning and does not throw or write a file', async () => {
     // Simulate a previous successful run whose credentials file was later deleted.
-    await authService.register({ name: 'CLI Bootstrap', handle: CLI_BOOTSTRAP_HANDLE });
+    await authService.register({ name: 'CLI Bootstrap', handle: CLI_BOOTSTRAP_HANDLE, capabilities: [] });
 
     await ensureBootstrapCliCredentials({
       enabled: true,
