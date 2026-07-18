@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -178,6 +180,18 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		authOff := false
 		scaffoldOpts.GatewayAuthEnabled = &authOff
 		scaffoldOpts.GatewayHost = "127.0.0.1"
+	} else {
+		// Non-local ("--yes" or wizard without the Studio-local opt-in) installs
+		// run with auth enabled but otherwise have no way to obtain a credential
+		// (#271): kb auth login needs a client-id/secret nobody has, and
+		// /auth/register needs an already-authenticated admin, which a fresh
+		// install has none of. Seed a bootstrap admin + let the gateway
+		// auto-provision the CLI's first credential on first start
+		// (ensureBootstrapCliCredentials, gateway-auth) so `kb` commands work
+		// with zero manual login step.
+		scaffoldOpts.BootstrapAdminEmail = "admin@bootstrap.local"
+		scaffoldOpts.BootstrapTenantID = "default"
+		scaffoldOpts.BootstrapAdminPassword = generateBootstrapAdminPassword()
 	}
 	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
 	// for environments where user auth is a core feature, not an optional overlay).
@@ -243,6 +257,17 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	_ = demo.CommitPlatformFiles(sel.ProjectCWD)
 
 	return nil
+}
+
+// generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
+// string, used to seed the gateway's bootstrap admin account (#271) for
+// non-local installs. Same crypto/rand + hex pattern as telemetry.GenerateDeviceID.
+func generateBootstrapAdminPassword() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 // initTelemetry creates a telemetry client based on the user's consent

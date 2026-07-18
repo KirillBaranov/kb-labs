@@ -95,6 +95,11 @@ export type {
   BootstrapAdminLogger,
   EnsureBootstrapAdminOptions,
 } from './bootstrap-admin.js';
+export { ensureBootstrapCliCredentials, CLI_BOOTSTRAP_HANDLE } from './bootstrap-cli-credentials.js';
+export type {
+  BootstrapCliCredentialsLogger,
+  EnsureBootstrapCliCredentialsOptions,
+} from './bootstrap-cli-credentials.js';
 export { createUserAuthService, AuthError } from './user-auth-service.js';
 export type {
   UserAuthServiceOptions,

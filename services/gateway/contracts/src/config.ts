@@ -82,6 +82,11 @@ const AuthBootstrapSchema = z.object({
   tenantId: z.string().min(1),
   /** Admin email — also readable from env GATEWAY_BOOTSTRAP_ADMIN_EMAIL. */
   adminEmail: z.string().email().optional(),
+  /**
+   * When true, the gateway mints a bootstrap CLI machine credential on first
+   * start and writes it to ~/.kb/credentials.json (kb-create --yes flow, #271).
+   */
+  provisionCliCredentials: z.boolean().optional(),
 }).optional();
 
 export const AuthConfigSchema = z.object({

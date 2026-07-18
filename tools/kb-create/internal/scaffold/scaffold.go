@@ -62,6 +62,16 @@ type Options struct {
 	// (production default: 0.0.0.0). Solo local installs set "127.0.0.1" so a
 	// no-auth Studio is never reachable off the machine.
 	GatewayHost string
+	// BootstrapAdminEmail / BootstrapTenantID / BootstrapAdminPassword control
+	// the generated gateway.auth.bootstrap section + GATEWAY_BOOTSTRAP_ADMIN_PASSWORD
+	// env var. Written only for non-local ("--yes"/server-mode) installs so the
+	// gateway seeds a tenant-admin on first start and auto-provisions the CLI's
+	// first credential to ~/.kb/credentials.json (#271: without this, a fresh
+	// non-local install has no way to obtain any credential at all).
+	// BootstrapAdminEmail == "" → omit the whole bootstrap section.
+	BootstrapAdminEmail    string
+	BootstrapTenantID      string
+	BootstrapAdminPassword string // #nosec G117 -- written to .env with 0600 permissions
 	// Gateway is the discovery-derived gateway plan (upstreams + transport).
 	// nil → the canonical default plan is rendered (gateway.DefaultPlan), so an
 	// install that ran no discovery still gets a working gateway section.
@@ -122,7 +132,7 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	}
 
 	// API keys / gateway secrets stay in projectDir (gitignored) — never in platformDir.
-	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey); err != nil {
+	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey, opts.BootstrapAdminPassword); err != nil {
 		return fmt.Errorf("scaffold .env: %w", err)
 	}
 
@@ -191,7 +201,11 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 		Gateway struct {
 			Host string `json:"host"`
 			Auth *struct {
-				Enabled *bool `json:"enabled"`
+				Enabled   *bool `json:"enabled"`
+				Bootstrap *struct {
+					TenantID   string `json:"tenantId"`
+					AdminEmail string `json:"adminEmail"`
+				} `json:"bootstrap"`
 			} `json:"auth"`
 		} `json:"gateway"`
 		Projects map[string]string `json:"projects"`
@@ -225,6 +239,16 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 	if cfg.Gateway.Auth != nil && cfg.Gateway.Auth.Enabled != nil {
 		opts.GatewayAuthEnabled = cfg.Gateway.Auth.Enabled
 	}
+	// Preserve the bootstrap admin identity (#271) so `kb-create update` never
+	// regenerates it — that would desync the config from the admin account and
+	// CLI credential already seeded by a previous gateway start.
+	if cfg.Gateway.Auth != nil && cfg.Gateway.Auth.Bootstrap != nil {
+		opts.BootstrapTenantID = cfg.Gateway.Auth.Bootstrap.TenantID
+		opts.BootstrapAdminEmail = cfg.Gateway.Auth.Bootstrap.AdminEmail
+		if len(projectDir) > 0 && projectDir[0] != "" {
+			opts.BootstrapAdminPassword = readEnvValue(projectDir[0], "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD")
+		}
+	}
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
 	llmRaw := string(cfg.AdapterOptions.LLM)
@@ -242,15 +266,15 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 	return opts
 }
 
-// readEnvCredentials attempts to read KB_GATEWAY_CLIENT_ID and
-// KB_GATEWAY_CLIENT_SECRET from projectDir/.env. Returns nil if either is missing.
-func readEnvCredentials(projectDir string) *GatewayCreds {
+// parseEnvFile reads projectDir/.env into a key→value map. Returns an empty
+// map (never nil) if the file doesn't exist or can't be read.
+func parseEnvFile(projectDir string) map[string]string {
+	vals := make(map[string]string)
 	envPath := filepath.Join(projectDir, ".env")
 	data, err := os.ReadFile(envPath) // #nosec G304 -- path derived from install config
 	if err != nil {
-		return nil
+		return vals
 	}
-	vals := make(map[string]string)
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -264,6 +288,19 @@ func readEnvCredentials(projectDir string) *GatewayCreds {
 		val := strings.TrimSpace(line[eq+1:])
 		vals[key] = val
 	}
+	return vals
+}
+
+// readEnvValue reads a single key from projectDir/.env. Returns "" if the
+// file or key is missing.
+func readEnvValue(projectDir, key string) string {
+	return parseEnvFile(projectDir)[key]
+}
+
+// readEnvCredentials attempts to read KB_GATEWAY_CLIENT_ID and
+// KB_GATEWAY_CLIENT_SECRET from projectDir/.env. Returns nil if either is missing.
+func readEnvCredentials(projectDir string) *GatewayCreds {
+	vals := parseEnvFile(projectDir)
 	clientID := vals["KB_GATEWAY_CLIENT_ID"]
 	clientSecret := vals["KB_GATEWAY_CLIENT_SECRET"]
 	if clientID == "" || clientSecret == "" {
@@ -478,7 +515,21 @@ func generateFull(opts Options) string {
 	}
 	if opts.GatewayAuthEnabled != nil {
 		if *opts.GatewayAuthEnabled {
-			b.WriteString("    \"auth\": { \"enabled\": true },\n")
+			if opts.BootstrapAdminEmail != "" {
+				b.WriteString("    // Bootstrap admin + CLI credential (#271): seeded on first gateway start so\n")
+				b.WriteString("    // `kb` commands work without a manual `kb auth login`. Admin password lives\n")
+				b.WriteString("    // in .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD), never in this file.\n")
+				b.WriteString("    \"auth\": {\n")
+				b.WriteString("      \"enabled\": true,\n")
+				b.WriteString("      \"bootstrap\": {\n")
+				fmt.Fprintf(&b, "        \"tenantId\": %s,\n", quote(opts.BootstrapTenantID))
+				fmt.Fprintf(&b, "        \"adminEmail\": %s,\n", quote(opts.BootstrapAdminEmail))
+				b.WriteString("        \"provisionCliCredentials\": true\n")
+				b.WriteString("      }\n")
+				b.WriteString("    },\n")
+			} else {
+				b.WriteString("    \"auth\": { \"enabled\": true },\n")
+			}
 		} else {
 			b.WriteString("    // Auth disabled for local solo use — Studio opens without login.\n")
 			b.WriteString("    // Guardrail: the gateway refuses to start with auth off on a non-loopback host.\n")
@@ -752,20 +803,25 @@ jobs:
 	return nil
 }
 
-// writeEnvFile writes LLM credentials to .env in the project root.
+// writeEnvFile writes LLM/gateway credentials to .env in the project root.
 // This file is gitignored by ensureGitignore, keeping secrets out of version control.
-func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey string) error {
+func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey, bootstrapAdminPassword string) error {
 	// Nothing to write if no credentials provided.
-	if gc == nil && llmKey == "" {
+	if gc == nil && llmKey == "" && bootstrapAdminPassword == "" {
 		return nil
 	}
 
 	path := filepath.Join(projectDir, ".env")
 
-	// Append to existing .env if present.
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304
-	if err != nil {
+	existing, err := os.ReadFile(path) // #nosec G304 -- path derived from install config
+	if err != nil && !os.IsNotExist(err) {
 		return err
+	}
+
+	// Append to existing .env if present.
+	f, ferr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304
+	if ferr != nil {
+		return ferr
 	}
 	defer f.Close()
 
@@ -785,6 +841,13 @@ func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey strin
 		}
 		buf.WriteString("\n# LLM API key (configured by kb-create)\n")
 		buf.WriteString(envVar + "=" + llmKey + "\n")
+	}
+	// Bootstrap admin password (#271) — only written once. `kb-create update`
+	// passes the same value back in (recovered via ReadPlatformOptions), so
+	// without this guard every re-run would append a duplicate line.
+	if bootstrapAdminPassword != "" && !strings.Contains(string(existing), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=") {
+		buf.WriteString("\n# Gateway bootstrap admin password (#271, auto-configured by kb-create)\n")
+		buf.WriteString("GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=" + bootstrapAdminPassword + "\n")
 	}
 	_, err = f.WriteString(buf.String())
 	return err
