@@ -480,6 +480,31 @@ describe('GET /auth/me (user context)', () => {
     });
     expect(r.statusCode).toBe(401);
   });
+
+  // Studio-auth investigation (--local install mode, auth.enabled=false): the
+  // running gateway falls back to the LOCAL_ADMIN machine context (B-023),
+  // which /auth/me currently answers via its "machine Bearer" branch —
+  // `{ userId, namespaceId }`, no `email`/`tenantId`. Studio's PublicUser type
+  // (studio/app/src/auth/auth-provider.tsx) and router.tsx dereference
+  // `auth.user.email`/`tenantId` directly with no defensive check, so a
+  // `--local` install's Studio header/status bar breaks on this exact shape
+  // mismatch. This test pins the CORRECT contract — /auth/me under local/
+  // no-auth mode should still expose a Studio-compatible shape — and is
+  // expected to FAIL against current code until that gap is closed.
+  it('returns a Studio-compatible shape (email, tenantId) under local/no-auth mode', async () => {
+    const localAdminApp = (await buildApp({ authDisabled: true })).app;
+
+    const r = await localAdminApp.inject({
+      method: 'GET',
+      url: '/auth/me',
+      headers: { host: HOST },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as Record<string, unknown>;
+    expect(body).toHaveProperty('email');
+    expect(body).toHaveProperty('tenantId');
+  });
 });
 
 describe('GET /auth/providers', () => {

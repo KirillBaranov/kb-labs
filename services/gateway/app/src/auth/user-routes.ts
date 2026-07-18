@@ -245,12 +245,22 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       return reply.send({ userId: user.userId, email: user.email, tenantId });
     }
 
-    // Machine Bearer auth
+    // Machine Bearer auth (includes LOCAL_ADMIN, injected when auth.enabled=false —
+    // see B-023). Studio's PublicUser type (studio/app/src/auth/auth-provider.tsx)
+    // requires `email`/`tenantId`; a machine context has neither concept, so we
+    // derive Studio-displayable stand-ins from userId/namespaceId rather than
+    // omitting the fields — omitting them broke Studio's header/status bar under
+    // `--local` installs, where every request runs as this machine context.
     const auth = request.authContext;
     if (!auth) {
       return reply.code(401).send({ error: 'Unauthorized', message: 'Not authenticated' });
     }
-    return reply.send({ userId: auth.userId, namespaceId: auth.namespaceId });
+    return reply.send({
+      userId: auth.userId,
+      namespaceId: auth.namespaceId,
+      email: auth.userId,
+      tenantId: auth.namespaceId,
+    });
   });
 
   // ── GET /auth/providers ─────────────────────────────────────────────────────

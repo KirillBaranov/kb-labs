@@ -115,6 +115,46 @@ func TestSave_EmitsValidYAML(t *testing.T) {
 	}
 }
 
+// ── Bug B (Studio auth / resource-config investigation): write validation ────
+//
+// devservices.go currently performs NO schema validation at write time — a
+// service with an empty Command or a port colliding with another service's
+// port is written to disk as-is, deferring the failure to whenever kb-dev
+// next tries to start it (see tools/kb-dev/internal/config, which DOES
+// validate on read — TestLoadDetectsDuplicatePort etc. there). These two
+// tests assert the write-time contract we want; they are expected to FAIL
+// against current code (Save has no validation) until that gap is closed.
+
+// TestSave_RejectsEmptyCommand documents that a service written without a
+// Command should be rejected at Save() time — an empty command silently
+// written to devservices.yaml only breaks the next `kb-dev start`.
+func TestSave_RejectsEmptyCommand(t *testing.T) {
+	dir := t.TempDir()
+	f, _ := Load(dir)
+	f.Upsert("broken", Service{Command: "", Port: 9000})
+
+	err := f.Save(dir)
+	if err == nil {
+		t.Error("Save() with an empty Command succeeded — want an error before it ever reaches kb-dev")
+	}
+}
+
+// TestSave_RejectsDuplicatePort documents that two services sharing the same
+// port (e.g. two plugin manifests both defaulting to an unconfigured port)
+// should be rejected at Save() time, not discovered later when kb-dev fails
+// to bind the second service.
+func TestSave_RejectsDuplicatePort(t *testing.T) {
+	dir := t.TempDir()
+	f, _ := Load(dir)
+	f.Upsert("svc-a", Service{Command: "node a.js", Port: 5050})
+	f.Upsert("svc-b", Service{Command: "node b.js", Port: 5050})
+
+	err := f.Save(dir)
+	if err == nil {
+		t.Error("Save() with two services on the same port succeeded — want an error before kb-dev start fails on it")
+	}
+}
+
 func TestEntryForSwap_BuildsCommandAndHealth(t *testing.T) {
 	manifest := &ServiceManifest{
 		Schema:  "kb.service/1",
@@ -166,6 +206,30 @@ func TestEntryForSwap_PropagatesSocket(t *testing.T) {
 	// Placeholder must pass through verbatim — expansion happens in kb-dev, not here.
 	if svc.Socket != "/tmp/kb-${KB_SOCKET_HASH}/marketplace.sock" {
 		t.Errorf("socket = %q, want literal ${KB_SOCKET_HASH} placeholder preserved", svc.Socket)
+	}
+}
+
+// TestEntryForSwap_MissingHealthCheckStillProbesPort documents the desired
+// fix for the "silent false-positive health check" gap found during the
+// Studio-auth/resource-config investigation: a manifest that declares a port
+// but no runtime.healthCheck currently produces Service.HealthCheck == "".
+// Downstream, tools/kb-dev/internal/health.ClassifyProbe("") classifies that
+// as a ProbeCommand with an empty target, and `bash -c ""` exits 0 — the
+// service is reported healthy even if it never bound to anything. The
+// correct behavior is to fall back to a TCP probe on the known port rather
+// than leaving HealthCheck empty. Expected to FAIL against current code.
+func TestEntryForSwap_MissingHealthCheckStillProbesPort(t *testing.T) {
+	m := &ServiceManifest{Schema: "kb.service/1", ID: "no-health-check"}
+	m.Runtime.Entry = "dist/index.js"
+	m.Runtime.Port = 4321
+	m.Runtime.HealthCheck = "" // manifest omits healthCheck entirely
+
+	_, svc := EntryForSwap("/p", "@kb-labs/no-health-check", "no-health-check", m, nil)
+
+	if svc.HealthCheck == "" {
+		t.Errorf("HealthCheck is empty with Port=%d set — this becomes a false-positive "+
+			"\"healthy\" command probe (bash -c \"\" exits 0) in tools/kb-dev/internal/health.ClassifyProbe; "+
+			"want a fallback TCP probe like \"localhost:%d\"", svc.Port, svc.Port)
 	}
 }
 

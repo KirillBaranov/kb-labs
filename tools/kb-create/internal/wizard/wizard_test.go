@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-isatty"
 
 	"github.com/kb-labs/create/internal/manifest"
 )
@@ -311,5 +312,86 @@ func TestHandleStudioKeySelectsLocal(t *testing.T) {
 	}
 	if got.stage != stageConfirm {
 		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
+	}
+}
+
+// ── Confirm stage: cancel vs confirm (installation-flow.md "F6 -- cancel") ──
+
+// TestHandleConfirmKeyCancels verifies that esc/n/N/ctrl+c at the confirm
+// stage sets cancelled=true and quits the program. wizard.Run turns this
+// into the "installation cancelled" error (wizard.go Run(), result.cancelled
+// branch) — nothing gets written to disk.
+func TestHandleConfirmKeyCancels(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		msg  tea.KeyMsg
+	}{
+		{"esc", tea.KeyMsg{Type: tea.KeyEsc}},
+		{"ctrl+c", tea.KeyMsg{Type: tea.KeyCtrlC}},
+		{"n", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")}},
+		{"N", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("N")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := wizardModel{stage: stageConfirm}
+			next, cmd := m.handleConfirmKey(tc.msg)
+			got := next.(wizardModel)
+			if !got.cancelled {
+				t.Errorf("handleConfirmKey(%s): cancelled = false, want true", tc.name)
+			}
+			if cmd == nil {
+				t.Errorf("handleConfirmKey(%s): expected tea.Quit cmd, got nil", tc.name)
+			}
+		})
+	}
+}
+
+// TestHandleConfirmKeyConfirms verifies that enter/y/Y at the confirm stage
+// quits the program WITHOUT setting cancelled — the install proceeds.
+func TestHandleConfirmKeyConfirms(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		msg  tea.KeyMsg
+	}{
+		{"enter", tea.KeyMsg{Type: tea.KeyEnter}},
+		{"y", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}},
+		{"Y", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Y")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := wizardModel{stage: stageConfirm}
+			next, cmd := m.handleConfirmKey(tc.msg)
+			got := next.(wizardModel)
+			if got.cancelled {
+				t.Errorf("handleConfirmKey(%s): cancelled = true, want false", tc.name)
+			}
+			if cmd == nil {
+				t.Errorf("handleConfirmKey(%s): expected tea.Quit cmd, got nil", tc.name)
+			}
+		})
+	}
+}
+
+// ── Run(): no TTY + no --yes → abort (installation-flow.md "E1: Abort: run with --yes") ──
+
+// TestRunNoTTYAbortsWithoutYes verifies that Run() refuses to launch the
+// interactive wizard when stdin isn't a terminal and --yes wasn't passed —
+// it must return an error mentioning --yes rather than hang or panic trying
+// to drive a TUI against a non-tty stdin. Under `go test`, os.Stdin is
+// never a real terminal, so this exercises the exact branch a CI-piped or
+// scripted invocation of kb-create would hit.
+func TestRunNoTTYAbortsWithoutYes(t *testing.T) {
+	if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
+		t.Skip("test process stdin is a real TTY — can't exercise the no-TTY branch here")
+	}
+
+	m := sampleManifest()
+	sel, err := Run(m, WizardOptions{Yes: false})
+	if err == nil {
+		t.Fatalf("Run() with no TTY and Yes=false should error, got selection %+v", sel)
+	}
+	if !strings.Contains(err.Error(), "--yes") {
+		t.Errorf("Run() error = %q, want it to mention --yes", err.Error())
+	}
+	if sel != nil {
+		t.Errorf("Run() selection = %+v, want nil on error", sel)
 	}
 }

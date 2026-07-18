@@ -142,6 +142,17 @@ func (p Probe) execTCP(ctx context.Context, start time.Time) Result {
 }
 
 func (p Probe) execCommand(ctx context.Context, start time.Time) Result {
+	// An empty target has no real command to run — `bash -c ""` trivially
+	// exits 0, which would silently report a service as healthy when in fact
+	// no probe was ever configured for it. Callers that intend "no health
+	// check" (kb-dev's manager.go) already guard on an empty healthCheck
+	// string before ever constructing a probe; reaching this with an empty
+	// target means something built a probe out of a blank/misconfigured
+	// health check, so it must fail rather than lie.
+	if strings.TrimSpace(p.Target) == "" {
+		return Result{OK: false, Latency: time.Since(start), Error: fmt.Errorf("no health check command configured")}
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, p.Timeout)
 	defer cancel()
 

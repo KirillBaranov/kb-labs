@@ -30,6 +30,35 @@ func TestIsGitRepo_False(t *testing.T) {
 	}
 }
 
+// TestCommitPlatformFiles_NoGitRepoSkipsSilently verifies the documented
+// contract in cmd/create.go ("if the repo has no git, is bare, or commit
+// fails — skip silently"): calling CommitPlatformFiles against a directory
+// that was never git-initialized must return nil, not an error or panic.
+func TestCommitPlatformFiles_NoGitRepoSkipsSilently(t *testing.T) {
+	dir := t.TempDir() // no `git init` — not a repo at all
+
+	if err := CommitPlatformFiles(dir); err != nil {
+		t.Errorf("CommitPlatformFiles() on non-git dir = %v, want nil (silent skip)", err)
+	}
+}
+
+// TestCommitPlatformFiles_BareRepoSkipsSilently covers the "bare repo" half
+// of the same contract: `git init --bare` produces a valid git dir with no
+// working tree, so `git add`/`git diff --cached` fail — CommitPlatformFiles
+// must still return nil rather than surface those failures.
+func TestCommitPlatformFiles_BareRepoSkipsSilently(t *testing.T) {
+	dir := t.TempDir()
+	cmd := exec.Command("git", "init", "--bare")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		t.Skipf("git not available: %v", err)
+	}
+
+	if err := CommitPlatformFiles(dir); err != nil {
+		t.Errorf("CommitPlatformFiles() on bare repo = %v, want nil (silent skip)", err)
+	}
+}
+
 func TestUncommittedCount_Clean(t *testing.T) {
 	dir := initGitRepo(t)
 

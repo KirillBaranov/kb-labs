@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // setup builds kb-create and wires a fake pnpm in PATH. Returns:
@@ -207,6 +208,97 @@ func TestLifecycle_InstallSwapRollback(t *testing.T) {
 	}
 	if len(rep.Releases["@kb-labs/gateway"]) != 2 {
 		t.Fatalf("expected 2 releases, got %v", rep.Releases)
+	}
+}
+
+// TestPlatformDirMkdirFailsHardAbort exercises the hard-fail branch in
+// installation-flow.md ("J1: Abort: create platform dir error"). `--platform`
+// pointing under a read-only directory makes os.MkdirAll fail before any
+// package manager work starts (create.go's MkdirAll call runs before
+// Installer.Install) — no fake pnpm is needed, this fails earlier than that.
+func TestPlatformDirMkdirFailsHardAbort(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root — permission bits don't restrict root, can't force mkdir to fail")
+	}
+
+	root := t.TempDir()
+	kbCreate := filepath.Join(root, "kb-create")
+	cmd := exec.Command("go", "build", "-o", kbCreate, ".") //nolint:gosec
+	cmd.Dir = testdataWd(t)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build kb-create: %v\n%s", err, out)
+	}
+
+	readOnlyParent := filepath.Join(root, "readonly-parent")
+	if err := os.MkdirAll(readOnlyParent, 0o755); err != nil {
+		t.Fatalf("mkdir readOnlyParent: %v", err)
+	}
+	if err := os.Chmod(readOnlyParent, 0o500); err != nil {
+		t.Fatalf("chmod readOnlyParent: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(readOnlyParent, 0o755) }) // let TempDir cleanup succeed
+
+	platformDir := filepath.Join(readOnlyParent, "platform") // does not exist — MkdirAll must create it
+	projectDir := t.TempDir()
+
+	out, err := runKbCreate(t, kbCreate, os.Environ(), projectDir, "--yes", "--platform", platformDir)
+	if err == nil {
+		t.Fatalf("expected kb-create to fail against a read-only platform parent, got success:\n%s", out)
+	}
+	if !strings.Contains(out, "create platform dir") {
+		t.Errorf("expected error output to mention \"create platform dir\", got:\n%s", out)
+	}
+	if _, statErr := os.Stat(platformDir); statErr == nil {
+		t.Errorf("platform dir %s was created despite the read-only parent", platformDir)
+	}
+}
+
+// TestUninstallRetryThenHardFail exercises the "I: retry x3 with backoff"
+// then "J1: Hard failure: platform dir left behind" branch in
+// installation-flow.md's uninstall diagram (cmd/uninstall.go's `for attempt
+// := range 3 { os.RemoveAll... }` loop). A subdirectory with its write bit
+// removed makes os.RemoveAll(platformDir) fail deterministically on every
+// attempt, without needing to reproduce the real macOS ENOTEMPTY race.
+func TestUninstallRetryThenHardFail(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root — permission bits don't restrict root, can't force RemoveAll to fail")
+	}
+
+	platformDir, kb, env := setup(t)
+	projectDir := t.TempDir()
+
+	// Fresh install using the stubbed-pnpm harness from setup().
+	out, err := runKbCreate(t, kb, env, projectDir, "--yes", "--platform", platformDir)
+	if err != nil {
+		t.Fatalf("install: %v\n%s", err, out)
+	}
+
+	// Strip the write bit from node_modules so os.RemoveAll can't unlink its
+	// entries — this is what makes the platform dir "stuck" the way a real
+	// permission/ENOTEMPTY failure would.
+	nodeModules := filepath.Join(platformDir, "node_modules")
+	if err := os.Chmod(nodeModules, 0o555); err != nil {
+		t.Fatalf("chmod node_modules: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(nodeModules, 0o755) }) // let TempDir cleanup succeed
+
+	start := time.Now()
+	out, err = runKbCreate(t, kb, env, "uninstall", "--platform", platformDir, "-y")
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatalf("expected uninstall to fail against an unremovable platform dir, got success:\n%s", out)
+	}
+	if !strings.Contains(out, "remove platform dir") {
+		t.Errorf("expected error output to mention \"remove platform dir\", got:\n%s", out)
+	}
+	// The retry loop sleeps ~200ms/400ms/600ms = 1.2s between 3 attempts —
+	// assert it actually retried rather than failing on the first try.
+	if elapsed < 500*time.Millisecond {
+		t.Errorf("uninstall returned in %s — too fast to have retried 3 times", elapsed)
+	}
+	if _, statErr := os.Stat(platformDir); statErr != nil {
+		t.Errorf("platform dir should still exist after a hard uninstall failure: %v", statErr)
 	}
 }
 

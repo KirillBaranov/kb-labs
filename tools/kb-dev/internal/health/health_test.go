@@ -31,6 +31,25 @@ func TestClassifyProbe(t *testing.T) {
 	}
 }
 
+// TestEmptyHealthCheckIsNotSilentlyHealthy documents the "silent false-positive
+// health check" gap found during the Studio-auth/resource-config
+// investigation: when a service's healthCheck is empty (e.g. its manifest
+// never declared runtime.healthCheck, or kb-create's EntryForSwap left it
+// blank because Port was 0), ClassifyProbe falls back to ProbeCommand with an
+// empty Target. execCommand then runs `bash -c ""`, which exits 0 — so a
+// service that never started at all is reported healthy. The correct
+// behavior is that an empty healthCheck must never report OK. Expected to
+// FAIL against current code (this is the bug, not a regression guard yet).
+func TestEmptyHealthCheckIsNotSilentlyHealthy(t *testing.T) {
+	p := ClassifyProbe("", 2*time.Second)
+	result := p.Execute(context.Background())
+	if result.OK {
+		t.Error("ClassifyProbe(\"\").Execute() reports OK=true for an empty healthCheck — " +
+			"a service with no real probe configured must never be reported healthy " +
+			"(bash -c \"\" trivially exits 0, masking a service that never started)")
+	}
+}
+
 func TestHTTPProbeOK(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

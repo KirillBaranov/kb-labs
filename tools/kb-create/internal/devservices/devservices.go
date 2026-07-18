@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -113,10 +114,44 @@ func (f *File) PruneUnknownDeps() []string {
 	return dropped
 }
 
+// Validate rejects structural problems that would otherwise only surface
+// later, when kb-dev tries to start services from this file: a service with
+// no Command, or two services claiming the same port. Both are currently
+// caught on the READ side by tools/kb-dev/internal/config (TestLoadDetectsDuplicatePort
+// etc.) — this closes the same gap at write time, so a bad entry never makes
+// it to disk in the first place.
+func (f *File) Validate() error {
+	ids := make([]string, 0, len(f.Services))
+	for id := range f.Services {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids) // deterministic error messages regardless of map iteration order
+
+	portOwner := make(map[int]string, len(f.Services))
+	for _, id := range ids {
+		svc := f.Services[id]
+		if strings.TrimSpace(svc.Command) == "" {
+			return fmt.Errorf("service %q: command is required", id)
+		}
+		if svc.Port == 0 {
+			continue // no port (e.g. unix-socket-only service) — nothing to collide
+		}
+		if owner, ok := portOwner[svc.Port]; ok {
+			return fmt.Errorf("services %q and %q both claim port %d", owner, id, svc.Port)
+		}
+		portOwner[svc.Port] = id
+	}
+	return nil
+}
+
 // Save writes the file atomically (write temp → rename), creating the .kb/
 // directory if missing. A file-level flock guards concurrent kb-create runs
 // on the same platformDir.
 func (f *File) Save(platformDir string) (err error) {
+	if err := f.Validate(); err != nil {
+		return fmt.Errorf("invalid devservices: %w", err)
+	}
+
 	unlock, err := acquireLock(platformDir)
 	if err != nil {
 		return err
