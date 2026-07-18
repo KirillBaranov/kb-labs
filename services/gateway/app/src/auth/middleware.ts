@@ -23,6 +23,10 @@ const PUBLIC_ROUTES = new Set([
   '/health',
   '/health/adapters',
   '/ready',
+  // Studio SPA shell (index.html) — the login page itself. There is no
+  // session yet when a browser first hits this, so it can't be gated.
+  // Exact match only (not a prefix) so it doesn't swallow unrelated routes.
+  '/',
   // Module Federation manifest — static, non-sensitive metadata describing
   // available Studio remotes. The Studio SPA shell must be able to fetch
   // this before a user has logged in (there is no session yet to gate on).
