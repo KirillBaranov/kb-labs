@@ -28,7 +28,7 @@
   "dependencies": {
     "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
-    "fastify-type-provider-zod": "^6.1.0",
+    "fastify-type-provider-zod": "^4.0.2",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.25.0"
   },
