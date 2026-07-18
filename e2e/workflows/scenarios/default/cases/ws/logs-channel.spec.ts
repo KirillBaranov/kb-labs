@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withWs, expectWsMessage, expectWsClose } from '@kb-labs/shared-testing-e2e';
 import { GATEWAY, WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+import { getAccessToken } from '@kb-labs/e2e-shared/auth.js';
 
 const GATEWAY_WS = GATEWAY.replace(/^http/, 'ws');
 
@@ -24,6 +25,13 @@ function logsWsUrl(jobId: string): string {
   return `${GATEWAY_WS}/api/v1/ws/plugins/workflow/logs/${jobId}`;
 }
 
+// WS upgrade requests go through the gateway like any other route since the
+// GHSA-75rf-rhxh-2p52 fix — a valid token is required here too.
+async function authHeaders(request: Parameters<Parameters<typeof test>[1]>[0]['request']) {
+  const token = await getAccessToken(request);
+  return { headers: { Authorization: `Bearer ${token}` } };
+}
+
 test('WS-L01: subscribe → receive log stream', async ({ request }) => {
   const runId = await startRun(request);
 
@@ -39,7 +47,7 @@ test('WS-L01: subscribe → receive log stream', async ({ request }) => {
 
     expect(msg.type).toBe('log');
     expect(msg.payload?.level).toBeTruthy();
-  });
+  }, await authHeaders(request));
 });
 
 test('WS-L02: level filter — warn level excludes debug/info messages', async ({ request }) => {
@@ -56,10 +64,10 @@ test('WS-L02: level filter — warn level excludes debug/info messages', async (
     for (const msg of logMessages) {
       expect(['warn', 'error']).toContain(msg.payload?.level);
     }
-  });
+  }, await authHeaders(request));
 });
 
-test('WS-L03: unknown jobId — server sends error message, does not hang', async () => {
+test('WS-L03: unknown jobId — server sends error message, does not hang', async ({ request }) => {
   await withWs(logsWsUrl('nonexistent-job-xyz'), async (ws) => {
     ws.send({ type: 'subscribe', jobId: 'nonexistent-job-xyz' });
 
@@ -71,7 +79,7 @@ test('WS-L03: unknown jobId — server sends error message, does not hang', asyn
 
     expect(msg.type).toBe('error');
     expect(msg.payload?.error).toBeTruthy();
-  });
+  }, await authHeaders(request));
 });
 
 test('WS-L04: unsubscribe stops the log stream', async ({ request }) => {
@@ -89,7 +97,7 @@ test('WS-L04: unsubscribe stops the log stream', async ({ request }) => {
     const after = await ws.collect<{ type: string }>(1, 1_000).catch(() => []);
     const logs = after.filter((m) => m.type === 'log');
     expect(logs.length).toBe(0);
-  });
+  }, await authHeaders(request));
 });
 
 test('WS-L05: client disconnect does not leak — server handles cleanup', async ({ request }) => {
@@ -101,7 +109,7 @@ test('WS-L05: client disconnect does not leak — server handles cleanup', async
     // Close before receiving any messages — server must not crash
     ws.close(1000);
     await expectWsClose(ws, 1000, { timeoutMs: 3_000 });
-  });
+  }, await authHeaders(request));
 
   // Verify daemon is still healthy after forced disconnect
   const health = await fetch(`${WORKFLOW}/health`);

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withWs, expectWsMessage } from '@kb-labs/shared-testing-e2e';
 import { GATEWAY, WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+import { getAccessToken } from '@kb-labs/e2e-shared/auth.js';
 
 const GATEWAY_WS = GATEWAY.replace(/^http/, 'ws');
 
@@ -24,6 +25,13 @@ async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['requ
 
 function progressWsUrl(jobId: string): string {
   return `${GATEWAY_WS}/api/v1/ws/plugins/workflow/progress/${jobId}`;
+}
+
+// WS upgrade requests go through the gateway like any other route since the
+// GHSA-75rf-rhxh-2p52 fix — a valid token is required here too.
+async function authHeaders(request: Parameters<Parameters<typeof test>[1]>[0]['request']) {
+  const token = await getAccessToken(request);
+  return { headers: { Authorization: `Bearer ${token}` } };
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -50,10 +58,10 @@ test.skip('WS-P01: subscribe → server acknowledges (partial implementation)', 
     );
 
     expect(['step_start', 'error']).toContain(msg.type);
-  });
+  }, await authHeaders(request));
 });
 
-test('WS-P02: unknown jobId → error message, no hang', async () => {
+test('WS-P02: unknown jobId → error message, no hang', async ({ request }) => {
   const fakeJobId = 'nonexistent-job-xyz';
 
   await withWs(progressWsUrl(fakeJobId), async (ws) => {
@@ -68,5 +76,5 @@ test('WS-P02: unknown jobId → error message, no hang', async () => {
     );
 
     expect(msg.type).toBe('error');
-  });
+  }, await authHeaders(request));
 });
