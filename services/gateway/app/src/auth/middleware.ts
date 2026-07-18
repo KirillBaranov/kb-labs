@@ -23,6 +23,10 @@ const PUBLIC_ROUTES = new Set([
   '/health',
   '/health/adapters',
   '/ready',
+  // Module Federation manifest — static, non-sensitive metadata describing
+  // available Studio remotes. The Studio SPA shell must be able to fetch
+  // this before a user has logged in (there is no session yet to gate on).
+  '/mf-manifest.json',
   '/hosts/register',
   // /hosts/connect and /clients/connect are handled at the HTTP upgrade level
   // by gateway-ws.ts (raw ws) — they never reach Fastify routing.
