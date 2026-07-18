@@ -24,7 +24,7 @@ import (
 // When false, uses heuristic mode (ESLint/Ruff only — may show nothing).
 // Everything is optional and non-fatal: failures are silently skipped.
 func RunFirstDemo(projectDir string, llmEnabled bool) error {
-	if !isGitRepo(projectDir) {
+	if !IsGitRepo(projectDir) {
 		return nil
 	}
 
@@ -103,7 +103,7 @@ func RunFirstDemo(projectDir string, llmEnabled bool) error {
 // `kb commit commit` run and polluting their git history.
 // Non-fatal: errors are silently swallowed.
 func CommitPlatformFiles(projectDir string) error {
-	if !isGitRepo(projectDir) {
+	if !IsGitRepo(projectDir) {
 		return nil
 	}
 
@@ -157,8 +157,8 @@ func RunFirstCommit(projectDir string) error {
 	return RunFirstDemo(projectDir, false)
 }
 
-// isGitRepo returns true if projectDir is inside a git repository.
-func isGitRepo(dir string) bool {
+// IsGitRepo returns true if projectDir is inside a git repository.
+func IsGitRepo(dir string) bool {
 	cmd := exec.CommandContext(context.Background(), "git", "rev-parse", "--git-dir")
 	cmd.Dir = dir
 	return cmd.Run() == nil

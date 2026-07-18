@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/installer"
 )
 
@@ -186,8 +187,17 @@ func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
 	}
 	steps := []nextStep{
 		{"cd " + r.ProjectCWD, ""},
-		{reviewCmd, "review your last diff"},
-		{"kb commit commit", "generate a commit message"},
+	}
+	// `kb review run` / `kb commit commit` both require a git repo with a
+	// diff to look at — pointless (and confusing) to suggest them first on
+	// a brand-new project that has neither yet.
+	if demo.IsGitRepo(r.ProjectCWD) {
+		steps = append(steps,
+			nextStep{reviewCmd, "review your last diff"},
+			nextStep{"kb commit commit", "generate a commit message"},
+		)
+	} else {
+		steps = append(steps, nextStep{"git init", "start tracking your code — unlocks review/commit"})
 	}
 
 	// Suggest service startup after the user has seen the first results.

@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -132,18 +133,22 @@ func TestBuildNextSteps_KbDevHiddenWhenInstalledButNoServices(t *testing.T) {
 	}
 }
 
-func TestBuildNextSteps_AlwaysEndsWithDoctorAndHelp(t *testing.T) {
+func TestBuildNextSteps_AlwaysEndsWithHelp(t *testing.T) {
 	for _, r := range []*installer.Result{
-		{ProjectCWD: "/a"},
-		{ProjectCWD: "/b", InstalledBinaries: []string{"kb-dev"}, HasServices: true},
+		{ProjectCWD: t.TempDir()},
+		{ProjectCWD: t.TempDir(), InstalledBinaries: []string{"kb-dev"}, HasServices: true},
 	} {
+		if err := exec.Command("git", "init", "-q", r.ProjectCWD).Run(); err != nil {
+			t.Fatalf("git init: %v", err)
+		}
+
 		steps := buildNextSteps(r, false)
 		cmds := make([]string, len(steps))
 		for i, s := range steps {
 			cmds[i] = s.cmd
 		}
 
-		// review and commit must always appear as early steps
+		// review and commit must appear once there's a git repo to look at
 		mustContain := []string{"kb review run", "kb commit commit", "kb --help"}
 		for _, must := range mustContain {
 			found := false
@@ -154,9 +159,42 @@ func TestBuildNextSteps_AlwaysEndsWithDoctorAndHelp(t *testing.T) {
 				}
 			}
 			if !found {
-				t.Errorf("%q must always appear in next steps (all: %v)", must, cmds)
+				t.Errorf("%q must appear in next steps for a git repo (all: %v)", must, cmds)
 			}
 		}
+	}
+}
+
+// TestBuildNextSteps_SuggestsGitInitBeforeReviewOrCommit verifies that on a
+// brand-new project with no git repo yet, kb-create suggests `git init`
+// instead of `kb review run` / `kb commit commit` — both of which fail
+// immediately with "fatal: not a git repository" otherwise.
+func TestBuildNextSteps_SuggestsGitInitBeforeReviewOrCommit(t *testing.T) {
+	r := &installer.Result{ProjectCWD: t.TempDir()} // no `git init` — not a repo
+
+	steps := buildNextSteps(r, false)
+	cmds := make([]string, len(steps))
+	for i, s := range steps {
+		cmds[i] = s.cmd
+	}
+
+	for _, mustNotAppear := range []string{"kb review run", "kb commit commit"} {
+		for _, c := range cmds {
+			if c == mustNotAppear {
+				t.Errorf("%q should not be suggested before a git repo exists (all: %v)", mustNotAppear, cmds)
+			}
+		}
+	}
+
+	found := false
+	for _, c := range cmds {
+		if c == "git init" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("\"git init\" should be suggested when there's no git repo yet (all: %v)", cmds)
 	}
 }
 
