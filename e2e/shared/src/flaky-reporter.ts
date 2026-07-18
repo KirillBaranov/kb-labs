@@ -2,6 +2,7 @@ import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { matchConventionalId, relativizeSpec } from './spec-id.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -49,14 +50,11 @@ export default class FlakyReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
-    const specFile = path.relative(
-      path.join(__dirname, '..'),
-      test.location.file,
-    )
+    const specFile = relativizeSpec(__dirname, test.location.file)
 
-    const idMatch = test.title.match(/^[\[#]?([A-Z]+-\d+)[:\]]\s*/)
-    const testId = idMatch?.[1] ?? test.titlePath().slice(1).join(' > ')
-    const title = idMatch ? test.title.slice(idMatch[0].length) : test.title
+    const parsed = matchConventionalId(test.title)
+    const testId = parsed?.id ?? test.titlePath().slice(1).join(' > ')
+    const title = parsed?.rest ?? test.title
 
     let outcome: FlakyCaseResult['outcome']
     if (result.status === 'skipped') {
