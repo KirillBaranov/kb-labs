@@ -92,6 +92,11 @@ export function createAuthMiddleware(
     // Same category as /mf-manifest.json above.
     if (routePath.startsWith('/plugins/')) {return;}
 
+    // Studio's own static bundle (/studio/assets/*.js, etc.) — the SPA shell
+    // itself, needed before a user has logged in. Same category as
+    // /mf-manifest.json and /plugins/*/widgets/* above.
+    if (routePath.startsWith('/studio/')) {return;}
+
     // Bearer header takes precedence; fall back to ?access_token= for SSE
     // connections where browsers cannot set custom headers.
     const queryToken = (request.query as Record<string, string | undefined>)['access_token'];
