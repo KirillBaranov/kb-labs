@@ -163,10 +163,41 @@ export async function createServer(
     });
   });
 
+  // ── Auth (B-023 fix) ────────────────────────────────────────────────
+  // Registered globally on `app`, BEFORE the proxy upstreams below, so it
+  // actually covers proxied routes (/api/v1/*, /api/exec/*, etc.) and not
+  // just the gateway's own /auth/* routes. A prior version scoped these
+  // hooks inside the `gatewayRoutes` child plugin registered AFTER the
+  // proxy loop — Fastify hook encapsulation meant they never ran for
+  // proxied requests, and rest-api/workflow/marketplace do not enforce
+  // auth themselves, so every proxied route was reachable with no token
+  // at all (confirmed: garbage Bearer token still got 200 on
+  // /api/v1/studio/registry). Mirrors the pressure-hook precedent above,
+  // which already runs globally ahead of the proxy loop for the same reason.
+  //
+  // User-auth middleware runs FIRST (before machine Bearer check).
+  // Validates kb_access cookie, cross-tenant guard, CD-1 status check.
+  // No-op when no cookie is present — machine auth takes over.
+  if (userAuth) {
+    app.addHook(
+      'onRequest',
+      createUserAuthMiddleware({
+        users: userAuth.users,
+        tenantResolver: userAuth.tenantResolver,
+        jwtConfig,
+      }),
+    );
+  }
+
+  // Machine Bearer middleware — skips if userAuthContext already set by above.
+  // When auth is disabled (solo/local), the middleware runs every request as
+  // the local admin (B-023).
+  app.addHook(
+    'onRequest',
+    createAuthMiddleware(cache, jwtConfig, { authEnabled: config.auth?.enabled !== false }),
+  );
+
   // ── Proxy upstreams ────────────────────────────────────────────────
-  // Registered FIRST, before any hooks. Auth is handled by upstreams themselves.
-  // @fastify/http-proxy with websocket:true intercepts upgrades at the HTTP
-  // server level — no Fastify hooks must touch these requests.
   // Connection details (baseUrl, socketPath) come from IServiceTransport.
   // WS-enabled upstreams bound to a unix socket: @fastify/http-proxy can't dial
   // unix sockets for WS upgrades, so the gateway proxies those WS itself (see
@@ -210,32 +241,11 @@ export async function createServer(
     gatewayLogger.info(`Upstream registered: ${name} → ${connDesc} (${upstream.prefix}${wsDesc})`);
   }
 
-  // ── Gateway's own routes (with auth) ───────────────────────────────
-  // Encapsulated scope: auth hook only applies to gateway-owned routes,
-  // not to proxy upstreams registered above.
+  // ── Gateway's own routes ────────────────────────────────────────────
+  // Auth hooks now run globally (see above) and already cover these routes
+  // via Fastify's hook inheritance (parent hooks apply to child-registered
+  // routes), so they are not repeated here.
   await app.register(async function gatewayRoutes(scope) {
-    // User-auth middleware runs FIRST (before machine Bearer check).
-    // Validates kb_access cookie, cross-tenant guard, CD-1 status check.
-    // No-op when no cookie is present — machine auth takes over.
-    if (userAuth) {
-      scope.addHook(
-        'onRequest',
-        createUserAuthMiddleware({
-          users: userAuth.users,
-          tenantResolver: userAuth.tenantResolver,
-          jwtConfig,
-        }),
-      );
-    }
-
-    // Machine Bearer middleware — skips if userAuthContext already set by above.
-    // When auth is disabled (solo/local), the middleware runs every request as
-    // the local admin (B-023).
-    scope.addHook(
-      'onRequest',
-      createAuthMiddleware(cache, jwtConfig, { authEnabled: config.auth?.enabled !== false }),
-    );
-
     // Per-tenant pressure (ADR-0056). Runs after auth so AuthContext is set.
     if (config.pressure?.perTenant?.enabled === true && platform.hasResourceBroker) {
       scope.addHook(
