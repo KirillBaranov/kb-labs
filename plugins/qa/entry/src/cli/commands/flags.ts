@@ -88,6 +88,38 @@ export const qaTrendsFlags = defineFlags({
 });
 export type QaTrendsFlags = typeof qaTrendsFlags.infer;
 
+export const qaE2eFlakyFlags = defineFlags({
+  agent: {
+    type: 'boolean',
+    description: 'Emit compact machine-readable agent JSON (alias for --json)',
+    default: false,
+  },
+  json: {
+    type: 'boolean',
+    description: 'Output JSON',
+    default: false,
+  },
+  case: {
+    type: 'string',
+    description: 'Drill down into one case: "<suite>/<spec>#<testId>" (from the overview\'s "top" list)',
+  },
+  window: {
+    type: 'number',
+    description: 'Number of e2e-flaky history entries (runs) to analyze',
+    default: 10,
+  },
+  sync: {
+    type: 'boolean',
+    description: 'Fetch the latest flaky history from the "ci-data" branch before analyzing',
+    default: false,
+  },
+  ingest: {
+    type: 'string',
+    description: 'CI-only: directory of per-shard flaky-report.json files to merge and save as a new snapshot',
+  },
+});
+export type QaE2eFlakyFlags = typeof qaE2eFlakyFlags.infer;
+
 export const qaRegressionsFlags = defineFlags({
   json: {
     type: 'boolean',

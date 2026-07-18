@@ -1,5 +1,7 @@
 // Output types from the QA analysis layer
 
+import type { E2eErrorCategory } from './snapshots.js';
+
 // ── Trend analysis (over RunSnapshot history) ────────────────────────────────
 
 export interface TaskTrendPoint {
@@ -89,4 +91,52 @@ export interface PackageTimeline {
   flakyTasks: string[];
   currentStreak: { status: 'passing' | 'failing'; count: number };
   firstFailure?: string;
+}
+
+// ── E2E case timeline (per-case run history, drill-down) ─────────────────────
+
+export interface CaseHistoryEntry {
+  timestamp: string;
+  gitCommit: string;
+  status: 'passed' | 'flaky' | 'failed' | 'skipped';
+  retries: number;
+  errorCategory?: E2eErrorCategory;
+  errorMessage?: string;
+}
+
+export interface CaseTimeline {
+  caseKey: string;
+  suite: string;
+  spec: string;
+  testId: string;
+  title: string;
+  history: CaseHistoryEntry[];
+  flakyScore: number;
+  currentStreak: { status: 'passing' | 'failing'; count: number };
+  firstFailure?: string;
+}
+
+// ── Flaky overview (agent-facing summary across all cases) ───────────────────
+
+export interface FlakyOverviewEntry {
+  case: string;
+  flakyScore: number;
+  streak: string;
+  category: E2eErrorCategory;
+}
+
+export interface FlakyOverviewDelta {
+  new: string[];
+  fixed: string[];
+  unchanged: string[];
+}
+
+export interface FlakyOverview {
+  window: number;
+  runsAnalyzed: number;
+  totalCases: number;
+  flakyCases: number;
+  delta: FlakyOverviewDelta;
+  byCategory: Record<E2eErrorCategory, number>;
+  top: FlakyOverviewEntry[];
 }

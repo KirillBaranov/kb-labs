@@ -10,6 +10,8 @@ import type {
   CheckSnapshot,
   StatsSnapshot,
   GateSnapshot,
+  E2eFlakySnapshot,
+  E2eCaseResult,
   SnapshotMeta,
   SnapshotGit,
   BaselineData,
@@ -168,6 +170,35 @@ export class SnapshotStore {
     while (history.length > this.maxEntries) {history.shift();}
     writeJson(join(this.rootDir, PATHS.SNAPSHOTS_GATE), history);
     return snap;
+  }
+
+  // ── E2E flaky snapshots ───────────────────────────────────────────────────────
+
+  loadE2eFlakyHistory(): E2eFlakySnapshot[] {
+    return readJson<E2eFlakySnapshot>(join(this.rootDir, PATHS.SNAPSHOTS_E2E_FLAKY));
+  }
+
+  saveE2eFlaky(
+    cases: E2eCaseResult[],
+    durationMs: number,
+    git?: SnapshotGit,
+    runContext?: Record<string, unknown>,
+  ): E2eFlakySnapshot {
+    const snap: E2eFlakySnapshot = {
+      ...buildMeta(durationMs, git, runContext),
+      kind: 'e2e-flaky',
+      cases,
+    };
+    const history = this.loadE2eFlakyHistory();
+    history.push(snap);
+    while (history.length > this.maxEntries) {history.shift();}
+    writeJson(join(this.rootDir, PATHS.SNAPSHOTS_E2E_FLAKY), history);
+    return snap;
+  }
+
+  latestE2eFlaky(): E2eFlakySnapshot | null {
+    const h = this.loadE2eFlakyHistory();
+    return h.length > 0 ? h[h.length - 1]! : null;
   }
 
   // ── Baseline ───────────────────────────────────────────────────────────────

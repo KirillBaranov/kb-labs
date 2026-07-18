@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./urls.js": "./src/urls.ts",
     "./auth.js": "./src/auth.ts",
-    "./reporter.js": "./src/reporter.ts"
+    "./reporter.js": "./src/reporter.ts",
+    "./flaky-reporter.js": "./src/flaky-reporter.ts"
   },
   "bin": {
     "kb-labs-e2e-runner": "./bin/kb-labs-e2e-runner.mjs"

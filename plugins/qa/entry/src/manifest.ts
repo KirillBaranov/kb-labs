@@ -10,6 +10,7 @@ import {
   qaGateFlags,
   qaHistoryFlags,
   qaTrendsFlags,
+  qaE2eFlakyFlags,
   qaRegressionsFlags,
   baselineUpdateFlags,
   baselineStatusFlags,
@@ -111,6 +112,15 @@ export const manifest = {
         operationType: 'read' as const,
         handler: './cli/commands/qa-trends.js#default',
         flags: defineCommandFlags(qaTrendsFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'qa e2e-flaky',
+        category: 'History',
+        describe: 'Track flaky e2e cases across CI runs (agent-first overview + drill-down)',
+        operationType: 'read' as const,
+        handler: './cli/commands/qa-e2e-flaky.js#default',
+        flags: defineCommandFlags(qaE2eFlakyFlags.schema),
         permissions: pluginPermissions,
       },
       {

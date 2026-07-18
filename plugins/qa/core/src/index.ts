@@ -12,6 +12,7 @@ export { analyzeTrends } from './analysis/trend-analyzer.js';
 export { detectRegressions } from './analysis/regression-detector.js';
 export { compareWithBaseline } from './analysis/baseline-comparator.js';
 export { buildPackageTimeline } from './analysis/package-timeline.js';
+export { buildCaseTimeline, analyzeFlakyCases, caseKeyOf } from './analysis/case-timeline.js';
 
 // Report
 export type { ReportSection } from './report/index.js';

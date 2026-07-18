@@ -99,3 +99,115 @@ jobs:
       # script header for the full rationale.
       - name: Check matrix outcome
         run: node scripts/ci/aggregate-e2e-result.mjs "${{ needs.e2e.result }}" "${{ needs.e2e-mcp.result }}"
+
+  # ── Flaky history — persists per-case e2e results to the ci-data branch ─────
+  # Only runs when shards actually executed. `needs.e2e.result == 'skipped'`
+  # means the workflow_run gate kept every shard from running (upstream CI
+  # wasn't green) — see aggregate-e2e-result.mjs's header for the same
+  # skipped-vs-failure distinction. Runs regardless of pass/fail: a run with
+  # real failures still has valid flip-rate signal worth recording.
+  flaky-history:
+    name: Flaky history
+    needs: [e2e, e2e-mcp, aggregate]
+    if: always() && needs.e2e.result != 'skipped' && needs.e2e-mcp.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Build Go tools (kb-devkit)
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Same cache key as reusable-e2e-docker.yml — warm from the matrix shards
+      # that already ran in this workflow, so this build is typically a no-op.
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Download flaky-report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: flaky-report-*-${{ github.run_id }}
+          path: /tmp/flaky-reports
+          merge-multiple: false
+
+      # Best-effort — on the very first run "ci-data" doesn't exist on the
+      # remote yet, so this fails and we ingest starting from empty history.
+      - name: Sync existing flaky history from ci-data
+        run: pnpm kb qa e2e-flaky --sync --agent || true
+
+      # Builds on top of whatever --sync restored above, so history accumulates
+      # across runs instead of being overwritten from scratch every time.
+      - name: Ingest flaky-report shards into history
+        run: pnpm kb qa e2e-flaky --ingest /tmp/flaky-reports --agent
+
+      - name: Commit flaky history to ci-data branch
+        run: |
+          git config user.name  "kb-qa[bot]"
+          git config user.email "kb-qa[bot]@users.noreply.github.com"
+
+          # A dedicated worktree keeps this entirely separate from the checkout
+          # used to build above — switching the main checkout to "ci-data" would
+          # either wipe the working tree (orphan branch) or refuse to overwrite
+          # the file we just wrote (checkout-with-conflicting-untracked-file).
+          git fetch origin ci-data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/ci-data; then
+            git worktree add /tmp/ci-data-wt ci-data
+          else
+            git worktree add --detach /tmp/ci-data-wt "${{ github.sha }}"
+            git -C /tmp/ci-data-wt checkout --orphan ci-data
+            git -C /tmp/ci-data-wt rm -rf -q .
+          fi
+
+          mkdir -p /tmp/ci-data-wt/.kb/qa/snapshots
+          cp .kb/qa/snapshots/e2e-flaky.json /tmp/ci-data-wt/.kb/qa/snapshots/e2e-flaky.json
+
+          cd /tmp/ci-data-wt
+          git add -f .kb/qa/snapshots/e2e-flaky.json
+          if git diff --cached --quiet; then
+            echo "Flaky history unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(qa): update e2e flaky history ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+
+          # Keep branch history from growing forever — only current file content
+          # matters here, not the commit log. Squash once it gets too deep.
+          commit_count=$(git rev-list --count HEAD)
+          if [ "$commit_count" -gt 200 ]; then
+            git reset "$(git rev-list --max-parents=0 HEAD | tail -1)"
+            git add -f .kb/qa/snapshots/e2e-flaky.json
+            git commit -m "chore(qa): squash e2e flaky history (was ${commit_count} commits)"
+          fi
+
+          git push origin ci-data

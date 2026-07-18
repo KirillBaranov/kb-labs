@@ -40,7 +40,31 @@ export interface GateSnapshot extends SnapshotMeta {
   raw: DevkitGateOutput;
 }
 
-export type AnySnapshot = RunSnapshot | CheckSnapshot | StatsSnapshot | GateSnapshot;
+export type E2eErrorCategory = 'infra-timeout' | 'assertion-race' | 'ws-flake' | 'unknown';
+
+export interface E2eCaseAttempt {
+  status: 'passed' | 'failed';
+  retry: number;
+  durationMs: number;
+  errorCategory?: E2eErrorCategory;
+  errorMessage?: string;
+}
+
+export interface E2eCaseResult {
+  suite: string;
+  spec: string;
+  testId: string;
+  title: string;
+  outcome: 'passed' | 'flaky' | 'failed' | 'skipped';
+  attempts: E2eCaseAttempt[];
+}
+
+export interface E2eFlakySnapshot extends SnapshotMeta {
+  kind: 'e2e-flaky';
+  cases: E2eCaseResult[];
+}
+
+export type AnySnapshot = RunSnapshot | CheckSnapshot | StatsSnapshot | GateSnapshot | E2eFlakySnapshot;
 
 export interface BaselineData {
   timestamp: string;
