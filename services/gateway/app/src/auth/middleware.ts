@@ -23,6 +23,14 @@ const PUBLIC_ROUTES = new Set([
   '/health',
   '/health/adapters',
   '/ready',
+  // Studio SPA shell (index.html) — the login page itself. There is no
+  // session yet when a browser first hits this, so it can't be gated.
+  // Exact match only (not a prefix) so it doesn't swallow unrelated routes.
+  '/',
+  // Module Federation manifest — static, non-sensitive metadata describing
+  // available Studio remotes. The Studio SPA shell must be able to fetch
+  // this before a user has logged in (there is no session yet to gate on).
+  '/mf-manifest.json',
   '/hosts/register',
   // /hosts/connect and /clients/connect are handled at the HTTP upgrade level
   // by gateway-ws.ts (raw ws) — they never reach Fastify routing.
@@ -70,6 +78,28 @@ export function createAuthMiddleware(
     // enforce their own state/cookie binding. Prefix match covers /start and
     // /callback for every provider id.
     if (routePath.startsWith('/auth/oauth/')) {return;}
+
+    // Webhook delivery routes (/webhooks/:pluginId/:event[/:instanceId]) are
+    // called by external senders (GitHub, Stripe, etc.) that have no Bearer
+    // token for this platform — they authenticate via their own per-webhook
+    // secret/HMAC, checked inside the handler itself. This scope was
+    // originally registered outside `gatewayRoutes` specifically so the old,
+    // more narrowly-scoped auth hook would skip it automatically; now that
+    // the hook runs globally (GHSA-75rf-rhxh-2p52 fix) it needs an explicit
+    // bypass here instead. Distinct from the admin routes under
+    // /api/v1/webhooks/*, which remain fully auth-gated.
+    if (routePath.startsWith('/webhooks/')) {return;}
+
+    // Static Module Federation widget bundles proxied through to rest-api
+    // (/plugins/@scope/name/widgets/*) — plain JS/CSS files the Studio SPA
+    // shell needs to load widgets, with no user data and no side effects.
+    // Same category as /mf-manifest.json above.
+    if (routePath.startsWith('/plugins/')) {return;}
+
+    // Studio's own static bundle (/studio/assets/*.js, etc.) — the SPA shell
+    // itself, needed before a user has logged in. Same category as
+    // /mf-manifest.json and /plugins/*/widgets/* above.
+    if (routePath.startsWith('/studio/')) {return;}
 
     // Bearer header takes precedence; fall back to ?access_token= for SSE
     // connections where browsers cannot set custom headers.

@@ -15,7 +15,7 @@
 
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js';
-import { issueToken } from '@kb-labs/e2e-shared/auth.js';
+import { issueToken, getAccessToken } from '@kb-labs/e2e-shared/auth.js';
 
 async function fireMany(
   request: APIRequestContext,
@@ -70,7 +70,12 @@ test.describe('Gateway pressure control', () => {
   test('GW-PC-01: per-service limit returns 429 once the RPS budget is exhausted', async ({ request }) => {
     // /health is overridden separately (route layer); hit an actual rest-upstream path instead.
     // Any path under `/api/v1` that REST responds to is fine; `/api/v1/health` works through proxy.
-    const results = await fireMany(request, `${GATEWAY}/api/v1/health`, 20);
+    // /api/v1/* is a proxied route and requires auth since GHSA-75rf-rhxh-2p52 — pressure
+    // control runs before the auth check (see server.ts hook order), so the 429 count is
+    // unaffected, but requests that clear the RPS budget need a token to see 200 instead of 401.
+    const token = await getAccessToken(request);
+    const headers = { Authorization: `Bearer ${token}` };
+    const results = await fireMany(request, `${GATEWAY}/api/v1/health`, 20, { headers });
     const ok = results.filter(r => r.status === 200);
     const tooMany = results.filter(r => r.status === 429);
 
@@ -83,11 +88,13 @@ test.describe('Gateway pressure control', () => {
   });
 
   test('GW-PC-02: RPS window recovers within ~1 second', async ({ request }) => {
+    const token = await getAccessToken(request);
+    const headers = { Authorization: `Bearer ${token}` };
     // Burn through the limit first.
-    await fireMany(request, `${GATEWAY}/api/v1/health`, 20);
+    await fireMany(request, `${GATEWAY}/api/v1/health`, 20, { headers });
     // Then wait past the 1-second window and try again.
     await new Promise(resolve => setTimeout(resolve, 1200));
-    const after = await fireMany(request, `${GATEWAY}/api/v1/health`, 3);
+    const after = await fireMany(request, `${GATEWAY}/api/v1/health`, 3, { headers });
     expect(after.every(r => r.status === 200)).toBe(true);
   });
 
