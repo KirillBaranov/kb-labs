@@ -151,6 +151,107 @@ func TestWritePlatformConfig_SoloAuthOff(t *testing.T) {
 	assertContains(t, content, `"auth": { "enabled": false }`, "gateway auth disabled")
 }
 
+// TestWritePlatformConfig_BootstrapAdminForNonLocal covers #271: non-local
+// installs must render gateway.auth.bootstrap so the gateway seeds an admin
+// and auto-provisions the CLI's first credential on first start.
+func TestWritePlatformConfig_BootstrapAdminForNonLocal(t *testing.T) {
+	platformDir := t.TempDir()
+	authOn := true
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:            platformDir,
+		GatewayAuthEnabled:     &authOn,
+		BootstrapAdminEmail:    "admin@bootstrap.local",
+		BootstrapTenantID:      "default",
+		BootstrapAdminPassword: "irrelevant-here-not-rendered",
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	assertContains(t, content, `"tenantId": "default"`, "bootstrap tenantId")
+	assertContains(t, content, `"adminEmail": "admin@bootstrap.local"`, "bootstrap adminEmail")
+	assertContains(t, content, `"provisionCliCredentials": true`, "provisionCliCredentials flag")
+	if strings.Contains(content, "irrelevant-here-not-rendered") {
+		t.Error("admin password must never be rendered into kb.config.jsonc")
+	}
+}
+
+// TestWritePlatformConfig_NoBootstrapForLocal covers the --local counterpart:
+// no bootstrap section should ever appear when auth is disabled.
+func TestWritePlatformConfig_NoBootstrapForLocal(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		GatewayAuthEnabled: &authOff,
+		GatewayHost:        "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	if strings.Contains(content, "bootstrap") {
+		t.Error("local (auth-off) install must not render a gateway.auth.bootstrap section")
+	}
+}
+
+func TestReadPlatformOptions_PreservesBootstrapAdmin(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	authOn := true
+
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:            platformDir,
+		GatewayAuthEnabled:     &authOn,
+		BootstrapAdminEmail:    "admin@bootstrap.local",
+		BootstrapTenantID:      "default",
+		BootstrapAdminPassword: "original-random-password",
+	}); err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+	if err := WriteProjectConfig(projectDir, Options{
+		PlatformDir:            platformDir,
+		BootstrapAdminPassword: "original-random-password",
+	}); err != nil {
+		t.Fatalf("WriteProjectConfig() error = %v", err)
+	}
+
+	got := ReadPlatformOptions(platformDir, projectDir)
+	if got.BootstrapAdminEmail != "admin@bootstrap.local" {
+		t.Errorf("BootstrapAdminEmail not preserved: got %q", got.BootstrapAdminEmail)
+	}
+	if got.BootstrapTenantID != "default" {
+		t.Errorf("BootstrapTenantID not preserved: got %q", got.BootstrapTenantID)
+	}
+	if got.BootstrapAdminPassword != "original-random-password" {
+		t.Errorf("BootstrapAdminPassword not preserved: got %q", got.BootstrapAdminPassword)
+	}
+
+	// Simulate a second `kb-create update` run reusing the recovered options —
+	// the password must round-trip unchanged, never regenerated.
+	if err := WritePlatformConfig(platformDir, got); err != nil {
+		t.Fatalf("second WritePlatformConfig() error = %v", err)
+	}
+	if err := WriteProjectConfig(projectDir, got); err != nil {
+		t.Fatalf("second WriteProjectConfig() error = %v", err)
+	}
+	envData, err := os.ReadFile(filepath.Join(projectDir, ".env"))
+	if err != nil {
+		t.Fatalf("read .env: %v", err)
+	}
+	count := strings.Count(string(envData), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=")
+	if count != 1 {
+		t.Errorf("expected exactly one GATEWAY_BOOTSTRAP_ADMIN_PASSWORD= line after two writes, got %d", count)
+	}
+	if !strings.Contains(string(envData), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=original-random-password") {
+		t.Error("bootstrap admin password must not be regenerated on repeat writes")
+	}
+}
+
 func TestReadPlatformOptions_PreservesGatewayAuth(t *testing.T) {
 	platformDir := t.TempDir()
 	authOff := false

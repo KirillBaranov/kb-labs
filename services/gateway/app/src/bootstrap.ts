@@ -19,6 +19,8 @@ import {
   createTenantResolver,
   createRateLimiter,
   ensureBootstrapAdmin,
+  ensureBootstrapCliCredentials,
+  AuthService,
   OAuthStateStore,
 } from '@kb-labs/gateway-auth';
 import type { IKVStore } from '@kb-labs/core-platform/adapters';
@@ -308,6 +310,26 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)');
   }
   const jwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
+
+  // 7. Auto-provision the CLI's first credential for non-local installs (#271).
+  // Opt-in via config.auth.bootstrap.provisionCliCredentials (set by kb-create
+  // for --yes/server-mode installs). Mints a fixed-handle machine service
+  // account in-process (no HTTP round-trip, so MACHINE_REGISTER never applies)
+  // and writes ~/.kb/credentials.json so `kb` commands work with zero manual
+  // `kb auth login`. Idempotent — see ensureBootstrapCliCredentials.
+  if (config.auth?.bootstrap?.provisionCliCredentials === true) {
+    const bootstrapAuthService = new AuthService(cache, jwtConfig);
+    await ensureBootstrapCliCredentials({
+      enabled: true,
+      authService: bootstrapAuthService,
+      gatewayUrl: `http://127.0.0.1:${config.port}`,
+      logger,
+    }).catch((err: unknown) => {
+      logger.warn('Bootstrap CLI credentials provisioning failed (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
 
   // 8. Register HTTP pressure-control limits (ADR-0056). No-op when
   //    `gateway.pressure` is absent or disabled in config.
