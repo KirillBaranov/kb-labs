@@ -15,7 +15,7 @@ import { useEnv } from '@kb-labs/sdk';
 import { planRelease } from './planner';
 import { saveSnapshot, restoreSnapshot } from './rollback';
 import { updatePackageVersions } from './publisher';
-import { copyChangelogToPackages, commitAndTagRelease } from './publisher';
+import { copyChangelogToPackages, commitAndTagRelease, mergeRootChangelog } from './publisher';
 import { buildPackages } from './build';
 import { runReleaseChecks } from './checks';
 import { verifyPackages } from './verifier';
@@ -308,9 +308,7 @@ async function _runPipeline(ctx: {
 
   if (changelogMd && !dryRun) {
     await copyChangelogToPackages({ cwd: repoRoot, plan, changelog: changelogMd });
-    const changelogPath = join(repoRoot, '.kb', 'release', 'CHANGELOG.md');
-    await mkdir(join(repoRoot, '.kb', 'release'), { recursive: true });
-    await writeFile(changelogPath, changelogMd, 'utf-8');
+    await mergeRootChangelog({ repoRoot, plan, changelog: changelogMd });
   }
 
   // 8. Publish (before git — see module comment)

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { copyChangelogToPackages } from '../publisher';
+import { copyChangelogToPackages, mergeRootChangelog } from '../publisher';
 import type { PackageVersion, ReleasePlan } from '../types';
 
 function makePkg(overrides: Partial<PackageVersion> & { name: string; path: string }): PackageVersion {
@@ -119,5 +119,78 @@ describe('copyChangelogToPackages — lockstep releases', () => {
     expect(alphaContent).toContain('second release');
     expect(alphaContent).toContain('first release');
     expect(alphaContent.indexOf('1.2.0')).toBeLessThan(alphaContent.indexOf('1.1.0'));
+  });
+});
+
+describe('mergeRootChangelog — repo-root .kb/release/CHANGELOG.md', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = join(tmpdir(), `kb-root-changelog-test-${randomBytes(4).toString('hex')}`);
+    mkdirSync(join(repoRoot, 'alpha'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('prepends a new release on top of prior history instead of overwriting the file', async () => {
+    const rootChangelogPath = join(repoRoot, '.kb', 'release', 'CHANGELOG.md');
+    mkdirSync(join(repoRoot, '.kb', 'release'), { recursive: true });
+    writeFileSync(rootChangelogPath, '## [1.0.0] - 2025-12-01\n\noriginal history\n', 'utf-8');
+
+    const plan: ReleasePlan = {
+      packages: [makePkg({ name: '@scope/alpha', path: join(repoRoot, 'alpha'), currentVersion: '1.0.0', nextVersion: '1.1.0' })],
+      strategy: 'semver',
+      registry: 'https://registry.npmjs.org',
+      rollbackEnabled: true,
+      channel: 'stable',
+    };
+
+    await mergeRootChangelog({ repoRoot, plan, changelog: '## [1.1.0] - 2026-01-01\n\nnew release content' });
+
+    const content = readFileSync(rootChangelogPath, 'utf-8');
+    expect(content).toContain('new release content');
+    // Old history must survive — this is the exact bug: pipeline.ts used to
+    // call writeFile() directly, discarding everything already in the file.
+    expect(content).toContain('original history');
+    expect(content.indexOf('1.1.0')).toBeLessThan(content.indexOf('1.0.0'));
+  });
+
+  it('replaces the same-version section on retry instead of duplicating it', async () => {
+    mkdirSync(join(repoRoot, 'beta'), { recursive: true });
+    const plan: ReleasePlan = {
+      packages: [
+        makePkg({ name: '@scope/alpha', path: join(repoRoot, 'alpha'), nextVersion: '1.1.0' }),
+        makePkg({ name: '@scope/beta', path: join(repoRoot, 'beta'), nextVersion: '1.1.0' }),
+      ],
+      strategy: 'semver',
+      registry: 'https://registry.npmjs.org',
+      rollbackEnabled: true,
+      channel: 'stable',
+    };
+
+    await mergeRootChangelog({ repoRoot, plan, changelog: '## [1.1.0] - 2026-01-01\n\nfirst attempt' });
+    await mergeRootChangelog({ repoRoot, plan, changelog: '## [1.1.0] - 2026-01-01\n\nretried attempt' });
+
+    const content = readFileSync(join(repoRoot, '.kb', 'release', 'CHANGELOG.md'), 'utf-8');
+    expect(content).toContain('retried attempt');
+    expect(content).not.toContain('first attempt');
+    expect(content.match(/## \[1\.1\.0\]/g)?.length).toBe(1);
+  });
+
+  it('creates the file and directory when neither exists yet', async () => {
+    const plan: ReleasePlan = {
+      packages: [makePkg({ name: '@scope/alpha', path: join(repoRoot, 'alpha'), nextVersion: '1.1.0' })],
+      strategy: 'semver',
+      registry: 'https://registry.npmjs.org',
+      rollbackEnabled: true,
+      channel: 'stable',
+    };
+
+    await mergeRootChangelog({ repoRoot, plan, changelog: '## [1.1.0] - 2026-01-01\n\nfirst-ever release' });
+
+    const content = readFileSync(join(repoRoot, '.kb', 'release', 'CHANGELOG.md'), 'utf-8');
+    expect(content).toContain('first-ever release');
   });
 });
