@@ -115,7 +115,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        path: 'qa e2e-flaky',
+        path: 'qa e2e flaky',
         category: 'History',
         describe: 'Track flaky e2e cases across CI runs (agent-first overview + drill-down)',
         operationType: 'read' as const,
