@@ -39,7 +39,7 @@ function makeChange(overrides: Partial<Change>): Change {
 function slowLLM(delayMs: number): ILLM {
   return {
     async complete() {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise(resolve => { setTimeout(resolve, delayMs); });
       return { content: 'should never arrive in time', model: 'test', usage: { promptTokens: 1, completionTokens: 1 } };
     },
   } as unknown as ILLM;
