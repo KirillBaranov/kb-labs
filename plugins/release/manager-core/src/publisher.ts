@@ -71,17 +71,23 @@ export async function copyChangelogToPackages(options: {
 }): Promise<void> {
   const { plan, changelog } = options;
 
+  // Lockstep releases render ONE consolidated changelog for the whole release
+  // (header `## [version] - date`, no per-package sections) — there is no
+  // per-package excerpt to extract, so every package gets the same full text,
+  // same as the single-package case.
+  const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
+  const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
+
   for (const pkg of plan.packages) {
     try {
-      // For single-package releases, use the entire changelog
-      // For multi-package releases, extract package-specific section
+      // For single-package or lockstep releases, use the entire changelog.
+      // For independent multi-package releases, extract the package-specific
+      // section (headers of the form `## @scope/pkg X.Y.Z`).
       let packageChangelog: string;
 
-      if (plan.packages.length === 1) {
-        // Single package release: use entire changelog as-is
+      if (plan.packages.length === 1 || isLockstep) {
         packageChangelog = changelog;
       } else {
-        // Multi-package release: extract section for this package
         packageChangelog = createPackageChangelog(pkg, changelog);
       }
 
@@ -101,11 +107,19 @@ export async function copyChangelogToPackages(options: {
         // No existing changelog, start fresh
       }
 
-      // Check if this version already exists in changelog to avoid duplicates
-      const versionPattern = new RegExp(
-        `^##\\s+${pkg.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+${pkg.nextVersion.replace(/\./g, '\\.')}`,
-        'm'
-      );
+      // Check if this version already exists in changelog to avoid duplicates.
+      // Lockstep headers are `## [X.Y.Z] - date`; independent/single-package
+      // headers are `## @scope/pkg X.Y.Z`.
+      const versionPattern = isLockstep
+        ? new RegExp(`^##\\s+\\[${pkg.nextVersion.replace(/\./g, '\\.')}\\]`, 'm')
+        : new RegExp(
+            `^##\\s+${pkg.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+${pkg.nextVersion.replace(/\./g, '\\.')}`,
+            'm'
+          );
+
+      // Matches either header shape as a section boundary: `## @scope/pkg X.Y.Z`
+      // (independent) or `## [X.Y.Z] - date` (lockstep).
+      const nextSectionPattern = /^##\s+((@[\w-]+\/)?[\w-]+\s+\d|\[\d)/;
 
       let updatedChangelog: string;
       if (existingChangelog && versionPattern.test(existingChangelog)) {
@@ -119,7 +133,7 @@ export async function copyChangelogToPackages(options: {
           const line = lines[i];
           if (line && versionPattern.test(line)) {
             startIdx = i;
-          } else if (startIdx !== -1 && line && /^##\s+@?[\w-]+/.test(line)) {
+          } else if (startIdx !== -1 && line && nextSectionPattern.test(line)) {
             // Found next section header
             endIdx = i;
             break;
