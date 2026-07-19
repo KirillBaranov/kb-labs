@@ -7,7 +7,7 @@ order: 10
 
 **One line:** Mind is a semantic code search engine — you ask a natural-language question about your codebase, and it returns relevant code with references.
 
-**Source:** [`plugins/kb-labs-mind`](https://github.com/KirillBaranov/kb-labs-mind)
+**Source:** [`plugins/mind`](https://github.com/kb-labs-team/kb-labs/tree/main/plugins/mind)
 
 ## The problem
 
@@ -21,10 +21,10 @@ Two commands do most of the work:
 
 ```bash
 # Build an index from your codebase
-pnpm kb mind rag-index --scope default
+pnpm kb mind index
 
 # Ask a question
-pnpm kb mind rag-query --text "How does the state broker handle tenant isolation?" --agent
+pnpm kb mind ask --text "How does the state broker handle tenant isolation?" --agent
 ```
 
 Under the hood it builds a hybrid index: lexical (BM25) + semantic (vector embeddings), stored in Qdrant. Queries are rewritten by an LLM into multiple sub-queries, results are fused via Reciprocal Rank Fusion, and — the part that matters — every claim in the answer is verified against the actual retrieved text before it reaches you.
@@ -42,12 +42,12 @@ mind-cli (commands)
 
 ## KB Labs primitives used
 
-Reading the [manifest](https://github.com/KirillBaranov/kb-labs-mind/blob/main/packages/mind-cli/src/manifest.v3.ts) tells you the whole story of what Mind needs from the platform:
+Reading the [manifest](https://github.com/kb-labs-team/kb-labs/blob/main/plugins/mind/entry/src/manifest.ts) tells you the whole story of what Mind needs from the platform:
 
 ```ts
 platform: {
-  requires: ['llm', 'embeddings', 'vectorStore', 'cache', 'storage'],
-  optional: ['analytics', 'logger'],
+  requires: ['cache', 'storage'],
+  optional: ['llm', 'embeddings', 'vectorStore', 'analytics'],
 },
 ```
 
@@ -67,6 +67,6 @@ If you're building a plugin that does "search over X with embeddings", the inter
 
 ## Going deeper
 
-- [Reference manifest](https://github.com/KirillBaranov/kb-labs-mind/blob/main/packages/mind-cli/src/manifest.v3.ts)
-- [ADRs on search architecture](https://github.com/KirillBaranov/kb-labs-mind/tree/main/docs/adr) — hybrid search, anti-hallucination, adaptive weights
+- [Reference manifest](https://github.com/kb-labs-team/kb-labs/blob/main/plugins/mind/entry/src/manifest.ts)
+- [mind-core README](https://github.com/kb-labs-team/kb-labs/blob/main/plugins/mind/core/README.md) — hybrid search, anti-hallucination, adaptive weights
 - [Guide: Your First Plugin](/guides/first-plugin) — if Mind inspired you to build something

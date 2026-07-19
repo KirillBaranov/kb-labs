@@ -7,7 +7,7 @@ order: 13
 
 **One line:** Flip an entire monorepo of git submodules between `link:../../path` (local development) and `^1.2.3` (published npm versions) with one command.
 
-**Source:** [`plugins/kb-labs-devlink`](https://github.com/KirillBaranov/kb-labs-devlink)
+**Source:** [`plugins/devlink`](https://github.com/kb-labs-team/kb-labs/tree/main/plugins/devlink)
 
 ## The problem
 
@@ -59,7 +59,7 @@ The backup is the safety net — every switch can be undone with `devlink undo`,
 
 ## KB Labs primitives used
 
-From the [manifest](https://github.com/KirillBaranov/kb-labs-devlink/blob/main/packages/devlink-cli/src/manifest.ts), DevLink is the smallest of the four — it barely needs the platform at all:
+From the [manifest](https://github.com/kb-labs-team/kb-labs/blob/main/plugins/devlink/entry/src/manifest.ts), DevLink is the smallest of the four — it barely needs the platform at all:
 
 ```ts
 platform: {
@@ -82,5 +82,5 @@ It also shows that **a useful KB Labs plugin doesn't have to use AI**. The platf
 
 ## Going deeper
 
-- [Manifest source](https://github.com/KirillBaranov/kb-labs-devlink/blob/main/packages/devlink-cli/src/manifest.ts)
+- [Manifest source](https://github.com/kb-labs-team/kb-labs/blob/main/plugins/devlink/entry/src/manifest.ts)
 - [Guide: Your First Plugin](/guides/first-plugin) — DevLink is a good "non-AI" template to study
