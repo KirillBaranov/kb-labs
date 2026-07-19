@@ -66,6 +66,31 @@ func TestDefaultSelectionCWDOverride(t *testing.T) {
 	}
 }
 
+// TestDefaultSelectionDemoModeDoesNotChangePackageSelection guards against a
+// regression where `--demo`'s help text claimed "install demo plugins" but
+// DemoMode was never consulted when building services/plugins/binaries —
+// only when picking the telemetry consent value (types.ConsentDemo). A user
+// running `kb-create --demo` got the exact same package set as plain
+// `--yes`, silently. This pins that `--demo` (still) does not affect the
+// preset — see cmd/create.go's --demo flag description for the corrected,
+// accurate claim (writes an example workflow instead).
+func TestDefaultSelectionDemoModeDoesNotChangePackageSelection(t *testing.T) {
+	m := sampleManifest()
+
+	plain := defaultSelection(m, WizardOptions{})
+	demo := defaultSelection(m, WizardOptions{DemoMode: true})
+
+	if strings.Join(plain.Services, ",") != strings.Join(demo.Services, ",") {
+		t.Errorf("Services differ between --yes (%v) and --yes --demo (%v), want identical", plain.Services, demo.Services)
+	}
+	if strings.Join(plain.Plugins, ",") != strings.Join(demo.Plugins, ",") {
+		t.Errorf("Plugins differ between --yes (%v) and --yes --demo (%v), want identical", plain.Plugins, demo.Plugins)
+	}
+	if strings.Join(plain.Binaries, ",") != strings.Join(demo.Binaries, ",") {
+		t.Errorf("Binaries differ between --yes (%v) and --yes --demo (%v), want identical", plain.Binaries, demo.Binaries)
+	}
+}
+
 func TestDefaultSelectionFallsBackToHomeAndCWD(t *testing.T) {
 	m := sampleManifest()
 	sel := defaultSelection(m, WizardOptions{})
