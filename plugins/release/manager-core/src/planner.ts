@@ -125,6 +125,47 @@ export async function isVersionPublished(name: string, version: string, registry
 }
 
 /**
+ * Discover release-candidate packages for a scope, at their CURRENT
+ * package.json version — no git-diff-based bump computation. Shared by
+ * planRelease() (which then computes bumps on top) and `kb release
+ * promote` (which needs the already-released versions as-is, since
+ * recomputing bumps from git history would be wrong for a promote).
+ */
+export async function discoverCurrentPackages(
+  cwd: string,
+  scope: string | undefined,
+  config: ReleaseConfig,
+): Promise<PackageVersion[]> {
+  const allPackages = await discoverPackages(cwd, config);
+
+  if (!scope || scope === 'root') {
+    return allPackages;
+  }
+
+  const isWorkspace = existsSync(join(cwd, '.gitmodules'));
+  if (isWorkspace) {
+    // In workspace mode, scope matches a sub-repo root.
+    // Re-discover inside that sub-repo using standard discoverPackages (glob-based).
+    const matchedRoots = filterByScope(allPackages, scope, config);
+    const innerPackages: PackageVersion[] = [];
+    for (const root of matchedRoots) {
+      // Include root itself
+      innerPackages.push(root);
+      // Discover inner packages using standard glob logic (respects config, skips private)
+      const inner = await discoverPackages(root.path, config);
+      for (const pkg of inner) {
+        if (!innerPackages.some(p => p.name === pkg.name)) {
+          innerPackages.push(pkg);
+        }
+      }
+    }
+    return innerPackages;
+  }
+
+  return filterByScope(allPackages, scope, config);
+}
+
+/**
  * Plan release by detecting changes and computing version bumps
  */
 export async function planRelease(options: PlannerOptions): Promise<ReleasePlan> {
@@ -136,36 +177,8 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     ? mergeConfigWithFlow(options.config, options.flow)
     : options.config;
 
-  // Step 1: discover all candidates according to config (paths/include/exclude)
-  const allPackages = await discoverPackages(cwd, config);
-
-  // Step 2: if scope given, filter candidates and produce clear errors
-  let packages: PackageVersion[];
-  if (scope && scope !== 'root') {
-    const isWorkspace = existsSync(join(cwd, '.gitmodules'));
-    if (isWorkspace) {
-      // In workspace mode, scope matches a sub-repo root.
-      // Re-discover inside that sub-repo using standard discoverPackages (glob-based).
-      const matchedRoots = filterByScope(allPackages, scope, config);
-      const innerPackages: PackageVersion[] = [];
-      for (const root of matchedRoots) {
-        // Include root itself
-        innerPackages.push(root);
-        // Discover inner packages using standard glob logic (respects config, skips private)
-        const inner = await discoverPackages(root.path, config);
-        for (const pkg of inner) {
-          if (!innerPackages.some(p => p.name === pkg.name)) {
-            innerPackages.push(pkg);
-          }
-        }
-      }
-      packages = innerPackages;
-    } else {
-      packages = filterByScope(allPackages, scope, config);
-    }
-  } else {
-    packages = allPackages;
-  }
+  // Step 1-2: discover candidates and apply scope filtering.
+  const packages = await discoverCurrentPackages(cwd, scope, config);
 
   // Workspace root with submodules: each sub-repo has its own git,
   // so we skip workspace-level detectModifiedPackages and use per-repo git.

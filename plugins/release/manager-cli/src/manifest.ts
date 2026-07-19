@@ -115,6 +115,12 @@ export const manifest = {
             default: 'auto',
             description: 'Version bump strategy',
           },
+          channel: {
+            type: 'string',
+            choices: ['stable', 'canary'] as const,
+            default: 'stable',
+            description: 'Release channel — canary previews the -canary.<shortsha> version shape',
+          },
           json: { type: 'boolean', description: 'Print plan as JSON' },
         }),
 
@@ -122,6 +128,7 @@ export const manifest = {
           'kb release plan',
           'kb release plan --scope packages/*',
           'kb release plan --bump minor',
+          'kb release plan --channel canary',
           'kb release plan --json',
         ],
       },
@@ -145,6 +152,12 @@ export const manifest = {
             description: 'Version bump override (default: auto-detect from commits)',
           },
           strict: { type: 'boolean', description: 'Fail on any check failure' },
+          channel: {
+            type: 'string',
+            choices: ['stable', 'canary'] as const,
+            default: 'stable',
+            description: 'Release channel — canary publishes straight to npm under a prerelease tag, no git commit/tag',
+          },
           'dry-run': { type: 'boolean', description: 'Simulate release without publishing or tagging' },
           'skip-checks': { type: 'boolean', description: 'Skip pre-release checks' },
           'skip-build': { type: 'boolean', description: 'Skip build step' },
@@ -163,6 +176,7 @@ export const manifest = {
           'kb release run --scope @my-org/core',
           'kb release run --skip-checks --skip-build',
           'kb release run --strict --json',
+          'kb release run --channel canary --yes',
         ],
       },
 
@@ -196,6 +210,43 @@ export const manifest = {
           'kb release publish --otp 123456',
           'kb release publish --dry-run',
           'kb release publish --tag next --access public',
+        ],
+      },
+
+      // release:promote - Promote an already-released version to npm
+      {
+        path: 'release promote',
+        category: 'Publish',
+        describe: 'Promote already-released package versions to npm (no re-bump, no rebuild)',
+        operationType: 'execute' as const,
+        longDescription:
+          'Publishes the CURRENT on-disk package.json versions to npm — no version bump, no rebuild. ' +
+          'Intended to run after `release run --channel stable` (typically targeting Verdaccio via ' +
+          'config.registry): once that run is verified, `release promote` pushes the exact same, ' +
+          'already-committed versions to npm under the stable dist-tag.',
+
+        handler: './cli/commands/promote.js#default',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          tag: { type: 'string', description: 'npm dist-tag override (default: config.publish.stableTag, falls back to "latest")' },
+          registry: { type: 'string', description: 'Registry override (default: config.publish.npmRegistry, falls back to real npm)' },
+          otp: { type: 'string', description: 'One-time password (optional, will prompt if needed)' },
+          'dry-run': { type: 'boolean', description: 'Simulate promote without actually publishing' },
+          access: {
+            type: 'string',
+            choices: ['public', 'restricted'] as const,
+            description: 'Package access level',
+          },
+          token: { type: 'string', description: 'NPM auth token (overrides NPM_TOKEN env)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release promote',
+          'kb release promote --scope @kb-labs/core',
+          'kb release promote --dry-run',
+          'kb release promote --tag next',
         ],
       },
 
