@@ -11,6 +11,7 @@ export * from './channel';
 export { runReleasePipeline } from './pipeline';
 export { buildPackages, runSafeBuild, isBuildCommand, spawnCommand } from './build';
 export { runReleaseChecks } from './checks';
-export { verifyPackage, verifyPackages } from './verifier';
+export { verifyPackage, verifyPackages, verifyExtractedTarball } from './verifier';
+export { verifyAgainstRegistry } from './verdaccio-verify';
 export { resolveScopePath } from './scope';
 

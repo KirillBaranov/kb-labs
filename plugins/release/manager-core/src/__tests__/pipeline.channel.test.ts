@@ -4,8 +4,17 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { runReleasePipeline } from '../pipeline';
-import type { PackagePublisher, PublishablePackage, PublishResult } from '../types';
+import type { PackagePublisher, PublishablePackage, PublishResult, VerifyResult } from '../types';
+
+// Registry round-trip verification (npm pack against a real registry) is
+// exercised in verdaccio-verify's own tests — here we only care that the
+// pipeline calls it and reacts to its result, so stub it to always confirm.
+vi.mock('../verdaccio-verify', () => ({
+  verifyAgainstRegistry: vi.fn(async (packages: PublishablePackage[]): Promise<VerifyResult[]> =>
+    packages.map(p => ({ name: p.name, success: true, issues: [] }))),
+}));
+
+const { runReleasePipeline } = await import('../pipeline');
 
 function makeTmpMonorepo(packages: Array<{ name: string; version?: string }>): { root: string; remote: string } {
   const root = join(tmpdir(), `kb-pipeline-channel-test-${randomBytes(4).toString('hex')}`);
@@ -58,20 +67,20 @@ function makePublisherSpy(): PackagePublisher & { calls: Array<{ packages: Publi
 describe('runReleasePipeline — channel behavior', () => {
   let root: string;
   let remote: string;
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     ({ root, remote } = makeTmpMonorepo([{ name: '@scope/alpha' }]));
     process.env['NPM_TOKEN'] = 'test-token';
-    // Stub the npm-auth pre-flight `whoami` check so the pipeline can proceed offline.
-    fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
+    // Stub the npm-auth pre-flight `whoami` check (and the registry-verify
+    // isVersionPublished HEAD check) so the pipeline can proceed offline.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
   });
 
   afterEach(() => {
     rmSync(root, { recursive: true, force: true });
     rmSync(remote, { recursive: true, force: true });
     delete process.env['NPM_TOKEN'];
-    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('stable: publishes with tag=latest, bumps package.json, and commits/tags git', async () => {

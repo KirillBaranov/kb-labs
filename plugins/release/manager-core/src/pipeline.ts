@@ -19,6 +19,7 @@ import { copyChangelogToPackages, commitAndTagRelease } from './publisher';
 import { buildPackages } from './build';
 import { runReleaseChecks } from './checks';
 import { verifyPackages } from './verifier';
+import { verifyAgainstRegistry } from './verdaccio-verify';
 import { acquireLock } from './lock';
 import { resolvePublishTag, resolvePublishRegistry } from './channel';
 import {
@@ -366,6 +367,35 @@ async function _runPipeline(ctx: {
       })),
       gitRoots: {},
     });
+  }
+
+  // 8c. Verify the published artifact against the registry it was just
+  // published to — a hard invariant for stable releases (not opt-in): confirms
+  // each package actually landed and re-runs the same static checks against
+  // what the registry served back, catching publish-time corruption distinct
+  // from pre-publish source issues. Canary skips this — it never goes through
+  // a Verdaccio pre-promote gate.
+  if (!dryRun && channel === 'stable') {
+    progress('verifying', 'Verifying published artifacts against the registry...');
+    const registryVerifyResults = await verifyAgainstRegistry(packagesToPublish, {
+      registry: publishRegistry,
+      timeout: config.publish?.verifyRegistryTimeoutMs,
+      logger,
+    });
+    const registryVerifyFailed = registryVerifyResults.filter(r => !r.success);
+    if (registryVerifyFailed.length > 0) {
+      const allIssues = registryVerifyFailed.flatMap(r => r.issues.map(i => `${r.name}: ${i}`));
+      return {
+        success: false,
+        plan,
+        report: buildReport('verifying', plan, repoRoot, dryRun, startTime, {
+          ok: false,
+          published: publishResult.published,
+          errors: [`Registry verification failed after publish — git commit/tag skipped:\n  ${allIssues.join('\n  ')}`],
+          timingMs: Date.now() - startTime,
+        }),
+      };
+    }
   }
 
   // 9. Git commit + tag — only after all packages are on npm.

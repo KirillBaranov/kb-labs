@@ -113,7 +113,7 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
  * Check whether a specific package version is already published on the npm registry.
  * Fail-open: returns false on any network/registry error.
  */
-async function isVersionPublished(name: string, version: string, registry: string): Promise<boolean> {
+export async function isVersionPublished(name: string, version: string, registry: string): Promise<boolean> {
   try {
     const encoded = name.startsWith('@') ? `@${encodeURIComponent(name.slice(1))}` : name;
     const url = `${registry.replace(/\/$/, '')}/${encoded}/${version}`;
