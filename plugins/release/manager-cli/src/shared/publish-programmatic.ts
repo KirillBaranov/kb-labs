@@ -226,7 +226,7 @@ async function publishOne(
   },
   logger: ReturnType<typeof useLogger>,
 ): Promise<PublishResult> {
-  const restore = rewriteWorkspaceDeps(pkg.path, opts.versionMap, opts.packageManager);
+  const restore = rewriteWorkspaceDeps(pkg, opts.versionMap, opts.packageManager);
 
   try {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
