@@ -2,7 +2,7 @@
  * Publisher - handles package publishing and changelog updates
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PackageVersion, ReleasePlan } from './types';
@@ -117,48 +117,96 @@ export async function copyChangelogToPackages(options: {
             'm'
           );
 
-      // Matches either header shape as a section boundary: `## @scope/pkg X.Y.Z`
-      // (independent) or `## [X.Y.Z] - date` (lockstep).
-      const nextSectionPattern = /^##\s+((@[\w-]+\/)?[\w-]+\s+\d|\[\d)/;
-
-      let updatedChangelog: string;
-      if (existingChangelog && versionPattern.test(existingChangelog)) {
-        // Version already exists - replace the section instead of prepending
-        // Find where current version section starts and next section begins
-        const lines = existingChangelog.split('\n');
-        let startIdx = -1;
-        let endIdx = lines.length;
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (line && versionPattern.test(line)) {
-            startIdx = i;
-          } else if (startIdx !== -1 && line && nextSectionPattern.test(line)) {
-            // Found next section header
-            endIdx = i;
-            break;
-          }
-        }
-
-        if (startIdx !== -1) {
-          // Replace the existing section
-          const before = lines.slice(0, startIdx).join('\n');
-          const after = lines.slice(endIdx).join('\n');
-          updatedChangelog = (before ? before + '\n' : '') + packageChangelog + (after ? '\n' + after : '');
-        } else {
-          // Fallback: just use new changelog
-          updatedChangelog = packageChangelog;
-        }
-      } else {
-        // Prepend new entry
-        updatedChangelog = packageChangelog + (existingChangelog ? '\n' + existingChangelog : '');
-      }
+      const updatedChangelog = mergeChangelogBlock(existingChangelog, packageChangelog, versionPattern);
 
       await writeFile(changelogPath, updatedChangelog.trim() + '\n', 'utf-8');
     } catch (error) {
       console.warn(`Failed to write changelog for ${pkg.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+}
+
+// Matches either header shape as a section boundary: `## @scope/pkg X.Y.Z`
+// (independent) or `## [X.Y.Z] - date` (lockstep).
+const NEXT_SECTION_PATTERN = /^##\s+((@[\w-]+\/)?[\w-]+\s+\d|\[\d)/;
+
+/**
+ * Merge a new version-block changelog entry into an existing changelog's
+ * content: replace an existing block with the same version (idempotent
+ * retry/promote) or prepend it as the newest entry — never blindly overwrite
+ * the rest of the file's history.
+ */
+function mergeChangelogBlock(existingChangelog: string, newBlock: string, versionPattern: RegExp): string {
+  if (existingChangelog && versionPattern.test(existingChangelog)) {
+    // Version already exists - replace the section instead of prepending.
+    // Find where the current version section starts and the next begins.
+    const lines = existingChangelog.split('\n');
+    let startIdx = -1;
+    let endIdx = lines.length;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line && versionPattern.test(line)) {
+        startIdx = i;
+      } else if (startIdx !== -1 && line && NEXT_SECTION_PATTERN.test(line)) {
+        endIdx = i;
+        break;
+      }
+    }
+
+    if (startIdx !== -1) {
+      const before = lines.slice(0, startIdx).join('\n');
+      const after = lines.slice(endIdx).join('\n');
+      return (before ? before + '\n' : '') + newBlock + (after ? '\n' + after : '');
+    }
+    return newBlock;
+  }
+
+  // Prepend new entry
+  return newBlock + (existingChangelog ? '\n' + existingChangelog : '');
+}
+
+/**
+ * Merge the generated changelog for this release into the repo-root
+ * `.kb/release/CHANGELOG.md`, prepending/deduplicating the same way
+ * `copyChangelogToPackages` does for per-package changelogs — this file is
+ * cumulative history, not a per-run snapshot, so it must never be overwritten.
+ */
+export async function mergeRootChangelog(options: {
+  repoRoot: string;
+  plan: ReleasePlan;
+  changelog: string;
+}): Promise<void> {
+  const { repoRoot, plan, changelog } = options;
+  if (!changelog || changelog.trim().length === 0 || plan.packages.length === 0) {
+    return;
+  }
+
+  const primary = plan.packages[0]!;
+  const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
+  const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
+
+  const versionPattern = isLockstep
+    ? new RegExp(`^##\\s+\\[${primary.nextVersion.replace(/\./g, '\\.')}\\]`, 'm')
+    : new RegExp(
+        `^##\\s+${primary.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+${primary.nextVersion.replace(/\./g, '\\.')}`,
+        'm'
+      );
+
+  const releaseDir = join(repoRoot, '.kb', 'release');
+  const changelogPath = join(releaseDir, 'CHANGELOG.md');
+
+  let existingChangelog = '';
+  try {
+    existingChangelog = await readFile(changelogPath, 'utf-8');
+  } catch {
+    // No existing root changelog, start fresh
+  }
+
+  const updatedChangelog = mergeChangelogBlock(existingChangelog, changelog.trim(), versionPattern);
+
+  await mkdir(releaseDir, { recursive: true });
+  await writeFile(changelogPath, updatedChangelog.trim() + '\n', 'utf-8');
 }
 
 /**
@@ -278,6 +326,20 @@ export async function commitAndTagRelease(options: {
           const changelogPath = join(pkg.path, 'CHANGELOG.md');
           if (existsSync(changelogPath)) { filesToStage.push(rel(changelogPath)); }
         }
+
+        // The consolidated repo-root changelog (pipeline.ts writes
+        // <repoRoot>/.kb/release/CHANGELOG.md directly to disk) lives outside
+        // any package path, so the loop above never picks it up — stage it
+        // explicitly for whichever git root actually IS repoRoot. Without
+        // this it's tracked in git but never committed by a real release,
+        // silently reverting to whatever was last committed by hand.
+        if (repoRoot && root === repoRoot) {
+          const rootChangelogPath = join(repoRoot, '.kb', 'release', 'CHANGELOG.md');
+          if (existsSync(rootChangelogPath)) {
+            filesToStage.push('.kb/release/CHANGELOG.md');
+          }
+        }
+
         await rootGit.add(filesToStage);
         try {
           await rootGit.commit(commitMessage);
