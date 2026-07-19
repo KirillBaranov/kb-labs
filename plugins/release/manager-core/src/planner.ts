@@ -9,8 +9,8 @@ import simpleGit from 'simple-git';
 import semver from 'semver';
 import globby from 'globby';
 import { discoverSubRepoPaths } from '@kb-labs/sdk';
-import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan } from './types';
-import { applyVersionStrategy, type VersionStrategy } from './versioning-strategies';
+import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan, ReleaseChannel } from './types';
+import { applyVersionStrategy, applyCanarySuffix, type VersionStrategy } from './versioning-strategies';
 
 /**
  * Find the most recent git tag for a package.
@@ -87,6 +87,8 @@ export interface PlannerOptions {
   /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
   flow?: string;
   bumpOverride?: VersionBump;
+  /** Release track. Defaults to 'stable'. See ReleaseChannel. */
+  channel?: ReleaseChannel;
 }
 
 /**
@@ -126,7 +128,7 @@ async function isVersionPublished(name: string, version: string, registry: strin
  * Plan release by detecting changes and computing version bumps
  */
 export async function planRelease(options: PlannerOptions): Promise<ReleasePlan> {
-  const { cwd, scope, bumpOverride } = options;
+  const { cwd, scope, bumpOverride, channel = 'stable' } = options;
 
   // Flow resolution — completely replaces packages/versioningStrategy/checks in config.
   // MUST happen before discoverPackages so globally-excluded packages can appear in a flow.
@@ -245,11 +247,20 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     umbrellaPath: scope,
   });
 
+  // Canary: suffix the already-computed base version with -canary.<shortsha>.
+  // Runs last so canary and stable share the exact same bump-computation path.
+  if (channel === 'canary') {
+    const git = simpleGit(cwd, { timeout: { block: 60000 } });
+    const shortSha = (await git.revparse(['--short', 'HEAD'])).trim();
+    planPackages = applyCanarySuffix(planPackages, shortSha);
+  }
+
   return {
     packages: planPackages,
     strategy: config.strategy || 'semver',
     registry: config.registry || 'https://registry.npmjs.org',
     rollbackEnabled: config.rollback?.enabled ?? true,
+    channel,
   };
 }
 

@@ -101,10 +101,11 @@ async function _runPipeline(ctx: {
     const registry = config.registry ?? 'https://registry.npmjs.org';
     const authError = await verifyNpmAuth(registry);
     if (authError) {
+      const emptyPlan: ReleasePlan = { packages: [], strategy: 'semver', registry, rollbackEnabled: false, channel: config.channel ?? 'stable' };
       return {
         success: false,
-        plan: { packages: [], strategy: 'semver', registry, rollbackEnabled: false },
-        report: buildReport('planning', { packages: [], strategy: 'semver', registry, rollbackEnabled: false }, repoRoot, dryRun, startTime, {
+        plan: emptyPlan,
+        report: buildReport('planning', emptyPlan, repoRoot, dryRun, startTime, {
           ok: false,
           errors: [`npm auth check failed: ${authError}`],
           timingMs: Date.now() - startTime,
@@ -122,6 +123,7 @@ async function _runPipeline(ctx: {
     scope,
     flow,                                     // already includes defaultFlow fallback
     bumpOverride: config.bump as VersionBump | undefined,
+    channel: config.channel,
   });
 
   if (plan.packages.length === 0) {

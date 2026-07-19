@@ -105,6 +105,7 @@ export default defineHandler({
       strategy: corePlan.strategy,
       registry: corePlan.registry,
       rollbackEnabled: corePlan.rollbackEnabled,
+      channel: corePlan.channel,
       createdAt: new Date().toISOString(),
     };
 

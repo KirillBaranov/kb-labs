@@ -13,6 +13,17 @@ export type ReleaseStage = 'planning' | 'checking' | 'versioning' | 'publishing'
 
 export type VersionBump = 'patch' | 'minor' | 'major' | 'auto';
 
+/**
+ * Release track. Orthogonal to VersionBump — bump decides how much to
+ * increment, channel decides which track a release ships on.
+ * - 'stable': normal versioned release, committed to git, publishes to
+ *   `config.registry` (typically Verdaccio for pre-promote validation).
+ * - 'canary': prerelease published straight to real npm under a dist-tag,
+ *   with an in-memory `-canary.<shortsha>` version that is never committed
+ *   to package.json/git.
+ */
+export type ReleaseChannel = 'stable' | 'canary';
+
 export interface ReleaseContext {
   repo: string;
   cwd: string;
@@ -38,6 +49,7 @@ export interface ReleasePlan {
   strategy: 'semver';
   registry: string;
   rollbackEnabled: boolean;
+  channel: ReleaseChannel;
 }
 
 export interface CheckResultDetails {
@@ -151,6 +163,8 @@ export interface ReleaseConfig {
   registry?: string;
   strategy?: 'semver';
   bump?: VersionBump;
+  /** Release track. Defaults to 'stable' when omitted. See ReleaseChannel. */
+  channel?: ReleaseChannel;
   versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
   strict?: boolean;
   verify?: CheckId[];
@@ -162,6 +176,20 @@ export interface ReleaseConfig {
     access?: 'public' | 'restricted';
     /** Package manager to use for publishing. Default: 'pnpm'. */
     packageManager?: 'pnpm' | 'npm' | 'yarn';
+    /** npm dist-tag for canary publishes. Default: 'canary'. */
+    canaryTag?: string;
+    /** npm dist-tag for stable promote-to-npm. Default: 'latest'. */
+    stableTag?: string;
+    /**
+     * Real npm registry used for canary publishes and for `kb release
+     * promote`. Deliberately separate from `registry` (which controls
+     * where a 'stable' `release run` publishes — typically Verdaccio) so a
+     * stale Verdaccio `registry` value can't accidentally swallow a canary
+     * publish or a promote. Default: 'https://registry.npmjs.org'.
+     */
+    npmRegistry?: string;
+    /** Timeout (ms) for registry-verification HTTP calls before promoting a stable release. Default: 30000. */
+    verifyRegistryTimeoutMs?: number;
   };
   /** Workspace configuration — package manager used for publishing. */
   workspace?: {
@@ -269,7 +297,7 @@ export interface PublishResult {
 
 /** Injected by CLI (OTP) or REST (token-based) */
 export interface PackagePublisher {
-  publish(packages: PublishablePackage[], options: { dryRun?: boolean; access?: string }): Promise<PublishResult>;
+  publish(packages: PublishablePackage[], options: { dryRun?: boolean; access?: string; tag?: string; registry?: string }): Promise<PublishResult>;
 }
 
 /** Injected by caller — generates changelog */
