@@ -10,7 +10,7 @@
 
 set -eu
 
-REPO="${KB_LABS_REPO:-KirillBaranov/kb-labs}"
+REPO="${KB_LABS_REPO:-kb-labs-team/kb-labs}"
 MODE="${1:-latest}"
 
 case "$MODE" in

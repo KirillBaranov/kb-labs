@@ -91,6 +91,33 @@ async function refreshToken(
   return data.accessToken;
 }
 
+// ── Error normalization ─────────────────────────────────────────────────────
+
+/**
+ * Normalizes gateway/LLM-provider errors before they reach callers.
+ *
+ * When the gateway (or an intermediate proxy) returns a non-2xx response
+ * with a non-JSON body — e.g. an HTML 502 page when the upstream is
+ * unreachable — the `openai` SDK's `APIError.message` becomes the raw HTML
+ * verbatim (see openai/src/core.ts: `errMessage = errJSON ? undefined :
+ * errText`, then `APIError.makeMessage` falls through to that raw text).
+ * Both `kb review run` (shared/cli-ui handleError, prints err.message as-is)
+ * and `kb commit commit` (heuristic-fallback catch, writes err.message +
+ * err.stack to stderr) print that message straight to the terminal — a
+ * page-long HTML dump instead of a useful error. `err.error` (the parsed
+ * JSON body) is only unset when the body wasn't JSON, so it's a reliable
+ * signal to replace the message with a short, clean one.
+ */
+export function normalizeLLMError(err: unknown): never {
+  if (err instanceof OpenAI.APIError && err.status && !err.error) {
+    throw new Error(
+      `KB Labs Gateway error (HTTP ${err.status}): upstream returned a non-JSON response — ` +
+        `the gateway or LLM provider may be down or misconfigured. Try again in a moment.`,
+    );
+  }
+  throw err;
+}
+
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
 export class KBLabsGatewayLLM implements ILLM {
@@ -145,12 +172,14 @@ export class KBLabsGatewayLLM implements ILLM {
     await this.ensureToken();
     const model = options?.model ?? this.defaultModel;
 
-    const response = await this.client.chat.completions.create({
-      model,
-      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
-      messages: [{ role: "user", content: prompt }],
-      ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
-    });
+    const response = await this.client.chat.completions
+      .create({
+        model,
+        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        messages: [{ role: "user", content: prompt }],
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+      })
+      .catch(normalizeLLMError);
 
     const content = response.choices[0]?.message?.content ?? "";
     return {
@@ -196,13 +225,15 @@ export class KBLabsGatewayLLM implements ILLM {
       }
     }
 
-    const response = await this.client.chat.completions.create({
-      model,
-      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
-      messages: openaiMessages,
-      tools: options.toolChoice !== "none" ? tools : undefined,
-      tool_choice,
-    });
+    const response = await this.client.chat.completions
+      .create({
+        model,
+        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        messages: openaiMessages,
+        tools: options.toolChoice !== "none" ? tools : undefined,
+        tool_choice,
+      })
+      .catch(normalizeLLMError);
 
     const message = response.choices[0]?.message;
     if (!message) {

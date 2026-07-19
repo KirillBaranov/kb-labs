@@ -1,6 +1,6 @@
 # @kb-labs/adapters-fs
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 Filesystem storage adapter for local file operations with path security and glob pattern support.
 

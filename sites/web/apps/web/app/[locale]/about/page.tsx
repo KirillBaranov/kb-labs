@@ -277,7 +277,7 @@ export default async function AboutPage({ params }: Props) {
               <div className="mx-auto max-w-2xl">
                 <p className="text-base leading-relaxed text-muted/60">
                   {t('about.page.journeyText')}{' '}
-                  <a href="https://github.com/KirillBaranov/kb-labs/discussions" target="_blank" rel="noopener noreferrer"
+                  <a href="https://github.com/kb-labs-team/kb-labs/discussions" target="_blank" rel="noopener noreferrer"
                     className="text-kb-text underline underline-offset-4 decoration-muted/30 hover:decoration-accent transition-colors">
                     {t('about.page.journeyGhDiscussions')}
                   </a>{' '}{t('about.page.journeyOr')}{' '}

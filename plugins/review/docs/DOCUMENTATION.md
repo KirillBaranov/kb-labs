@@ -1,7 +1,7 @@
 # KB Labs AI Review Documentation Standard
 
 > **This document adapts the KB Labs Documentation Standard for the AI Review plugin.**  
-> See the [main standard](https://github.com/KirillBaranov/kb-labs/blob/main/docs/DOCUMENTATION.md) for baseline requirements shared across the ecosystem.
+> See the [main standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md) for baseline requirements shared across the ecosystem.
 
 ## Project-specific focus areas
 

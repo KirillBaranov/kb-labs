@@ -880,3 +880,69 @@ func TestEnsureGitignore_ExcludesClaudeDir(t *testing.T) {
 		t.Errorf(".gitignore should exclude .claude/, got:\n%s", string(data))
 	}
 }
+
+// TestWriteStarterWorkflows_RunCommentsUseWorkflowIdFlag verifies the "Run:"
+// comment in each generated starter workflow uses the actual `kb workflow run`
+// CLI syntax (`--workflow-id <id>`). `workflow:run` (plugins/workflow/entry/src/
+// commands/workflow-run.ts) requires --workflow-id and does not accept a
+// positional argument, so a comment reading "kb workflow run healthcheck" fails
+// immediately with "Missing required flag: --workflow-id" for a new user who
+// copies it verbatim.
+func TestWriteStarterWorkflows_RunCommentsUseWorkflowIdFlag(t *testing.T) {
+	kbDir := t.TempDir()
+
+	if err := writeStarterWorkflows(kbDir); err != nil {
+		t.Fatalf("writeStarterWorkflows: %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(kbDir, "workflows"))
+	if err != nil {
+		t.Fatalf("read workflows dir: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("expected starter workflows to be written")
+	}
+
+	for _, e := range entries {
+		data, err := os.ReadFile(filepath.Join(kbDir, "workflows", e.Name()))
+		if err != nil {
+			t.Fatalf("read %s: %v", e.Name(), err)
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.Contains(line, "kb workflow run") && !strings.Contains(line, "--workflow-id") {
+				t.Errorf("%s: %q uses `kb workflow run <id>` without --workflow-id, which the CLI rejects", e.Name(), strings.TrimSpace(line))
+			}
+		}
+	}
+}
+
+// TestWriteDemoWorkflow_RunCommentUsesWorkflowIdFlag mirrors
+// TestWriteStarterWorkflows_RunCommentsUseWorkflowIdFlag for the --demo-only
+// demo.yaml (written by writeDemoWorkflow, not writeStarterWorkflows): its
+// "Run:" comment previously read "kb run demo" — not a real command at all
+// (the group is `kb workflow run`, not `kb run`) — and its "Edit:" comment
+// pointed at a nonexistent `kb workflow edit` command.
+func TestWriteDemoWorkflow_RunCommentUsesWorkflowIdFlag(t *testing.T) {
+	kbDir := t.TempDir()
+
+	if err := writeDemoWorkflow(kbDir); err != nil {
+		t.Fatalf("writeDemoWorkflow: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(kbDir, "workflows", "demo.yaml"))
+	if err != nil {
+		t.Fatalf("read demo.yaml: %v", err)
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, "kb workflow edit") {
+			t.Errorf("demo.yaml: %q references `kb workflow edit`, which is not a registered command", strings.TrimSpace(line))
+		}
+		if strings.Contains(line, "kb run ") {
+			t.Errorf("demo.yaml: %q references `kb run <id>`, which is not a registered command group", strings.TrimSpace(line))
+		}
+		if strings.Contains(line, "kb workflow run") && !strings.Contains(line, "--workflow-id") {
+			t.Errorf("demo.yaml: %q uses `kb workflow run <id>` without --workflow-id, which the CLI rejects", strings.TrimSpace(line))
+		}
+	}
+}

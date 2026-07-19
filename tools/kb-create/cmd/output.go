@@ -217,6 +217,11 @@ func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
 }
 
 func printNextSteps(r *installer.Result, llmEnabled bool) {
+	if r.ServicesWarning != "" {
+		newOutput().Warn(r.ServicesWarning)
+		fmt.Println()
+	}
+
 	fmt.Println(styleDivider)
 	fmt.Println()
 	fmt.Println("  " + styleBold.Render("What's next"))
@@ -250,7 +255,7 @@ func printSupportHint() {
 	fmt.Printf("  %s%s\n", topLeft, rule)
 	line(white.Render("Need help?"))
 	line("")
-	line("  " + dim.Render("Open an issue   ") + url.Render("github.com/KirillBaranov/kb-labs-create/issues"))
+	line("  " + dim.Render("Open an issue   ") + url.Render("github.com/kb-labs-team/kb-labs/issues"))
 	line("  " + dim.Render("Telegram        ") + url.Render("@kirill_baranov"))
 	fmt.Printf("  %s%s\n", botLeft, rule)
 	fmt.Println()

@@ -1,6 +1,6 @@
 # @kb-labs/adapters-vibeproxy
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 VibeProxy local adapter supporting multiple LLM providers (Claude, GPT, etc.) through a unified interface.
 

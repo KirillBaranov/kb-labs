@@ -82,7 +82,7 @@ export function DocsHeader({ locale, slug }: Props) {
             <ThemeToggle />
             <a
               className={s.iconBtn}
-              href="https://github.com/KirillBaranov/kb-labs"
+              href="https://github.com/kb-labs-team/kb-labs"
               target="_blank"
               rel="noreferrer"
               aria-label="GitHub"

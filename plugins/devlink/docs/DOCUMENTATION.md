@@ -1,9 +1,9 @@
 # KB Labs DevLink Documentation Standard
 
 > **This document is a project-specific copy of the KB Labs Documentation Standard.**  
-> See [Main Documentation Standard](https://github.com/KirillBaranov/kb-labs/blob/main/docs/DOCUMENTATION.md) for the complete ecosystem standard.
+> See [Main Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md) for the complete ecosystem standard.
 
-This document defines the documentation standards for **KB Labs DevLink**. This project follows the [KB Labs Documentation Standard](https://github.com/KirillBaranov/kb-labs/blob/main/docs/DOCUMENTATION.md) with the following project-specific customizations:
+This document defines the documentation standards for **KB Labs DevLink**. This project follows the [KB Labs Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md) with the following project-specific customizations:
 
 ## Project-Specific Customizations
 
@@ -45,7 +45,7 @@ This project has:
 
 ## ADR Requirements
 
-All ADRs must follow the format defined in the [main standard](https://github.com/KirillBaranov/kb-labs/blob/main/docs/DOCUMENTATION.md#architecture-decision-records-adr) with:
+All ADRs must follow the format defined in the [main standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md#architecture-decision-records-adr) with:
 
 - Required metadata: Date, Status, Deciders, Last Reviewed, Tags
 - Minimum 1 tag, maximum 5 tags
@@ -63,13 +63,13 @@ This project links to:
 - All KB Labs projects for local development linking
 
 **Ecosystem:**
-- [KB Labs](https://github.com/KirillBaranov/kb-labs) - Main ecosystem repository
+- [KB Labs](https://github.com/kb-labs-team/kb-labs) - Main ecosystem repository
 
 ---
 
 **Last Updated:** 2025-11-03  
 **Standard Version:** 1.0 (following KB Labs ecosystem standard)  
-**See Main Standard:** [KB Labs Documentation Standard](https://github.com/KirillBaranov/kb-labs/blob/main/docs/DOCUMENTATION.md)
+**See Main Standard:** [KB Labs Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md)
 
 
 

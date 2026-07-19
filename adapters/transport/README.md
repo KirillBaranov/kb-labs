@@ -1,6 +1,6 @@
 # @kb-labs/adapters-transport
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 Transport layer for inter-process communication between parent and child processes. Supports IPC and Unix Sockets.
 

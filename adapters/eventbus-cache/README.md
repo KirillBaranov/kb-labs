@@ -1,6 +1,6 @@
 # @kb-labs/adapters-eventbus-cache
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 EventBus adapter that uses platform cache (`ICache`) for persistent event storage with polling-based subscriptions.
 
@@ -230,7 +230,7 @@ Not recommended. MemoryCache is single-process and loses data on restart. Use Re
 
 ```bash
 # Verify adapter is loaded
-pnpm kb plugins list
+pnpm kb marketplace plugins list
 ```
 
 ## Contributing

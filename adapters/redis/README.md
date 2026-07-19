@@ -1,6 +1,6 @@
 # @kb-labs/adapters-redis
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 High-performance distributed cache adapter using Redis with TTL, patterns, and atomic operations.
 

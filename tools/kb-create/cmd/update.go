@@ -238,7 +238,7 @@ func confirm(prompt string) bool {
 // runSelfUpdate checks GitHub for a newer *-binaries release and replaces the
 // running binary if one is found. Returns true when the binary was replaced.
 func runSelfUpdate(out output, tc *telemetry.Client) bool {
-	const repo = "KirillBaranov/kb-labs"
+	const repo = "kb-labs-team/kb-labs"
 	currentVersion := rootCmd.Version
 
 	latestTag, err := selfupdate.LatestBinariesTag(repo)

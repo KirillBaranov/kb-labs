@@ -258,7 +258,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 <!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
 ## KB Labs Platform
 
-This project uses the [KB Labs](https://github.com/KirillBaranov/kb-labs) platform.
+This project uses the [KB Labs](https://github.com/kb-labs-team/kb-labs) platform.
 A set of Claude Code skills is installed under `.claude/skills/kb-labs-*` to help
 you work with the platform efficiently.
 
@@ -275,7 +275,7 @@ you work with the platform efficiently.
 - `pnpm kb --help` — list all platform commands
 - `pnpm kb-dev status` — service status
 - `pnpm kb-dev doctor` — environment diagnostics
-- `pnpm kb plugins list` — installed plugins
+- `pnpm kb marketplace plugins list` — installed plugins
 - `kb-create update` — update the platform
 - `kb-create doctor` — verify the installation
 
@@ -285,5 +285,5 @@ you work with the platform efficiently.
 - `.kb/` — platform runtime state (do not edit by hand)
 - `.claude/skills/kb-labs-*` — managed skills (reinstalled by `kb-create update`)
 
-For full platform documentation see https://github.com/KirillBaranov/kb-labs.
+For full platform documentation see https://github.com/kb-labs-team/kb-labs.
 <!-- END: KB Labs (managed) -->

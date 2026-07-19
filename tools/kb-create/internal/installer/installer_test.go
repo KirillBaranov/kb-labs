@@ -728,6 +728,40 @@ func TestInstall_ScanErrorSoftContinues(t *testing.T) {
 	}
 }
 
+// TestInstall_ScanErrorWithServicesSelectedSetsWarning guards against a
+// regression where kb-dev start on a fresh install failed with "no config
+// found ... create .kb/devservices.yaml" and the user had no idea why: a
+// failed manifest scan silently skipped writing devservices.yaml (previous
+// test), logged only via ins.OnLine (easy to miss in the spinner detail
+// line), and Result carried no signal a caller could act on. When the user
+// actually selected services, Result.ServicesWarning must be populated so
+// cmd/create.go can print it prominently instead of burying it.
+func TestInstall_ScanErrorWithServicesSelectedSetsWarning(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	t.Setenv("PATH", t.TempDir())
+
+	fake := &fakePM{name: "npm"}
+	ins := &Installer{
+		PM:  fake,
+		Log: discardLogger(),
+	}
+	m := sampleManifest()
+	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir, Services: []string{"rest"}}
+
+	result, err := ins.Install(sel, &m)
+	if err != nil {
+		t.Fatalf("Install() error = %v, want nil (scan failure must be soft)", err)
+	}
+	if result.ServicesWarning == "" {
+		t.Error("Result.ServicesWarning = \"\", want a non-empty warning when services were selected but the scan failed")
+	}
+	if !strings.Contains(result.ServicesWarning, "kb-create update") {
+		t.Errorf("Result.ServicesWarning = %q, want it to mention `kb-create update` as the recovery step", result.ServicesWarning)
+	}
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 // discardLogger returns a logger that throws away all output.

@@ -33,7 +33,7 @@ Then retry the command. If it is still missing:
 ```bash
 pnpm kb --help                    # is the group even present?
 pnpm kb <group> --help            # is the command in the group?
-pnpm kb plugins list              # is the plugin installed?
+pnpm kb marketplace plugins list  # is the plugin installed?
 ```
 
 ## Step 2: "Plugin not found" or wrong plugins in the available list

@@ -78,7 +78,7 @@ const organizationSchema = {
   logo: 'https://kblabs.ru/og-image.png',
   foundingDate: '2024',
   founder: { '@type': 'Person', name: 'Kirill Baranov', url: 'https://k-baranov.ru' },
-  sameAs: ['https://github.com/KirillBaranov/kb-labs', 'https://www.npmjs.com/org/kb-labs'],
+  sameAs: ['https://github.com/kb-labs-team/kb-labs', 'https://www.npmjs.com/org/kb-labs'],
   description: 'Open-source self-hosted platform for engineering teams: workflow engine, AI infrastructure, plugin system, and developer tooling.',
 };
 

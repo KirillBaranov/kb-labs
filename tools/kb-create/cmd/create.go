@@ -41,7 +41,7 @@ var (
 func init() {
 	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults (no LLM configured)")
 	rootCmd.Flags().BoolVar(&flagLocal, "local", false, "local single-user mode: gateway binds 127.0.0.1 and Studio opens without login (auth disabled)")
-	rootCmd.Flags().BoolVar(&flagDemo, "demo", false, "install demo plugins and run pipeline on your code")
+	rootCmd.Flags().BoolVar(&flagDemo, "demo", false, "write an example pipeline (.kb/workflows/demo.yaml) to run manually — does not change which plugins are installed or run anything automatically")
 	rootCmd.Flags().StringVar(&flagPlatform, "platform", "", "platform installation directory")
 	rootCmd.Flags().BoolVar(&flagSkipClaude, "skip-claude", false, "do not install Claude Code skills or CLAUDE.md")
 	rootCmd.Flags().BoolVar(&flagNoClaudeMd, "no-claude-md", false, "install Claude Code skills only; skip CLAUDE.md merge")

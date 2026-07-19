@@ -122,4 +122,4 @@ The gateway integration is the first consumer. Two follow-ups are queued:
 1. **Manifest-driven limits.** Plugins that register HTTP routes will declare their own pressure budget in the manifest. The gateway picks it up at boot — no separate config edit per plugin.
 2. **A `/admin/pressure/stats` endpoint.** Same `getStats()` output, exposed for ops dashboards. Limit-only resources currently report zeros in queue fields; the endpoint will tag them so dashboards do not misread an empty queue as a healthy queue.
 
-The full design is in [ADR-0056](https://github.com/KirillBaranov/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). The interesting line in the ADR is the one we did not write — there is no "and we also built a separate rate-limiter for HTTP." That was the temptation. Resisting it was the actual work.
+The full design is in [ADR-0056](https://github.com/kb-labs-team/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). The interesting line in the ADR is the one we did not write — there is no "and we also built a separate rate-limiter for HTTP." That was the temptation. Resisting it was the actual work.

@@ -371,7 +371,7 @@ export default async function SecurityPage({ params }: Props) {
                     <Button
                       variant="secondary"
                       size="lg"
-                      href="https://github.com/KirillBaranov/kb-labs"
+                      href="https://github.com/kb-labs-team/kb-labs"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

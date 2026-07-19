@@ -12,7 +12,7 @@ KB Labs ships a GitOps-style delivery plane built on top of `kb-create`
 in git describes your fleet. One command plans the diff. One more applies it
 with health gates and auto-rollback.
 
-Design reference: [ADR-0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md).
+Design reference: [ADR-0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md).
 
 ### When to use it
 
@@ -149,7 +149,7 @@ Built-in, non-optional:
 
 ### Secrets
 
-Three layers (see [ADR-0014 §D15](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md#target-runtime-contract)):
+Three layers (see [ADR-0014 §D15](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md#target-runtime-contract)):
 
 1. `deploy.yaml` stores only references: `${secrets.OPENAI_KEY}`.
 2. Resolution happens on the control machine (env, `.env`, Vault, AWS SM).
@@ -174,7 +174,7 @@ on:
 
 jobs:
   call:
-    uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+    uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@main
     with:
       manifest: .kb/deploy/deploy.yaml
       environment: staging
@@ -189,7 +189,7 @@ git step (artifact mode).
 
 ### Reference
 
-- Full getting-started guide: [docs/guides/delivery.md](https://github.com/KirillBaranov/kb-labs/blob/main/docs/guides/delivery.md)
-- ADR: [docs/adr/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md)
-- Implementation plan: [docs/plans/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/plans/0014-declarative-delivery-and-fleet-distribution.md)
-- Starter template: [templates/deploy/deploy.yaml](https://github.com/KirillBaranov/kb-labs/blob/main/templates/deploy/deploy.yaml)
+- Full getting-started guide: [docs/guides/delivery.md](https://github.com/kb-labs-team/kb-labs/blob/main/docs/guides/delivery.md)
+- ADR: [docs/adr/0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md)
+- Implementation plan: [docs/plans/0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/plans/0014-declarative-delivery-and-fleet-distribution.md)
+- Starter template: [templates/deploy/deploy.yaml](https://github.com/kb-labs-team/kb-labs/blob/main/templates/deploy/deploy.yaml)

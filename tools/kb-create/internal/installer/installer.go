@@ -64,6 +64,12 @@ type Result struct {
 	// service. Together with InstalledBinaries this is enough to decide
 	// whether "start services" makes sense as a next step.
 	HasServices bool
+	// ServicesWarning is set when the user selected services but the
+	// post-install manifest scan failed or found none, so devservices.yaml
+	// was not written and `kb-dev start` will fail with "no config found".
+	// Empty when the scan succeeded (or no services were selected). The
+	// caller should print this prominently — see printNextSteps in cmd/create.go.
+	ServicesWarning string
 	// Gateway is the discovery-derived gateway plan. The caller passes it to
 	// scaffold.WritePlatformConfig so the dynamic upstreams/transport land in
 	// the single platform config (kb.config.jsonc). nil if no gateway-prefixed
@@ -169,10 +175,15 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	step++
 	ins.step(step, totalSteps, "Scanning manifests")
 	scanResult, scanErr := scan.Run(sel.PlatformDir)
+	var servicesWarning string
 	if scanErr != nil {
 		ins.Log.Printf("  [WARN] manifest scan failed: %v", scanErr)
 		if ins.OnLine != nil {
 			ins.OnLine(fmt.Sprintf("WARN: manifest scan: %v", scanErr))
+		}
+		if len(sel.Services) > 0 {
+			servicesWarning = fmt.Sprintf("manifest scan failed (%v) — devservices.yaml was not written, "+
+				"so `kb-dev start` will fail. Run `kb-create update` to retry the scan.", scanErr)
 		}
 	} else {
 		ins.Log.Printf("  found %d plugins, %d adapters, %d services",
@@ -182,8 +193,15 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		}
 		if err := scan.WriteConfigs(sel.PlatformDir, scanResult, sel.ProjectCWD); err != nil {
 			ins.Log.Printf("  [WARN] write configs: %v", err)
+			if len(sel.Services) > 0 {
+				servicesWarning = fmt.Sprintf("failed to write devservices.yaml (%v) — "+
+					"`kb-dev start` will fail. Run `kb-create update` to retry.", err)
+			}
+		} else if len(sel.Services) > 0 && len(scanResult.Services) == 0 {
+			servicesWarning = "selected services were not found in the installed packages, " +
+				"so devservices.yaml was not written and `kb-dev start` will fail. " +
+				"Run `kb-create update` to retry the scan."
 		}
-
 	}
 
 	// Symlink kb CLI into ~/.local/bin/ for PATH availability.
@@ -240,6 +258,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		Duration:          time.Since(start),
 		InstalledBinaries: installedBinaries,
 		HasServices:       hasServices,
+		ServicesWarning:   servicesWarning,
 		Gateway:           gatewayPlan,
 	}, nil
 }

@@ -196,7 +196,7 @@ Commands execute inside the plugin sandbox:
 
 ## Diagnostics
 
-Use `kb plugins list` to see all discovered commands with their status:
+Use `kb marketplace plugins list` to see all discovered commands with their status:
 
 - Available/unavailable status
 - Source (workspace/node_modules/builtin)
@@ -222,7 +222,7 @@ pnpm build
 1. Run `kb plugins scaffold my-plugin` to generate a manifest v2 skeleton.
 2. Implement your command handler in `src/commands/<name>.ts`.
 3. Update manifest permissions and metadata as needed.
-4. Build your package and test with `kb plugins list`.
+4. Build your package and test with `kb marketplace plugins list`.
 
 ## Migration from Legacy Commands
 

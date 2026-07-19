@@ -69,7 +69,7 @@ it is the source of truth for the dev environment.
 ## Step 5: Discover installed plugins
 
 ```bash
-pnpm kb plugins list
+pnpm kb marketplace plugins list
 ```
 
 To see which entities the marketplace knows about (plugins, adapters, etc.):

@@ -1,6 +1,6 @@
 # @kb-labs/adapters-sqlite
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 Lightweight embedded SQL database adapter using better-sqlite3 with FTS, JSON, and transaction support.
 

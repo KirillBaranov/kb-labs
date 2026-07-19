@@ -20,7 +20,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Repo   = "KirillBaranov/kb-labs"
+$Repo   = "kb-labs-team/kb-labs"
 $Binary = "kb-monitor"
 $Arch   = "amd64"
 $File   = "${Binary}-windows-${Arch}.exe"

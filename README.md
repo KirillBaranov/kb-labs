@@ -17,10 +17,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KirillBaranov/kb-labs/blob/main/LICENSE-MIT">
+  <a href="https://github.com/kb-labs-team/kb-labs/blob/main/LICENSE-MIT">
     <img src="https://img.shields.io/badge/core-MIT-blue.svg" alt="Core: MIT">
   </a>
-  <a href="https://github.com/KirillBaranov/kb-labs/blob/main/LICENSE-KB-PUBLIC">
+  <a href="https://github.com/kb-labs-team/kb-labs/blob/main/LICENSE-KB-PUBLIC">
     <img src="https://img.shields.io/badge/ecosystem-KB--Public-7C3AED.svg" alt="Ecosystem: KB-Public">
   </a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node >= 20">
@@ -29,9 +29,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="E2E Platform"></a>
-  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="E2E Platform"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy"></a>
 </p>
 
 ---
@@ -147,7 +147,7 @@ kb clickup task search "auth bug" --status "in progress"
 # Same commands available as agent tools — no raw API access needed
 ```
 
-→ [See the full ClickUp plugin source](https://github.com/KirillBaranov/kb-labs/tree/main/plugins/clickup)
+→ [See the full ClickUp plugin source](https://github.com/kb-labs-team/kb-labs/tree/main/plugins/clickup)
 
 ---
 
@@ -258,7 +258,7 @@ Core defines interfaces. Adapters implement them. Plugins use them. Core never k
 
 ## Contributing
 
-Issues and PRs are welcome. Check [open issues](https://github.com/KirillBaranov/kb-labs/issues) for good first contributions. For larger changes, open an issue first. Monorepo conventions in [CLAUDE.md](CLAUDE.md).
+Issues and PRs are welcome. Check [open issues](https://github.com/kb-labs-team/kb-labs/issues) for good first contributions. For larger changes, open an issue first. Monorepo conventions in [CLAUDE.md](CLAUDE.md).
 
 ### CI state at a glance
 

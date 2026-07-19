@@ -9,7 +9,7 @@
 
 ## Context
 
-E2E Platform Tests on main take ~22 min wall-clock per push (baseline run [`26000866859`](https://github.com/KirillBaranov/kb-labs/actions/runs/26000866859), 2026-05-17). Per-step breakdown from the GitHub Actions API:
+E2E Platform Tests on main take ~22 min wall-clock per push (baseline run [`26000866859`](https://github.com/kb-labs-team/kb-labs/actions/runs/26000866859), 2026-05-17). Per-step breakdown from the GitHub Actions API:
 
 | Step | Duration | Share |
 |---|---:|---:|
@@ -362,7 +362,7 @@ until there's a real wall-clock complaint — current matrix is fine.
 
 - [Plan file](../../.claude/plans/tender-strolling-wind.md)
 - [ADR-0016: Test Pyramid](./0016-test-pyramid.md) — defines E2E as the top layer this ADR operationalizes
-- [Baseline run timings](https://github.com/KirillBaranov/kb-labs/actions/runs/26000866859) — main, all-green, 2026-05-17 19:45 UTC
+- [Baseline run timings](https://github.com/kb-labs-team/kb-labs/actions/runs/26000866859) — main, all-green, 2026-05-17 19:45 UTC
 - [kb-devkit CAS implementation](../../tools/kb-devkit/internal/cache/store.go)
 
 ---

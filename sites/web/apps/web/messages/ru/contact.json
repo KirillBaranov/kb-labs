@@ -11,7 +11,7 @@
       {
         "label": "GitHub",
         "description": "Issues, исходный код, pull requests.",
-        "href": "https://github.com/KirillBaranov/kb-labs"
+        "href": "https://github.com/kb-labs-team/kb-labs"
       },
       {
         "label": "Telegram",
@@ -34,7 +34,7 @@
         "label": "Поддержка",
         "description": "Технические проблемы, баги или вопросы о платформе.",
         "action": "Открыть issue →",
-        "href": "https://github.com/KirillBaranov/kb-labs/issues"
+        "href": "https://github.com/kb-labs-team/kb-labs/issues"
       },
       {
         "label": "Партнёрства",

@@ -1542,7 +1542,7 @@ See [`scripts/README.md`](./scripts/README.md) for detailed fixture management d
 
 ### Ecosystem
 
-- [KB Labs](https://github.com/KirillBaranov/kb-labs) - Main ecosystem repository
+- [KB Labs](https://github.com/kb-labs-team/kb-labs) - Main ecosystem repository
 
 ## 💡 Use Cases
 

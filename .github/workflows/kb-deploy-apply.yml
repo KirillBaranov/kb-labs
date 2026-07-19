@@ -12,7 +12,7 @@
 #       paths: ['.kb/deploy/**']
 #   jobs:
 #     call:
-#       uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+#       uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@main
 #       with:
 #         manifest: .kb/deploy/deploy.yaml
 #         environment: staging
@@ -55,10 +55,10 @@ jobs:
         run: |
           VERSION="${{ inputs.kb-deploy-version }}"
           if [ "$VERSION" = "latest" ]; then
-            VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
+            VERSION=$(curl -fsSL https://api.github.com/repos/kb-labs-team/kb-labs/releases/latest | jq -r .tag_name)
           fi
           OS=linux ARCH=amd64
-          URL="https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
+          URL="https://github.com/kb-labs-team/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
           curl -fsSL "$URL" -o /usr/local/bin/kb-deploy
           chmod +x /usr/local/bin/kb-deploy
           kb-deploy --version
@@ -115,10 +115,10 @@ jobs:
         run: |
           VERSION="${{ inputs.kb-deploy-version }}"
           if [ "$VERSION" = "latest" ]; then
-            VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
+            VERSION=$(curl -fsSL https://api.github.com/repos/kb-labs-team/kb-labs/releases/latest | jq -r .tag_name)
           fi
           OS=linux ARCH=amd64
-          URL="https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
+          URL="https://github.com/kb-labs-team/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
           curl -fsSL "$URL" -o /usr/local/bin/kb-deploy
           chmod +x /usr/local/bin/kb-deploy
 
