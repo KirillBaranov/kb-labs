@@ -15,13 +15,15 @@ CLI entry point: `pnpm kb release <command>`.
 
 > ## ⛔ КРИТИЧЕСКИЕ ПРАВИЛА — НАРУШЕНИЕ ЛОМАЕТ РЕЛИЗ
 >
-> **1. ТОЛЬКО через скрипты `pnpm release:*` — никаких других способов.**
-> Запрещено: `pnpm publish`, `npm publish`, `pnpm kb release run` напрямую, `pnpm -r publish`.
-> Только: `pnpm release:platform`, `pnpm release:sdk`, `pnpm release:platform:dry`, `pnpm release:sdk:dry`.
+> **1. ТОЛЬКО через скрипты `pnpm release:*` (и `kb release promote` для промоушена) — никаких других способов.**
+> Запрещено: `pnpm publish`, `npm publish`, `pnpm kb release run` напрямую (кроме `--channel canary`, см. ниже), `pnpm -r publish`.
+> Только: `pnpm release:platform`, `pnpm release:sdk`, `pnpm release:platform:dry`, `pnpm release:sdk:dry`, `pnpm kb release promote`.
 >
 > **2. ВСЕГДА указывать `--flow`. Без флоу — НЕЛЬЗЯ.**
 > `pnpm kb release run` без `--flow` захватит все 149 пакетов разом и сломает независимые циклы релиза platform и sdk.
 > Каждый вызов должен иметь либо `--flow platform` либо `--flow sdk` — без исключений.
+>
+> **3. Changesets больше не используется.** `.changeset/`, `pnpm changeset`, `pnpm release`(старый alias на `changeset publish`) — удалены. `plugins/release/*` (эта страница) — единственный источник правды для версий/changelog/публикации.
 
 ---
 
@@ -69,13 +71,22 @@ pnpm kb release run --flow platform --skip-build
 pnpm kb release run --flow sdk --skip-build
 ```
 
-## Verdaccio Pre-publish Workflow
+## Stable Releases — Verdaccio Pre-flight, then Promote
 
-Before publishing to npm, always verify packages on a local Verdaccio registry.
-Only if Verdaccio validation passes — publish to npm.
+Stable releases are a two-step flow: build once → publish to Verdaccio →
+verify → **promote the same, already-committed versions to npm**. There is
+no second bump, no second build, and no rerunning the full pipeline — the
+old "toggle `registry`, rerun the script twice" pattern (and its false
+"pipeline detects existing tag, skips bump" claim) is gone. Step 2 is a
+dedicated command (`kb release promote`) that publishes exactly what step 1
+already committed and tagged.
 
-**Important constraint:** `registry` is config-only — there is no `--registry` CLI flag.
-Set it in `.kb/kb.config.json` under the `release` key.
+**Important constraint:** `config.registry` (the `release` key in
+`.kb/kb.config.json`) is still config-only — no `--registry` CLI override for
+`release run`. It controls where a `channel: stable` run publishes (normally
+Verdaccio for this pre-flight step). `kb release promote` **does** accept a
+`--registry` override (defaults from `config.publish.npmRegistry`, falling
+back to real npm) since it's a separate, later step.
 
 ### Verdaccio setup (one-time)
 
@@ -100,7 +111,7 @@ npx verdaccio -l 4873
 # 4. Restart Verdaccio after config changes.
 ```
 
-### Phase 1 — Canary to Verdaccio
+### Step 1 — Release to Verdaccio
 
 ```bash
 # 1. Ensure Verdaccio is running on :4873 (see setup above)
@@ -108,20 +119,24 @@ npx verdaccio -l 4873
 # 2. Set registry in .kb/kb.config.json
 #    "release": { "registry": "http://localhost:4873", ... }
 
-# 3. Run full pipeline — build + bump + git commit/tag + publish to Verdaccio
+# 3. Run the full pipeline — build + bump + git commit/tag + publish to
+#    Verdaccio + registry verification (mandatory for stable, not opt-in —
+#    confirms the published tarball is sane before it's ever eligible for
+#    promotion)
 NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:platform
 # or:
 NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:sdk
 ```
 
-After this step: `package.json` versions are bumped, git commit + tag are created,
-packages are published to `http://localhost:4873`.
+After this step: `package.json` versions are bumped, git commit + tag are
+created, packages are published to `http://localhost:4873` and verified
+against it (`plugins/release/manager-core/src/verdaccio-verify.ts`).
 
 > **Version drift warning:** if publish fails before the git commit/tag step, `package.json`
 > files are already bumped but no tag exists. Each retry bumps again. To reset:
 > `git diff --name-only | grep "package.json" | xargs git checkout --`
 
-### Validate from Verdaccio
+### Validate from Verdaccio (optional manual spot-check)
 
 ```bash
 # Check a package in the registry
@@ -131,23 +146,53 @@ curl http://localhost:4873/@kb-labs/core-platform
 npm install @kb-labs/core-platform --registry http://localhost:4873
 ```
 
-### Phase 2 — Publish to npm (after validation passes)
+### Step 2 — Promote to npm
 
 ```bash
-# 1. Remove "registry" field from .kb/kb.config.json
+# 1. Remove "registry" field from .kb/kb.config.json (or leave it — promote
+#    ignores config.registry entirely, it always targets
+#    config.publish.npmRegistry / real npm)
 
-# 2. Run the same release script — pipeline detects existing tag, skips bump,
-#    publishes current versions to npm
-pnpm release:platform
-# or:
-pnpm release:sdk
+# 2. Promote the exact versions committed in Step 1 — no re-bump, no rebuild,
+#    no re-plan. Publishes whatever is currently on disk in package.json.
+pnpm kb release promote --scope <scope>
+# e.g.:
+pnpm kb release promote --scope @kb-labs/sdk
+
+# --tag/--registry override config.publish.stableTag/npmRegistry for
+# one-off or emergency promotes:
+pnpm kb release promote --scope @kb-labs/sdk --tag next
 ```
+
+Promote is idempotent — re-running it after a partial failure is safe
+(already-published versions are treated as success).
+
+## Canary Releases
+
+Canary publishes straight to real npm under a prerelease dist-tag — no
+Verdaccio leg, no git commit, no git tag. The version is computed in-memory
+as `<base-version>-canary.<shortsha>` and only ever exists on the npm
+registry; `package.json` and git history stay untouched.
+
+```bash
+pnpm kb release run --flow platform --channel canary --yes
+# or:
+pnpm kb release run --flow sdk --channel canary --yes
+
+# Preview the canary version shape without publishing:
+pnpm kb release plan --flow sdk --channel canary
+```
+
+Users install a canary build with `npm install @kb-labs/sdk@canary` (dist-tag
+name from `config.publish.canaryTag`, default `canary`). Because canary
+versions are deterministic per commit, retrying a failed canary run from the
+same commit is naturally idempotent — no checkpoint needed.
 
 ---
 
 ## Recommended Release Scripts (root package.json)
 
-Always use these instead of calling `pnpm kb release run` directly.
+Always use these instead of calling `pnpm kb release run` directly for stable releases.
 They run a full build + plugin cache clear BEFORE the release pipeline.
 
 ```bash
@@ -155,7 +200,9 @@ They run a full build + plugin cache clear BEFORE the release pipeline.
 pnpm release:platform:dry
 pnpm release:sdk:dry
 
-# Release (Verdaccio or npm — determined by "registry" in kb.config.json)
+# Release (channel: stable, target registry from config.registry — Verdaccio
+# for the pre-flight step above, or npm directly if no override is set, as
+# in CI — see .github/workflows/release.yml)
 pnpm release:platform
 pnpm release:sdk
 ```
@@ -174,7 +221,11 @@ the pipeline. Build must happen before the CLI process starts.
 
 ## Full Pipeline Stages
 
-`plan → snapshot → checks → build → verify → version bump → changelog → publish → git tag`
+`plan → snapshot → checks → build → verify → version bump → changelog → publish → registry verify → git tag`
+
+The last two stages differ by channel:
+- **stable**: version bump persists to `package.json`, changelog is generated and written, publish targets `config.registry`, registry verification is mandatory, git commit/tag/push runs.
+- **canary**: version bump, changelog, and git commit/tag/push are all skipped — only plan → checks → build → verify → publish run, targeting `config.publish.npmRegistry` (real npm) under `config.publish.canaryTag`.
 
 Skip flags (use with care):
 ```bash
@@ -183,6 +234,7 @@ Skip flags (use with care):
 --skip-verify    # skip pack+install verification
 --dry-run        # simulate everything, no publish/git
 --yes            # skip confirmation prompt
+--channel        # 'stable' (default) or 'canary'
 ```
 
 ## Pre-release Checks
@@ -215,10 +267,18 @@ Configured in `release.checks` in `.kb/kb.config.json`. Currently:
 ```json
 "release": {
   "versioningStrategy": "lockstep",
+  "channel": "stable",
   "packages": { "exclude": ["templates/*", "{{.Name}}", "@product-name/*"] },
   "flows": {
     "sdk":      { "versioningStrategy": "independent", "packages": { "include": ["@kb-labs/sdk"] } },
     "platform": { "versioningStrategy": "lockstep",    "packages": { "exclude": ["@kb-labs/sdk", "templates/*", "{{.Name}}", "@product-name/*"] } }
+  },
+  "publish": {
+    "access": "public",
+    "canaryTag": "canary",
+    "stableTag": "latest",
+    "npmRegistry": "https://registry.npmjs.org",
+    "verifyRegistryTimeoutMs": 30000
   },
   "changelog": {
     "locale": "en",
@@ -227,6 +287,9 @@ Configured in `release.checks` in `.kb/kb.config.json`. Currently:
   "checks": [ ... ]
 }
 ```
+
+`channel` and the `publish.*` fields above are all optional — every default
+matches current stable behavior, so omitting them changes nothing.
 
 ## Adding a New Flow
 
@@ -277,10 +340,10 @@ Check the last tag: `gh release list --repo KirillBaranov/kb-labs --limit 3`
 
 | Package | Role |
 |---------|------|
-| `@kb-labs/release-manager-core` | `planRelease()`, `runReleasePipeline()`, `mergeConfigWithFlow()`, versioning strategies |
+| `@kb-labs/release-manager-core` | `planRelease()`, `runReleasePipeline()`, `mergeConfigWithFlow()`, versioning strategies, `resolvePublishTag`/`resolvePublishRegistry` (`channel.ts`), `verifyAgainstRegistry` (`verdaccio-verify.ts`) |
 | `@kb-labs/release-manager-changelog` | Commit parsing, template rendering (`corporate-ai`) |
-| `@kb-labs/release-manager-cli` | CLI commands (`plan`, `run`, `changelog`), REST handlers |
-| `@kb-labs/release-manager-contracts` | Zod schemas, TypeScript types for REST API |
+| `@kb-labs/release-manager-cli` | CLI commands (`plan`, `run`, `changelog`, `publish`, `promote`), REST handlers |
+| `@kb-labs/release-manager-contracts` | Zod schemas, TypeScript types for REST API (`ReleaseChannelSchema`, etc.) |
 
 ## Build After Changes
 
