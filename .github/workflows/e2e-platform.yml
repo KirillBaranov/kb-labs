@@ -165,12 +165,12 @@ jobs:
       # Best-effort — on the very first run "ci-data" doesn't exist on the
       # remote yet, so this fails and we ingest starting from empty history.
       - name: Sync existing flaky history from ci-data
-        run: pnpm kb qa e2e-flaky --sync --agent || true
+        run: pnpm kb qa e2e flaky --sync --agent || true
 
       # Builds on top of whatever --sync restored above, so history accumulates
       # across runs instead of being overwritten from scratch every time.
       - name: Ingest flaky-report shards into history
-        run: pnpm kb qa e2e-flaky --ingest /tmp/flaky-reports --agent
+        run: pnpm kb qa e2e flaky --ingest /tmp/flaky-reports --agent
 
       - name: Commit flaky history to ci-data branch
         run: |
