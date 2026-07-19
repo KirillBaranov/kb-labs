@@ -177,6 +177,25 @@ async function renderByType(
 
 // ─── LLM enhancement ─────────────────────────────────────────────────────────
 
+/**
+ * Per-call budget for a single group's LLM enhancement. Deliberately scoped
+ * to ONE platform.llm.complete() call, not the whole multi-group render —
+ * renderByGroups()/renderByType() await these sequentially (up to ~6 groups
+ * for a large monorepo release), so a render-level timeout scales badly with
+ * package/group count. A slow group degrades to formatBasicGroup() instead
+ * of failing the entire changelog.
+ */
+const LLM_GROUP_TIMEOUT_MS = 20_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
+
 async function enhanceGroup(
   platform: PlatformLike | undefined,
   commits: Change[],
@@ -197,10 +216,11 @@ async function enhanceGroup(
 
     const prompt = buildEnhancementPrompt(commitsContext, groupLabel, locale);
 
-    const response = await platform.llm.complete(prompt, {
-      temperature: 0.7,
-      maxTokens: 500,
-    });
+    const response = await withTimeout(
+      platform.llm.complete(prompt, { temperature: 0.7, maxTokens: 500 }),
+      LLM_GROUP_TIMEOUT_MS,
+      `LLM enhancement for group "${groupLabel}"`,
+    );
 
     await platform?.analytics?.track?.('changelog.llm.enhanced', {
       groupLabel,
