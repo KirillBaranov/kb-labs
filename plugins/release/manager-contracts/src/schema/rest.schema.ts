@@ -61,6 +61,10 @@ export const VersionBumpSchema = z.enum(['patch', 'minor', 'major', 'auto']);
 
 export type VersionBump = z.infer<typeof VersionBumpSchema>;
 
+export const ReleaseChannelSchema = z.enum(['stable', 'canary']);
+
+export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
+
 export const PackageVersionSchema = z.object({
   name: z.string().min(1),
   path: z.string().min(1),
@@ -81,6 +85,7 @@ export const ReleasePlanSchema = z.object({
   strategy: z.literal('semver'),
   registry: z.string().url(),
   rollbackEnabled: z.boolean(),
+  channel: ReleaseChannelSchema,
   createdAt: z.string().datetime(),
 });
 
@@ -265,6 +270,7 @@ export const RunReleaseRequestSchema = z.object({
   dryRun: z.boolean().optional(),
   skipChecks: z.boolean().optional(),
   otp: z.string().length(6).optional(),
+  channel: ReleaseChannelSchema.optional(),
 });
 
 export type RunReleaseRequest = z.infer<typeof RunReleaseRequestSchema>;
@@ -367,6 +373,8 @@ export const PublishRequestSchema = z.object({
   packages: z.array(z.string()).optional(),
   registry: z.string().url().optional(),
   dryRun: z.boolean().optional(),
+  tag: z.string().optional(),
+  channel: ReleaseChannelSchema.optional(),
 });
 
 export type PublishRequest = z.infer<typeof PublishRequestSchema>;

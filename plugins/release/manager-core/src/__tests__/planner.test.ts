@@ -184,3 +184,34 @@ describe('planRelease — packages filter', () => {
     expect(names).toContain('@scope/beta');
   });
 });
+
+describe('planRelease — channel', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTmpMonorepo([{ name: '@scope/alpha' }, { name: '@scope/beta' }]);
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('defaults to the stable channel and leaves nextVersion unsuffixed', async () => {
+    const plan = await planRelease({ cwd: root, config: {} });
+    expect(plan.channel).toBe('stable');
+    for (const pkg of plan.packages) {
+      expect(pkg.nextVersion).not.toContain('-canary.');
+    }
+  });
+
+  it('canary channel sets plan.channel and suffixes each package version with -canary.<shortsha>', async () => {
+    const shortSha = execSync('git rev-parse --short HEAD', { cwd: root }).toString().trim();
+    const plan = await planRelease({ cwd: root, config: {}, channel: 'canary' });
+    expect(plan.channel).toBe('canary');
+    expect(plan.packages.length).toBeGreaterThan(0);
+    for (const pkg of plan.packages) {
+      expect(pkg.nextVersion).toBe(`${pkg.nextVersion.split('-canary.')[0]}-canary.${shortSha}`);
+      expect(pkg.nextVersion.endsWith(`-canary.${shortSha}`)).toBe(true);
+    }
+  });
+});

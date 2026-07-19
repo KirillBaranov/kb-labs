@@ -93,53 +93,7 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
     spawnSync('tar', ['xzf', tgzFile], { cwd: tmpDir, stdio: 'pipe' });
     const extractedDir = join(tmpDir, 'package');
 
-    // 3. Test file leaks
-    const testFiles = findFiles(join(extractedDir, 'dist'), f =>
-      f.includes('.spec.') || f.includes('.test.') || f.includes('__tests__')
-    );
-    if (testFiles.length > 0) {
-      issues.push(`Test files in dist/: ${testFiles.slice(0, 3).join(', ')}`);
-    }
-
-    // 4. Exports exist
-    const extractedPkg = JSON.parse(readFileSync(join(extractedDir, 'package.json'), 'utf-8')) as PkgJson;
-    for (const field of ['main', 'module', 'types'] as const) {
-      const val = extractedPkg[field];
-      if (val && !existsSync(join(extractedDir, val))) {
-        issues.push(`${field}: ${val} does not exist in published package`);
-      }
-    }
-
-    if (extractedPkg.exports) {
-      checkExportsExist(extractedPkg.exports, extractedDir, 'exports', issues);
-    }
-
-    // 5. Directory imports in ESM entry
-    const esmEntry = resolveEsmEntry(extractedPkg);
-    if (esmEntry) {
-      const esmPath = join(extractedDir, esmEntry);
-      if (existsSync(esmPath)) {
-        checkDirectoryImports(esmPath, join(extractedDir, 'dist'), issues);
-
-        // Syntax check
-        const esmCheck = spawnSync('node', ['--check', esmPath], { stdio: 'pipe', timeout: 10_000 });
-        if (esmCheck.status !== 0) {
-          issues.push(`ESM syntax error in ${esmEntry}`);
-        }
-      }
-    }
-
-    // 6. CJS syntax check
-    const cjsEntry = resolveCjsEntry(extractedPkg);
-    if (cjsEntry) {
-      const cjsPath = join(extractedDir, cjsEntry);
-      if (existsSync(cjsPath)) {
-        const cjsCheck = spawnSync('node', ['--check', cjsPath], { stdio: 'pipe', timeout: 10_000 });
-        if (cjsCheck.status !== 0) {
-          issues.push(`CJS syntax error in ${cjsEntry}`);
-        }
-      }
-    }
+    issues.push(...verifyExtractedTarball(extractedDir));
   } catch (err) {
     issues.push(`Verification error: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
@@ -147,6 +101,67 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
   }
 
   return { name, success: issues.length === 0, issues };
+}
+
+/**
+ * Run the static artifact checks (test-file leaks, exports existence,
+ * directory-import detection, syntax validation) against an already
+ * extracted package tarball. Shared by verifyPackage() (local npm pack)
+ * and verdaccio-verify.ts (npm pack pulled from a registry) so both
+ * "verify before publish" and "verify after publish" use identical checks.
+ */
+export function verifyExtractedTarball(extractedDir: string): string[] {
+  const issues: string[] = [];
+
+  // Test file leaks
+  const testFiles = findFiles(join(extractedDir, 'dist'), f =>
+    f.includes('.spec.') || f.includes('.test.') || f.includes('__tests__')
+  );
+  if (testFiles.length > 0) {
+    issues.push(`Test files in dist/: ${testFiles.slice(0, 3).join(', ')}`);
+  }
+
+  // Exports exist
+  const extractedPkg = JSON.parse(readFileSync(join(extractedDir, 'package.json'), 'utf-8')) as PkgJson;
+  for (const field of ['main', 'module', 'types'] as const) {
+    const val = extractedPkg[field];
+    if (val && !existsSync(join(extractedDir, val))) {
+      issues.push(`${field}: ${val} does not exist in published package`);
+    }
+  }
+
+  if (extractedPkg.exports) {
+    checkExportsExist(extractedPkg.exports, extractedDir, 'exports', issues);
+  }
+
+  // Directory imports in ESM entry
+  const esmEntry = resolveEsmEntry(extractedPkg);
+  if (esmEntry) {
+    const esmPath = join(extractedDir, esmEntry);
+    if (existsSync(esmPath)) {
+      checkDirectoryImports(esmPath, join(extractedDir, 'dist'), issues);
+
+      // Syntax check
+      const esmCheck = spawnSync('node', ['--check', esmPath], { stdio: 'pipe', timeout: 10_000 });
+      if (esmCheck.status !== 0) {
+        issues.push(`ESM syntax error in ${esmEntry}`);
+      }
+    }
+  }
+
+  // CJS syntax check
+  const cjsEntry = resolveCjsEntry(extractedPkg);
+  if (cjsEntry) {
+    const cjsPath = join(extractedDir, cjsEntry);
+    if (existsSync(cjsPath)) {
+      const cjsCheck = spawnSync('node', ['--check', cjsPath], { stdio: 'pipe', timeout: 10_000 });
+      if (cjsCheck.status !== 0) {
+        issues.push(`CJS syntax error in ${cjsEntry}`);
+      }
+    }
+  }
+
+  return issues;
 }
 
 type PkgJson = Record<string, unknown> & {

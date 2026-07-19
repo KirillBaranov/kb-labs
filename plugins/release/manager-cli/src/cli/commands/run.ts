@@ -24,7 +24,9 @@ import {
   runReleasePipeline,
   planRelease,
   resolveScopePath,
+  resolvePublishRegistry,
   type ReleaseConfig,
+  type ReleaseChannel,
   type ReleaseReport,
   type CheckResult,
   type PublishablePackage,
@@ -40,6 +42,7 @@ interface RunFlags {
   flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
   strict?: boolean;
+  channel?: ReleaseChannel;
   'dry-run'?: boolean;
   'skip-checks'?: boolean;
   'skip-build'?: boolean;
@@ -74,17 +77,21 @@ function createPublisher(
   config: ReleaseConfig,
   token: string | undefined,
   ctx: PluginContextV3,
-): { publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> } {
+): { publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string; tag?: string; registry?: string }): Promise<PublishResult> } {
   const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
   return {
-    async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
+    async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string; tag?: string; registry?: string }): Promise<PublishResult> {
+      // registry/tag come from pipeline.ts, resolved per-channel from config
+      // (config.registry for stable, config.publish.npmRegistry for canary).
+      const registry = opts.registry ?? config.registry;
       if (token) {
         const r = await publishPackagesProgrammatic({
           packages,
           packageManager,
           dryRun: opts.dryRun,
           access: (opts.access as 'public' | 'restricted') ?? 'public',
-          registry: config.registry,
+          tag: opts.tag,
+          registry,
           token,
         });
         return { published: r.published, alreadyPublished: r.alreadyPublished, failed: r.failed, skipped: r.skipped, errors: r.errors };
@@ -97,6 +104,8 @@ function createPublisher(
         packageManager,
         dryRun: opts.dryRun,
         access: opts.access ?? 'public',
+        tag: opts.tag,
+        registry,
         ui: ctx.ui,
         logger: ctx.platform?.logger,
       }) as unknown as Promise<PublishResult>;
@@ -274,15 +283,17 @@ export default defineCommand({
         ...fileConfig,
         ...(flags.bump && { bump: flags.bump }),
         ...(flags.strict !== undefined && { strict: flags.strict }),
+        ...(flags.channel && { channel: flags.channel }),
       };
       configLoader.succeed('Configuration loaded');
 
+      const channel: ReleaseChannel = config.channel ?? 'stable';
       const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
 
       // 1b. Pre-flight — fail fast before planning (which is slow)
       if (!dryRun) {
         const preErrors: string[] = [];
-        const registry = config.registry ?? 'https://registry.npmjs.org';
+        const registry = resolvePublishRegistry(config, channel);
         if (!token) {
           preErrors.push('NPM_TOKEN or NODE_AUTH_TOKEN is not set');
         } else {
@@ -325,6 +336,7 @@ export default defineCommand({
         flow: flags.flow,
         // config.bump is already VersionBump | undefined — same type as bumpOverride
         bumpOverride: config.bump,
+        channel,
       });
       planLoader.succeed(`Found ${plan.packages.length} package(s)`);
 

@@ -16,6 +16,7 @@ export const ReleasePlanSchema = z
     strategy: z.string(),
     registry: z.string(),
     rollbackEnabled: z.boolean(),
+    channel: z.enum(['stable', 'canary'] as const),
   })
   .passthrough();
 

@@ -154,7 +154,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── 4. Publish npm packages (Changesets) ─────────────────────────────────────
+  # ── 4. Publish npm packages (kb release pipeline) ─────────────────────────────
+  # Single source of truth for versioning/changelog/publish — see
+  # plugins/release/* and .claude/skills/tool-release.md. Runs both release
+  # flows sequentially in one job (not parallel jobs) so their git
+  # commit/tag/push steps can't race against each other on the same branch.
   publish-npm:
     name: Publish npm
     runs-on: ubuntu-latest
@@ -185,19 +189,31 @@ jobs:
         with:
           name: node-dist
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - name: Build kb-devkit (host)
+        run: make build -C tools/kb-devkit
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Create Release PR or Publish
-        uses: changesets/action@v1
-        with:
-          version: pnpm changeset version
-          publish: pnpm release
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
+      - name: Configure git for release commits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release sdk flow (channel stable)
+        run: pnpm release:sdk
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release platform flow (channel stable)
+        run: pnpm release:platform
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # ── 5. Post-publish launcher smoke (kb-create e2e) ──────────────────────────
   # Runs the full kb-create end-to-end suite against the packages we just

@@ -86,6 +86,28 @@ function applyAdaptive(packages: PackageVersion[]): PackageVersion[] {
 }
 
 /**
+ * Apply a canary prerelease suffix to already-computed nextVersion values.
+ *
+ * Runs AFTER applyVersionStrategy() (lockstep/independent/adaptive) has
+ * resolved the base bump — canary is orthogonal to bump size, so it's a
+ * pure post-processing step rather than a VersionBump variant. Given a
+ * short git SHA, `1.2.3` (base next version) becomes `1.2.3-canary.<sha>`.
+ *
+ * Deterministic per (nextVersion, shortSha) pair — retrying the same commit
+ * reproduces the same canary version, so publish-side idempotency handling
+ * (already-published patterns) makes retries safe without extra state.
+ */
+export function applyCanarySuffix(packages: PackageVersion[], shortSha: string): PackageVersion[] {
+  if (!shortSha) {
+    throw new Error('applyCanarySuffix: shortSha is required to build a canary version');
+  }
+  return packages.map(pkg => ({
+    ...pkg,
+    nextVersion: `${pkg.nextVersion}-canary.${shortSha}`,
+  }));
+}
+
+/**
  * Get the maximum bump level from a list of packages
  *
  * Priority: major > minor > patch

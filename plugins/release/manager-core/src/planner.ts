@@ -9,8 +9,8 @@ import simpleGit from 'simple-git';
 import semver from 'semver';
 import globby from 'globby';
 import { discoverSubRepoPaths } from '@kb-labs/sdk';
-import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan } from './types';
-import { applyVersionStrategy, type VersionStrategy } from './versioning-strategies';
+import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan, ReleaseChannel } from './types';
+import { applyVersionStrategy, applyCanarySuffix, type VersionStrategy } from './versioning-strategies';
 
 /**
  * Find the most recent git tag for a package.
@@ -87,6 +87,8 @@ export interface PlannerOptions {
   /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
   flow?: string;
   bumpOverride?: VersionBump;
+  /** Release track. Defaults to 'stable'. See ReleaseChannel. */
+  channel?: ReleaseChannel;
 }
 
 /**
@@ -111,7 +113,7 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
  * Check whether a specific package version is already published on the npm registry.
  * Fail-open: returns false on any network/registry error.
  */
-async function isVersionPublished(name: string, version: string, registry: string): Promise<boolean> {
+export async function isVersionPublished(name: string, version: string, registry: string): Promise<boolean> {
   try {
     const encoded = name.startsWith('@') ? `@${encodeURIComponent(name.slice(1))}` : name;
     const url = `${registry.replace(/\/$/, '')}/${encoded}/${version}`;
@@ -123,10 +125,51 @@ async function isVersionPublished(name: string, version: string, registry: strin
 }
 
 /**
+ * Discover release-candidate packages for a scope, at their CURRENT
+ * package.json version — no git-diff-based bump computation. Shared by
+ * planRelease() (which then computes bumps on top) and `kb release
+ * promote` (which needs the already-released versions as-is, since
+ * recomputing bumps from git history would be wrong for a promote).
+ */
+export async function discoverCurrentPackages(
+  cwd: string,
+  scope: string | undefined,
+  config: ReleaseConfig,
+): Promise<PackageVersion[]> {
+  const allPackages = await discoverPackages(cwd, config);
+
+  if (!scope || scope === 'root') {
+    return allPackages;
+  }
+
+  const isWorkspace = existsSync(join(cwd, '.gitmodules'));
+  if (isWorkspace) {
+    // In workspace mode, scope matches a sub-repo root.
+    // Re-discover inside that sub-repo using standard discoverPackages (glob-based).
+    const matchedRoots = filterByScope(allPackages, scope, config);
+    const innerPackages: PackageVersion[] = [];
+    for (const root of matchedRoots) {
+      // Include root itself
+      innerPackages.push(root);
+      // Discover inner packages using standard glob logic (respects config, skips private)
+      const inner = await discoverPackages(root.path, config);
+      for (const pkg of inner) {
+        if (!innerPackages.some(p => p.name === pkg.name)) {
+          innerPackages.push(pkg);
+        }
+      }
+    }
+    return innerPackages;
+  }
+
+  return filterByScope(allPackages, scope, config);
+}
+
+/**
  * Plan release by detecting changes and computing version bumps
  */
 export async function planRelease(options: PlannerOptions): Promise<ReleasePlan> {
-  const { cwd, scope, bumpOverride } = options;
+  const { cwd, scope, bumpOverride, channel = 'stable' } = options;
 
   // Flow resolution — completely replaces packages/versioningStrategy/checks in config.
   // MUST happen before discoverPackages so globally-excluded packages can appear in a flow.
@@ -134,36 +177,8 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     ? mergeConfigWithFlow(options.config, options.flow)
     : options.config;
 
-  // Step 1: discover all candidates according to config (paths/include/exclude)
-  const allPackages = await discoverPackages(cwd, config);
-
-  // Step 2: if scope given, filter candidates and produce clear errors
-  let packages: PackageVersion[];
-  if (scope && scope !== 'root') {
-    const isWorkspace = existsSync(join(cwd, '.gitmodules'));
-    if (isWorkspace) {
-      // In workspace mode, scope matches a sub-repo root.
-      // Re-discover inside that sub-repo using standard discoverPackages (glob-based).
-      const matchedRoots = filterByScope(allPackages, scope, config);
-      const innerPackages: PackageVersion[] = [];
-      for (const root of matchedRoots) {
-        // Include root itself
-        innerPackages.push(root);
-        // Discover inner packages using standard glob logic (respects config, skips private)
-        const inner = await discoverPackages(root.path, config);
-        for (const pkg of inner) {
-          if (!innerPackages.some(p => p.name === pkg.name)) {
-            innerPackages.push(pkg);
-          }
-        }
-      }
-      packages = innerPackages;
-    } else {
-      packages = filterByScope(allPackages, scope, config);
-    }
-  } else {
-    packages = allPackages;
-  }
+  // Step 1-2: discover candidates and apply scope filtering.
+  const packages = await discoverCurrentPackages(cwd, scope, config);
 
   // Workspace root with submodules: each sub-repo has its own git,
   // so we skip workspace-level detectModifiedPackages and use per-repo git.
@@ -245,11 +260,20 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     umbrellaPath: scope,
   });
 
+  // Canary: suffix the already-computed base version with -canary.<shortsha>.
+  // Runs last so canary and stable share the exact same bump-computation path.
+  if (channel === 'canary') {
+    const git = simpleGit(cwd, { timeout: { block: 60000 } });
+    const shortSha = (await git.revparse(['--short', 'HEAD'])).trim();
+    planPackages = applyCanarySuffix(planPackages, shortSha);
+  }
+
   return {
     packages: planPackages,
     strategy: config.strategy || 'semver',
     registry: config.registry || 'https://registry.npmjs.org',
     rollbackEnabled: config.rollback?.enabled ?? true,
+    channel,
   };
 }
 
