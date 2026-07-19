@@ -11,16 +11,39 @@ import { detectProvider, enhanceChangeWithLinks } from './providers';
 import { createReleaseManifest, formatAsJson } from './formatters/json';
 import { loadTemplate, packageToTemplateData } from './templates';
 
-const CHANGELOG_LLM_TIMEOUT_MS = 45_000;
+// Safety-net ceiling for the WHOLE template render (which may sequentially
+// enhance several groups, each individually budgeted and guarded by
+// LLM_GROUP_TIMEOUT_MS in corporate-ai.ts). This should only ever fire on a
+// pathological hang — normal slowness is absorbed per-group, degrading that
+// one group to a plain bullet list instead of losing the whole changelog.
+const CHANGELOG_RENDER_TIMEOUT_MS = 180_000;
 
 async function renderWithTimeout(result: string | Promise<string>): Promise<string> {
   if (typeof result === 'string') {return result;}
   return Promise.race([
     result,
     new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Changelog LLM render timeout after 45s')), CHANGELOG_LLM_TIMEOUT_MS)
+      setTimeout(() => reject(new Error(`Changelog render timeout after ${CHANGELOG_RENDER_TIMEOUT_MS / 1000}s`)), CHANGELOG_RENDER_TIMEOUT_MS)
     }),
   ]);
+}
+
+/**
+ * Last-resort, non-LLM, non-template rendering of commit content as a plain
+ * bullet list. Used only if the full template render (protected per-group by
+ * LLM_GROUP_TIMEOUT_MS in corporate-ai.ts) still fails outright — guarantees
+ * generateChangelog() never silently loses real commit content just because
+ * a template/LLM path broke. Not pretty, but always present.
+ */
+function renderPlainFallback(changes: Change[]): string {
+  const relevant = changes.filter(c => c.type === 'feat' || c.type === 'fix' || c.type === 'perf' || c.type === 'revert');
+  if (relevant.length === 0) {return '';}
+  return relevant
+    .map(c => {
+      const scope = c.scope ? `**${c.scope}**: ` : '';
+      return `- ${scope}${c.subject}`;
+    })
+    .join('\n');
 }
 
 /**
@@ -279,7 +302,13 @@ export async function generateChangelog(
 
     onProgress?.('Enhancing lockstep changelog with template...');
     const templateData = packageToTemplateData(mergedRelease, locale, changelogConfig?.metadata, changelogConfig?.groups);
-    const rendered = await renderWithTimeout(template.render(templateData, platform));
+    let rendered: string;
+    try {
+      rendered = await renderWithTimeout(template.render(templateData, platform));
+    } catch (err) {
+      onProgress?.(`Template render failed (${err instanceof Error ? err.message : String(err)}), falling back to plain commit list...`);
+      rendered = renderPlainFallback(mergedChanges);
+    }
 
     // Strip the template's own header (## [version] - date + blockquote) — we use lockstep header instead
     const renderedLines = rendered.split('\n');
@@ -306,7 +335,16 @@ export async function generateChangelog(
       onProgress?.(`Formatting changelog for ${pkg.name} (${i + 1}/${packageReleases.length})...`);
 
       const templateData = packageToTemplateData(pkg, locale, changelogConfig?.metadata, changelogConfig?.groups);
-      const formatted = await renderWithTimeout(template.render(templateData, platform));
+      let formatted: string;
+      try {
+        formatted = await renderWithTimeout(template.render(templateData, platform));
+      } catch (err) {
+        onProgress?.(`Template render failed for ${pkg.name} (${err instanceof Error ? err.message : String(err)}), falling back to plain commit list...`);
+        const date = new Date().toISOString().split('T')[0]!;
+        const fallbackBody = renderPlainFallback(pkg.changes);
+        formatted = `## [${pkg.next}] - ${date}\n\n> **${pkg.name}** ${pkg.prev} → ${pkg.next}\n\n` +
+          (fallbackBody || `*${locale === 'ru' ? 'Без функциональных изменений.' : 'No functional changes.'}*`);
+      }
 
       formattedPackages.push(formatted);
     }
