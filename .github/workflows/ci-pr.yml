@@ -382,7 +382,11 @@ jobs:
     needs: [checks]
     uses: ./.github/workflows/e2e-platform.yml
     permissions:
-      contents: read
+      # flaky-history (added in e2e-platform.yml) pushes to the ci-data
+      # branch and needs write; a caller can't grant a reusable workflow
+      # more than it itself holds, and under-granting here causes the
+      # entire run to fail at startup (0 jobs) before anything executes.
+      contents: write
 
   e2e-auth:
     needs: [checks]
