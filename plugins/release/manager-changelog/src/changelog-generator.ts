@@ -28,6 +28,27 @@ async function renderWithTimeout(result: string | Promise<string>): Promise<stri
   ]);
 }
 
+// Lockstep monorepo releases can bump 100+ packages at once — a flat table
+// that long makes the changelog unreadable. Past this many rows, wrap the
+// table in a collapsed <details> block (native GitHub/GitLab markdown,
+// renders correctly everywhere else as a plain expandable section).
+const PACKAGE_TABLE_COLLAPSE_THRESHOLD = 15;
+
+function formatPackageTable(rows: string[], count: number, locale: 'en' | 'ru'): string[] {
+  if (count <= PACKAGE_TABLE_COLLAPSE_THRESHOLD) {
+    return rows;
+  }
+  const summary = locale === 'ru' ? `Список пакетов (${count})` : `Package list (${count})`;
+  return [
+    '<details>',
+    `<summary>${summary}</summary>`,
+    '',
+    ...rows,
+    '',
+    '</details>',
+  ];
+}
+
 /**
  * Last-resort, non-LLM, non-template rendering of commit content as a plain
  * bullet list. Used only if the full template render (protected per-group by
@@ -278,14 +299,17 @@ export async function generateChangelog(
     // Build lockstep header with packages table
     const date = new Date().toISOString().split('T')[0]!;
     const pkgWord = locale === 'ru' ? 'пакетов' : packages.length === 1 ? 'package' : 'packages';
+    const tableRows = [
+      `| ${locale === 'ru' ? 'Пакет' : 'Package'} | ${locale === 'ru' ? 'Предыдущая' : 'Previous'} | ${locale === 'ru' ? 'Тип' : 'Bump'} |`,
+      `|---------|----------|------|`,
+      ...packageReleases.filter(p => p.bump !== 'none').map(p => `| \`${p.name}\` | ${p.prev} | ${p.bump} |`),
+    ];
     const headerLines: string[] = [
       `## [${sharedVersion}] - ${date}`,
       '',
       `**${packageReleases.length} ${pkgWord}** bumped to v${sharedVersion}`,
       '',
-      `| ${locale === 'ru' ? 'Пакет' : 'Package'} | ${locale === 'ru' ? 'Предыдущая' : 'Previous'} | ${locale === 'ru' ? 'Тип' : 'Bump'} |`,
-      `|---------|----------|------|`,
-      ...packageReleases.filter(p => p.bump !== 'none').map(p => `| \`${p.name}\` | ${p.prev} | ${p.bump} |`),
+      ...formatPackageTable(tableRows, packageReleases.length, locale),
       '',
     ];
 
@@ -376,16 +400,18 @@ export function generateSimpleChangelog(
 
   if (isLockstep) {
     const version = packages[0]!.nextVersion;
-    const title = locale === 'ru' ? 'Релиз' : 'Release';
     const pkgWord = locale === 'ru' ? 'пакетов' : packages.length === 1 ? 'package' : 'packages';
+    const tableRows = [
+      `| Package | Previous | Bump |`,
+      `|---------|----------|------|`,
+      ...packages.map(p => `| \`${p.name}\` | ${p.currentVersion} | ${p.bump} |`),
+    ];
     const lines: string[] = [
       `## [${version}] - ${date}`,
       '',
       `**${packages.length} ${pkgWord}** bumped to v${version}`,
       '',
-      `| Package | Previous | Bump |`,
-      `|---------|----------|------|`,
-      ...packages.map(p => `| \`${p.name}\` | ${p.currentVersion} | ${p.bump} |`),
+      ...formatPackageTable(tableRows, packages.length, locale),
     ];
     return lines.join('\n');
   }
