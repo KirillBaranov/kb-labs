@@ -161,7 +161,7 @@ on:
 
 jobs:
   call:
-    uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+    uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@main
     with:
       manifest: .kb/deploy/deploy.yaml
       environment: staging

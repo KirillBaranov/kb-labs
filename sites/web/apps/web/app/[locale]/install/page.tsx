@@ -52,7 +52,7 @@ const FALLBACK_TAG = 'v0.4.0-binaries';
 async function getLatestBinariesTag(): Promise<string> {
   try {
     const res = await fetch(
-      'https://api.github.com/repos/KirillBaranov/kb-labs/releases?per_page=20',
+      'https://api.github.com/repos/kb-labs-team/kb-labs/releases?per_page=20',
       { next: { revalidate: 3600 }, headers: { Accept: 'application/vnd.github+json' } },
     );
     if (!res.ok) return FALLBACK_TAG;
@@ -74,7 +74,7 @@ export default async function InstallPage({ params }: Props) {
 
   const latestTag = await getLatestBinariesTag();
   const pinUnix = `curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version ${latestTag}`; // i18n-ignore
-  const checksumCmd = `curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/${latestTag}/checksums.txt | grep kb-create-linux-amd64`; // i18n-ignore
+  const checksumCmd = `curl -fsSL https://github.com/kb-labs-team/kb-labs/releases/download/${latestTag}/checksums.txt | grep kb-create-linux-amd64`; // i18n-ignore
 
   const PREREQS = [
     { icon: Package,  label: 'Node.js 20+',                    note: 'nodejs.org/en/download' }, // i18n-ignore
@@ -161,7 +161,7 @@ export default async function InstallPage({ params }: Props) {
                   <Button
                     variant="secondary"
                     size="lg"
-                    href="https://github.com/KirillBaranov/kb-labs/releases/latest"
+                    href="https://github.com/kb-labs-team/kb-labs/releases/latest"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -295,7 +295,7 @@ export default async function InstallPage({ params }: Props) {
                     { platform: 'Linux (ARM64)',         file: 'kb-create-linux-arm64' }, // i18n-ignore
                   ]}
                   downloadLabel={t('install.binaries.downloadBtn')}
-                  baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
+                  baseUrl="https://github.com/kb-labs-team/kb-labs/releases/latest/download"
                   colPlatform={t('install.binaries.colPlatform')}
                   colBinary={t('install.binaries.colBinary')}
                   colDownload={t('install.binaries.colDownload')}

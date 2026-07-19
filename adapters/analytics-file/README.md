@@ -1,6 +1,6 @@
 # @kb-labs/adapters-analytics-file
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 File-based analytics adapter for KB Labs platform. Writes events/metrics as JSONL into `.kb/analytics/buffer`.
 

@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
 [![KB Labs Platform](https://img.shields.io/badge/KB_Labs-Platform-blue.svg)](https://github.com/kb-labs)
-[![Release](https://img.shields.io/github/v/release/KirillBaranov/kb-labs-create)](https://github.com/KirillBaranov/kb-labs-create/releases)
+[![Release](https://img.shields.io/github/v/release/kb-labs-team/kb-labs)](https://github.com/kb-labs-team/kb-labs/releases)
 
 ## Overview
 
@@ -28,7 +28,7 @@
 ### Install kb-create
 
 ```bash
-curl https://raw.githubusercontent.com/KirillBaranov/kb-labs-create/main/install.sh | sh
+curl https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh
 ```
 
 This downloads the correct binary for your OS/arch and places it in `~/.local/bin/kb-create`.
@@ -36,7 +36,7 @@ This downloads the correct binary for your OS/arch and places it in `~/.local/bi
 Install a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KirillBaranov/kb-labs-create/main/install.sh | sh -s -- --version v0.2.1
+curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh -s -- --version v0.2.1
 ```
 
 `install.sh` verifies SHA-256 checksums against the release `checksums.txt` before installing.
@@ -306,14 +306,14 @@ These flags work on both `kb-create` (install) and `kb-create update`.
 ### curl | sh (recommended)
 
 ```bash
-curl https://raw.githubusercontent.com/KirillBaranov/kb-labs-create/main/install.sh | sh
+curl https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh
 ```
 
 Installs to `~/.local/bin/kb-create`. No `sudo` needed.
 
 ### Manual download
 
-Download the correct binary from [GitHub Releases](https://github.com/KirillBaranov/kb-labs-create/releases/latest):
+Download the correct binary from [GitHub Releases](https://github.com/kb-labs-team/kb-labs/releases/latest):
 
 | Platform | Binary |
 |----------|--------|
@@ -324,7 +324,7 @@ Download the correct binary from [GitHub Releases](https://github.com/KirillBara
 
 ```bash
 # Example for macOS Apple Silicon
-curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/latest/download/kb-create-darwin-arm64 \
+curl -fsSL https://github.com/kb-labs-team/kb-labs/releases/latest/download/kb-create-darwin-arm64 \
   -o ~/.local/bin/kb-create
 chmod +x ~/.local/bin/kb-create
 ```
@@ -332,7 +332,7 @@ chmod +x ~/.local/bin/kb-create
 ### Build from source
 
 ```bash
-git clone https://github.com/KirillBaranov/kb-labs-create
+git clone https://github.com/kb-labs-team/kb-labs
 cd kb-labs-create
 go build -o kb-create .
 ```
@@ -553,7 +553,7 @@ The same flags apply to `kb-create update`.
 
 ```bash
 # Clone
-git clone https://github.com/KirillBaranov/kb-labs-create
+git clone https://github.com/kb-labs-team/kb-labs
 cd kb-labs-create
 
 # Install dependencies
@@ -576,7 +576,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Support & Resources
 
-- **Issues**: [Report bugs →](https://github.com/KirillBaranov/kb-labs-create/issues)
+- **Issues**: [Report bugs →](https://github.com/kb-labs-team/kb-labs/issues)
 - **Discussions**: [Ask questions →](https://github.com/kb-labs/discussions)
 - **KB Labs Platform**: [Main repository →](https://github.com/kb-labs)
 

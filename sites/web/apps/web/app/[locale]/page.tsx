@@ -125,7 +125,7 @@ export default async function HomePage({ params }: Props) {
                 <Button variant="primary" size="lg" href={`/${locale}/install`}>
                   {t('home.heroCurrent.installBtn')}
                 </Button>
-                <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs" target="_blank" rel="noopener noreferrer">
+                <Button variant="secondary" size="lg" href="https://github.com/kb-labs-team/kb-labs" target="_blank" rel="noopener noreferrer">
                   <Github className="size-4" />
                   {/* i18n-ignore */}
                   GitHub
@@ -375,7 +375,7 @@ export default async function HomePage({ params }: Props) {
                   <Button variant="primary" size="lg" href={`/${locale}/install`}>
                     {t('home.ctaSection.installBtn')}
                   </Button>
-                  <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs" target="_blank" rel="noopener noreferrer">
+                  <Button variant="secondary" size="lg" href="https://github.com/kb-labs-team/kb-labs" target="_blank" rel="noopener noreferrer">
                     <Github className="size-4" />
                     {/* i18n-ignore */}
                     GitHub

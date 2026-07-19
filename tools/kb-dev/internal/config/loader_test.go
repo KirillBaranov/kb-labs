@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -136,6 +137,24 @@ func TestDiscoverNotFound(t *testing.T) {
 	_, err := Discover(dir)
 	if err == nil {
 		t.Fatal("expected error when no config found, got nil")
+	}
+}
+
+// TestDiscoverNotFound_ErrorSuggestsRecovery guards against a regression where
+// `kb-dev start` on a fresh kb-create install (devservices.yaml missing
+// because the manifest scan found zero services, or failed silently — see
+// kb-create's installer.go scan.Run/WriteConfigs path) gave the user a dead
+// end: "create .kb/devservices.yaml" with no way to actually do that short of
+// hand-writing YAML. `kb-create update` re-scans installed packages and
+// rewrites devservices.yaml, so the error should point there.
+func TestDiscoverNotFound_ErrorSuggestsRecovery(t *testing.T) {
+	dir := t.TempDir()
+	_, err := Discover(dir)
+	if err == nil {
+		t.Fatal("expected error when no config found, got nil")
+	}
+	if !strings.Contains(err.Error(), "kb-create update") {
+		t.Errorf("Discover() error = %q, want it to mention `kb-create update` as a recovery step", err.Error())
 	}
 }
 

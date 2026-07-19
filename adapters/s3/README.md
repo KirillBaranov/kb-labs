@@ -1,6 +1,6 @@
 # @kb-labs/adapters-s3
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem.
 
 S3-compatible storage adapter implementing the `IStorage` interface. Supports AWS S3 and MinIO.
 

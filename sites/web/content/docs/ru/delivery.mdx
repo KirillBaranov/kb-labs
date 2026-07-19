@@ -12,7 +12,7 @@ KB Labs поставляется с GitOps-слоем доставки пове�
 манифест в git описывает ваш флот. Одна команда считает diff, вторая
 раскатывает его с health-gate и авто-rollback'ом.
 
-Архитектурный референс: [ADR-0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md).
+Архитектурный референс: [ADR-0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md).
 
 ### Когда использовать
 
@@ -149,7 +149,7 @@ kb-create rollback @kb-labs/gateway
 
 ### Секреты
 
-Три слоя (см. [ADR-0014 §D15](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md#target-runtime-contract)):
+Три слоя (см. [ADR-0014 §D15](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md#target-runtime-contract)):
 
 1. В `deploy.yaml` только ссылки: `${secrets.OPENAI_KEY}`.
 2. Резолвинг на контрольной машине (env, `.env`, Vault, AWS SM).
@@ -174,7 +174,7 @@ on:
 
 jobs:
   call:
-    uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+    uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@main
     with:
       manifest: .kb/deploy/deploy.yaml
       environment: staging
@@ -189,7 +189,7 @@ jobs:
 
 ### Справочные материалы
 
-- Полный getting-started: [docs/guides/delivery.md](https://github.com/KirillBaranov/kb-labs/blob/main/docs/guides/delivery.md)
-- ADR: [docs/adr/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md)
-- План реализации: [docs/plans/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/plans/0014-declarative-delivery-and-fleet-distribution.md)
-- Стартовый шаблон: [templates/deploy/deploy.yaml](https://github.com/KirillBaranov/kb-labs/blob/main/templates/deploy/deploy.yaml)
+- Полный getting-started: [docs/guides/delivery.md](https://github.com/kb-labs-team/kb-labs/blob/main/docs/guides/delivery.md)
+- ADR: [docs/adr/0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md)
+- План реализации: [docs/plans/0014](https://github.com/kb-labs-team/kb-labs/blob/main/docs/plans/0014-declarative-delivery-and-fleet-distribution.md)
+- Стартовый шаблон: [templates/deploy/deploy.yaml](https://github.com/kb-labs-team/kb-labs/blob/main/templates/deploy/deploy.yaml)

@@ -161,8 +161,8 @@ jobs:
       - name: Install kb-deploy + yq
         run: |
           set -euo pipefail
-          VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
-          curl -fsSL "https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-linux-amd64" \
+          VERSION=$(curl -fsSL https://api.github.com/repos/kb-labs-team/kb-labs/releases/latest | jq -r .tag_name)
+          curl -fsSL "https://github.com/kb-labs-team/kb-labs/releases/download/${VERSION}/kb-deploy-linux-amd64" \
               -o /usr/local/bin/kb-deploy
           chmod +x /usr/local/bin/kb-deploy
           kb-deploy --version

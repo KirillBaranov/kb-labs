@@ -150,7 +150,7 @@ Files created or modified:
 
 ## References
 
-- [PR #102](https://github.com/KirillBaranov/kb-labs/pull/102)
+- [PR #102](https://github.com/kb-labs-team/kb-labs/pull/102)
 - [CONVENTIONS.md](../../sites/web/apps/docs/CONVENTIONS.md)
 - [sitemap.config.json](../../sites/web/apps/docs/sitemap.config.json)
 

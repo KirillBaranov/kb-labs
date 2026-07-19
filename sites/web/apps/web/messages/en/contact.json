@@ -11,7 +11,7 @@
       {
         "label": "GitHub",
         "description": "File issues, browse source, contribute.",
-        "href": "https://github.com/KirillBaranov/kb-labs"
+        "href": "https://github.com/kb-labs-team/kb-labs"
       },
       {
         "label": "Telegram",
@@ -34,7 +34,7 @@
         "label": "Support",
         "description": "Technical issues, bugs, or questions about the platform.",
         "action": "Open an issue →",
-        "href": "https://github.com/KirillBaranov/kb-labs/issues"
+        "href": "https://github.com/kb-labs-team/kb-labs/issues"
       },
       {
         "label": "Partnerships",

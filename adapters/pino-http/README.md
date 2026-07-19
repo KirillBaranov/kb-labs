@@ -1,6 +1,6 @@
 # @kb-labs/adapters-pino-http
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 Pino HTTP transport for streaming logs to KB Labs REST API.
 

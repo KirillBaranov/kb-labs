@@ -1,6 +1,6 @@
 # @kb-labs/adapters-openai
 
-> Part of [KB Labs](https://github.com/KirillBaranov/kb-labs) ecosystem. Works exclusively within KB Labs platform.
+> Part of [KB Labs](https://github.com/kb-labs-team/kb-labs) ecosystem. Works exclusively within KB Labs platform.
 
 OpenAI language model adapter supporting GPT-4, GPT-3.5, and other OpenAI models with streaming and function calling.
 

@@ -122,4 +122,4 @@ Downstream-сервисы — `rest-api`, `workflow`, `marketplace` — не м�
 1. **Manifest-driven limits.** Плагины, регистрирующие HTTP-маршруты, будут декларировать свой pressure-бюджет в манифесте. Gateway подхватит на старте — без отдельной правки конфига на каждый плагин.
 2. **Эндпоинт `/admin/pressure/stats`.** Тот же вывод `getStats()`, выставленный для ops-дашбордов. Limit-only ресурсы сейчас возвращают нули в queue-полях; эндпоинт промаркирует их так, чтобы дашборды не приняли пустую очередь за здоровую.
 
-Полный дизайн — в [ADR-0056](https://github.com/KirillBaranov/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). Интересная строчка ADR — та, которую мы *не* написали: там нет «и мы также сделали отдельный rate-limiter для HTTP». Это и был соблазн. Устоять — и было настоящей работой.
+Полный дизайн — в [ADR-0056](https://github.com/kb-labs-team/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). Интересная строчка ADR — та, которую мы *не* написали: там нет «и мы также сделали отдельный rate-limiter для HTTP». Это и был соблазн. Устоять — и было настоящей работой.

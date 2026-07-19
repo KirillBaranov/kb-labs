@@ -5,7 +5,7 @@ Thank you for your interest in contributing! KB Labs is an open-source project a
 ## Getting Started
 
 ```bash
-git clone https://github.com/KirillBaranov/kb-labs.git
+git clone https://github.com/kb-labs-team/kb-labs.git
 cd kb-labs
 pnpm install          # ~20 seconds, one lockfile
 pnpm build            # build all packages
@@ -18,7 +18,7 @@ That's it. No submodules, no special setup scripts.
 
 ### 1. Find or create an issue
 
-Check [existing issues](https://github.com/KirillBaranov/kb-labs/issues) or create one. For non-trivial changes, discuss the approach in the issue first.
+Check [existing issues](https://github.com/kb-labs-team/kb-labs/issues) or create one. For non-trivial changes, discuss the approach in the issue first.
 
 ### 2. Create a branch
 
@@ -98,7 +98,7 @@ plugins/your-plugin/
 
 ### Good first issues
 
-Look for issues labeled [`good first issue`](https://github.com/KirillBaranov/kb-labs/labels/good%20first%20issue).
+Look for issues labeled [`good first issue`](https://github.com/kb-labs-team/kb-labs/labels/good%20first%20issue).
 
 ### Adapters
 
@@ -179,7 +179,7 @@ Cross-cutting decisions go in `docs/adr/`. Module-specific decisions go in `<mod
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/KirillBaranov/kb-labs/issues)
+- **Issues**: [GitHub Issues](https://github.com/kb-labs-team/kb-labs/issues)
 - **Context**: [CLAUDE.md](CLAUDE.md) has full platform context
 - **Code search**: `pnpm kb mind search --text "your question"` (requires Mind plugin + Qdrant)
 

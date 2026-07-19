@@ -161,7 +161,7 @@ func buildChecks(platformDir string) []doctorCheck {
 		checkPath(ins),
 		checkBinary("node", "--version", "install Node.js from https://nodejs.org"),
 		checkBinary("git", "--version", "install git from https://git-scm.com"),
-		checkBinary("docker", "--version", "install Docker from https://docs.docker.com/get-docker"),
+		checkBinarySoft("docker", "--version", "install Docker from https://docs.docker.com/get-docker — only needed for devservices.yaml entries with type: docker"),
 		checkNetwork(),
 		checkKBCLI(platformDir, ins),
 		checkKBDev(platformDir, ins),
@@ -232,9 +232,21 @@ func checkPath(ins *installer.Installer) doctorCheck {
 }
 
 func checkBinary(name, arg, hint string) doctorCheck {
+	return checkBinaryImpl(name, arg, hint, false)
+}
+
+// checkBinarySoft is checkBinary for a binary that is not required for the
+// base install/start flow (e.g. Docker, only needed for devservices.yaml
+// entries with type: docker) — a missing/failing binary is advisory and
+// must not fail the overall `doctor` exit code.
+func checkBinarySoft(name, arg, hint string) doctorCheck {
+	return checkBinaryImpl(name, arg, hint, true)
+}
+
+func checkBinaryImpl(name, arg, hint string, soft bool) doctorCheck {
 	_, err := exec.LookPath(name)
 	if err != nil {
-		return doctorCheck{Name: name, OK: false, Details: "not found in PATH", FixHint: hint}
+		return doctorCheck{Name: name, OK: false, Soft: soft, Details: "not found in PATH", FixHint: hint}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -246,7 +258,7 @@ func checkBinary(name, arg, hint string) doctorCheck {
 		if msg == "" {
 			msg = err.Error()
 		}
-		return doctorCheck{Name: name, OK: false, Details: "found but failed: " + msg, FixHint: hint}
+		return doctorCheck{Name: name, OK: false, Soft: soft, Details: "found but failed: " + msg, FixHint: hint}
 	}
 	version := firstLine(strings.TrimSpace(string(out)))
 	if version == "" {

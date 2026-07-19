@@ -109,7 +109,7 @@ export default async function KbMonitorPage({ params }: Props) {
                     </a>
                   </Button>
                   <Button asChild variant="outline" size="lg">
-                    <a href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
+                    <a href="https://github.com/kb-labs-team/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
                       {/* i18n-ignore: brand name */}
                       GitHub Releases
                       <ExternalLink className="ml-2 size-4" />
@@ -239,7 +239,7 @@ export default async function KbMonitorPage({ params }: Props) {
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-monitor" target="_blank" rel="noopener noreferrer">
                       {t('ctaDocsBtn')}
                     </Button>
-                    <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary" size="lg" href="https://github.com/kb-labs-team/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
                       {/* i18n-ignore: brand name */}
                       GitHub Releases
                     </Button>

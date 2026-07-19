@@ -46,7 +46,7 @@ Consolidate all 22 git submodules into a single public monorepo (`kb-labs` on Gi
 
 ### Repository
 
-- **Primary repo:** `github.com/KirillBaranov/kb-labs` (currently public/docs — repurposed)
+- **Primary repo:** `github.com/kb-labs-team/kb-labs` (currently public/docs — repurposed)
 - **Old repos:** archived on GitHub (read-only, history preserved)
 - **Migration approach:** clean start (copy files, not history merge)
 

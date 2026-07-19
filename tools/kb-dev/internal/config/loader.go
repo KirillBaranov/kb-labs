@@ -59,7 +59,9 @@ func Discover(dir string) (DiscoverResult, error) {
 
 	return DiscoverResult{}, fmt.Errorf(
 		"no config found (searched %s upward); "+
-			"create .kb/devservices.yaml or devservices.yaml",
+			"create .kb/devservices.yaml or devservices.yaml "+
+			"(if this project was set up with kb-create, run `kb-create update` to regenerate it "+
+			"from your installed services)",
 		dir,
 	)
 }

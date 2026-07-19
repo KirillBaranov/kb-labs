@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import s from './TranslationBanner.module.css';
 
 const GITHUB_CONTENT_BASE =
-  'https://github.com/KirillBaranov/kb-labs/new/main/sites/web/apps/docs/content/ru';
+  'https://github.com/kb-labs-team/kb-labs/new/main/sites/web/apps/docs/content/ru';
 
 type Props = {
   slug: string[];

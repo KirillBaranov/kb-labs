@@ -92,7 +92,7 @@ export async function DocsLayout({ children, locale, toc, slug, isFallback, isIn
 
   const editLocale = isFallback ? 'en' : locale;
   const editFilePath = isIndex ? `${slug.join('/')}/index` : slug.join('/');
-  const editUrl = `https://github.com/KirillBaranov/kb-labs/blob/main/sites/web/apps/docs/content/${editLocale}/${editFilePath}.mdx`;
+  const editUrl = `https://github.com/kb-labs-team/kb-labs/blob/main/sites/web/apps/docs/content/${editLocale}/${editFilePath}.mdx`;
 
   const sidebarSlot = <DocsSidebar nav={nav} />;
   const tocSlot = <DocsToc items={toc} />;

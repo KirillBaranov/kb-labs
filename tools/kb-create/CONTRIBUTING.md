@@ -15,7 +15,7 @@ Thanks for your interest in contributing! This document covers the development w
 
 ```bash
 # Clone the repository
-git clone https://github.com/KirillBaranov/kb-labs-create
+git clone https://github.com/kb-labs-team/kb-labs
 cd kb-labs-create
 
 # Download dependencies
@@ -119,7 +119,7 @@ Please keep PRs focused — one logical change per PR makes review easier.
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/KirillBaranov/kb-labs-create/issues). Include:
+Use [GitHub Issues](https://github.com/kb-labs-team/kb-labs/issues). Include:
 - `kb-create --version` output
 - OS and architecture (`uname -sm`)
 - Full command you ran
