@@ -166,7 +166,7 @@ async function fastPublishPkg(
   ctx: FastPublishContext,
   logger: PublishWithOTPOptions['logger'],
 ): Promise<FastPublishOutcome> {
-  const restore = rewriteWorkspaceDeps(pkg.path, ctx.versionMap, ctx.packageManager);
+  const restore = rewriteWorkspaceDeps(pkg, ctx.versionMap, ctx.packageManager);
   try {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -243,7 +243,7 @@ async function sequentialPublishPkg(
 ): Promise<PublishResult> {
   const loader = useLoader(`Publishing ${pkg.name}@${pkg.version}...`);
   loader.start();
-  const restore = rewriteWorkspaceDeps(pkg.path, ctx.versionMap, ctx.packageManager);
+  const restore = rewriteWorkspaceDeps(pkg, ctx.versionMap, ctx.packageManager);
   try {
     const MAX_OTP_ATTEMPTS = 3;
     for (let otpAttempts = 0; otpAttempts < MAX_OTP_ATTEMPTS; otpAttempts++) {

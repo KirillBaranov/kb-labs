@@ -1,6 +1,15 @@
 /**
- * Rewrite workspace:/link: dependency references to pinned npm versions.
+ * Rewrite a package's own version and workspace:/link: dependency references
+ * before `pnpm publish`, so the tarball on disk matches what's about to be
+ * published even when that version was never persisted to package.json.
  *
+ * - Own version: stable releases already have the target version on disk
+ *   (written by updatePackageVersions() before this runs), so this is a
+ *   no-op for them. Canary releases compute nextVersion in-memory only —
+ *   never committed to package.json/git — so without this, `pnpm publish`
+ *   would read the OLD on-disk version, and either fail outright or (worse)
+ *   get misclassified as "already published" by the retry/idempotency
+ *   patterns since that old version genuinely IS already on the registry.
  * - pnpm handles `workspace:*` natively during `pnpm publish` — no rewrite needed.
  * - npm/yarn do NOT — we must replace with `^version` before publish.
  * - `link:` references are never valid on the npm registry — always rewrite.
@@ -68,14 +77,20 @@ function rewriteDepsSection(
 }
 
 export function rewriteWorkspaceDeps(
-  pkgPath: string,
+  pkg: { path: string; version: string },
   versionMap: Map<string, string>,
   packageManager: string,
 ): () => void {
+  const pkgPath = pkg.path;
   const pkgJsonPath = join(pkgPath, 'package.json');
   const original = readFileSync(pkgJsonPath, 'utf-8');
-  const pkgJson = JSON.parse(original) as Record<string, unknown>;
+  const pkgJson = JSON.parse(original) as Record<string, unknown> & { version?: string };
   let modified = false;
+
+  if (pkgJson.version !== pkg.version) {
+    pkgJson.version = pkg.version;
+    modified = true;
+  }
 
   for (const section of ['dependencies', 'peerDependencies'] as const) {
     const deps = pkgJson[section] as Record<string, string> | undefined;
