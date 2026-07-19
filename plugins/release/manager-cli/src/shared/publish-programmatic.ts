@@ -152,10 +152,14 @@ function spawnPublish(options: {
     if (token) { env['NODE_AUTH_TOKEN'] = token; }
 
     // Write a per-package .npmrc so npm picks up NODE_AUTH_TOKEN.
+    // The auth line's host must match the target registry — hardcoding
+    // registry.npmjs.org here would silently break token auth against
+    // Verdaccio or any other non-npmjs registry.
     const npmrcPath = join(packagePath, '.npmrc');
     const npmrcExisted = existsSync(npmrcPath);
     const npmrcBackup = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : null;
-    const authLine = '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n';
+    const registryHost = registry ? new URL(registry).host : 'registry.npmjs.org';
+    const authLine = `//${registryHost}/:_authToken=\${NODE_AUTH_TOKEN}\n`;
 
     if (token) {
       const existing = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : '';
