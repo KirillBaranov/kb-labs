@@ -252,7 +252,6 @@ export async function commitAndTagRelease(options: {
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
     const pushFlags: string[] = noVerify ? ['--no-verify'] : [];
-    const pushTagsOptions = noVerify ? ['--no-verify'] : undefined;
 
     // Process each git root: commit → tag → push.
     // Skip roots already fully pushed (from checkpoint on retry).
@@ -312,9 +311,18 @@ export async function commitAndTagRelease(options: {
         result.tagged.push(...rootTagged.filter(t => !result.tagged.includes(t)));
       }
 
-      // 3. Push
+      // 3. Push — push the branch, then push ONLY the tag(s) just created in
+      // this run. `git push --tags` (the old behavior here) pushes EVERY
+      // local tag, including all pre-existing ones — on a repo with a long
+      // release history that means dozens of already-remote tags get
+      // re-sent and rejected as duplicates, making git report the whole
+      // command as failed even though the branch commit and the actual new
+      // tag(s) went through fine. Pushing exact refs avoids touching any
+      // tag we didn't just create.
       if (rootCommitted) { await rootGit.push(pushFlags); }
-      await rootGit.pushTags(pushTagsOptions);
+      if (rootTagged.length > 0) {
+        await rootGit.push(['origin', ...pushFlags, ...rootTagged]);
+      }
 
       // Persist checkpoint after each successful root
       if (repoRoot) {
