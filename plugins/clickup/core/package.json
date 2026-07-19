@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/clickup-core",
-  "version": "2.103.0",
+  "version": "2.104.0",
   "type": "module",
   "description": "Business logic for clickup (pure, testable in isolation).",
   "main": "./dist/index.js",
