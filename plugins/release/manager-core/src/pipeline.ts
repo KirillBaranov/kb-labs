@@ -20,6 +20,7 @@ import { buildPackages } from './build';
 import { runReleaseChecks } from './checks';
 import { verifyPackages } from './verifier';
 import { acquireLock } from './lock';
+import { resolvePublishTag, resolvePublishRegistry } from './channel';
 import {
   loadCheckpoint,
   writeCheckpoint,
@@ -97,11 +98,15 @@ async function _runPipeline(ctx: {
   } = ctx;
 
   // 0b. Pre-flight: verify npm credentials before doing any real work.
+  const channel = config.channel ?? 'stable';
+  const publishTag = resolvePublishTag(config, channel);
+  const publishRegistry = resolvePublishRegistry(config, channel);
+
   if (!dryRun) {
-    const registry = config.registry ?? 'https://registry.npmjs.org';
+    const registry = publishRegistry;
     const authError = await verifyNpmAuth(registry);
     if (authError) {
-      const emptyPlan: ReleasePlan = { packages: [], strategy: 'semver', registry, rollbackEnabled: false, channel: config.channel ?? 'stable' };
+      const emptyPlan: ReleasePlan = { packages: [], strategy: 'semver', registry, rollbackEnabled: false, channel };
       return {
         success: false,
         plan: emptyPlan,
@@ -123,7 +128,7 @@ async function _runPipeline(ctx: {
     scope,
     flow,                                     // already includes defaultFlow fallback
     bumpOverride: config.bump as VersionBump | undefined,
-    channel: config.channel,
+    channel,
   });
 
   if (plan.packages.length === 0) {
@@ -264,29 +269,34 @@ async function _runPipeline(ctx: {
     progress('verifying', 'Package artifacts verified');
   }
 
-  // 6. Version bump
-  progress('versioning', 'Updating package versions...');
-  if (!dryRun) {
-    const versionUpdates = await updatePackageVersions(plan);
-    const failedUpdates = versionUpdates.filter(u => !u.updated);
-    if (failedUpdates.length > 0) {
-      await restoreSnapshot(repoRoot);
-      return {
-        success: false,
-        plan,
-        report: buildReport('versioning', plan, repoRoot, dryRun, startTime, {
-          ok: false,
-          errors: failedUpdates.map(u => `Version update failed: ${u.package}`),
-          versionUpdates,
-          timingMs: Date.now() - startTime,
-        }),
-      };
+  // 6. Version bump — canary never persists its computed version to
+  // package.json/git; it publishes the in-memory nextVersion directly.
+  if (channel === 'stable') {
+    progress('versioning', 'Updating package versions...');
+    if (!dryRun) {
+      const versionUpdates = await updatePackageVersions(plan);
+      const failedUpdates = versionUpdates.filter(u => !u.updated);
+      if (failedUpdates.length > 0) {
+        await restoreSnapshot(repoRoot);
+        return {
+          success: false,
+          plan,
+          report: buildReport('versioning', plan, repoRoot, dryRun, startTime, {
+            ok: false,
+            errors: failedUpdates.map(u => `Version update failed: ${u.package}`),
+            versionUpdates,
+            timingMs: Date.now() - startTime,
+          }),
+        };
+      }
     }
   }
 
-  // 7. Changelog
+  // 7. Changelog — skipped for canary: there's nothing to changelog against a
+  // registry-only prerelease, and writing CHANGELOG.md would leave dirty,
+  // uncommitted files behind since canary never runs the git stage either.
   let changelogMd = '';
-  if (changelogGen) {
+  if (changelogGen && channel === 'stable') {
     progress('versioning', 'Generating changelog...');
     try {
       changelogMd = await changelogGen.generate(plan, { repoRoot, gitCwd: scopeCwd, config });
@@ -312,7 +322,9 @@ async function _runPipeline(ctx: {
 
   const publishResult = await publisher.publish(packagesToPublish, {
     dryRun,
-    access: 'public',
+    access: config.publish?.access ?? 'public',
+    tag: publishTag,
+    registry: publishRegistry,
   });
 
   // If any package genuinely failed to publish, abort before touching git.
@@ -337,7 +349,10 @@ async function _runPipeline(ctx: {
   }
 
   // 8b. Write checkpoint after successful publish — enables git-only retry on failure.
-  if (!dryRun) {
+  // Skipped for canary: there's no git step to resume into, and canary versions
+  // are deterministic per (base version, shortSha) so retries are naturally
+  // idempotent via the publisher's already-published handling.
+  if (!dryRun && channel === 'stable') {
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const cpVersion = uniqueVersions.size === 1 ? plan.packages[0]!.nextVersion : 'independent';
     writeCheckpoint(repoRoot, {
@@ -353,9 +368,11 @@ async function _runPipeline(ctx: {
     });
   }
 
-  // 9. Git commit + tag — only after all packages are on npm
+  // 9. Git commit + tag — only after all packages are on npm.
+  // Canary never runs this: its version is never persisted to package.json,
+  // so there's nothing meaningful to commit or tag.
   let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
-  if (!dryRun) {
+  if (!dryRun && channel === 'stable') {
     progress('verifying', 'Committing and tagging release...');
     gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify, repoRoot });
     deleteCheckpoint(repoRoot);

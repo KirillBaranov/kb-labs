@@ -30,6 +30,7 @@ export interface PublishWithOTPOptions {
   otp?: string;
   tag?: string;
   access?: string;
+  registry?: string;
   ui: {
     write?: (text: string) => void;
   };
@@ -102,19 +103,21 @@ interface PublishSingleOptions {
   dryRun?: boolean;
   tag?: string;
   access?: string;
+  registry?: string;
 }
 
 function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
-  const { packagePath, packageManager = 'pnpm', otp, dryRun, tag, access } = options;
+  const { packagePath, packageManager = 'pnpm', otp, dryRun, tag, access, registry } = options;
 
   return new Promise((resolve, reject) => {
     const args = ['publish'];
 
     if (packageManager === 'pnpm') { args.push('--no-git-checks'); }
-    if (dryRun)  { args.push('--dry-run'); }
-    if (otp)     { args.push(`--otp=${otp}`); }
-    if (tag)     { args.push(`--tag=${tag}`); }
-    if (access)  { args.push(`--access=${access}`); }
+    if (dryRun)   { args.push('--dry-run'); }
+    if (otp)      { args.push(`--otp=${otp}`); }
+    if (tag)      { args.push(`--tag=${tag}`); }
+    if (access)   { args.push(`--access=${access}`); }
+    if (registry) { args.push(`--registry=${registry}`); }
 
     const child = spawn(packageManager, args, {
       cwd: packagePath,
@@ -150,6 +153,7 @@ interface FastPublishContext {
   dryRun?: boolean;
   tag?: string;
   access?: string;
+  registry?: string;
 }
 
 interface FastPublishOutcome {
@@ -166,7 +170,7 @@ async function fastPublishPkg(
   try {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: ctx.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access });
+        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: ctx.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access, registry: ctx.registry });
         logger?.info('Published (fast-path)', { name: pkg.name, version: pkg.version });
         return { result: { name: pkg.name, version: pkg.version, success: true }, otpFailed: false };
       } catch (err: unknown) {
@@ -227,6 +231,7 @@ interface SequentialContext {
   dryRun?: boolean;
   tag?: string;
   access?: string;
+  registry?: string;
 }
 
 async function sequentialPublishPkg(
@@ -243,7 +248,7 @@ async function sequentialPublishPkg(
     const MAX_OTP_ATTEMPTS = 3;
     for (let otpAttempts = 0; otpAttempts < MAX_OTP_ATTEMPTS; otpAttempts++) {
       try {
-        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: otpState.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access });
+        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: otpState.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access, registry: ctx.registry });
         loader.succeed(ctx.dryRun ? `Dry-run: ${pkg.name}@${pkg.version}` : `Published ${pkg.name}@${pkg.version}`);
         return { name: pkg.name, version: pkg.version, success: true };
       } catch (err: unknown) {
@@ -292,11 +297,11 @@ async function sequentialPublishPkg(
 export async function publishPackagesWithOTP(
   options: PublishWithOTPOptions,
 ): Promise<PublishWithOTPResult> {
-  const { packages, packageManager = 'pnpm', dryRun, tag, access, ui, logger } = options;
+  const { packages, packageManager = 'pnpm', dryRun, tag, access, registry, ui, logger } = options;
   const otpState: OtpState = { otp: options.otp };
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
-  const fastCtx: FastPublishContext = { packageManager, versionMap, otp: otpState.otp, dryRun, tag, access };
-  const seqCtx: SequentialContext = { packageManager, versionMap, dryRun, tag, access };
+  const fastCtx: FastPublishContext = { packageManager, versionMap, otp: otpState.otp, dryRun, tag, access, registry };
+  const seqCtx: SequentialContext = { packageManager, versionMap, dryRun, tag, access, registry };
 
   const results: PublishResult[] = [];
   const remaining: PackageToPublish[] = [];

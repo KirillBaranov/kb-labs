@@ -10,7 +10,10 @@ import type {
 import {
   runReleasePipeline,
   resolveScopePath,
+  resolvePublishTag,
+  resolvePublishRegistry,
   type ReleaseConfig,
+  type ReleaseChannel,
   type PublishablePackage,
   type PublishResult,
 } from '@kb-labs/release-manager-core';
@@ -29,7 +32,9 @@ export default defineHandler({
     const repoRoot = await findRepoRoot(cwd);
     const scopeCwd = await resolveScopePath(repoRoot, scope);
 
-    const config = await useConfig<ReleaseConfig>() ?? {};
+    const baseConfig = await useConfig<ReleaseConfig>() ?? {};
+    const channel: ReleaseChannel = input.body?.channel ?? baseConfig.channel ?? 'stable';
+    const config: ReleaseConfig = { ...baseConfig, channel };
 
     // Changelog generator (with LLM if available)
     const llm = useLLM();
@@ -37,11 +42,14 @@ export default defineHandler({
 
     // Programmatic publisher (token-based, no interactive OTP)
     const publisher = {
-      async publish(packages: PublishablePackage[], opts: { dryRun?: boolean }): Promise<PublishResult> {
+      async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string; tag?: string; registry?: string }): Promise<PublishResult> {
         return publishPackagesProgrammatic({
           packages,
           packageManager: config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm',
           dryRun: opts.dryRun,
+          access: (opts.access as 'public' | 'restricted') ?? 'public',
+          tag: opts.tag ?? resolvePublishTag(config, channel),
+          registry: opts.registry ?? resolvePublishRegistry(config, channel),
           otp,
         });
       },

@@ -5,6 +5,7 @@ export * from './rollback';
 export * from './reporters';
 export * from './shell-adapter';
 export * from './versioning-strategies';
+export * from './channel';
 
 // Pipeline v2 — unified core
 export { runReleasePipeline } from './pipeline';

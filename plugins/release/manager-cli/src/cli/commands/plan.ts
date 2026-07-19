@@ -12,7 +12,7 @@ import {
   type ArtifactInfo,
   useConfig,
 } from '@kb-labs/sdk';
-import { planRelease, type VersionBump, type ReleaseConfig } from '@kb-labs/release-manager-core';
+import { planRelease, type VersionBump, type ReleaseConfig, type ReleaseChannel } from '@kb-labs/release-manager-core';
 import { findRepoRoot, scopeToDir } from '../../shared/utils';
 
 interface PlanFlags {
@@ -20,6 +20,7 @@ interface PlanFlags {
   flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
   strict?: boolean;
+  channel?: ReleaseChannel;
   json?: boolean;
 }
 
@@ -97,6 +98,7 @@ export default defineCommand({
         ...fileConfig,
         ...(flags.bump && { bump: flags.bump }),
         ...(flags.strict !== undefined && { strict: flags.strict }),
+        ...(flags.channel && { channel: flags.channel }),
       };
       configLoader.succeed('Configuration loaded');
 
@@ -109,6 +111,7 @@ export default defineCommand({
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        channel: config.channel,
       });
 
       if (plan.packages.length === 0) {
