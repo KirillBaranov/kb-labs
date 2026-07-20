@@ -189,6 +189,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		// auto-provision the CLI's first credential on first start
 		// (ensureBootstrapCliCredentials, gateway-auth) so `kb` commands work
 		// with zero manual login step.
+		//
+		// GatewayAuthEnabled must be set explicitly here (not left nil): the
+		// bootstrap block in scaffold.WritePlatformConfig is gated on
+		// `opts.GatewayAuthEnabled != nil`, so leaving it nil silently drops
+		// the whole gateway.auth.bootstrap section even though the admin
+		// password below still gets written to .env — a fresh install then
+		// has a password pointing at an admin account that was never created.
+		authOn := true
+		scaffoldOpts.GatewayAuthEnabled = &authOn
 		scaffoldOpts.BootstrapAdminEmail = "admin@bootstrap.local"
 		scaffoldOpts.BootstrapTenantID = "default"
 		scaffoldOpts.BootstrapAdminPassword = generateBootstrapAdminPassword()
@@ -219,6 +228,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
+	}
+
+	// Non-local installs seed a bootstrap admin (see GatewayAuthEnabled above) —
+	// print the login once so the user can actually get in and isn't relying
+	// solely on .env / ~/.kb/credentials.json to recover it.
+	if scaffoldOpts.BootstrapAdminEmail != "" && scaffoldOpts.BootstrapAdminPassword != "" {
+		printBootstrapAdminCredentials(scaffoldOpts.BootstrapAdminEmail, scaffoldOpts.BootstrapAdminPassword)
 	}
 
 	// Post-install: run review + offer commit on existing diff.
