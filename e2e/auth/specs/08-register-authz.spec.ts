@@ -63,6 +63,7 @@ test('AUTH-33: /auth/register admin-only — anon 401, member 403, admin 200', a
 })
 
 test('AUTH-33b: /auth/register via CLI Bearer token (no cookie) — admin 200, member 403', async ({
+  page,
   browser,
   context,
   request,
@@ -77,6 +78,11 @@ test('AUTH-33b: /auth/register via CLI Bearer token (no cookie) — admin 200, m
   })
   expect(adminReg.status).toBe(200)
   expect((adminReg.body as { clientId?: string }).clientId).toBeTruthy()
+
+  // createMember()'s inviteUser() call needs a cookie-authed admin session
+  // (it uses the browser context, not the API-only Bearer token obtained
+  // above) — same login the original AUTH-33 test performs.
+  await loginAsAdmin(page)
 
   // A member's CLI session token is subject to the same PDP check as their
   // cookie session — no MACHINE_REGISTER → 403, not a self-registration.
