@@ -79,7 +79,7 @@ async function resolveAuth(): Promise<ResolvedAuth> {
     creds = JSON.parse(await readFile(CREDENTIALS_PATH, 'utf-8')) as StoredCredentials;
   } catch {
     throw new Error(
-      'Not authenticated. Run:\n  kb auth create-service-account --gateway-url <url> --name <name> --namespace-id <ns>\n  kb auth login --gateway-url <url> --client-id <id> --client-secret <secret>',
+      'Not authenticated. Run:\n  kb auth login --gateway-url <url> --email <email> --password <password>\n  kb auth register --gateway-url <url> --name <name> --namespace-id <ns>\n  kb auth login --gateway-url <url> --client-id <id> --client-secret <secret>',
     );
   }
 

@@ -26,6 +26,28 @@ export interface GatewayCredentials {
 }
 
 /**
+ * Human-user session credentials (email/password login), stored separately
+ * from `GatewayCredentials` in ~/.kb/session.json. Machine and human are
+ * different identities on the gateway (see services/gateway/auth/src/jwt.ts
+ * `type: 'user'` vs. `type: 'machine'`) — callers must not conflate the two
+ * shapes or the store they live in.
+ */
+export interface SessionCredentials {
+  /** Gateway server URL */
+  gatewayUrl: string;
+  /** User access token (short-lived, 15 min) */
+  accessToken: string;
+  /** User refresh token (long-lived, 30 days) */
+  refreshToken: string;
+  /** Unix timestamp (ms) when accessToken expires */
+  expiresAt: number;
+  /** Email of the logged-in user (from /auth/login/cli) */
+  email?: string;
+  /** Tenant ID (from /auth/login/cli or /auth/me) */
+  tenantId?: string;
+}
+
+/**
  * Gateway client configuration.
  */
 export interface GatewayClientConfig {
@@ -101,4 +123,21 @@ export interface ICredentialsManager {
   isExpired(credentials: GatewayCredentials): boolean;
   /** Refresh tokens via Gateway API */
   refresh(credentials: GatewayCredentials): Promise<GatewayCredentials>;
+}
+
+/**
+ * Session manager interface.
+ * Manages human-user session credentials stored in ~/.kb/session.json.
+ */
+export interface ISessionManager {
+  /** Load session from disk */
+  load(): Promise<SessionCredentials | null>;
+  /** Save session to disk (chmod 600) */
+  save(session: SessionCredentials): Promise<void>;
+  /** Clear session (logout) */
+  clear(): Promise<void>;
+  /** Check if access token is expired */
+  isExpired(session: SessionCredentials): boolean;
+  /** Refresh tokens via Gateway's CLI session endpoint (/auth/refresh/cli) */
+  refresh(session: SessionCredentials): Promise<SessionCredentials>;
 }
