@@ -193,4 +193,25 @@ describe('mergeRootChangelog — repo-root .kb/release/CHANGELOG.md', () => {
     const content = readFileSync(join(repoRoot, '.kb', 'release', 'CHANGELOG.md'), 'utf-8');
     expect(content).toContain('first-ever release');
   });
+
+  it('writes to a config-driven outputPath instead of the default location', async () => {
+    const plan: ReleasePlan = {
+      packages: [makePkg({ name: '@scope/alpha', path: join(repoRoot, 'alpha'), nextVersion: '1.1.0' })],
+      strategy: 'semver',
+      registry: 'https://registry.npmjs.org',
+      rollbackEnabled: true,
+      channel: 'stable',
+    };
+
+    await mergeRootChangelog({
+      repoRoot,
+      plan,
+      changelog: '## [1.1.0] - 2026-01-01\n\nroot-level release',
+      outputPath: 'CHANGELOG.md',
+    });
+
+    expect(existsSync(join(repoRoot, '.kb', 'release', 'CHANGELOG.md'))).toBe(false);
+    const content = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf-8');
+    expect(content).toContain('root-level release');
+  });
 });
