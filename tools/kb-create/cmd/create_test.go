@@ -5,6 +5,35 @@ import (
 	"testing"
 )
 
+// TestEnvOrDefault_RespectsBootstrapEnvVars guards against a regression where
+// runCreate's non-local branch hardcoded BootstrapAdminEmail/BootstrapTenantID
+// literals that always won over GATEWAY_BOOTSTRAP_ADMIN_EMAIL /
+// GATEWAY_BOOTSTRAP_TENANT_ID once the surrounding fix started writing the
+// gateway.auth.bootstrap config block (previously that block was never
+// written at all, so the gateway's own env-var fallback took effect and env
+// vars appeared to work). services/gateway/app/src/bootstrap.ts resolves
+// tenantId/adminEmail as `config.auth?.bootstrap?.X ?? process.env.X`, so a
+// literal written into the config permanently shadows the env var for every
+// install — this broke every E2E suite whose docker-compose sets
+// GATEWAY_BOOTSTRAP_TENANT_ID=kblabs-cloud, since the bootstrap admin ended
+// up created under a different tenant than the one E2E test clients log in
+// against, and every login failed with invalid_credentials.
+func TestEnvOrDefault_RespectsBootstrapEnvVars(t *testing.T) {
+	t.Run("env var set overrides default", func(t *testing.T) {
+		t.Setenv("GATEWAY_BOOTSTRAP_TENANT_ID", "kblabs-cloud")
+		if got := envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default"); got != "kblabs-cloud" {
+			t.Errorf("envOrDefault() = %q, want %q (env var must win)", got, "kblabs-cloud")
+		}
+	})
+
+	t.Run("no env var falls back to default", func(t *testing.T) {
+		t.Setenv("GATEWAY_BOOTSTRAP_TENANT_ID", "")
+		if got := envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default"); got != "default" {
+			t.Errorf("envOrDefault() = %q, want %q", got, "default")
+		}
+	})
+}
+
 // TestDemoFlagUsage_DoesNotOverpromise guards against a regression where
 // --demo's help text said "install demo plugins and run pipeline on your
 // code". In reality --demo only writes an example workflow file
