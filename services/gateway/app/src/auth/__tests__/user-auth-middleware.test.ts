@@ -23,6 +23,7 @@ import {
   SessionsStore,
   createTenantResolver,
   signUserAccessToken,
+  signAccessToken,
   type JwtConfig,
 } from '@kb-labs/gateway-auth';
 import { createUserAuthMiddleware } from '../user-auth-middleware.js';
@@ -195,6 +196,84 @@ describe('cross-tenant guard', () => {
       headers: { host: 'localhost:4000', cookie: `${COOKIE_ACCESS}=${token}` },
     });
     expect(r.statusCode).toBe(200);
+  });
+});
+
+describe('Bearer user token (CLI session — no cookie involved)', () => {
+  it('a valid user access token via Authorization: Bearer sets authContext identically to the cookie path', async () => {
+    const { token, familyId } = await seedUserAndToken();
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'kblabs-cloud.kblabs.ru', authorization: `Bearer ${token}` },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().auth).toMatchObject({
+      type: 'user',
+      userId: 'u1',
+      tenantId: 'kblabs-cloud',
+      familyId,
+    });
+  });
+
+  it('an invalid Bearer value falls through silently (no cookie present → not a hard 401)', async () => {
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'kblabs-cloud.kblabs.ru', authorization: 'Bearer not-a-jwt' },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().auth).toBeNull();
+  });
+
+  it('a machine-shaped Bearer token (type !== "user") falls through instead of being misidentified as a user token', async () => {
+    const { token: machineToken } = await signAccessToken(
+      { hostId: 'host_1', namespaceId: 'ns_1', tier: 'free', type: 'machine', permissions: ['host:connect'] },
+      jwtConfig,
+    );
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'kblabs-cloud.kblabs.ru', authorization: `Bearer ${machineToken}` },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().auth).toBeNull();
+  });
+
+  it('a cookie takes precedence over a simultaneously-present Bearer token', async () => {
+    const { token: cookieToken, familyId } = await seedUserAndToken({ userId: 'u1', tenantId: 'kblabs-cloud', status: 'active' });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: {
+        host: 'kblabs-cloud.kblabs.ru',
+        cookie: `${COOKIE_ACCESS}=${cookieToken}`,
+        authorization: 'Bearer not-a-jwt',
+      },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().auth).toMatchObject({ type: 'user', userId: 'u1', familyId });
+  });
+
+  it('CD-1 still applies over the Bearer path: a disabled user is rejected', async () => {
+    const { token } = await seedUserAndToken();
+    await users.setStatus('u1', 'disabled');
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'kblabs-cloud.kblabs.ru', authorization: `Bearer ${token}` },
+    });
+    expect(r.statusCode).toBe(401);
+  });
+
+  it('cross-tenant guard still applies over the Bearer path', async () => {
+    const { token } = await seedUserAndToken({ userId: 'u1', tenantId: 'kblabs-cloud', status: 'active' });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'other-tenant.kblabs.ru', authorization: `Bearer ${token}` },
+    });
+    expect(r.statusCode).toBe(401);
   });
 });
 

@@ -86,7 +86,7 @@ export const ensureBootstrapCliCredentials = async (
   } catch (err) {
     if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'HANDLE_TAKEN') {
       logger.warn(
-        'bootstrap-cli-credentials: reserved handle already registered but credentials file is missing; not auto-recovering (client secret is not retrievable) — run `kb auth create-service-account` manually',
+        'bootstrap-cli-credentials: reserved handle already registered but credentials file is missing; not auto-recovering (client secret is not retrievable) — run `kb auth register` manually',
         { handle: CLI_BOOTSTRAP_HANDLE },
       );
       return;

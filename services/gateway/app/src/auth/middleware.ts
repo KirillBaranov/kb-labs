@@ -40,6 +40,10 @@ const PUBLIC_ROUTES = new Set([
   '/auth/refresh',
   // User-auth public endpoints (ADR-0020, Phase 1.16).
   '/auth/login',
+  // CLI-only analogues of /auth/login and the cookie user-refresh path —
+  // return tokens in the body instead of cookies, see user-routes.ts.
+  '/auth/login/cli',
+  '/auth/refresh/cli',
   '/auth/activate',
   '/auth/providers',
   '/internal/dispatch', // has its own x-internal-secret auth
