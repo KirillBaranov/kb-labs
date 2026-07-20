@@ -285,6 +285,7 @@
           },
           "git": {},
           "changelog": {
+            "outputPath": "CHANGELOG.md",
             "locale": "en",
             "groups": [
               {

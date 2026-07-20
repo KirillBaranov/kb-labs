@@ -219,6 +219,12 @@ export interface ReleaseConfig {
   };
   changelog?: {
     enabled?: boolean;
+    /**
+     * Where the consolidated repo-root changelog is written, relative to
+     * repoRoot. Default: '.kb/release/CHANGELOG.md'. Set to 'CHANGELOG.md'
+     * to write it at the repo root instead.
+     */
+    outputPath?: string;
     includeTypes?: string[];
     excludeTypes?: string[];
     ignoreAuthors?: string[];

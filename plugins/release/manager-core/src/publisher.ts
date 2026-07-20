@@ -4,7 +4,7 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import type { PackageVersion, ReleasePlan } from './types';
 import { updateCheckpointGitRoot, markCheckpointComplete } from './checkpoint';
 
@@ -166,9 +166,22 @@ function mergeChangelogBlock(existingChangelog: string, newBlock: string, versio
   return newBlock + (existingChangelog ? '\n' + existingChangelog : '');
 }
 
+/** Default location of the consolidated repo-root changelog, relative to repoRoot. */
+export const DEFAULT_ROOT_CHANGELOG_PATH = '.kb/release/CHANGELOG.md';
+
+/**
+ * Resolve the repo-relative path of the consolidated root changelog.
+ * Config-driven via `release.changelog.outputPath` so teams can point it at
+ * the conventional `CHANGELOG.md` repo root instead of the default.
+ */
+export function resolveRootChangelogRelPath(outputPath?: string): string {
+  return outputPath && outputPath.trim().length > 0 ? outputPath : DEFAULT_ROOT_CHANGELOG_PATH;
+}
+
 /**
  * Merge the generated changelog for this release into the repo-root
- * `.kb/release/CHANGELOG.md`, prepending/deduplicating the same way
+ * changelog file (default `.kb/release/CHANGELOG.md`, configurable via
+ * `release.changelog.outputPath`), prepending/deduplicating the same way
  * `copyChangelogToPackages` does for per-package changelogs — this file is
  * cumulative history, not a per-run snapshot, so it must never be overwritten.
  */
@@ -176,8 +189,10 @@ export async function mergeRootChangelog(options: {
   repoRoot: string;
   plan: ReleasePlan;
   changelog: string;
+  /** Repo-relative output path. Defaults to DEFAULT_ROOT_CHANGELOG_PATH. */
+  outputPath?: string;
 }): Promise<void> {
-  const { repoRoot, plan, changelog } = options;
+  const { repoRoot, plan, changelog, outputPath } = options;
   if (!changelog || changelog.trim().length === 0 || plan.packages.length === 0) {
     return;
   }
@@ -193,8 +208,7 @@ export async function mergeRootChangelog(options: {
         'm'
       );
 
-  const releaseDir = join(repoRoot, '.kb', 'release');
-  const changelogPath = join(releaseDir, 'CHANGELOG.md');
+  const changelogPath = join(repoRoot, resolveRootChangelogRelPath(outputPath));
 
   let existingChangelog = '';
   try {
@@ -205,7 +219,7 @@ export async function mergeRootChangelog(options: {
 
   const updatedChangelog = mergeChangelogBlock(existingChangelog, changelog.trim(), versionPattern);
 
-  await mkdir(releaseDir, { recursive: true });
+  await mkdir(dirname(changelogPath), { recursive: true });
   await writeFile(changelogPath, updatedChangelog.trim() + '\n', 'utf-8');
 }
 
@@ -265,8 +279,10 @@ export async function commitAndTagRelease(options: {
   repoRoot?: string;
   /** Per-root state from checkpoint — skip roots already fully pushed. */
   checkpointGitRoots?: Record<string, { committed: boolean; tagged: string[]; pushed: boolean }>;
+  /** Repo-relative path to the consolidated root changelog. Defaults to DEFAULT_ROOT_CHANGELOG_PATH. */
+  changelogOutputPath?: string;
 }): Promise<{ committed: boolean; tagged: string[]; pushed: boolean }> {
-  const { cwd, plan, dryRun, noVerify = false, repoRoot, checkpointGitRoots } = options;
+  const { cwd, plan, dryRun, noVerify = false, repoRoot, checkpointGitRoots, changelogOutputPath } = options;
   const simpleGit = (await import('simple-git')).default;
 
   const result = {
@@ -327,16 +343,17 @@ export async function commitAndTagRelease(options: {
           if (existsSync(changelogPath)) { filesToStage.push(rel(changelogPath)); }
         }
 
-        // The consolidated repo-root changelog (pipeline.ts writes
-        // <repoRoot>/.kb/release/CHANGELOG.md directly to disk) lives outside
-        // any package path, so the loop above never picks it up — stage it
-        // explicitly for whichever git root actually IS repoRoot. Without
-        // this it's tracked in git but never committed by a real release,
-        // silently reverting to whatever was last committed by hand.
+        // The consolidated repo-root changelog (mergeRootChangelog writes it
+        // directly to disk) lives outside any package path, so the loop
+        // above never picks it up — stage it explicitly for whichever git
+        // root actually IS repoRoot. Without this it's tracked in git but
+        // never committed by a real release, silently reverting to whatever
+        // was last committed by hand.
         if (repoRoot && root === repoRoot) {
-          const rootChangelogPath = join(repoRoot, '.kb', 'release', 'CHANGELOG.md');
+          const rootChangelogRelPath = resolveRootChangelogRelPath(changelogOutputPath);
+          const rootChangelogPath = join(repoRoot, rootChangelogRelPath);
           if (existsSync(rootChangelogPath)) {
-            filesToStage.push('.kb/release/CHANGELOG.md');
+            filesToStage.push(rootChangelogRelPath);
           }
         }
 

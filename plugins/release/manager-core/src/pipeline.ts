@@ -159,6 +159,7 @@ async function _runPipeline(ctx: {
           noVerify,
           repoRoot,
           checkpointGitRoots: existingCheckpoint.gitRoots,
+          changelogOutputPath: config.changelog?.outputPath,
         });
         deleteCheckpoint(repoRoot);
         const resumeReport = buildReport('verifying', plan, repoRoot, dryRun, startTime, {
@@ -308,7 +309,7 @@ async function _runPipeline(ctx: {
 
   if (changelogMd && !dryRun) {
     await copyChangelogToPackages({ cwd: repoRoot, plan, changelog: changelogMd });
-    await mergeRootChangelog({ repoRoot, plan, changelog: changelogMd });
+    await mergeRootChangelog({ repoRoot, plan, changelog: changelogMd, outputPath: config.changelog?.outputPath });
   }
 
   // 8. Publish (before git — see module comment)
@@ -402,7 +403,10 @@ async function _runPipeline(ctx: {
   let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
   if (!dryRun && channel === 'stable') {
     progress('verifying', 'Committing and tagging release...');
-    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify, repoRoot });
+    gitResult = await commitAndTagRelease({
+      cwd: scopeCwd, plan, dryRun, noVerify, repoRoot,
+      changelogOutputPath: config.changelog?.outputPath,
+    });
     deleteCheckpoint(repoRoot);
   }
 
