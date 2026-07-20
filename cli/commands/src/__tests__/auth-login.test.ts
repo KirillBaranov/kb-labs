@@ -9,10 +9,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { noopUI, noopTraceContext } from '@kb-labs/plugin-contracts';
 import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
 
-// Mock CredentialsManager — avoid touching ~/.kb/credentials.json
+// Mock CredentialsManager / SessionManager — avoid touching ~/.kb/*.json
 const mockSave = vi.fn();
+const mockSessionSave = vi.fn();
 vi.mock('@kb-labs/cli-runtime/gateway', () => ({
   CredentialsManager: vi.fn().mockImplementation(() => ({ save: mockSave })),
+  SessionManager: vi.fn().mockImplementation(() => ({ save: mockSessionSave })),
 }));
 
 // Mock fetch globally
@@ -215,5 +217,103 @@ describe('kb auth login', () => {
     const saved = mockSave.mock.calls[0]?.[0] as Record<string, number>;
     const expectedMin = before + TOKEN_RESPONSE.expiresIn * 1000;
     expect(saved.expiresAt).toBeGreaterThanOrEqual(expectedMin);
+  });
+
+  // ── human (email/password) branch ─────────────────────────────────────────
+
+  const CLI_LOGIN_RESPONSE = {
+    accessToken: 'session-access-tok',
+    refreshToken: 'session-refresh-tok',
+    expiresIn: 900,
+    tenantId: 'default',
+  };
+
+  const ME_HUMAN_RESPONSE = {
+    userId: 'user_1',
+    email: 'admin@bootstrap.local',
+    tenantId: 'default',
+  };
+
+  it('AL-08: --email/--password hits /auth/login/cli and saves via SessionManager', async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeJsonResponse(CLI_LOGIN_RESPONSE))   // POST /auth/login/cli
+      .mockResolvedValueOnce(makeJsonResponse(ME_HUMAN_RESPONSE));    // GET /auth/me
+
+    const captured = { errors: [], output: [], json: [] };
+    const ctx = makeCtx(captured);
+
+    const exitCode = await authLogin.run(ctx, [], {
+      'gateway-url': 'http://localhost:4000',
+      email: 'admin@bootstrap.local',
+      password: 'AdminPass123!',
+    });
+
+    expect(exitCode).toBe(0);
+    expect(mockFetch).toHaveBeenNthCalledWith(1, 'http://localhost:4000/auth/login/cli', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ email: 'admin@bootstrap.local', password: 'AdminPass123!' }),
+    }));
+    expect(mockSessionSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gatewayUrl: 'http://localhost:4000',
+        accessToken: 'session-access-tok',
+        refreshToken: 'session-refresh-tok',
+        email: 'admin@bootstrap.local',
+        tenantId: 'default',
+      }),
+    );
+    // Machine store must never be touched by the human branch.
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('AL-09: --email/--password wrong password — exitCode 1, no session saved', async () => {
+    mockFetch.mockResolvedValueOnce(makeJsonResponse({ error: 'invalid_credentials' }, 401));
+
+    const captured: { errors: string[]; output: string[]; json: unknown[] } = { errors: [], output: [], json: [] };
+    const ctx = makeCtx(captured);
+
+    const exitCode = await authLogin.run(ctx, [], {
+      'gateway-url': 'http://localhost:4000',
+      email: 'admin@bootstrap.local',
+      password: 'wrong',
+    });
+
+    expect(exitCode).toBe(1);
+    expect(mockSessionSave).not.toHaveBeenCalled();
+    expect(captured.errors.some(e => e.includes('401'))).toBe(true);
+  });
+
+  it('AL-10: neither client-id/secret nor email/password — exitCode 1, no fetch calls', async () => {
+    const captured: { errors: string[]; output: string[]; json: unknown[] } = { errors: [], output: [], json: [] };
+    const ctx = makeCtx(captured);
+
+    const exitCode = await authLogin.run(ctx, [], {
+      'gateway-url': 'http://localhost:4000',
+    });
+
+    expect(exitCode).toBe(1);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('AL-11: /auth/me failure on human branch is non-fatal — session saved without resolved profile', async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeJsonResponse(CLI_LOGIN_RESPONSE))
+      .mockRejectedValueOnce(new Error('network error'));
+
+    const captured = { errors: [], output: [], json: [] };
+    const ctx = makeCtx(captured);
+
+    const exitCode = await authLogin.run(ctx, [], {
+      'gateway-url': 'http://localhost:4000',
+      email: 'admin@bootstrap.local',
+      password: 'AdminPass123!',
+    });
+
+    expect(exitCode).toBe(0);
+    // Falls back to the email flag itself and the tenantId from /auth/login/cli.
+    expect(mockSessionSave).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'admin@bootstrap.local', tenantId: 'default' }),
+    );
   });
 });
