@@ -454,7 +454,7 @@ fi
 # ── Step 9: Run plugin command ────────────────────────────────────────
 echo "── Step 9: Run plugin"
 cd /tmp/work/my-project
-kb marketplace clear-cache > /dev/null 2>&1
+kb marketplace plugins refresh > /dev/null 2>&1 || true
 HELLO_OUT=$(kb demo hello --who=E2E 2>&1 || true)
 if echo "$HELLO_OUT" | grep -q "Hello, E2E from demo"; then
   pass "kb demo hello --who=E2E"
