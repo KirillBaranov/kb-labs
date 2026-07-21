@@ -4,16 +4,30 @@
  * Fastify onRequest hook for cookie-based user authentication
  * (ADR-0020, Phase 1.16).
  *
- * Runs BEFORE the existing machine-token middleware. Three outcomes:
+ * Runs BEFORE the existing machine-token middleware. Also accepts a user
+ * access token via `Authorization: Bearer` when no `kb_access` cookie is
+ * present — this is how the CLI (which has nowhere to hold a cookie) carries
+ * a human session obtained from `POST /auth/login/cli`. User and machine
+ * access tokens are disambiguated by an explicit `type` claim (`'user'` vs.
+ * a machine `TokenType`), so a machine Bearer token presented here simply
+ * fails `verifyUserAccessToken` and falls through to the machine middleware
+ * — see the Bearer branch below.
  *
- * - **No `kb_access` cookie** — middleware is a no-op. Downstream
- *   (Bearer-based machine auth) takes over.
- * - **Cookie present, valid, user active in correct tenant** — sets
- *   `request.userAuthContext` with `{ type, userId, tenantId,
+ * Four outcomes:
+ *
+ * - **No `kb_access` cookie, no Bearer token** — middleware is a no-op.
+ *   Downstream (Bearer-based machine auth) takes over.
+ * - **Cookie or Bearer present, valid, user active in correct tenant** —
+ *   sets `request.userAuthContext` with `{ type, userId, tenantId,
  *   familyId }` and lets the request through.
  * - **Cookie present but invalid in any way** — returns 401 WITHOUT
  *   falling through to machine auth. A tampered cookie must not
  *   silently bypass into the Bearer path.
+ * - **Bearer token present but not a valid user token** (wrong `type`,
+ *   bad signature, expired) — falls through silently (no 401) so a
+ *   genuine machine Bearer token still reaches the machine middleware.
+ *   Only a cookie failure is a hard stop; an absent/invalid Bearer value
+ *   must not block the machine-auth path from getting its own chance.
  *
  * What this middleware enforces:
  *
@@ -29,6 +43,7 @@ import type { FastifyRequest, FastifyReply, FastifyError } from 'fastify';
 import type { UsersStore, JwtConfig, TenantResolver } from '@kb-labs/gateway-auth';
 import { verifyUserAccessToken } from '@kb-labs/gateway-auth';
 import { COOKIE_ACCESS } from './user-cookies.js';
+import { extractBearerToken } from './tokens.js';
 
 export interface UserAuthContext {
   type: 'user';
@@ -58,15 +73,24 @@ export const createUserAuthMiddleware = (deps: UserAuthMiddlewareDeps) => {
     reply: FastifyReply,
   ): Promise<void | FastifyError> {
     const cookies = (request as FastifyRequest & { cookies?: Record<string, string | undefined> }).cookies;
-    const token = cookies?.[COOKIE_ACCESS];
+    const cookieToken = cookies?.[COOKIE_ACCESS];
+    const bearerToken = cookieToken ? undefined : extractBearerToken(request.headers.authorization);
+    const token = cookieToken ?? bearerToken;
     if (!token) {
-      // No user cookie — let machine middleware (Bearer) handle the request.
+      // No user cookie, no Bearer token — let machine middleware handle it.
       return;
     }
 
     const payload = await verifyUserAccessToken(token, deps.jwtConfig);
     if (!payload) {
-      return sendUnauthorized(reply, 'Invalid session');
+      if (cookieToken) {
+        // A tampered/expired cookie must not silently fall through.
+        return sendUnauthorized(reply, 'Invalid session');
+      }
+      // Bearer token present but not a valid user token (e.g. a machine
+      // JWT, which carries a different `type` claim) — fall through so
+      // the machine middleware gets a chance to verify it instead.
+      return;
     }
 
     // Cross-tenant guard. The cookie alone doesn't tell us "which

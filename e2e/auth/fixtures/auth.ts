@@ -10,6 +10,7 @@
  *   Login helpers
  *   - loginAs(page, email, password)      — fill login form and submit
  *   - loginAsAdmin(page)                  — login as bootstrap admin
+ *   - loginAsAdminCli(request)            — POST /api/auth/login/cli, returns tokens (no cookies)
  *
  *   Member lifecycle
  *   - inviteUser(api, email, adminCookieHeader, opts?) — POST /api/auth/invites as admin
@@ -25,6 +26,7 @@
  *   API shortcuts
  *   - apiGet(request, path, cookieHeader)
  *   - apiPost(request, path, cookieHeader, data?)
+ *   - apiPostBearer(request, path, accessToken, data?) — CLI-style Bearer auth, no cookie
  *
  * ## Why waitForDashboard uses polling, not waitForURL
  *
@@ -119,6 +121,25 @@ export async function loginAs(page: Page, email: string, password: string): Prom
 /** Login as bootstrap admin. */
 export async function loginAsAdmin(page: Page): Promise<void> {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+}
+
+/**
+ * CLI-style login: POST /api/auth/login/cli with the bootstrap admin's
+ * credentials. Returns the token pair straight from the JSON body — this
+ * route never sets cookies (see services/gateway/app/src/auth/user-routes.ts),
+ * which is the whole point of it existing separately from the browser
+ * /api/auth/login used by loginAsAdmin() above.
+ */
+export async function loginAsAdminCli(
+  request: APIRequestContext,
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const res = await request.post(`${GATEWAY}/api/auth/login/cli`, {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok()) throw new Error(`CLI admin login failed: ${res.status()} ${await res.text()}`)
+  const body = await res.json() as { accessToken: string; refreshToken: string }
+  return body
 }
 
 // ── Invite + activate helpers ─────────────────────────────────────────────────
@@ -278,6 +299,28 @@ export async function apiPost(
       ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
       // Only set Content-Type when there is a body — sending it with an empty body
       // causes Fastify's JSON body-parser to reject the request with 400.
+      ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+  })
+  const body = await res.json().catch(() => null)
+  return { status: res.status(), body }
+}
+
+/**
+ * Perform a Bearer-authenticated POST against the gateway API — the CLI's
+ * auth model (no cookie, no CSRF token; the Bearer token itself is the
+ * credential). Mirrors apiPost() but for the Authorization header path.
+ */
+export async function apiPostBearer(
+  request: APIRequestContext,
+  path: string,
+  accessToken: string,
+  data?: unknown,
+): Promise<{ status: number; body: unknown }> {
+  const res = await request.post(`${GATEWAY}${path}`, {
+    data,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
       ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
   })

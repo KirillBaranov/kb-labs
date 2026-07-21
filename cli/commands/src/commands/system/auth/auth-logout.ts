@@ -1,9 +1,13 @@
 /**
  * kb auth logout — Remove stored Gateway credentials.
+ *
+ * Clears both identity stores — ~/.kb/credentials.json (machine) and
+ * ~/.kb/session.json (human) — "log out" is one verb regardless of which
+ * one(s) are actually present.
  */
 
 import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
-import { CredentialsManager } from '@kb-labs/cli-runtime/gateway';
+import { CredentialsManager, SessionManager } from '@kb-labs/cli-runtime/gateway';
 
 type LogoutFlags = {
   json: { type: 'boolean'; description: string };
@@ -12,7 +16,7 @@ type LogoutFlags = {
 export const authLogout = defineSystemCommand<LogoutFlags, CommandResult>({
   name: 'logout',
   description: 'Remove stored Gateway credentials',
-  longDescription: 'Deletes ~/.kb/credentials.json. CLI will no longer be able to reach Gateway until re-login.',
+  longDescription: 'Deletes ~/.kb/credentials.json and ~/.kb/session.json. CLI will no longer be able to reach Gateway until re-login.',
   category: 'auth',
   examples: [
     'kb auth logout',
@@ -23,9 +27,13 @@ export const authLogout = defineSystemCommand<LogoutFlags, CommandResult>({
   },
   async handler(ctx, _argv, flags) {
     const credentialsManager = new CredentialsManager();
-    const existing = await credentialsManager.load();
+    const sessionManager = new SessionManager();
+    const [existingCredentials, existingSession] = await Promise.all([
+      credentialsManager.load(),
+      sessionManager.load(),
+    ]);
 
-    if (!existing) {
+    if (!existingCredentials && !existingSession) {
       if (flags.json) {
         ctx.ui?.json({ ok: true, message: 'No credentials found — already logged out.' });
       } else {
@@ -34,7 +42,7 @@ export const authLogout = defineSystemCommand<LogoutFlags, CommandResult>({
       return { ok: true };
     }
 
-    await credentialsManager.clear();
+    await Promise.all([credentialsManager.clear(), sessionManager.clear()]);
 
     if (flags.json) {
       ctx.ui?.json({ ok: true, message: 'Logged out. Credentials removed.' });

@@ -63,6 +63,16 @@ Client                          Gateway (/auth/*)              ICache (store)
 
 Registers a new client. Returns credentials that grant access to the gateway.
 
+**Not self-service.** This endpoint is gated behind the `MACHINE_REGISTER`
+permission — callers need an already-authenticated admin session (cookie
+auth) or a machine token that itself carries `MACHINE_REGISTER`. A caller
+with neither gets `401`/`403`, not a fresh registration. The one exception is
+`ensureBootstrapCliCredentials` (`bootstrap-cli-credentials.ts`), which mints
+the platform's first machine account in-process on gateway startup — no HTTP
+round-trip, so the gate never applies to it. For everyone else: an admin logs
+in first, then calls this endpoint (or `kb auth register`,
+which requires the same prior login) on the new client's behalf.
+
 **Request:**
 ```json
 {
@@ -222,9 +232,12 @@ Refresh Token (30 days)
 ## Usage Example
 
 ```bash
-# Register
+# Register — requires an authenticated admin session (MACHINE_REGISTER, see
+# above). $ADMIN_COOKIE is whatever session cookie `POST /auth/login`
+# returned; without it this call gets 401/403, not a fresh registration.
 CREDS=$(curl -s -X POST http://localhost:4000/auth/register \
   -H "Content-Type: application/json" \
+  -H "Cookie: $ADMIN_COOKIE" \
   -d '{"name":"my-agent","capabilities":[]}')
 
 CLIENT_ID=$(echo $CREDS | jq -r '.clientId')

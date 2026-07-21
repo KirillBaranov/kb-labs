@@ -7,6 +7,8 @@
  *   GET   /auth/me            (user cookie or machine Bearer)
  *   GET   /auth/providers
  *   POST  /auth/login
+ *   POST  /auth/login/cli     (CLI-only: returns tokens in body, never sets cookies)
+ *   POST  /auth/refresh/cli   (CLI-only: body refreshToken, returns tokens in body)
  *   POST  /auth/logout
  *   GET   /auth/permissions
  *   POST  /auth/activate
@@ -29,6 +31,12 @@
  *   - All state-mutating cookie-auth endpoints validate CSRF (double-submit).
  *   - Admin endpoints check PDP via PERMISSIONS enum (CD-7).
  *   - /auth/me never returns role/group fields.
+ *   - /auth/login/cli and /auth/refresh/cli exist ONLY so a non-browser
+ *     client (the CLI) can obtain a Bearer-usable user token — they must
+ *     NEVER call setSessionCookies(). Mixing the two response shapes on one
+ *     route was deliberately avoided (see /auth/login/cli below) so "does
+ *     this route ever put a token in a JSON body" stays a static, greppable
+ *     question instead of depending on request shape.
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -206,6 +214,61 @@ export function createUserRefreshFn(
   };
 }
 
+// ── Login rate-limit helpers (shared by /auth/login and /auth/login/cli) ──────
+//
+// The CLI login route deliberately reuses the exact same rate-limit keys
+// (rl:login:ip:*, rl:login:email:*) as the browser login route — both
+// represent the same brute-force surface against the same password store,
+// and an attacker must not be able to bypass one route's limit by switching
+// to the other.
+
+interface LoginRateLimitCfg {
+  loginPerIpPerMinute: number;
+  loginPerEmailPerMinute: number;
+}
+
+/** Peek (non-incrementing) gate, called before the bcrypt-cost login attempt. */
+async function peekLoginRateLimit(
+  reply: FastifyReply,
+  ip: string,
+  emailNorm: string,
+  rateLimiter: RateLimiter,
+  cfg: LoginRateLimitCfg,
+): Promise<boolean> {
+  const [ipPeek, emailPeek] = await Promise.all([
+    rateLimiter.peek(`rl:login:ip:${ip}`, { max: cfg.loginPerIpPerMinute, windowMs: 60_000 }),
+    rateLimiter.peek(`rl:login:email:${emailNorm}`, { max: cfg.loginPerEmailPerMinute, windowMs: 60_000 }),
+  ]);
+  if (!ipPeek.allowed || !emailPeek.allowed) {
+    const retryAfter = !ipPeek.allowed ? ipPeek.retryAfterSec : (!emailPeek.allowed ? emailPeek.retryAfterSec : 60);
+    reply.header('Retry-After', String(retryAfter));
+    void reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+    return false;
+  }
+  return true;
+}
+
+/** Increments the failure counters after a failed login attempt; returns false if this trips the limit (429 already sent). */
+async function recordLoginFailure(
+  reply: FastifyReply,
+  ip: string,
+  emailNorm: string,
+  rateLimiter: RateLimiter,
+  cfg: LoginRateLimitCfg,
+): Promise<boolean> {
+  const [ipResult, emailResult] = await Promise.all([
+    rateLimiter.check(`rl:login:ip:${ip}`, { max: cfg.loginPerIpPerMinute, windowMs: 60_000 }),
+    rateLimiter.check(`rl:login:email:${emailNorm}`, { max: cfg.loginPerEmailPerMinute, windowMs: 60_000 }),
+  ]);
+  if (!ipResult.allowed || !emailResult.allowed) {
+    const retryAfter = !ipResult.allowed ? ipResult.retryAfterSec : (!emailResult.allowed ? emailResult.retryAfterSec : 60);
+    reply.header('Retry-After', String(retryAfter));
+    void reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+    return false;
+  }
+  return true;
+}
+
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
@@ -301,16 +364,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     // throttled.
     if (rateLimiter) {
       const emailNorm = email.toLowerCase().trim();
-      const [ipPeek, emailPeek] = await Promise.all([
-        rateLimiter.peek(`rl:login:ip:${request.ip}`, { max: authRateLimitCfg.loginPerIpPerMinute, windowMs: 60_000 }),
-        rateLimiter.peek(`rl:login:email:${emailNorm}`, { max: authRateLimitCfg.loginPerEmailPerMinute, windowMs: 60_000 }),
-      ]);
-      if (!ipPeek.allowed || !emailPeek.allowed) {
-        const retryAfter = !ipPeek.allowed
-          ? ipPeek.retryAfterSec
-          : (!emailPeek.allowed ? emailPeek.retryAfterSec : 60);
-        reply.header('Retry-After', String(retryAfter));
-        return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+      if (!(await peekLoginRateLimit(reply, request.ip, emailNorm, rateLimiter, authRateLimitCfg))) {
+        return;
       }
     }
 
@@ -337,24 +392,97 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
         // failures prevents false positives for legitimate users while still
         // protecting against brute-force attacks.
         if (rateLimiter) {
-          const perIpMax = authRateLimitCfg.loginPerIpPerMinute;
-          const perEmailMax = authRateLimitCfg.loginPerEmailPerMinute;
           const emailNorm = email.toLowerCase().trim();
-
-          const [ipResult, emailResult] = await Promise.all([
-            rateLimiter.check(`rl:login:ip:${request.ip}`, { max: perIpMax, windowMs: 60_000 }),
-            rateLimiter.check(`rl:login:email:${emailNorm}`, { max: perEmailMax, windowMs: 60_000 }),
-          ]);
-
-          if (!ipResult.allowed || !emailResult.allowed) {
-            const retryAfter = !ipResult.allowed
-              ? ipResult.retryAfterSec
-              : (!emailResult.allowed ? emailResult.retryAfterSec : 60);
-            reply.header('Retry-After', String(retryAfter));
-            return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+          if (!(await recordLoginFailure(reply, request.ip, emailNorm, rateLimiter, authRateLimitCfg))) {
+            return;
           }
         }
         return reply.code(401).send({ error: 'invalid_credentials' });
+      }
+      throw err;
+    }
+  });
+
+  // ── POST /auth/login/cli ────────────────────────────────────────────────────
+  // Public (in PUBLIC_ROUTES). CLI-only analogue of /auth/login: same
+  // credential check, same shared rate-limit keys, but returns the token
+  // pair in the JSON body instead of setting cookies — a CLI process has
+  // nowhere to store a cookie. Deliberately a separate route rather than a
+  // flag on /auth/login (see module docblock) so this route's shape is
+  // statically "always tokens in body, never cookies," not conditional.
+  app.post<{ Body: { email?: string; password?: string; providerId?: string; tenantId?: string } }>('/auth/login/cli', {
+    schema: { tags: ['Auth'], summary: 'Login with email/password (CLI: returns tokens in body)' },
+  }, async (request, reply) => {
+    const { email, password, providerId, tenantId: bodyTenantId } = request.body ?? {};
+    if (typeof email !== 'string' || !email) {
+      return reply.code(400).send({ error: 'Bad Request', message: 'email is required' });
+    }
+    if (typeof password !== 'string' || !password) {
+      return reply.code(400).send({ error: 'Bad Request', message: 'password is required' });
+    }
+
+    const host = typeof request.headers.host === 'string' ? request.headers.host : '';
+    const hostTenant = tenantResolver.resolve(host);
+    const tenantId = hostTenant ?? bodyTenantId ?? '';
+
+    if (rateLimiter) {
+      const emailNorm = email.toLowerCase().trim();
+      if (!(await peekLoginRateLimit(reply, request.ip, emailNorm, rateLimiter, authRateLimitCfg))) {
+        return;
+      }
+    }
+
+    try {
+      const result = await userAuthService.login(
+        { providerId: providerId ?? 'email-password', input: { email, password } },
+        tenantId,
+        { ip: request.ip, userAgent: request.headers['user-agent'] as string | undefined },
+      );
+
+      return reply.send({
+        accessToken: result.access.token,
+        refreshToken: result.refresh.token,
+        expiresIn: accessTtl(result),
+        tenantId,
+      });
+    } catch (err) {
+      if (err instanceof AuthError) {
+        if (rateLimiter) {
+          const emailNorm = email.toLowerCase().trim();
+          if (!(await recordLoginFailure(reply, request.ip, emailNorm, rateLimiter, authRateLimitCfg))) {
+            return;
+          }
+        }
+        return reply.code(401).send({ error: 'invalid_credentials' });
+      }
+      throw err;
+    }
+  });
+
+  // ── POST /auth/refresh/cli ──────────────────────────────────────────────────
+  // Public (in PUBLIC_ROUTES) — the refresh token in the body is the proof of
+  // identity, same as the machine body-refresh path in routes.ts. CLI-only
+  // analogue of the cookie-based user refresh (createUserRefreshFn below):
+  // takes the refresh token as a plain body field instead of a cookie, and
+  // returns the new pair in the body instead of Set-Cookie.
+  app.post<{ Body: { refreshToken?: string } }>('/auth/refresh/cli', {
+    schema: { tags: ['Auth'], summary: 'Refresh a CLI session token pair' },
+  }, async (request, reply) => {
+    const { refreshToken } = request.body ?? {};
+    if (typeof refreshToken !== 'string' || !refreshToken) {
+      return reply.code(400).send({ error: 'Bad Request', message: 'refreshToken is required' });
+    }
+
+    try {
+      const result = await userAuthService.refresh(refreshToken);
+      return reply.send({
+        accessToken: result.access.token,
+        refreshToken: result.refresh.token,
+        expiresIn: accessTtl(result),
+      });
+    } catch (err) {
+      if (err instanceof AuthError) {
+        return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid or expired refresh token' });
       }
       throw err;
     }

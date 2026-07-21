@@ -3,7 +3,7 @@ import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
-import type { IHostStore } from '@kb-labs/gateway-contracts';
+import type { IHostStore, AuthConfig } from '@kb-labs/gateway-contracts';
 import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { HostStore } from '@kb-labs/gateway-core';
 import {
@@ -80,26 +80,8 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   //     documentDatabase when no persistent adapter is configured.
   let userAuth: UserAuthServerDeps | undefined;
   {
-    // Auth config with explicit defaults (config.auth is optional, fields have zod defaults
-    // only when the auth section is present and parsed; here we apply our own fallbacks).
-    // Env vars allow E2E CI to override TTLs and cookie security without touching the config
-    // file (e.g. AUTH_ACCESS_TTL_SEC=5 for session-lifecycle tests, AUTH_COOKIE_SECURE=false
-    // for HTTP-only CI environments).
-    const accessTtlSec =
-      config.auth?.sessionAccessTtlSec ??
-      (process.env.AUTH_ACCESS_TTL_SEC ? parseInt(process.env.AUTH_ACCESS_TTL_SEC, 10) : 900);
-    const refreshTtlSec =
-      config.auth?.sessionRefreshTtlSec ??
-      (process.env.AUTH_REFRESH_TTL_SEC
-        ? parseInt(process.env.AUTH_REFRESH_TTL_SEC, 10)
-        : 30 * 24 * 3600);
-    const graceWindowMs = (config.auth?.refreshGraceWindowSec ?? 5) * 1000;
-    const bcryptCost = config.auth?.bcryptCost ?? 12;
-    // AUTH_COOKIE_SECURE=false disables Secure flag for HTTP-only CI environments.
-    // In production (HTTPS) leave unset or set to true.
-    const cookieSecure =
-      config.auth?.cookieSecure ??
-      (process.env.AUTH_COOKIE_SECURE === 'false' ? false : true);
+    const { accessTtlSec, refreshTtlSec, graceWindowMs, bcryptCost, cookieSecure } =
+      resolveAuthRuntimeConfig(config.auth, process.env);
     const tenantPattern = config.tenants?.pattern ?? '{tenant}.kblabs.ru';
     const bootstrapTenantId =
       config.auth?.bootstrap?.tenantId ??
@@ -391,6 +373,51 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
+/**
+ * Resolves the user-auth runtime knobs (TTLs, cookie security, bcrypt cost,
+ * refresh grace window) from config + environment.
+ *
+ * `config.auth` is optional in the raw JSON, but once the `auth` object is
+ * present at all — which it now always is, since kb-create writes
+ * gateway.auth.bootstrap on every non-local install — zod applies its own
+ * schema defaults (sessionAccessTtlSec: 900, cookieSecure: true, etc.) to
+ * every field, not just the ones actually set in the raw config. That means
+ * `config.auth?.X ?? envFallback` NEVER reaches the env fallback once `auth`
+ * exists at all, even for fields the user never explicitly configured.
+ *
+ * AUTH_ACCESS_TTL_SEC / AUTH_REFRESH_TTL_SEC / AUTH_COOKIE_SECURE are meant
+ * to be a CI-only override "without touching the config file" (e.g.
+ * AUTH_ACCESS_TTL_SEC=5 for session-lifecycle E2E tests, AUTH_COOKIE_SECURE=
+ * false for HTTP-only CI environments) — so they must be checked BEFORE the
+ * (possibly zod-defaulted) config value, not after.
+ */
+export function resolveAuthRuntimeConfig(
+  authConfig: AuthConfig | undefined,
+  env: NodeJS.ProcessEnv,
+): {
+  accessTtlSec: number;
+  refreshTtlSec: number;
+  graceWindowMs: number;
+  bcryptCost: number;
+  cookieSecure: boolean;
+} {
+  const accessTtlSec = env.AUTH_ACCESS_TTL_SEC
+    ? parseInt(env.AUTH_ACCESS_TTL_SEC, 10)
+    : (authConfig?.sessionAccessTtlSec ?? 900);
+  const refreshTtlSec = env.AUTH_REFRESH_TTL_SEC
+    ? parseInt(env.AUTH_REFRESH_TTL_SEC, 10)
+    : (authConfig?.sessionRefreshTtlSec ?? 30 * 24 * 3600);
+  const graceWindowMs = (authConfig?.refreshGraceWindowSec ?? 5) * 1000;
+  const bcryptCost = authConfig?.bcryptCost ?? 12;
+  // AUTH_COOKIE_SECURE=false disables Secure flag for HTTP-only CI environments.
+  // In production (HTTPS) leave unset or set to true.
+  const cookieSecure = env.AUTH_COOKIE_SECURE === 'false'
+    ? false
+    : (authConfig?.cookieSecure ?? true);
+
+  return { accessTtlSec, refreshTtlSec, graceWindowMs, bcryptCost, cookieSecure };
 }
 
 /**

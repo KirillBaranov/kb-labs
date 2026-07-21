@@ -6,6 +6,9 @@
  *
  * Coverage:
  *   POST  /auth/login                  — happy, bad creds (CD-8 shape)
+ *   POST  /auth/login/cli              — happy (no cookies!), bad creds, missing fields
+ *   POST  /auth/refresh/cli            — happy, missing/invalid refreshToken
+ *   POST  /auth/register (Bearer user token) — admin 200, member 403
  *   POST  /auth/logout                 — happy, CSRF guard
  *   POST  /auth/refresh (user cookie)  — happy, missing cookie, tampered
  *   GET   /auth/me                     — user context + no role field
@@ -308,6 +311,169 @@ describe('POST /auth/login', () => {
       payload: { email: 'admin@test.com' },
     });
     expect(r.statusCode).toBe(400);
+  });
+});
+
+describe('POST /auth/login/cli', () => {
+  let ctx: TestCtx;
+
+  beforeEach(async () => {
+    ctx = await buildApp();
+    await seedAdmin(ctx);
+  });
+
+  it('returns 200 with tokens in the body and sets NO cookies', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as { accessToken: string; refreshToken: string; expiresIn: number; tenantId: string };
+    expect(body.accessToken).toBeTruthy();
+    expect(body.refreshToken).toBeTruthy();
+    expect(body.expiresIn).toBeGreaterThan(0);
+    expect(body.tenantId).toBe(TENANT_ID);
+    // The entire point of a dedicated route: never leak tokens via Set-Cookie.
+    expect(r.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('returns 401 with { error: "invalid_credentials" } on wrong password (same shape as /auth/login)', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'WrongPassword99!' },
+    });
+    expect(r.statusCode).toBe(401);
+    expect(r.json()).toMatchObject({ error: 'invalid_credentials' });
+  });
+
+  it('returns 400 when email or password is missing', async () => {
+    const r1 = await ctx.app.inject({
+      method: 'POST', url: '/auth/login/cli', headers: { host: HOST }, payload: { password: 'x' },
+    });
+    expect(r1.statusCode).toBe(400);
+    const r2 = await ctx.app.inject({
+      method: 'POST', url: '/auth/login/cli', headers: { host: HOST }, payload: { email: 'admin@test.com' },
+    });
+    expect(r2.statusCode).toBe(400);
+  });
+});
+
+describe('POST /auth/refresh/cli', () => {
+  let ctx: TestCtx;
+
+  beforeEach(async () => {
+    ctx = await buildApp();
+    await seedAdmin(ctx);
+  });
+
+  it('rotates the token pair given a valid refreshToken in the body, sets no cookies', async () => {
+    const login = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+    const { refreshToken } = login.json() as { refreshToken: string };
+
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/refresh/cli',
+      headers: { host: HOST },
+      payload: { refreshToken },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as { accessToken: string; refreshToken: string; expiresIn: number };
+    expect(body.accessToken).toBeTruthy();
+    expect(body.refreshToken).toBeTruthy();
+    expect(r.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('returns 400 when refreshToken is missing', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST', url: '/auth/refresh/cli', headers: { host: HOST }, payload: {},
+    });
+    expect(r.statusCode).toBe(400);
+  });
+
+  it('returns 401 for an invalid/tampered refreshToken', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST', url: '/auth/refresh/cli', headers: { host: HOST }, payload: { refreshToken: 'not-a-jwt' },
+    });
+    expect(r.statusCode).toBe(401);
+    expect(r.json()).toMatchObject({ error: 'Unauthorized' });
+  });
+});
+
+describe('Bearer user token (from /auth/login/cli) → POST /auth/register', () => {
+  // This is the actual gap-closing scenario: a CLI-obtained user access
+  // token, carried as a Bearer header (no cookie involved), must be able to
+  // exercise the same MACHINE_REGISTER-gated endpoint a cookie-authed admin
+  // can — see user-auth-middleware.ts's Bearer branch.
+  let ctx: TestCtx;
+
+  beforeEach(async () => {
+    ctx = await buildApp();
+    await seedAdmin(ctx);
+  });
+
+  it('an admin session token succeeds via Bearer, exactly like the cookie path', async () => {
+    const login = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+    const { accessToken } = login.json() as { accessToken: string };
+
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      headers: { host: HOST, authorization: `Bearer ${accessToken}` },
+      payload: { name: 'e2e-agent', capabilities: [] },
+    });
+
+    expect(r.statusCode).toBe(200);
+    expect((r.json() as { clientId?: string }).clientId).toBeTruthy();
+  });
+
+  it('a non-admin member session token gets 403 (PDP denies MACHINE_REGISTER)', async () => {
+    const inviteRes = await ctx.invites.createInvite({
+      email: 'member@test.com',
+      tenantId: TENANT_ID,
+      groupId: 'tenant-member',
+      createdBy: 'admin-1',
+      ttlMs: HOUR,
+    });
+    const activateRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/activate',
+      headers: { host: HOST },
+      payload: { token: inviteRes.activationToken, password: 'MemberPass123!' },
+    });
+    expect(activateRes.statusCode).toBe(200);
+
+    const login = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: HOST },
+      payload: { email: 'member@test.com', password: 'MemberPass123!' },
+    });
+    const { accessToken } = login.json() as { accessToken: string };
+
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      headers: { host: HOST, authorization: `Bearer ${accessToken}` },
+      payload: { name: 'e2e-agent', capabilities: [] },
+    });
+
+    expect(r.statusCode).toBe(403);
   });
 });
 

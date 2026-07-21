@@ -124,6 +124,76 @@ else
   fail "kb-create doctor" "did not produce doctor summary: $(tail -3 /tmp/doctor.log)"
 fi
 
+# ── Step 4c: CLI session auth journey (kb auth login/register/logout) ──
+# Exercises the actual `kb` binary end-to-end against a real running gateway
+# — the HTTP contract is covered separately by e2e/auth's Playwright specs
+# (08-register-authz, 09-cli-session), but only a real process invocation
+# here catches argv/flag parsing and on-disk file handling that a mocked
+# unit test can't see.
+echo "── Step 4c: kb-dev start gateway + CLI session login"
+cd /tmp/work/my-project
+kb-dev start gateway > /tmp/kb-dev-start.log 2>&1 || true
+
+GW_UP=0
+for i in $(seq 1 30); do
+  if curl -sf http://127.0.0.1:4000/health > /dev/null 2>&1; then
+    GW_UP=1
+    break
+  fi
+  sleep 1
+done
+if [ "$GW_UP" = "1" ]; then
+  pass "gateway /health reachable after kb-dev start"
+else
+  fail "kb-dev start gateway" "gateway /health never became reachable: $(tail -20 /tmp/kb-dev-start.log)"
+fi
+
+BOOTSTRAP_PASSWORD=""
+if [ -f .env ]; then
+  BOOTSTRAP_PASSWORD=$(grep "^GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=" .env | cut -d= -f2)
+fi
+
+if [ "$GW_UP" = "1" ] && [ -n "$BOOTSTRAP_PASSWORD" ]; then
+  if kb auth login --gateway-url http://127.0.0.1:4000 --email admin@bootstrap.local --password "$BOOTSTRAP_PASSWORD" > /tmp/auth-login-cli.log 2>&1; then
+    pass "kb auth login --email/--password"
+  else
+    fail "kb auth login (human)" "command failed: $(tail -10 /tmp/auth-login-cli.log)"
+  fi
+
+  SESSION_FILE="$HOME/.kb/session.json"
+  if [ -f "$SESSION_FILE" ]; then
+    PERM=$(stat -c '%a' "$SESSION_FILE" 2>/dev/null || stat -f '%Lp' "$SESSION_FILE" 2>/dev/null || echo "?")
+    if [ "$PERM" = "600" ]; then
+      pass "~/.kb/session.json created with 0600 perms"
+    else
+      fail "session.json perms" "expected 600, got $PERM"
+    fi
+  else
+    fail "session.json" "not created after kb auth login"
+  fi
+
+  # The actual gap this whole session-auth feature closes: /auth/register
+  # was unreachable from the CLI before — the auto-provisioned bootstrap
+  # machine credential deliberately carries no MACHINE_REGISTER permission;
+  # only a human session (this login) can supply it.
+  REG_OUT=$(kb auth register --gateway-url http://127.0.0.1:4000 --name e2e-cli-agent --namespace-id default 2>&1 || true)
+  if echo "$REG_OUT" | grep -q "Client ID:"; then
+    pass "kb auth register succeeded via CLI session"
+  else
+    fail "kb auth register" "unexpected output: $REG_OUT"
+  fi
+
+  kb auth logout > /tmp/auth-logout.log 2>&1 || true
+  CRED_FILE="$HOME/.kb/credentials.json"
+  if [ ! -f "$SESSION_FILE" ] && [ ! -f "$CRED_FILE" ]; then
+    pass "kb auth logout removed both credential stores"
+  else
+    fail "kb auth logout" "session.json or credentials.json still present after logout"
+  fi
+else
+  pass "CLI session auth journey: skipped (gateway not reachable or bootstrap password missing)"
+fi
+
 # ── Step 5: Check CLI shows plugins ────────────────────────────────────
 echo "── Step 5: Check CLI plugins"
 cd /tmp/work/my-project

@@ -11,7 +11,7 @@
 
 | Namespace  | Subcommands                                                    | What it actually does              |
 |------------|----------------------------------------------------------------|------------------------------------|
-| `auth`     | login, logout, status, create-service-account                  | Gateway authentication             |
+| `auth`     | login, logout, status, register                  | Gateway authentication             |
 | `platform` | sync                                                           | Platform lifecycle / provisioning  |
 | `info`     | hello, version, health, diag                                   | Platform health & version info     |
 | `logs`     | diagnose, context, summarize, query, search, get, stats        | Platform log access & analysis     |

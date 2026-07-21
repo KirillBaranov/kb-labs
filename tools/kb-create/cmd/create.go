@@ -189,8 +189,28 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		// auto-provision the CLI's first credential on first start
 		// (ensureBootstrapCliCredentials, gateway-auth) so `kb` commands work
 		// with zero manual login step.
-		scaffoldOpts.BootstrapAdminEmail = "admin@bootstrap.local"
-		scaffoldOpts.BootstrapTenantID = "default"
+		//
+		// GatewayAuthEnabled must be set explicitly here (not left nil): the
+		// bootstrap block in scaffold.WritePlatformConfig is gated on
+		// `opts.GatewayAuthEnabled != nil`, so leaving it nil silently drops
+		// the whole gateway.auth.bootstrap section even though the admin
+		// password below still gets written to .env — a fresh install then
+		// has a password pointing at an admin account that was never created.
+		//
+		// GATEWAY_BOOTSTRAP_ADMIN_EMAIL / GATEWAY_BOOTSTRAP_TENANT_ID are
+		// honored from the environment when set: the gateway's own bootstrap
+		// fallback (services/gateway/app/src/bootstrap.ts) reads the same env
+		// vars, but only when kb.config.jsonc's gateway.auth.bootstrap block
+		// is absent — since we now always write that block, a literal here
+		// would permanently shadow those env vars for every install. E2E
+		// fixtures (e2e/docker-compose.yml) set both to align the bootstrap
+		// admin with what their test suites expect; without this, the admin
+		// silently ends up under a different tenant/email than the tests use,
+		// and every login attempt fails with invalid_credentials.
+		authOn := true
+		scaffoldOpts.GatewayAuthEnabled = &authOn
+		scaffoldOpts.BootstrapAdminEmail = envOrDefault("GATEWAY_BOOTSTRAP_ADMIN_EMAIL", "admin@bootstrap.local")
+		scaffoldOpts.BootstrapTenantID = envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default")
 		scaffoldOpts.BootstrapAdminPassword = generateBootstrapAdminPassword()
 	}
 	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
@@ -219,6 +239,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
+	}
+
+	// Non-local installs seed a bootstrap admin (see GatewayAuthEnabled above) —
+	// print the login once so the user can actually get in and isn't relying
+	// solely on .env / ~/.kb/credentials.json to recover it.
+	if scaffoldOpts.BootstrapAdminEmail != "" && scaffoldOpts.BootstrapAdminPassword != "" {
+		printBootstrapAdminCredentials(scaffoldOpts.BootstrapAdminEmail, scaffoldOpts.BootstrapAdminPassword)
 	}
 
 	// Post-install: run review + offer commit on existing diff.
@@ -268,6 +295,14 @@ func generateBootstrapAdminPassword() string {
 		return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// envOrDefault returns os.Getenv(key) when non-empty, else def.
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 // initTelemetry creates a telemetry client based on the user's consent

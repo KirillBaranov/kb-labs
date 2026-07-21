@@ -169,6 +169,40 @@ func printLLMRecommendation() {
 	fmt.Println()
 }
 
+// printBootstrapAdminCredentials shows the seeded admin login once, right after
+// install, for non-local (auth-enabled) runs. This is the only time the plaintext
+// password is ever displayed — it's also saved to .env
+// (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and the gateway auto-provisions a separate
+// CLI credential to ~/.kb/credentials.json, but neither of those is a substitute
+// for showing it here: a user who loses .env has no other way to log into Studio.
+func printBootstrapAdminCredentials(email, password string) {
+	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+	warn := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
+
+	border := accent.Render("│")
+	topLeft := accent.Render("╭")
+	botLeft := accent.Render("╰")
+	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
+
+	width := 58
+	rule := accent.Render(strings.Repeat("─", width))
+
+	fmt.Printf("  %s%s\n", topLeft, rule)
+	line(white.Render("Studio admin login") + "  " + warn.Render("(shown once — save it now)"))
+	line("")
+	line(dim.Render("Email     ") + cmd.Render(email))
+	line(dim.Render("Password  ") + cmd.Render(password))
+	line("")
+	line(dim.Render("Also saved to .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and to"))
+	line(dim.Render("~/.kb/credentials.json (separate CLI token) — this is the only"))
+	line(dim.Render("place the password itself is printed."))
+	fmt.Printf("  %s%s\n", botLeft, rule)
+	fmt.Println()
+}
+
 // ── next steps ────────────────────────────────────────────────────────────────
 
 // nextStep is one line in the "What's next" section.
