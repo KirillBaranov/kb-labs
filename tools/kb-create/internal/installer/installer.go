@@ -16,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/bindown"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/detect"
+	"github.com/kb-labs/create/internal/devservices"
 	"github.com/kb-labs/create/internal/gateway"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
@@ -75,6 +76,11 @@ type Result struct {
 	// the single platform config (kb.config.jsonc). nil if no gateway-prefixed
 	// services were discovered.
 	Gateway *gateway.Plan
+	// InstalledPlugins lists the plugins the post-install manifest scan found,
+	// for callers that want to inspect their static manifest data (e.g.
+	// `kb-create install` prints env-var hints from each plugin's
+	// dist/manifest.json). Empty when the scan failed or found no plugins.
+	InstalledPlugins []scan.PluginEntry
 }
 
 // UpdateDiff describes changes between the installed manifest and the current one.
@@ -202,6 +208,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 				"so devservices.yaml was not written and `kb-dev start` will fail. " +
 				"Run `kb-create update` to retry the scan."
 		}
+		ins.logPluginManifests(scanResult.Plugins)
 	}
 
 	// Symlink kb CLI into ~/.local/bin/ for PATH availability.
@@ -250,6 +257,10 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	}
 
 	hasServices := scanErr == nil && len(scanResult.Services) > 0
+	var installedPlugins []scan.PluginEntry
+	if scanErr == nil {
+		installedPlugins = scanResult.Plugins
+	}
 
 	return &Result{
 		PlatformDir:       sel.PlatformDir,
@@ -260,6 +271,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		HasServices:       hasServices,
 		ServicesWarning:   servicesWarning,
 		Gateway:           gatewayPlan,
+		InstalledPlugins:  installedPlugins,
 	}, nil
 }
 
@@ -397,6 +409,28 @@ func (ins *Installer) step(n, total int, label string) {
 	ins.Log.Printf("[%d/%d] %s", n, total, label)
 	if ins.OnStep != nil {
 		ins.OnStep(n, total, label)
+	}
+}
+
+// logPluginManifests reads each discovered plugin's dist/manifest.json (if
+// present — older published packages predate the devkit change that emits
+// it) and logs the platform capabilities it requires/benefits from and its
+// kb.config.json section. Purely informational at this stage: it doesn't
+// gate install, validate secrets, or write config — that's follow-up work
+// once a non-interactive `kb-create install --plugins=...` surface exists.
+// Read-only, additive; never blocks or fails the install.
+func (ins *Installer) logPluginManifests(plugins []scan.PluginEntry) {
+	for _, p := range plugins {
+		if p.ResolvedPath == "" {
+			continue
+		}
+		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
+		if err != nil {
+			continue // no static manifest yet, or not a plugin schema — silently skip
+		}
+		ins.Log.Printf("  plugin %s: requires=%v optional=%v configSection=%q",
+			pluginManifest.ID, pluginManifest.Platform.Requires, pluginManifest.Platform.Optional, pluginManifest.ConfigSection)
 	}
 }
 

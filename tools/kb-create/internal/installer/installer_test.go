@@ -762,9 +762,74 @@ func TestInstall_ScanErrorWithServicesSelectedSetsWarning(t *testing.T) {
 	}
 }
 
+// TestInstallPopulatesInstalledPlugins verifies that Result.InstalledPlugins
+// carries the manifest scan's plugin entries through, so callers (e.g.
+// `kb-create install`'s env-var hints) can inspect each plugin's static
+// dist/manifest.json without re-scanning node_modules themselves.
+func TestInstallPopulatesInstalledPlugins(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	writeFakePlugin(t, platformDir, "@test/my-plugin")
+
+	fake := &fakePM{name: "npm"}
+	ins := &Installer{PM: fake, Log: discardLogger()}
+	m := sampleManifest()
+
+	sel := &Selection{
+		PlatformDir: platformDir,
+		ProjectCWD:  projectDir,
+		Plugins:     []string{"mind"},
+	}
+
+	result, err := ins.Install(sel, &m)
+	if err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+
+	var found bool
+	for _, p := range result.InstalledPlugins {
+		if p.ID == "@test/my-plugin" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Result.InstalledPlugins = %+v, want an entry for @test/my-plugin", result.InstalledPlugins)
+	}
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 // discardLogger returns a logger that throws away all output.
 func discardLogger() *logger.Logger {
 	return logger.NewDiscard()
+}
+
+// writeFakePlugin creates a minimal kb.plugin/3 package under
+// <platformDir>/node_modules so the real Node-based manifest scanner
+// (internal/scan) discovers it during Install(), mirroring
+// internal/scan/scan_test.go's setupFakePlatform fixture shape.
+func writeFakePlugin(t *testing.T, platformDir, id string) {
+	t.Helper()
+	pluginDir := filepath.Join(platformDir, "node_modules", filepath.FromSlash(id))
+	pkgJSON := []byte(`{"name":"` + id + `","version":"1.0.0","kb":{"manifest":"./dist/manifest.js"}}`)
+	if err := os.MkdirAll(pluginDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pluginDir, "package.json"), pkgJSON, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifestJS := `module.exports.manifest = {
+		schema: "kb.plugin/3",
+		id: "` + id + `",
+		version: "1.0.0",
+		display: { name: "Test Plugin", description: "Fixture" },
+		cli: { commands: [] },
+	};`
+	distDir := filepath.Join(pluginDir, "dist")
+	if err := os.MkdirAll(distDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(distDir, "manifest.js"), []byte(manifestJS), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
