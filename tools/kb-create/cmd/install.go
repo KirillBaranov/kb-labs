@@ -38,8 +38,8 @@ with a clear error, missing optional env vars print as hints, not failures.`,
 }
 
 func init() {
-	installCmd.Flags().StringVar(&flagInstallPlugins, "plugins", "", "comma-separated plugin IDs to install (e.g. release,commit)")
-	installCmd.Flags().StringVar(&flagInstallServices, "services", "", "comma-separated service IDs to install (e.g. workflow,gateway)")
+	installCmd.Flags().StringVar(&flagInstallPlugins, "plugins", "", "comma-separated plugin IDs to install, each optionally pinned to a version (e.g. release@0.2.0,commit)")
+	installCmd.Flags().StringVar(&flagInstallServices, "services", "", "comma-separated service IDs to install, each optionally pinned to a version (e.g. workflow,gateway@1.3.0)")
 	installCmd.Flags().StringVar(&flagInstallAdapters, "adapters", "", `comma-separated "role=pkg[@version]" overrides (e.g. "cache=@kb-labs/adapters-redis@0.2.0")`)
 	installCmd.Flags().StringVar(&flagInstallPlatform, "platform", "", "platform installation directory")
 	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
@@ -57,8 +57,8 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load manifest: %w", err)
 	}
 
-	plugins := splitCSV(flagInstallPlugins)
-	services := splitCSV(flagInstallServices)
+	plugins, pluginVersions := splitVersionedIDs(flagInstallPlugins)
+	services, serviceVersions := splitVersionedIDs(flagInstallServices)
 
 	if err := validateComponentIDs("plugin", plugins, m.Plugins); err != nil {
 		return err
@@ -89,6 +89,8 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 	sel.Services = services
 	sel.Plugins = plugins
+	sel.ServiceVersions = serviceVersions
+	sel.PluginVersions = pluginVersions
 	sel.DevMode = flagInstallDevManifest != ""
 	sel.Registry = flagInstallRegistry
 
@@ -288,4 +290,25 @@ func splitCSV(s string) []string {
 		}
 	}
 	return out
+}
+
+// splitVersionedIDs splits a comma-separated flag value the same way
+// splitCSV does, additionally parsing an optional "@version" pin off each
+// entry (e.g. "release@0.2.0,commit" -> ids=["release","commit"],
+// versions={"release":"0.2.0"}). Catalog IDs never contain "@" themselves,
+// so splitting on the first occurrence is unambiguous.
+func splitVersionedIDs(s string) (ids []string, versions map[string]string) {
+	for _, entry := range splitCSV(s) {
+		if i := strings.Index(entry, "@"); i > 0 {
+			id, ver := entry[:i], entry[i+1:]
+			ids = append(ids, id)
+			if versions == nil {
+				versions = map[string]string{}
+			}
+			versions[id] = ver
+			continue
+		}
+		ids = append(ids, entry)
+	}
+	return ids, versions
 }

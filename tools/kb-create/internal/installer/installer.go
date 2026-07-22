@@ -46,6 +46,14 @@ type Selection struct {
 	LLMProvider      string // "openai" | "anthropic" | "" (skip)
 	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
 	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	// PluginVersions/ServiceVersions override the installed version for a
+	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
+	// ID. Separate maps because a service and a plugin can share the same
+	// catalog ID (e.g. "marketplace" is both) with independently pinned
+	// versions. Absent/empty entries fall back to Component.PackageSpec()'s
+	// normal @latest (or @file:path in dev mode) resolution.
+	PluginVersions  map[string]string
+	ServiceVersions map[string]string
 }
 
 // Result is returned after a successful Install.
@@ -129,8 +137,8 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	// Step 1: npm/pnpm packages.
 	allPkgs := m.CorePackageSpecs()
 	allPkgs = append(allPkgs, m.AdapterPackageSpecs()...)
-	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Services, sel.Services)...)
-	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Plugins, sel.Plugins)...)
+	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Services, sel.Services, sel.ServiceVersions)...)
+	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Plugins, sel.Plugins, sel.PluginVersions)...)
 
 	// Install companion plugins for selected services (e.g. workflow-daemon → workflow-entry).
 	for _, svc := range m.Services {
@@ -607,16 +615,27 @@ func (ins *Installer) selectedPkgs(components []manifest.Component, ids []string
 	return out
 }
 
-func (ins *Installer) selectedPkgSpecs(components []manifest.Component, ids []string) []string {
+// selectedPkgSpecs builds npm install specs for the catalog components whose
+// ID appears in ids. versions optionally overrides the resolved version for
+// a specific ID (e.g. "release" -> "0.2.0" from `--plugins=release@0.2.0`) —
+// takes precedence over Component.PackageSpec()'s normal @latest/@file:path
+// resolution. Dev-mode local paths (Component.LocalPath) are NOT overridden
+// by a version pin — you can't pin a version of a local, unpublished build.
+func (ins *Installer) selectedPkgSpecs(components []manifest.Component, ids []string, versions map[string]string) []string {
 	set := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		set[id] = true
 	}
 	var out []string
 	for _, c := range components {
-		if set[c.ID] {
-			out = append(out, c.PackageSpec())
+		if !set[c.ID] {
+			continue
 		}
+		if v, ok := versions[c.ID]; ok && v != "" && c.LocalPath == "" {
+			out = append(out, c.Pkg+"@"+v)
+			continue
+		}
+		out = append(out, c.PackageSpec())
 	}
 	return out
 }

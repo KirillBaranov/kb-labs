@@ -61,6 +61,45 @@ func TestSplitCSV(t *testing.T) {
 	}
 }
 
+func TestSplitVersionedIDs(t *testing.T) {
+	ids, versions := splitVersionedIDs("release@0.2.0,commit,workflow@1.3.0")
+	wantIDs := []string{"release", "commit", "workflow"}
+	if len(ids) != len(wantIDs) {
+		t.Fatalf("ids = %v, want %v", ids, wantIDs)
+	}
+	for i := range ids {
+		if ids[i] != wantIDs[i] {
+			t.Errorf("ids[%d] = %q, want %q", i, ids[i], wantIDs[i])
+		}
+	}
+	if versions["release"] != "0.2.0" {
+		t.Errorf(`versions["release"] = %q, want "0.2.0"`, versions["release"])
+	}
+	if versions["workflow"] != "1.3.0" {
+		t.Errorf(`versions["workflow"] = %q, want "1.3.0"`, versions["workflow"])
+	}
+	if _, ok := versions["commit"]; ok {
+		t.Errorf("commit has no version pin, should not appear in versions map")
+	}
+}
+
+func TestSplitVersionedIDs_NoVersions(t *testing.T) {
+	ids, versions := splitVersionedIDs("release,commit")
+	if len(ids) != 2 || ids[0] != "release" || ids[1] != "commit" {
+		t.Errorf("ids = %v, want [release commit]", ids)
+	}
+	if versions != nil {
+		t.Errorf("versions = %v, want nil when nothing is pinned", versions)
+	}
+}
+
+func TestSplitVersionedIDs_Empty(t *testing.T) {
+	ids, versions := splitVersionedIDs("")
+	if ids != nil || versions != nil {
+		t.Errorf("ids=%v versions=%v, want both nil for empty input", ids, versions)
+	}
+}
+
 func TestDescribeSelection(t *testing.T) {
 	cases := []struct {
 		plugins, services []string
