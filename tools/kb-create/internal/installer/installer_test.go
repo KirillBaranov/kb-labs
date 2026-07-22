@@ -117,6 +117,54 @@ func TestSelectedPkgsUnknownID(t *testing.T) {
 	}
 }
 
+// ── selectedPkgSpecs (version overrides) ──────────────────────────────────────
+
+func TestSelectedPkgSpecs_NoOverrideUsesLatest(t *testing.T) {
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	m := sampleManifest()
+
+	got := ins.selectedPkgSpecs(m.Plugins, []string{"mind"}, nil)
+	want := []string{"@kb-labs/mind@latest"}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("selectedPkgSpecs = %v, want %v", got, want)
+	}
+}
+
+func TestSelectedPkgSpecs_VersionOverrideApplied(t *testing.T) {
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	m := sampleManifest()
+
+	got := ins.selectedPkgSpecs(m.Plugins, []string{"mind"}, map[string]string{"mind": "0.2.0"})
+	want := []string{"@kb-labs/mind@0.2.0"}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("selectedPkgSpecs = %v, want %v", got, want)
+	}
+}
+
+func TestSelectedPkgSpecs_OverrideIgnoredForLocalPath(t *testing.T) {
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	m := manifest.Manifest{
+		Plugins: []manifest.Component{{ID: "mind", Pkg: "@kb-labs/mind", LocalPath: "/dev/mind"}},
+	}
+
+	got := ins.selectedPkgSpecs(m.Plugins, []string{"mind"}, map[string]string{"mind": "0.2.0"})
+	want := []string{"@kb-labs/mind@file:/dev/mind"}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("selectedPkgSpecs = %v, want %v (a version pin must not override a dev-mode local path)", got, want)
+	}
+}
+
+func TestSelectedPkgSpecs_OverrideOnlyAppliesToMatchingID(t *testing.T) {
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	m := sampleManifest()
+
+	got := ins.selectedPkgSpecs(m.Plugins, []string{"mind", "agents"}, map[string]string{"mind": "0.2.0"})
+	want := []string{"@kb-labs/mind@0.2.0", "@kb-labs/agents@latest"}
+	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("selectedPkgSpecs = %v, want %v", got, want)
+	}
+}
+
 // ── HasChanges ───────────────────────────────────────────────────────────────
 
 // TestHasChangesEmpty verifies that a diff with no entries has no changes.
