@@ -73,6 +73,7 @@ export { resolveAdapterMiddlewares } from './platform/middleware-loader.js';
 export type { RawMiddlewareDecl } from './platform/middleware-loader.js';
 export type { LoadedMiddleware, PlatformConfig } from './platform/pipeline.js';
 export { assemblePlatform, makeAssemblyHook } from './platform/index.js';
+export { ADAPTER_REGISTRY_KEYS } from './platform/index.js';
 export {
   wrapDocumentDatabase,
   wrapKVStore,

@@ -170,6 +170,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:    sel.DemoMode,
 		// Dynamic gateway plan from discovery → rendered into kb.config.jsonc.
 		Gateway: result.Gateway,
+		Catalog: m,
 	}
 	// Local single-user mode is an EXPLICIT opt-in (--local flag or the wizard
 	// "Studio access" choice) — never an implicit default of --yes. In local mode

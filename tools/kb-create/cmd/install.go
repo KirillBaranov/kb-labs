@@ -22,6 +22,7 @@ import (
 var (
 	flagInstallPlugins     string
 	flagInstallServices    string
+	flagInstallAdapters    string
 	flagInstallPlatform    string
 	flagInstallRegistry    string
 	flagInstallDevManifest string
@@ -39,6 +40,7 @@ with a clear error, missing optional env vars print as hints, not failures.`,
 func init() {
 	installCmd.Flags().StringVar(&flagInstallPlugins, "plugins", "", "comma-separated plugin IDs to install (e.g. release,commit)")
 	installCmd.Flags().StringVar(&flagInstallServices, "services", "", "comma-separated service IDs to install (e.g. workflow,gateway)")
+	installCmd.Flags().StringVar(&flagInstallAdapters, "adapters", "", `comma-separated "role=pkg[@version]" overrides (e.g. "cache=@kb-labs/adapters-redis@0.2.0")`)
 	installCmd.Flags().StringVar(&flagInstallPlatform, "platform", "", "platform installation directory")
 	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	installCmd.Flags().StringVar(&flagInstallDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
@@ -63,6 +65,16 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateComponentIDs("service", services, m.Services); err != nil {
 		return err
+	}
+
+	// Syntax-only validation here — "role=pkg[@version]" shape, no duplicate
+	// roles. Whether a role name is a *recognized* capability can only be
+	// checked once @kb-labs/plugin-runtime is actually on disk (it's a
+	// transitive dependency, not a core package installed up front), so that
+	// check happens later, after install, in the reconciliation report.
+	adapters, err := parseAdapters(flagInstallAdapters)
+	if err != nil {
+		return fmt.Errorf("--adapters: %w", err)
 	}
 
 	// Reuse the wizard's existing non-interactive defaulting (same path
@@ -109,6 +121,8 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		Services:    sel.Services,
 		Plugins:     sel.Plugins,
 		Gateway:     result.Gateway,
+		Catalog:     m,
+		Adapters:    adapters,
 	}
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold platform config: %w", err)
@@ -124,8 +138,71 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 
 	printEnvHints(out, result.InstalledPlugins)
+	printAdapterReconciliation(out, sel.PlatformDir, adapters, result.InstalledPlugins)
 
 	return nil
+}
+
+// printAdapterReconciliation reports on capability roles: whether an
+// --adapters role name is a recognized capability (when the canonical list
+// can be found — see LoadAdapterRoles's doc comment on why this is soft),
+// and whether each installed plugin's declared platform.requires/optional
+// roles actually have an adapter configured (scaffold defaults ∪ --adapters
+// overrides). Purely informational — never fails the install, matching
+// printEnvHints's existing tone. Required-but-unconfigured is flagged loudly
+// because it's usually a real gap (e.g. `release` needing `cache`); optional
+// is just a note.
+func printAdapterReconciliation(out output, platformDir string, adapters map[string]string, plugins []scan.PluginEntry) {
+	rolesPath := filepath.Join(platformDir, "node_modules", "@kb-labs", "plugin-runtime", "dist", "adapter-roles.json")
+	knownRoles, rolesErr := devservices.LoadAdapterRoles(rolesPath)
+	if rolesErr == nil {
+		knownSet := make(map[string]bool, len(knownRoles))
+		for _, r := range knownRoles {
+			knownSet[r] = true
+		}
+		unknown := make([]string, 0)
+		for role := range adapters {
+			if !knownSet[role] {
+				unknown = append(unknown, role)
+			}
+		}
+		sort.Strings(unknown)
+		for _, role := range unknown {
+			out.Warn(fmt.Sprintf("--adapters: %q is not a recognized capability role (known: %s)",
+				role, strings.Join(knownRoles, ", ")))
+		}
+	}
+
+	configured := make(map[string]bool, len(scaffold.DefaultAdapterRoles)+len(adapters))
+	for _, r := range scaffold.DefaultAdapterRoles {
+		configured[r] = true
+	}
+	for role := range adapters {
+		configured[role] = true
+	}
+
+	for _, p := range plugins {
+		if p.ResolvedPath == "" {
+			continue
+		}
+		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
+		if err != nil {
+			continue
+		}
+		for _, role := range pluginManifest.Platform.Requires {
+			if !configured[role] {
+				out.Warn(fmt.Sprintf(`%s: requires capability %q but no adapter is configured — pass --adapters "%s=<package>" to set one`,
+					pluginManifest.ID, role, role))
+			}
+		}
+		for _, role := range pluginManifest.Platform.Optional {
+			if !configured[role] {
+				out.Info(fmt.Sprintf("%s: optional capability %q is not configured (only needed for the features that use it)",
+					pluginManifest.ID, role))
+			}
+		}
+	}
 }
 
 // validateComponentIDs fails fast (before any install/network action) when a

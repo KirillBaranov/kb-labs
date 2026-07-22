@@ -436,6 +436,14 @@ export const ADAPTER_REGISTRY = {
 
 export type AdapterRegistryKey = keyof typeof ADAPTER_REGISTRY;
 
+// Plain data derivative of ADAPTER_REGISTRY's key set — the registry itself
+// holds governance/factory functions and isn't safe to serialize or expose
+// on a public API surface. This is: consumers (e.g. the kb-create installer)
+// that need to validate a capability/role name against the canonical list
+// without pulling in the runtime's internals.
+export const ADAPTER_REGISTRY_KEYS: AdapterRegistryKey[] =
+  Object.keys(ADAPTER_REGISTRY) as AdapterRegistryKey[];
+
 // Re-export for consumers that only need the governance helpers
 export {
   wrapLogger,

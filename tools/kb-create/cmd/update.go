@@ -164,6 +164,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Render the freshly re-derived gateway plan so upstreams reflect any
 	// added/removed service packages from this update.
 	platformOpts.Gateway = result.Gateway
+	platformOpts.Catalog = m
 	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
 		log.Printf("platform config refresh: %v (continuing)", cfgErr)
 	}
