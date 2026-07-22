@@ -92,6 +92,44 @@ else
   pass "no @kb-labs peer dep warnings"
 fi
 
+# ── Step 1f: kb-create install --plugins=release (scoped, non-interactive) ────
+# Exercises the standalone CI/agent install path — no wizard, no gateway/
+# workflow/marketplace pulled in unless explicitly asked. Uses the real
+# `kb-create` binary just installed via install.sh (i.e. whatever the last
+# binaries release actually shipped), against real npm.
+echo "── Step 1f: kb-create install --plugins=release"
+export PLUGIN_PLATFORM_DIR=/tmp/kb-e2e-plugin/kb-platform
+mkdir -p /tmp/work-plugin && cd /tmp/work-plugin
+if kb-create install --plugins=release --platform "$PLUGIN_PLATFORM_DIR" > /tmp/install-plugin.log 2>&1; then
+  pass "kb-create install --plugins=release"
+else
+  fail "kb-create install --plugins=release" "command failed (exit $?)"
+  tail -20 /tmp/install-plugin.log
+fi
+
+if [ -d "$PLUGIN_PLATFORM_DIR/node_modules/@kb-labs/release-manager-cli" ]; then
+  pass "release-manager-cli present in node_modules"
+else
+  fail "release-manager-cli install" "package not found under node_modules"
+fi
+
+if [ -f "$PLUGIN_PLATFORM_DIR/.kb/devservices.yaml" ] && grep -qE "gateway|workflow-daemon|marketplace" "$PLUGIN_PLATFORM_DIR/.kb/devservices.yaml"; then
+  fail "install scoping" "devservices.yaml mentions an unselected service — install --plugins=release is not scoped"
+else
+  pass "install --plugins=release did not pull in unselected services"
+fi
+
+if kb-create install --plugins=this-plugin-does-not-exist --platform /tmp/kb-e2e-bad-plugin > /tmp/install-bad-plugin.log 2>&1; then
+  fail "unknown plugin validation" "install with an unknown plugin id should have failed"
+else
+  if grep -q "unknown plugin" /tmp/install-bad-plugin.log; then
+    pass "unknown plugin id fails fast with a clear error"
+  else
+    fail "unknown plugin validation" "failed, but not with the expected 'unknown plugin' message"
+  fi
+fi
+cd /tmp/work
+
 # ── Step 3: Verify installation ────────────────────────────────────────
 echo "── Step 3: Verify installation"
 if kb-create status > /tmp/status.log 2>&1; then

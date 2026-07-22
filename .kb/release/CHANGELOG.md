@@ -1,3 +1,20 @@
+## [Binaries] - 2026-07-22
+
+**kb-create** (Go binary release, no npm package versions changed):
+
+- New non-interactive `kb-create install --plugins=... --services=...` — installs
+  exactly the named plugins/services, validates IDs against the manifest
+  catalog before touching the network, and prints env-var hints from each
+  plugin's manifest. For CI/agent use, without the interactive wizard.
+- `release` is now a registered installable plugin target
+  (`@kb-labs/release-manager-cli`).
+- The shared devkit build preset now emits a static `dist/manifest.json` for
+  plugin manifests too (previously service-only), so the installer can read
+  install metadata (required/optional platform capabilities, env vars,
+  config section) without executing JS.
+
+See [PR #293](https://github.com/kb-labs-team/kb-labs/pull/293).
+
 ## [2.104.0] - 2026-07-19
 
 **165 packages** bumped to v2.104.0
