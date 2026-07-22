@@ -8,7 +8,33 @@ import (
 	"testing"
 
 	"github.com/kb-labs/create/internal/gateway"
+	"github.com/kb-labs/create/internal/manifest"
 )
+
+// testCatalog mirrors the real manifest.json's services/plugins shape closely
+// enough for scaffold rendering tests: 5 services (gateway intentionally
+// present, to exercise servicesWithoutToggle's exclusion) and the 6 plugins
+// with known custom inner config plus one without (mirroring "release").
+func testCatalog() *manifest.Manifest {
+	return &manifest.Manifest{
+		Services: []manifest.Component{
+			{ID: "rest", Pkg: "@kb-labs/rest-api-app", Description: "REST API (port 5050)", Default: true},
+			{ID: "workflow", Pkg: "@kb-labs/workflow-daemon", Description: "Workflow engine (port 7778)", Default: true},
+			{ID: "gateway", Pkg: "@kb-labs/gateway-app", Description: "Central router (port 4000)", Default: true},
+			{ID: "marketplace", Pkg: "@kb-labs/marketplace-app", Description: "Marketplace (port 5070)", Default: true},
+			{ID: "studio", Pkg: "@kb-labs/studio-app", Description: "Web UI (port 3000)", Default: true},
+		},
+		Plugins: []manifest.Component{
+			{ID: "marketplace", Pkg: "@kb-labs/marketplace-entry", Description: "Install, list, enable plugins", Default: true},
+			{ID: "mind", Pkg: "@kb-labs/mind-entry", Description: "AI code search (RAG)", Default: false},
+			{ID: "agents", Pkg: "@kb-labs/agent-entry", Description: "Autonomous agents", Default: false},
+			{ID: "ai-review", Pkg: "@kb-labs/review-entry", Description: "AI code review", Default: true},
+			{ID: "commit", Pkg: "@kb-labs/commit-entry", Description: "AI commit generation", Default: true},
+			{ID: "scaffold", Pkg: "@kb-labs/scaffold", Description: "Scaffold plugins and adapters", Default: true},
+			{ID: "release", Pkg: "@kb-labs/release-manager-cli", Description: "Plan, execute, and audit releases across your workspace", Default: false},
+		},
+	}
+}
 
 // ── WritePlatformConfig ───────────────────────────────────────────────────────
 
@@ -19,6 +45,7 @@ func TestWritePlatformConfig_FullSelection(t *testing.T) {
 		PlatformDir: platformDir,
 		Services:    []string{"rest", "workflow"},
 		Plugins:     []string{"mind", "commit"},
+		Catalog:     testCatalog(),
 	})
 	if err != nil {
 		t.Fatalf("WritePlatformConfig() error = %v", err)
@@ -567,6 +594,7 @@ func TestReadPlatformOptions_RoundTrip(t *testing.T) {
 		PlatformDir: platformDir,
 		Services:    []string{"rest", "workflow"},
 		Plugins:     []string{"agents", "commit"},
+		Catalog:     testCatalog(),
 	}
 
 	// Write then read back.
@@ -622,6 +650,7 @@ func TestGenerateFull_PluginInnerConfig(t *testing.T) {
 	content := generateFull(Options{
 		PlatformDir: "/x",
 		Plugins:     []string{"mind", "agents", "ai-review", "commit"},
+		Catalog:     testCatalog(),
 	})
 
 	assertContains(t, content, `"vectorStore"`, "mind inner config")
@@ -945,4 +974,64 @@ func TestWriteDemoWorkflow_RunCommentUsesWorkflowIdFlag(t *testing.T) {
 			t.Errorf("demo.yaml: %q uses `kb workflow run <id>` without --workflow-id, which the CLI rejects", strings.TrimSpace(line))
 		}
 	}
+}
+
+// ── Adapters: overrides, cache, catalog-driven rendering (ADR-0026 I5/I6) ────
+
+func TestGenerateFull_AdapterOverrides(t *testing.T) {
+	content := generateFull(Options{
+		PlatformDir: "/x",
+		Adapters:    map[string]string{"storage": "@acme/adapters-s3@1.2.3"},
+	})
+
+	assertContains(t, content, `"storage": "@acme/adapters-s3@1.2.3"`, "storage override applied")
+	if strings.Contains(content, `"storage": "@kb-labs/adapters-fs"`) {
+		t.Error("storage default should not appear when overridden")
+	}
+	// Unrelated defaults must be untouched by the override.
+	assertContains(t, content, `"logger": "@kb-labs/adapters-pino"`, "logger keeps its default")
+}
+
+func TestGenerateFull_CacheOnlyWhenSet(t *testing.T) {
+	withoutCache := generateFull(Options{PlatformDir: "/x"})
+	if strings.Contains(withoutCache, `"cache"`) {
+		t.Error("cache should not render at all with no override — there is no built-in default")
+	}
+
+	withCache := generateFull(Options{
+		PlatformDir: "/x",
+		Adapters:    map[string]string{"cache": "@kb-labs/adapters-redis@0.2.0"},
+	})
+	assertContains(t, withCache, `"cache": "@kb-labs/adapters-redis@0.2.0"`, "cache override applied")
+}
+
+func TestGenerateFull_NilCatalogRendersEmptyToggleBlocks(t *testing.T) {
+	content := generateFull(Options{PlatformDir: "/x", Services: []string{"rest"}, Plugins: []string{"mind"}})
+
+	assertContains(t, content, `"services": {`, "services block still present")
+	assertContains(t, content, `"plugins": {`, "plugins block still present")
+	if strings.Contains(content, `"rest": true`) {
+		t.Error("with no Catalog, no service toggles should render at all, even if Services lists one")
+	}
+	if strings.Contains(content, `"mind":`) {
+		t.Error("with no Catalog, no plugin blocks should render at all, even if Plugins lists one")
+	}
+}
+
+func TestGenerateFull_CatalogDrivenServicesSkipsGateway(t *testing.T) {
+	content := generateFull(Options{PlatformDir: "/x", Catalog: testCatalog()})
+
+	assertContains(t, content, `"rest": false`, "rest rendered from catalog")
+	assertContains(t, content, `"marketplace": false`, "marketplace rendered from catalog (was previously missing — I5)")
+	if strings.Contains(content, `"gateway": false`) || strings.Contains(content, `"gateway": true`) {
+		t.Error("gateway has its own dedicated config section and must not get a generic services toggle")
+	}
+}
+
+func TestGenerateFull_CatalogDrivenPluginsRenderAll(t *testing.T) {
+	content := generateFull(Options{PlatformDir: "/x", Catalog: testCatalog()})
+
+	// release has no custom inner config — must still render with just enabled, no trailing-comma break.
+	assertContains(t, content, `"release": {`, "release plugin block rendered")
+	assertContains(t, content, `"vectorStore"`, "mind's custom inner config still present")
 }

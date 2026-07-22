@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/kb-labs/create/internal/gateway"
+	"github.com/kb-labs/create/internal/manifest"
 )
 
 // GatewayCreds holds the KB Labs Gateway machine identity written into the
@@ -33,6 +34,16 @@ type GatewayCreds struct {
 // demo-mode LLM credentials. Unrelated to internal/gateway, which models the
 // platform's own API gateway config.
 const DefaultGatewayURL = "https://api.kblabs.ru"
+
+// DefaultAdapterRoles lists the capability roles generateFull always renders
+// a package for, with or without an --adapters override (see the
+// adapters-block renderer below). Exported so callers (e.g. cmd/install.go's
+// reconciliation report) can know which roles are configured by default
+// without duplicating this list. "cache" is deliberately absent — it has no
+// built-in default and only appears when explicitly set via Options.Adapters.
+var DefaultAdapterRoles = []string{
+	"llm", "storage", "logger", "logRingBuffer", "analytics", "serviceTransport",
+}
 
 // Options controls which sections are included in the generated config.
 type Options struct {
@@ -81,6 +92,51 @@ type Options struct {
 	// `kb-create update` — see ReadPlatformOptions and the "projects" section
 	// in generateFull. Nil/empty is valid (no projects registered yet).
 	Projects map[string]string
+	// Adapters overrides which package backs a given capability role (e.g.
+	// "cache" -> "@kb-labs/adapters-redis@0.2.0"), from `kb-create install
+	// --adapters "role=pkg@version"`. Roles not present here keep their
+	// existing hardcoded default (or, for roles with no default like "cache",
+	// render nothing at all).
+	Adapters map[string]string
+	// Catalog is the manifest catalog the services/plugins toggle blocks are
+	// rendered from. Nil renders both blocks empty — there is deliberately no
+	// fallback to a hardcoded list here: that fallback is exactly the
+	// catalog/template drift this field exists to remove (ADR-0026, I5).
+	// Every real caller (cmd/create.go, cmd/update.go, cmd/install.go) already
+	// has the loaded *manifest.Manifest in scope when building Options.
+	Catalog *manifest.Manifest
+}
+
+// pluginInnerConfig holds the product-specific settings block rendered inside
+// a plugin's generated config entry. Only these five plugins have their own
+// settings today; any catalog plugin not listed here (including third-party
+// additions) renders with an empty inner block — see writePluginBlock.
+var pluginInnerConfig = map[string]string{
+	"mind": `
+      // Vector store for embeddings.
+      // "local" = on-disk HNSW index, "qdrant" = external Qdrant server.
+      "vectorStore": "local"`,
+	"agents": `
+      // Max steps per agent run (prevents infinite loops).
+      "maxSteps": 25`,
+	"ai-review": `
+      // Review mode: "heuristic" (fast), "llm" (smart), "full" (both).
+      "mode": "full"`,
+	"commit": `
+      // Auto-stage changed files before generating commit.
+      "autoStage": false`,
+	"scaffold": `
+      // Output directory for scaffolded entities.
+      "outDir": "plugins"`,
+}
+
+// servicesWithoutToggle lists catalog services deliberately excluded from the
+// generic services-toggle loop. "gateway" already has its own dedicated,
+// richer config section elsewhere in generateFull (auth/host/upstreams) — a
+// second simple on/off toggle for it would be redundant and could conflict
+// with that section (which one wins?).
+var servicesWithoutToggle = map[string]bool{
+	"gateway": true,
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -420,21 +476,28 @@ func generateFull(opts Options) string {
     // that implements it. You can swap adapters without changing app code.
     "adapters": {
 `)
-	b.WriteString(`      // LLM via KB Labs Gateway — 50 free requests included.
-      // Replace with @kb-labs/adapters-openai when you have your own API key.
-      "llm": "@kb-labs/adapters-kblabs-gateway",
-
-      // File storage backend.
-      "storage": "@kb-labs/adapters-fs",
-
-      // Structured logger.
-      "logger": "@kb-labs/adapters-pino",
-
-      // In-memory log ring buffer for recent log access.
-      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
-
-      // Analytics — JSONL file, no native dependencies.
-      "analytics": "@kb-labs/adapters-analytics-file"`)
+	adapterPkg := func(role, def string) string {
+		if v, ok := opts.Adapters[role]; ok && v != "" {
+			return v
+		}
+		return def
+	}
+	b.WriteString("      // LLM via KB Labs Gateway — 50 free requests included.\n")
+	b.WriteString("      // Replace with @kb-labs/adapters-openai when you have your own API key.\n")
+	fmt.Fprintf(&b, "      \"llm\": %s,\n\n", quote(adapterPkg("llm", "@kb-labs/adapters-kblabs-gateway")))
+	b.WriteString("      // File storage backend.\n")
+	fmt.Fprintf(&b, "      \"storage\": %s,\n\n", quote(adapterPkg("storage", "@kb-labs/adapters-fs")))
+	b.WriteString("      // Structured logger.\n")
+	fmt.Fprintf(&b, "      \"logger\": %s,\n\n", quote(adapterPkg("logger", "@kb-labs/adapters-pino")))
+	b.WriteString("      // In-memory log ring buffer for recent log access.\n")
+	fmt.Fprintf(&b, "      \"logRingBuffer\": %s,\n\n", quote(adapterPkg("logRingBuffer", "@kb-labs/adapters-log-ringbuffer")))
+	b.WriteString("      // Analytics — JSONL file, no native dependencies.\n")
+	fmt.Fprintf(&b, "      \"analytics\": %s", quote(adapterPkg("analytics", "@kb-labs/adapters-analytics-file")))
+	if v := opts.Adapters["cache"]; v != "" {
+		b.WriteString(",\n\n      // Cache backend — no built-in default, must be set explicitly\n")
+		b.WriteString("      // (e.g. via `kb-create install --adapters \"cache=@kb-labs/adapters-redis@...\"`).\n")
+		fmt.Fprintf(&b, "      \"cache\": %s", quote(v))
+	}
 	if opts.DocumentDatabase != "" {
 		b.WriteString(",\n\n      // Persistent document store — required for user auth (ADR-0020)\n")
 		b.WriteString("      // and other features that need durable storage.\n")
@@ -444,12 +507,10 @@ func generateFull(opts Options) string {
 		b.WriteString(",\n\n      // Key-value store — used for sessions, rate limiting, etc.\n")
 		fmt.Fprintf(&b, "      \"kvStore\": %s", quote(opts.KVStore))
 	}
-	b.WriteString(`,
-
-      // Service-to-service transport — gateway uses this to proxy to internal services.
-      // Supports TCP (default) and unix domain sockets (kb-dev socket mode).
-      "serviceTransport": "@kb-labs/adapters-service-transport-http"
-`)
+	b.WriteString(",\n\n")
+	b.WriteString("      // Service-to-service transport — gateway uses this to proxy to internal services.\n")
+	b.WriteString("      // Supports TCP (default) and unix domain sockets (kb-dev socket mode).\n")
+	fmt.Fprintf(&b, "      \"serviceTransport\": %s\n", quote(adapterPkg("serviceTransport", "@kb-labs/adapters-service-transport-http")))
 	b.WriteString(`    },
 
     // Plugin execution mode: "worker-pool" (isolated workers, stable) or
@@ -546,9 +607,14 @@ func generateFull(opts Options) string {
   // Background daemons. Enable/disable based on what you installed.
   "services": {
 `)
-	writeToggle(&b, "rest", "REST API daemon on port 5050.", svcSet)
-	writeToggle(&b, "workflow", "Workflow engine on port 7778.", svcSet)
-	writeToggle(&b, "studio", "Web UI on port 3000.", svcSet)
+	if opts.Catalog != nil {
+		for _, svc := range opts.Catalog.Services {
+			if servicesWithoutToggle[svc.ID] {
+				continue
+			}
+			writeToggle(&b, svc.ID, svc.Description, svcSet)
+		}
+	}
 	b.WriteString(`  },
 
 `)
@@ -558,23 +624,11 @@ func generateFull(opts Options) string {
   // Optional functionality. Each plugin can have its own nested config.
   "plugins": {
 `)
-	writePluginBlock(&b, "mind", "AI-powered code search (RAG).", plugSet, `
-      // Vector store for embeddings.
-      // "local" = on-disk HNSW index, "qdrant" = external Qdrant server.
-      "vectorStore": "local"`)
-	writePluginBlock(&b, "agents", "Autonomous agent execution.", plugSet, `
-      // Max steps per agent run (prevents infinite loops).
-      "maxSteps": 25`)
-	writePluginBlock(&b, "ai-review", "AI code review.", plugSet, `
-      // Review mode: "heuristic" (fast), "llm" (smart), "full" (both).
-      "mode": "full"`)
-	writePluginBlock(&b, "commit", "AI-powered commit message generation.", plugSet, `
-      // Auto-stage changed files before generating commit.
-      "autoStage": false`)
-	writePluginBlock(&b, "scaffold", "Scaffold plugins and adapters.", plugSet, `
-      // Output directory for scaffolded entities.
-      "outDir": "plugins"`)
-	writePluginBlock(&b, "release", "Plan, execute, and audit releases across your workspace.", plugSet, "")
+	if opts.Catalog != nil {
+		for _, plug := range opts.Catalog.Plugins {
+			writePluginBlock(&b, plug.ID, plug.Description, plugSet, pluginInnerConfig[plug.ID])
+		}
+	}
 	b.WriteString(`  },
 
 `)
