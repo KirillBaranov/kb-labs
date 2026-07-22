@@ -121,6 +121,16 @@
       "default": false
     }
   ],
+  "adapterConfig": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-kblabs-gateway",
+      "storage": "@kb-labs/adapters-fs",
+      "logger": "@kb-labs/adapters-pino",
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
+      "analytics": "@kb-labs/adapters-analytics-file",
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
+    }
+  },
   "binaries": [
     {
       "id": "kb-dev",

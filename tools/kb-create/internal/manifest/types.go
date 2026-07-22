@@ -16,16 +16,16 @@ func (p Package) PackageSpec() string {
 
 // Component is an optional service or plugin.
 type Component struct {
-	ID            string `json:"id"`
-	Pkg           string `json:"pkg"`
-	Description   string `json:"description"`
-	Default       bool   `json:"default"`
-	LocalPath     string `json:"localPath,omitempty"`     // absolute path for dev mode
-	Port          int    `json:"port,omitempty"`           // service port (services only)
+	ID               string  `json:"id"`
+	Pkg              string  `json:"pkg"`
+	Description      string  `json:"description"`
+	Default          bool    `json:"default"`
+	LocalPath        string  `json:"localPath,omitempty"`        // absolute path for dev mode
+	Port             int     `json:"port,omitempty"`             // service port (services only)
 	GatewayPrefix    string  `json:"gatewayPrefix,omitempty"`    // gateway proxy prefix (services only)
 	GatewayRewrite   *string `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
 	GatewayWebSocket bool    `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
-	Plugin         string  `json:"plugin,omitempty"`         // companion CLI plugin pkg (services only)
+	Plugin           string  `json:"plugin,omitempty"`           // companion CLI plugin pkg (services only)
 }
 
 // PackageSpec returns the install spec: "pkg@latest" in prod or "pkg@file:/abs/path" in dev.
@@ -42,8 +42,8 @@ type Binary struct {
 	Repo        string `json:"repo,omitempty"` // GitHub "owner/repo"
 	Name        string `json:"name"`           // binary name (e.g. "kb-dev")
 	Description string `json:"description"`
-	Default     bool   `json:"default"`                // pre-selected in wizard
-	LocalPath   string `json:"localPath,omitempty"`    // absolute path to local binary for dev mode
+	Default     bool   `json:"default"`             // pre-selected in wizard
+	LocalPath   string `json:"localPath,omitempty"` // absolute path to local binary for dev mode
 }
 
 // AdapterConfig holds optional adapter bindings that kb-create writes into the
@@ -57,18 +57,26 @@ type AdapterConfig struct {
 	// KVStore wires the key-value store (e.g. "@kb-labs/adapters-sqlite/kv").
 	// Used for sessions, rate limiting, and other short-lived key-value data.
 	KVStore string `json:"kvStore,omitempty"`
+	// Adapters maps a capability role name (e.g. "llm", "storage", "cache")
+	// to the npm package spec that should back it by default. Lets the
+	// default package for a role change via a manifest.json update instead
+	// of a kb-create binary release (ADR-0026's deferred item). A role
+	// missing here, or a nil AdapterConfig entirely, falls back to
+	// scaffold's own built-in defaults — this is a config-driven override
+	// layer, not a required one.
+	Adapters map[string]string `json:"adapters,omitempty"`
 }
 
 // Manifest describes all installable parts of the KB Labs platform.
 type Manifest struct {
-	Version      string            `json:"version"`
-	RegistryURL  string            `json:"registryUrl"`
-	Env          map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
-	Core         []Package         `json:"core"`
-	Adapters     []Package         `json:"adapters,omitempty"`
-	Services     []Component       `json:"services"`
-	Plugins      []Component       `json:"plugins"`
-	Binaries     []Binary          `json:"binaries,omitempty"`
+	Version     string            `json:"version"`
+	RegistryURL string            `json:"registryUrl"`
+	Env         map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
+	Core        []Package         `json:"core"`
+	Adapters    []Package         `json:"adapters,omitempty"`
+	Services    []Component       `json:"services"`
+	Plugins     []Component       `json:"plugins"`
+	Binaries    []Binary          `json:"binaries,omitempty"`
 	// AdapterConfig specifies adapter bindings to include in the generated
 	// platform config. Optional — omit to use platform defaults.
 	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`
