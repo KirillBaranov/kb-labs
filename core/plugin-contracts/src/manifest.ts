@@ -7,6 +7,7 @@
 
 import type { PermissionSpec } from './permissions.js';
 import type { HostType } from './host-context.js';
+import type { PluginServices } from './platform.js';
 // ─── Studio V2 (Module Federation Pages) ───────────────────────────
 
 /**
@@ -110,20 +111,20 @@ export interface PluginDependency {
 /**
  * Platform service requirements
  */
+// Derived from PluginServices (itself re-exported from @kb-labs/core-platform's
+// IPluginAdapters — the same interface ADAPTER_REGISTRY's `satisfies` clause
+// enforces against in core/plugin-runtime) instead of a separately maintained
+// literal union. Previously this list drifted from the registry's real key
+// set (missing eventBus, config, invoke, documentDatabase, kvStore, logs,
+// artifacts, snapshotManager) and `optional` wasn't constrained at all — see
+// ADR-0026.
+type PlatformCapability = keyof Required<PluginServices>;
+
 export interface PlatformRequirements {
   /** Required services (plugin fails to load if missing) */
-  requires?: Array<
-    | 'vectorStore'
-    | 'llm'
-    | 'embeddings'
-    | 'cache'
-    | 'storage'
-    | 'logger'
-    | 'analytics'
-    | 'notifier'
-  >;
+  requires?: Array<PlatformCapability>;
   /** Optional services (features degraded if missing) */
-  optional?: Array<string>;
+  optional?: Array<PlatformCapability>;
 }
 
 /**
