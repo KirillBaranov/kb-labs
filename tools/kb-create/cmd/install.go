@@ -1,0 +1,214 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/kb-labs/create/internal/devservices"
+	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/logger"
+	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/scaffold"
+	"github.com/kb-labs/create/internal/scan"
+	"github.com/kb-labs/create/internal/wizard"
+)
+
+var (
+	flagInstallPlugins     string
+	flagInstallServices    string
+	flagInstallPlatform    string
+	flagInstallRegistry    string
+	flagInstallDevManifest string
+)
+
+var installCmd = &cobra.Command{
+	Use:   "install",
+	Short: "Install specific plugins/services non-interactively (no prompts — for CI/agents)",
+	Long: `Installs exactly the plugins/services named by --plugins/--services, using
+manifest defaults for everything else. Never prompts — unknown IDs fail fast
+with a clear error, missing optional env vars print as hints, not failures.`,
+	RunE: runInstall,
+}
+
+func init() {
+	installCmd.Flags().StringVar(&flagInstallPlugins, "plugins", "", "comma-separated plugin IDs to install (e.g. release,commit)")
+	installCmd.Flags().StringVar(&flagInstallServices, "services", "", "comma-separated service IDs to install (e.g. workflow,gateway)")
+	installCmd.Flags().StringVar(&flagInstallPlatform, "platform", "", "platform installation directory")
+	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
+	installCmd.Flags().StringVar(&flagInstallDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
+	rootCmd.AddCommand(installCmd)
+}
+
+func runInstall(cmd *cobra.Command, args []string) error {
+	out := newOutput()
+
+	m, err := manifest.Load(manifest.LoadOptions{
+		LocalOverride: flagInstallDevManifest,
+	})
+	if err != nil {
+		return fmt.Errorf("load manifest: %w", err)
+	}
+
+	plugins := splitCSV(flagInstallPlugins)
+	services := splitCSV(flagInstallServices)
+
+	if err := validateComponentIDs("plugin", plugins, m.Plugins); err != nil {
+		return err
+	}
+	if err := validateComponentIDs("service", services, m.Services); err != nil {
+		return err
+	}
+
+	// Reuse the wizard's existing non-interactive defaulting (same path
+	// `--yes` already takes) for platform dir / consent / telemetry, then
+	// overwrite the selection with exactly what was requested on the flags.
+	sel, err := wizard.Run(m, wizard.WizardOptions{
+		Yes:                true,
+		DefaultPlatformDir: flagInstallPlatform,
+	})
+	if err != nil {
+		return err
+	}
+	sel.Services = services
+	sel.Plugins = plugins
+	sel.DevMode = flagInstallDevManifest != ""
+	sel.Registry = flagInstallRegistry
+
+	if err := os.MkdirAll(sel.PlatformDir, 0o750); err != nil {
+		return fmt.Errorf("create platform dir: %w", err)
+	}
+
+	log, err := logger.New(sel.PlatformDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = log.Close() }()
+
+	packageManager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
+	out.Info(fmt.Sprintf("Installing %s via %s", describeSelection(plugins, services), packageManager.Name()))
+
+	ins := &installer.Installer{
+		PM:      packageManager,
+		Log:     log,
+		Version: cmd.Root().Version,
+	}
+
+	result, err := ins.Install(sel, m)
+	if err != nil {
+		return fmt.Errorf("installation failed: %w", err)
+	}
+
+	scaffoldOpts := scaffold.Options{
+		PlatformDir: sel.PlatformDir,
+		Services:    sel.Services,
+		Plugins:     sel.Plugins,
+		Gateway:     result.Gateway,
+	}
+	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
+		return fmt.Errorf("scaffold platform config: %w", err)
+	}
+	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
+		return fmt.Errorf("scaffold project config: %w", err)
+	}
+
+	out.OK(fmt.Sprintf("Installed in %s", result.Duration.Round(1)))
+	out.KeyValue("config", result.ConfigPath)
+	if result.ServicesWarning != "" {
+		out.Warn(result.ServicesWarning)
+	}
+
+	printEnvHints(out, result.InstalledPlugins)
+
+	return nil
+}
+
+// validateComponentIDs fails fast (before any install/network action) when a
+// flag-supplied ID isn't in the manifest catalog, listing what IS available
+// so the error is actionable rather than a bare "not found".
+func validateComponentIDs(kind string, requested []string, known []manifest.Component) error {
+	if len(requested) == 0 {
+		return nil
+	}
+	knownIDs := make(map[string]bool, len(known))
+	available := make([]string, 0, len(known))
+	for _, c := range known {
+		knownIDs[c.ID] = true
+		available = append(available, c.ID)
+	}
+	sort.Strings(available)
+	for _, id := range requested {
+		if !knownIDs[id] {
+			return fmt.Errorf("unknown %s %q — available: %s", kind, id, strings.Join(available, ", "))
+		}
+	}
+	return nil
+}
+
+// printEnvHints reads each installed plugin's static manifest (already
+// emitted at build time by the devkit tsup preset — see infra/devkit/tsup/node.js)
+// and prints which of its declared env vars aren't currently set. Purely
+// informational: these are hints for the operator, not install failures —
+// there's no per-plugin config-provisioning step yet to validate against.
+func printEnvHints(out output, plugins []scan.PluginEntry) {
+	for _, p := range plugins {
+		if p.ResolvedPath == "" {
+			continue
+		}
+		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
+		if err != nil {
+			continue // no static manifest yet, or not a plugin schema
+		}
+		var unset []string
+		for _, envVar := range pluginManifest.Permissions.Env.Read {
+			if strings.ContainsAny(envVar, "*") {
+				continue // wildcard allow-patterns (e.g. "CI_*") aren't checkable directly
+			}
+			if os.Getenv(envVar) == "" {
+				unset = append(unset, envVar)
+			}
+		}
+		if len(unset) > 0 {
+			out.Warn(fmt.Sprintf("%s: env not set — %s (only needed for the commands that use them)",
+				pluginManifest.ID, strings.Join(unset, ", ")))
+		}
+	}
+}
+
+// describeSelection renders a short human summary of what was requested,
+// for the single "Installing ..." status line.
+func describeSelection(plugins, services []string) string {
+	parts := make([]string, 0, 2)
+	if len(plugins) > 0 {
+		parts = append(parts, fmt.Sprintf("%d plugin(s)", len(plugins)))
+	}
+	if len(services) > 0 {
+		parts = append(parts, fmt.Sprintf("%d service(s)", len(services)))
+	}
+	if len(parts) == 0 {
+		return "0 packages"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// splitCSV splits a comma-separated flag value, trimming whitespace and
+// dropping empty entries (so "" and "a,,b" both behave sensibly).
+func splitCSV(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	raw := strings.Split(s, ",")
+	out := make([]string, 0, len(raw))
+	for _, r := range raw {
+		if v := strings.TrimSpace(r); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}

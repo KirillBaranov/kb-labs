@@ -574,6 +574,7 @@ func generateFull(opts Options) string {
 	writePluginBlock(&b, "scaffold", "Scaffold plugins and adapters.", plugSet, `
       // Output directory for scaffolded entities.
       "outDir": "plugins"`)
+	writePluginBlock(&b, "release", "Plan, execute, and audit releases across your workspace.", plugSet, "")
 	b.WriteString(`  },
 
 `)
@@ -674,17 +675,24 @@ func writeToggle(b *strings.Builder, id, comment string, enabled map[string]bool
 
 // writePluginBlock writes a plugin config object with a comment and optional
 // inner settings. Disabled plugins are written commented-out style (enabled: false).
+// inner may be empty for plugins with no product-specific settings yet — the
+// trailing comma is omitted in that case so the object stays valid JSON.
 func writePluginBlock(b *strings.Builder, id, comment string, enabled map[string]bool, inner string) {
 	on := enabled[id]
 	fmt.Fprintf(b, "    // %s\n", comment)
 	fmt.Fprintf(b, "    %s: {\n", quote(id))
-	if on {
-		fmt.Fprintf(b, "      \"enabled\": true,")
+	if inner == "" {
+		fmt.Fprintf(b, "      \"enabled\": %t\n", on)
 	} else {
-		fmt.Fprintf(b, "      \"enabled\": false,")
+		if on {
+			fmt.Fprintf(b, "      \"enabled\": true,")
+		} else {
+			fmt.Fprintf(b, "      \"enabled\": false,")
+		}
+		b.WriteString(inner)
+		b.WriteString("\n")
 	}
-	b.WriteString(inner)
-	b.WriteString("\n    },\n")
+	b.WriteString("    },\n")
 }
 
 // writeStarterWorkflows generates example workflows that showcase the engine.
