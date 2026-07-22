@@ -1,0 +1,128 @@
+name: 'KB Labs CLI Install'
+description: >-
+  Installs specific KB Labs plugins/services via kb-create's non-interactive
+  install command, without building kb-create from source — downloads the
+  matching binary for the runner's OS/arch from a KB Labs binaries release
+  (same release channel kb-create's own self-update uses) and runs
+  `kb-create install`.
+author: 'KB Labs'
+
+inputs:
+  plugins:
+    description: >-
+      Comma-separated plugin IDs to install, each optionally pinned to a
+      version (e.g. "release@0.2.0,commit"). Must exist in the manifest
+      catalog — unknown IDs fail fast before any install action.
+    required: false
+    default: ''
+  services:
+    description: 'Comma-separated service IDs to install, same syntax as plugins.'
+    required: false
+    default: ''
+  adapters:
+    description: >-
+      Comma-separated "role=pkg[@version]" adapter overrides (e.g.
+      "cache=@kb-labs/adapters-redis@0.2.0").
+    required: false
+    default: ''
+  platform-dir:
+    description: 'Platform installation directory.'
+    required: false
+    default: '${{ github.workspace }}/.kb-platform'
+  registry:
+    description: 'npm registry URL override (e.g. for a local Verdaccio in CI).'
+    required: false
+    default: ''
+  version:
+    description: >-
+      KB Labs binaries release tag to install kb-create from (e.g.
+      "v2.105.0-binaries"). Defaults to the repo''s latest non-prerelease
+      release.
+    required: false
+    default: 'latest'
+  repo:
+    description: 'GitHub "owner/repo" to download the kb-create binary from.'
+    required: false
+    default: 'kb-labs-team/kb-labs'
+
+outputs:
+  platform-dir:
+    description: 'The resolved platform installation directory (same as the platform-dir input).'
+    value: ${{ steps.install.outputs.platform-dir }}
+  config-path:
+    description: 'Path to the generated kb.config.jsonc.'
+    value: ${{ steps.install.outputs.config-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve OS/Arch
+      id: platform
+      shell: bash
+      run: |
+        set -euo pipefail
+        os="$(uname -s)"
+        arch="$(uname -m)"
+        case "$os" in
+          Linux)  goos=linux ;;
+          Darwin) goos=darwin ;;
+          MINGW*|MSYS*|CYGWIN*) goos=windows ;;
+          *) echo "::error::Unsupported OS: $os"; exit 1 ;;
+        esac
+        case "$arch" in
+          x86_64|amd64) goarch=amd64 ;;
+          aarch64|arm64) goarch=arm64 ;;
+          *) echo "::error::Unsupported architecture: $arch"; exit 1 ;;
+        esac
+        if [ "$goos" = "windows" ] && [ "$goarch" = "arm64" ]; then
+          echo "::error::windows/arm64 is not published (see .goreleaser.yaml ignore list)"
+          exit 1
+        fi
+        echo "goos=$goos" >> "$GITHUB_OUTPUT"
+        echo "goarch=$goarch" >> "$GITHUB_OUTPUT"
+        ext=""
+        [ "$goos" = "windows" ] && ext=".exe"
+        echo "ext=$ext" >> "$GITHUB_OUTPUT"
+
+    - name: Download kb-create
+      shell: bash
+      env:
+        REPO: ${{ inputs.repo }}
+        VERSION: ${{ inputs.version }}
+        GOOS: ${{ steps.platform.outputs.goos }}
+        GOARCH: ${{ steps.platform.outputs.goarch }}
+        EXT: ${{ steps.platform.outputs.ext }}
+      run: |
+        set -euo pipefail
+        asset="kb-create-${GOOS}-${GOARCH}${EXT}"
+        if [ "$VERSION" = "latest" ]; then
+          url="https://github.com/${REPO}/releases/latest/download/${asset}"
+        else
+          url="https://github.com/${REPO}/releases/download/${VERSION}/${asset}"
+        fi
+        echo "Downloading kb-create from $url"
+        dest="${RUNNER_TEMP}/kb-create${EXT}"
+        curl -fsSL "$url" -o "$dest"
+        chmod +x "$dest"
+
+    - name: Install
+      id: install
+      shell: bash
+      env:
+        PLUGINS: ${{ inputs.plugins }}
+        SERVICES: ${{ inputs.services }}
+        ADAPTERS: ${{ inputs.adapters }}
+        PLATFORM_DIR: ${{ inputs.platform-dir }}
+        REGISTRY: ${{ inputs.registry }}
+        EXT: ${{ steps.platform.outputs.ext }}
+      run: |
+        set -euo pipefail
+        bin="${RUNNER_TEMP}/kb-create${EXT}"
+        args=(install --platform "$PLATFORM_DIR")
+        [ -n "$PLUGINS" ] && args+=(--plugins "$PLUGINS")
+        [ -n "$SERVICES" ] && args+=(--services "$SERVICES")
+        [ -n "$ADAPTERS" ] && args+=(--adapters "$ADAPTERS")
+        [ -n "$REGISTRY" ] && args+=(--registry "$REGISTRY")
+        "$bin" "${args[@]}"
+        echo "platform-dir=$PLATFORM_DIR" >> "$GITHUB_OUTPUT"
+        echo "config-path=$PLATFORM_DIR/.kb/kb.config.jsonc" >> "$GITHUB_OUTPUT"
