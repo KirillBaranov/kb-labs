@@ -144,6 +144,119 @@ underused) `AdapterConfig` struct, so defaults become config-editable
 without a Go binary release — is worth doing but is a separate change, not
 bundled into this one.
 
+## Install Flow Map and Invariants
+
+Three entity kinds, ranked by who can ship them and what they can own:
+
+```
+service   ⊃ plugin capabilities, OWNS a daemon + port         — KB Labs only
+plugin    — CLI commands + optional REST routes (mounted      — anyone
+            via the shared gateway, never its own daemon)
+adapter   — implements one role (llm/cache/storage/...);      — anyone
+            the ROLE is a KB-Labs-controlled contract
+            (ADAPTER_REGISTRY), the PACKAGE behind it is not
+```
+
+A service can do everything a plugin can (release's manifest proves a
+*plugin* can already have `rest.routes` without being a service — the
+distinguishing fact is daemon+port ownership, not HTTP presence). A plugin
+can never become a service. An adapter is orthogonal to both — plugins and
+services *consume* adapters by role name, they don't contain them.
+
+This asymmetry is why services get away with a small hardcoded catalog
+entry (`manifest.json`'s 5 `@kb-labs/*` services — closed, trusted set)
+while plugins needed a self-describing static manifest (`dist/manifest.json`,
+this ADR's shipped half) — the set of plugin publishers is open, so it can't
+be hardcoded the way services can.
+
+### Top-down call chain for `kb-create install --plugins=X --services=Y --adapters="role=pkg"`
+
+```
+[0] cmd/install.go: runInstall
+      │
+      ▼
+[1] manifest.Load()  ──────────────────────────────────────────  catalog
+      reads embedded/dev-override manifest.json                  (services+
+      │                                                          plugins IDs,
+      ▼                                                          KB-Labs only)
+[2] validateComponentIDs(plugins, services)   ── FAILS HARD, ZERO SIDE EFFECTS
+      unknown ID → error + list of valid IDs, before any network/fs action
+      (adapters: role validated against ADAPTER_REGISTRY_KEYS — proposed —
+       NOT against manifest.json; package spec itself is never validated
+       here, only pnpm resolving it later can tell you it doesn't exist)
+      │
+      ▼
+[3] wizard.Run(Yes: true) → defaultSelection()  ── single defaulting source
+      PlatformDir / Consent / Telemetry come from here — shared with the
+      interactive `--yes` path, not reimplemented. sel.Services/sel.Plugins
+      then OVERWRITTEN with exactly what was requested (not merged with
+      catalog defaults).
+      │
+      ▼
+[4] pm.Install(specs) — pnpm add
+      specs = CorePackageSpecs() ∪ AdapterPackageSpecs() (5 baseline        ⚠ NOT
+              adapters: fs/pino/log-ringbuffer/analytics-file/              scoped —
+              service-transport-http — ALWAYS installed)                   see I3
+            ∪ selectedPkgSpecs(requested plugins/services only)
+      A selected plugin's OWN package.json deps (e.g. release →
+      core-state-daemon) ride along transitively — not filtered.           see I4
+      FAILURE: pnpm error → hard fail, install aborts.
+      │
+      ▼
+[5] scan.Run() — Node subprocess walks the WHOLE node_modules tree
+      classifies anything with a kb.manifest by schema prefix into
+      Plugins / Services / Adapters — including transitively-installed
+      things nobody explicitly asked for (state-daemon showed up this way
+      in the release e2e test — expected, not a bug: release declares
+      `cache`, core-state-daemon is what backs it).                        see I4
+      FAILURE: soft — warns, sets a user-visible ServicesWarning, does
+      NOT block the rest of install.
+      │
+      ▼
+[6] devservices.LoadPluginManifest() per discovered plugin — Go-native,
+      no JS execution. Reads Platform.Requires/Optional, Permissions.Env
+      .Read, ConfigSection from each plugin's static dist/manifest.json.
+      FAILURE: soft, per-plugin — missing/invalid file is silently
+      skipped (e.g. an older published version predating this convention).
+      │
+      ▼
+[7] scaffold.generateFull() → kb.config.jsonc
+      services/plugins TOGGLE blocks: scoped to selection, BUT gated by a
+      SEPARATE hardcoded Go list (writeToggle/writePluginBlock) that must
+      be manually kept in sync with manifest.json's catalog — today it
+      ISN'T fully in sync: `gateway` and `marketplace`-as-service have no
+      toggle at all, `marketplace`-as-plugin has no block either.          ⚠ see I5
+      adapters block: NOT scoped — always fully rendered (llm/storage/
+      logger/logRingBuffer/analytics/serviceTransport get some default;
+      `cache` renders nothing at all today — proposed to fix).
+      │
+      ▼
+[8] Reconciliation report (proposed) — cross-check each discovered
+      plugin's Platform.Requires/Optional against the FINAL resolved
+      adapter set (defaults ∪ --adapters overrides).
+      required + unconfigured → visible warning (not a hard fail yet)
+      optional + unconfigured → informational note
+```
+
+### Invariants
+
+| # | Statement | Enforced where | On violation |
+|---|-----------|----------------|---------------|
+| I1 | Requested plugin/service IDs must exist in the manifest catalog | `validateComponentIDs`, step 2 | **Hard fail**, before any network/fs action, lists valid IDs |
+| I2 | Non-interactive defaulting (platform dir, consent, telemetry) has exactly one implementation | `wizard.Run(Yes:true)`, step 3 | N/A — shared code path, can't drift between interactive/CI installs |
+| I3 | Core packages + the 5 baseline adapters install unconditionally, regardless of `--plugins`/`--services` selection | `CorePackageSpecs()`/`AdapterPackageSpecs()`, step 4 | Not a failure — a deliberate scoping boundary: "scoped install" scopes *plugins/services*, not the platform baseline |
+| I4 | A selected plugin's transitive npm dependencies are discovered by the scanner even though they weren't explicitly requested | `scan.Run()`, step 5 | Not a failure — expected when a plugin genuinely depends on a service (e.g. release → core-state-daemon for its `cache` requirement) |
+| I5 | A plugin/service in the manifest catalog is *installable* but not automatically *configurable/visible* in generated config — that needs a matching, separately-maintained entry in `scaffold.go`'s Go template | `writeToggle`/`writePluginBlock`, step 7 | **Known gap, not yet enforced anywhere** — `gateway`, `marketplace` (as service and as plugin) are catalog-installable today with no rendered config block at all |
+| I6 | Adapter *role names* are validated against a KB-Labs-controlled canonical list; adapter *package specs* are not validated until pnpm resolves them | proposed `ADAPTER_REGISTRY_KEYS` check, step 2 | Unknown role → hard fail early (proposed); bad package spec → pnpm failure later, same as any other package |
+| I7 | Static-JSON reads (plugin manifests, proposed adapter-roles list) are always best-effort | steps 6, 8 | Missing/invalid file never blocks install — only reduces how much the reconciliation report can say |
+
+I5 is the same "N hand-maintained lists that drift" shape as the adapter-role
+problem this ADR already targets, one layer further down (catalog ↔
+config-template instead of role-name ↔ role-name). Not fixed by the proposal
+above — worth its own follow-up (e.g. drive `writeToggle`/`writePluginBlock`
+generically off the catalog's `Component` list instead of a parallel
+hardcoded Go call per entry), tracked here so it isn't lost.
+
 ## Consequences
 
 ### Positive
