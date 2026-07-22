@@ -1028,6 +1028,35 @@ func TestGenerateFull_CatalogDrivenServicesSkipsGateway(t *testing.T) {
 	}
 }
 
+func TestGenerateFull_AdapterConfigFromCatalogOverridesFallback(t *testing.T) {
+	catalog := testCatalog()
+	catalog.AdapterConfig = &manifest.AdapterConfig{
+		Adapters: map[string]string{"storage": "@acme/adapters-gcs@2.0.0"},
+	}
+
+	content := generateFull(Options{PlatformDir: "/x", Catalog: catalog})
+
+	assertContains(t, content, `"storage": "@acme/adapters-gcs@2.0.0"`, "manifest.json AdapterConfig default applied")
+}
+
+func TestGenerateFull_CLIAdapterOverrideWinsOverCatalogConfig(t *testing.T) {
+	catalog := testCatalog()
+	catalog.AdapterConfig = &manifest.AdapterConfig{
+		Adapters: map[string]string{"storage": "@acme/adapters-gcs@2.0.0"},
+	}
+
+	content := generateFull(Options{
+		PlatformDir: "/x",
+		Catalog:     catalog,
+		Adapters:    map[string]string{"storage": "@acme/adapters-s3@1.0.0"},
+	})
+
+	assertContains(t, content, `"storage": "@acme/adapters-s3@1.0.0"`, "--adapters CLI override wins over catalog config")
+	if strings.Contains(content, "@acme/adapters-gcs") {
+		t.Error("catalog config default should be fully shadowed by the CLI override")
+	}
+}
+
 func TestGenerateFull_CatalogDrivenPluginsRenderAll(t *testing.T) {
 	content := generateFull(Options{PlatformDir: "/x", Catalog: testCatalog()})
 

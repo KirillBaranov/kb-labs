@@ -476,11 +476,20 @@ func generateFull(opts Options) string {
     // that implements it. You can swap adapters without changing app code.
     "adapters": {
 `)
-	adapterPkg := func(role, def string) string {
+	// Priority: --adapters CLI override > manifest.json's AdapterConfig.Adapters
+	// (config-driven, editable without a kb-create release) > this function's
+	// own hardcoded fallback (last resort, keeps behavior identical when the
+	// catalog carries no AdapterConfig at all).
+	adapterPkg := func(role, fallback string) string {
 		if v, ok := opts.Adapters[role]; ok && v != "" {
 			return v
 		}
-		return def
+		if opts.Catalog != nil && opts.Catalog.AdapterConfig != nil {
+			if v, ok := opts.Catalog.AdapterConfig.Adapters[role]; ok && v != "" {
+				return v
+			}
+		}
+		return fallback
 	}
 	b.WriteString("      // LLM via KB Labs Gateway — 50 free requests included.\n")
 	b.WriteString("      // Replace with @kb-labs/adapters-openai when you have your own API key.\n")
