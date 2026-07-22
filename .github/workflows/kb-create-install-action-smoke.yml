@@ -1,0 +1,58 @@
+name: kb-create-install action smoke test
+
+# Ad-hoc verification that the reusable .github/actions/kb-create-install
+# composite action actually works end to end: downloads the real released
+# kb-create binary (no build-from-source) and installs a plugin with it.
+#
+# This is deliberately separate from the Go-level e2e suite (tools/kb-create/
+# e2e/), which tests kb-create itself built from source on every PR — this
+# workflow instead proves the *packaged, reusable action* wrapping a released
+# binary works, the way an external consumer repo would actually use it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'Plugin ID to install (must be in the manifest catalog)'
+        required: true
+        default: 'release'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Install ${{ inputs.plugin }} via the reusable action
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install via kb-create-install action
+        id: kb
+        uses: ./.github/actions/kb-create-install
+        with:
+          plugins: ${{ inputs.plugin }}
+          platform-dir: ${{ runner.temp }}/kb-platform-action-smoke
+
+      - name: Verify the plugin package is actually there
+        run: |
+          set -euo pipefail
+          find "${{ steps.kb.outputs.platform-dir }}/node_modules/@kb-labs" -maxdepth 1 -type d
+          test -f "${{ steps.kb.outputs.config-path }}"
+          echo "config-path output: ${{ steps.kb.outputs.config-path }}"
+          grep -q '"release": {' "${{ steps.kb.outputs.config-path }}" || {
+            echo "::error::plugins.release block missing from generated config"
+            exit 1
+          }
+
+      - name: Confirm no unselected services leaked in
+        run: |
+          set -euo pipefail
+          devservices="${{ steps.kb.outputs.platform-dir }}/.kb/devservices.yaml"
+          if [ -f "$devservices" ] && grep -qE "gateway|workflow-daemon" "$devservices"; then
+            echo "::error::unselected service present in devservices.yaml — install is not scoped"
+            cat "$devservices"
+            exit 1
+          fi
+          echo "OK — no unselected service leaked in"
