@@ -104,7 +104,8 @@
         { "slug": "guides/llm-setup",            "type": "manual", "owners": ["adapters/openai/**", "adapters/kblabs-gateway/**"] },
         { "slug": "guides/testing",              "type": "manual", "owners": ["shared/testing/**", "shared/testing-e2e/**"] },
         { "slug": "guides/production-readiness", "type": "manual", "owners": ["tools/kb-deploy/**"] },
-        { "slug": "guides/troubleshooting",      "type": "manual", "owners": ["tools/kb-dev/**", "tools/kb-devkit/**"] }
+        { "slug": "guides/troubleshooting",      "type": "manual", "owners": ["tools/kb-dev/**", "tools/kb-devkit/**"] },
+        { "slug": "guides/ci-install",            "type": "manual", "owners": ["tools/kb-create/**", ".github/actions/kb-create-install/**"] }
       ]
     },
 
@@ -285,8 +286,8 @@
   ],
 
   "summary": {
-    "total": 91,
-    "byType": { "auto": 17, "hybrid": 33, "manual": 41 },
+    "total": 92,
+    "byType": { "auto": 17, "hybrid": 33, "manual": 42 },
     "missing": ["concepts/llm-routing"],
     "orphaned": ["product-sdk/*"],
     "conventions": "CONVENTIONS.md"

@@ -131,6 +131,45 @@ kb-create my-project --platform ~/custom/platform/path
 | `--dev-manifest <path>` | Install from local packages via pnpm pack pre-step (see [Dev Mode](#dev-mode)) |
 | `--registry <url>` | Use custom npm registry (e.g. `http://localhost:4873` for local verdaccio) |
 
+### `kb-create install`
+
+Non-interactive, **scoped** install — installs exactly the plugins/services you name, no wizard, no default footprint beyond the platform baseline (core packages + always-installed baseline adapters). Built for CI, where you want e.g. just the `release` plugin without gateway/workflow/marketplace.
+
+```bash
+kb-create install --plugins=release --platform ./ci-platform
+kb-create install --plugins=release,commit --services=rest --platform ./ci-platform
+```
+
+Every plugin/service ID is validated against the manifest catalog **before any network action** — an unknown ID fails fast with the list of valid IDs.
+
+**Version pinning** — append `@version` to any ID:
+
+```bash
+kb-create install --plugins=release@0.2.0 --services=rest@1.4.0 --platform ./ci-platform
+```
+
+Omit the version to install `@latest`. Plugin and service version maps are independent (an ID like `marketplace` can exist in both catalogs).
+
+**Adapter configuration** — wire a role to a specific package with `--adapters "role=pkg[@version]"`:
+
+```bash
+kb-create install --plugins=release \
+  --adapters "cache=@kb-labs/adapters-redis@0.3.0" \
+  --platform ./ci-platform
+```
+
+Role names are validated against the platform's canonical capability list (`ADAPTER_REGISTRY_KEYS`) before any install action — an unknown role fails fast, listing the valid roles. Most common roles already have a default wired from the manifest catalog (`llm`, `storage`, `logger`, `logRingBuffer`, `analytics`, `serviceTransport`); `cache` has no default — only one package in the ecosystem implements it, and defaulting to it risks a runtime failure with no Redis running. If a plugin declares a required capability with nothing backing it, the install still succeeds but the reconciliation report prints a visible warning.
+
+| Flag | Description |
+|------|-------------|
+| `--plugins <ids>` | Comma-separated plugin IDs to install, each optionally `@version` |
+| `--services <ids>` | Comma-separated service IDs to install, each optionally `@version` |
+| `--adapters <pairs>` | Comma-separated `role=pkg[@version]` pairs |
+| `--platform <dir>` | Platform directory (required) |
+| `--registry <url>` | Use a custom npm registry |
+
+See also the reusable `.github/actions/kb-create-install` composite GitHub Action, which wraps this command (binary download + flags) into a single workflow step.
+
 ### `kb-create update`
 
 Compares the current manifest against the installed snapshot. Shows a diff, asks for confirmation, then applies updates. After the platform is updated, also re-applies Claude Code assets from the just-refreshed devkit (skills + the managed `CLAUDE.md` section). Use `--skip-claude` or `--no-claude-md` to opt out — same semantics as on install.

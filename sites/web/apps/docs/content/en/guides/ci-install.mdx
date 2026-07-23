@@ -1,0 +1,70 @@
+---
+title: "Scoped Installs in CI"
+description: "Install exactly the plugins/services a CI job needs with kb-create install, and the reusable GitHub Action that wraps it."
+updatedAt: "2026-07-23"
+order: 8
+---
+
+Most workflows only need a thin slice of the platform — a release job needs the `release` plugin, not the gateway, workflow engine, or marketplace. `kb-create install` and the `kb-create-install` GitHub Action exist to make that slice explicit and fast, instead of pulling in the full onboarding wizard's default footprint.
+
+## `kb-create install`
+
+A non-interactive command that installs exactly the plugins/services you name — no wizard, no default footprint beyond the platform baseline (core packages + the always-installed baseline adapters).
+
+```bash
+kb-create install --plugins=release --platform ./ci-platform
+```
+
+Every ID is validated against the manifest catalog **before any network action** — an unknown plugin/service name fails fast with the list of valid IDs, rather than partway through an install.
+
+### Pin versions
+
+Append `@version` to any plugin or service ID:
+
+```bash
+kb-create install --plugins=release@0.2.0 --services=rest@1.4.0 --platform ./ci-platform
+```
+
+Omit the version to install `@latest`. Pins are independent per catalog (plugins and services are separate maps), since an ID like `marketplace` can exist in both.
+
+### Configure adapters
+
+Adapters back the capabilities plugins declare (`llm`, `storage`, `cache`, ...). Wire one explicitly with `--adapters`:
+
+```bash
+kb-create install --plugins=release \
+  --adapters "cache=@kb-labs/adapters-redis@0.3.0" \
+  --platform ./ci-platform
+```
+
+Role names are validated against the platform's canonical capability list — a typo'd role fails before any package installs. Most common roles (`llm`, `storage`, `logger`, `analytics`, ...) already have a sane default wired from the manifest catalog; `cache` deliberately has none, since only one package in the ecosystem implements it today and defaulting to it would fail at runtime wherever Redis isn't running. If a plugin declares a capability as required and nothing backs it, the install still succeeds but prints a visible warning — check the output when adding a new plugin to a CI job for the first time.
+
+## Reusable GitHub Action
+
+For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the binary download and the flags above into one step:
+
+```yaml
+- uses: kb-labs-team/kb-labs/.github/actions/kb-create-install@main
+  with:
+    plugins: release@0.2.0
+    platform-dir: ${{ runner.temp }}/kb-platform
+```
+
+| Input | Description |
+|---|---|
+| `plugins` | Comma-separated plugin IDs, each optionally `@version` |
+| `services` | Comma-separated service IDs, each optionally `@version` |
+| `adapters` | Comma-separated `role=pkg[@version]` pairs |
+| `platform-dir` | Where the platform installs to (default: a runner temp dir) |
+| `registry` | Override the npm registry (e.g. a local Verdaccio for testing) |
+| `version` | Pin the `kb-create` binary itself, instead of using the latest release |
+
+Outputs: `platform-dir` (resolved install path) and `config-path` (generated `kb.config.jsonc`), for chaining into later steps that need to `cd` into the platform or read its config.
+
+The action downloads the `kb-create` binary directly from GitHub Releases (same convention as `kb-create`'s own self-update) — no separate install script step needed.
+
+## What's next
+
+→ [Installation](/installation) — the full interactive install flow for local development
+→ [Adapters](/adapters) — what each capability role does and which packages implement it
+→ [Configuration → kb.config](/configuration/kb-config) — the generated config file these installs produce
