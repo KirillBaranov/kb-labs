@@ -56,6 +56,10 @@ export interface PublishResult {
   /** Package was already published at this version — counted as success. */
   alreadyPublished?: boolean;
   error?: string;
+  /** npm's own error code (e.g. "E403"), extracted from its stderr, when recognizable. */
+  errorCode?: string;
+  /** Actionable, human-readable explanation for errorCode — see NPM_ERROR_HINTS. */
+  errorHint?: string;
 }
 
 export interface ProgrammaticPublishResult {
@@ -105,6 +109,33 @@ function isRetryable(message: string): boolean {
 
 function isAlreadyPublished(message: string): boolean {
   return ALREADY_PUBLISHED_PATTERNS.some(p => message.includes(p));
+}
+
+/**
+ * Human-readable hints per npm error code — surfaced directly in the
+ * delivery report so a permanent failure doesn't require digging through
+ * raw CI logs to tell "our token is broken" apart from "npm has flagged
+ * this specific package," which look identical (both E403) but need
+ * completely different fixes.
+ */
+const NPM_ERROR_HINTS: Record<string, string> = {
+  E403: 'npm rejected the publish (403). If other packages in the same run succeeded with the same token, this is almost certainly an npm-side restriction on this specific package/account entry (e.g. a security hold), not a token or code problem — check npmjs.com directly or contact npm support. Retrying will not help until that is resolved.',
+  E401: 'Authentication failed (401) — NPM_TOKEN/NODE_AUTH_TOKEN is missing, expired, or invalid for this registry.',
+  E404: 'Registry returned 404 — check the registry URL and that the package name/scope is correct and accessible with this token.',
+  EOTP: 'npm requires a one-time password for this publish — programmatic (token-based) delivery cannot supply one; this package needs an interactive `npm publish` from a human, or a token exempt from OTP.',
+};
+
+/** Extract the npm CLI's own error code (e.g. "E403") from its stderr, if present. */
+function extractNpmErrorCode(message: string): string | undefined {
+  const match = message.match(/\bnpm error code (E[A-Z0-9]+)\b/);
+  return match?.[1];
+}
+
+/** Classify a permanent publish failure into a code + actionable hint, when recognizable. */
+function classifyPublishError(message: string): { code?: string; hint?: string } {
+  const code = extractNpmErrorCode(message);
+  const hint = code ? NPM_ERROR_HINTS[code] : undefined;
+  return { code, hint };
 }
 
 /** Exponential back-off with ±20% jitter. */
@@ -283,8 +314,9 @@ async function publishOne(
         }
 
         // Permanent failure.
-        logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
-        return { name: pkg.name, version: pkg.version, success: false, error: message };
+        const { code, hint } = classifyPublishError(message);
+        logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message, errorCode: code });
+        return { name: pkg.name, version: pkg.version, success: false, error: message, errorCode: code, errorHint: hint };
       }
     }
 

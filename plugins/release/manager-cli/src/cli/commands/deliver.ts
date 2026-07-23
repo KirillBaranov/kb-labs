@@ -16,7 +16,7 @@
  * Verdaccio-pre-flight flow from ADR-0001) and remains in place unchanged.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv } from '@kb-labs/sdk';
 import {
@@ -46,11 +46,19 @@ interface DeliverFlags extends FlowResolvableFlags {
   json?: boolean;
 }
 
+interface DeliverFailure {
+  name: string;
+  version: string;
+  error: string;
+  errorCode?: string;
+  errorHint?: string;
+}
+
 interface DeliverResult {
   exitCode: number;
   target?: string;
   published?: Array<{ name: string; version: string }>;
-  failed?: Array<{ name: string; version: string; error: string }>;
+  failed?: DeliverFailure[];
   verifyIssues?: string[];
 }
 
@@ -61,6 +69,38 @@ function loadManifest(artifactsDir: string): StagedArtifact[] | { error: string 
   } catch {
     return { error: `No manifest.json found at ${manifestPath} — run \`kb release stage\` first` };
   }
+}
+
+/**
+ * Append a markdown summary to the GitHub Actions job summary panel, when
+ * running under Actions (`GITHUB_STEP_SUMMARY` is set) — otherwise a no-op.
+ * This is what actually makes a failure diagnosable without digging through
+ * raw step logs: the exact npm error, per package, rendered right in the
+ * run's UI instead of buried in thousands of log lines.
+ */
+function writeGithubStepSummary(markdown: string): void {
+  const summaryPath = useEnv('GITHUB_STEP_SUMMARY');
+  if (!summaryPath) { return; }
+  try {
+    appendFileSync(summaryPath, markdown.endsWith('\n') ? markdown : `${markdown}\n`);
+  } catch {
+    // Best-effort — never let summary writing fail the actual delivery.
+  }
+}
+
+function buildFailureSummaryMarkdown(target: string, publishedCount: number, failed: DeliverFailure[]): string {
+  const lines: string[] = [
+    `## ❌ \`release deliver --target ${target}\` — ${failed.length} package(s) failed`,
+    '',
+    `${publishedCount} package(s) delivered successfully; ${failed.length} did not.`,
+    '',
+  ];
+  for (const f of failed) {
+    lines.push(`### \`${f.name}@${f.version}\`${f.errorCode ? ` — \`${f.errorCode}\`` : ''}`);
+    if (f.errorHint) { lines.push('', `**${f.errorHint}**`); }
+    lines.push('', '```', f.error.slice(0, 2000), '```', '');
+  }
+  return lines.join('\n');
 }
 
 export default defineCommand({
@@ -137,16 +177,25 @@ export default defineCommand({
       const failed = publishResult.results.filter(r => !r.success);
       if (failed.length > 0) {
         publishLoader.fail(`${failed.length} package(s) failed to publish`);
-        const result: DeliverResult = {
-          exitCode: 1,
-          target,
-          published: publishResult.results.filter(r => r.success).map(r => ({ name: r.name, version: r.version })),
-          failed: failed.map(r => ({ name: r.name, version: r.version, error: r.error ?? 'Unknown error' })),
-        };
+        const publishedList = publishResult.results.filter(r => r.success).map(r => ({ name: r.name, version: r.version }));
+        const failedList: DeliverFailure[] = failed.map(r => ({
+          name: r.name,
+          version: r.version,
+          error: r.error ?? 'Unknown error',
+          errorCode: r.errorCode,
+          errorHint: r.errorHint,
+        }));
+        const result: DeliverResult = { exitCode: 1, target, published: publishedList, failed: failedList };
+
+        writeGithubStepSummary(buildFailureSummaryMarkdown(target, publishedList.length, failedList));
+
         if (flags.json) { ctx.ui?.json?.(result); } else {
           ctx.ui?.sideBox?.({
             title: 'Deliver — npm',
-            sections: [{ header: 'Failed', items: failed.map(r => `${ctx.ui.symbols.error} ${r.name}@${r.version} — ${r.error}`) }],
+            sections: [{
+              header: `Failed (${publishedList.length} delivered ok)`,
+              items: failedList.map(r => `${ctx.ui.symbols.error} ${r.name}@${r.version}${r.errorCode ? ` [${r.errorCode}]` : ''} — ${r.errorHint ?? r.error}`),
+            }],
             status: 'error',
           });
         }
@@ -185,6 +234,13 @@ export default defineCommand({
         // The publish already succeeded and is live — never attempt
         // npm unpublish here. Surface loudly and let a human decide.
         verifyLoader.fail(`Delivery verification found ${verifyIssues.length} issue(s) — packages are published, verification failed`);
+        writeGithubStepSummary([
+          `## ⚠️ \`release deliver --target ${target}\` — publish succeeded, verification found ${verifyIssues.length} issue(s)`,
+          '',
+          'Packages are already live on the registry — this is a verification problem, not a publish failure, and nothing was rolled back (npm unpublish is never attempted automatically).',
+          '',
+          ...verifyIssues.map(i => `- ${i}`),
+        ].join('\n'));
       } else {
         verifyLoader.succeed('Delivery verified against the registry');
       }
