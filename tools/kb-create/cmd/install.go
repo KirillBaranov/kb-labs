@@ -139,7 +139,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		out.Warn(result.ServicesWarning)
 	}
 
-	printEnvHints(out, result.InstalledPlugins)
+	printEnvHints(out, sel.PlatformDir, result.InstalledPlugins)
 	printAdapterReconciliation(out, sel.PlatformDir, adapters, result.InstalledPlugins)
 
 	return nil
@@ -187,7 +187,10 @@ func printAdapterReconciliation(out output, platformDir string, adapters map[str
 		if p.ResolvedPath == "" {
 			continue
 		}
-		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		// p.ResolvedPath is relative to platformDir (see scanner.js), not to
+		// this process's cwd — must be joined against platformDir, the same
+		// fix as printEnvHints below and installer.logPluginManifests.
+		manifestPath := filepath.Join(platformDir, p.ResolvedPath, "dist", "manifest.json")
 		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
 		if err != nil {
 			continue
@@ -234,12 +237,13 @@ func validateComponentIDs(kind string, requested []string, known []manifest.Comp
 // and prints which of its declared env vars aren't currently set. Purely
 // informational: these are hints for the operator, not install failures —
 // there's no per-plugin config-provisioning step yet to validate against.
-func printEnvHints(out output, plugins []scan.PluginEntry) {
+func printEnvHints(out output, platformDir string, plugins []scan.PluginEntry) {
 	for _, p := range plugins {
 		if p.ResolvedPath == "" {
 			continue
 		}
-		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		// See the identical fix + comment in printAdapterReconciliation.
+		manifestPath := filepath.Join(platformDir, p.ResolvedPath, "dist", "manifest.json")
 		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
 		if err != nil {
 			continue // no static manifest yet, or not a plugin schema

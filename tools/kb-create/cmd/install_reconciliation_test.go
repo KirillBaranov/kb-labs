@@ -12,7 +12,12 @@ import (
 
 // writeFakePluginManifest writes a minimal dist/manifest.json (kb.plugin/3
 // schema) under <platformDir>/node_modules/<id>/dist/manifest.json, mirroring
-// the shape devkit's build hook emits for real plugins.
+// the shape devkit's build hook emits for real plugins. Returns a
+// ResolvedPath relative to platformDir — scanner.js computes it as
+// `'./' + path.relative(platformDir, pkgRoot)`, never an absolute path, so a
+// test using an absolute ResolvedPath here would not catch a caller that
+// forgets to join it against platformDir before reading (which is exactly
+// the bug this test file's callers must exercise).
 func writeFakePluginManifest(t *testing.T, platformDir, id string, requires, optional []string) string {
 	t.Helper()
 	pluginDir := filepath.Join(platformDir, "node_modules", id)
@@ -36,7 +41,7 @@ func writeFakePluginManifest(t *testing.T, platformDir, id string, requires, opt
 	if err := os.WriteFile(filepath.Join(distDir, "manifest.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return pluginDir
+	return "./" + filepath.Join("node_modules", id)
 }
 
 func writeFakeAdapterRoles(t *testing.T, platformDir string, roles []string) {
@@ -56,12 +61,12 @@ func writeFakeAdapterRoles(t *testing.T, platformDir string, roles []string) {
 
 func TestPrintAdapterReconciliation_RequiredUnconfigured(t *testing.T) {
 	platformDir := t.TempDir()
-	pluginDir := writeFakePluginManifest(t, platformDir, "@test/release", []string{"storage", "cache"}, []string{"vectorStore"})
+	resolvedPath := writeFakePluginManifest(t, platformDir, "@test/release", []string{"storage", "cache"}, []string{"vectorStore"})
 
 	out := newOutput()
 	output := captureStdout(t, func() {
 		printAdapterReconciliation(out, platformDir, nil, []scan.PluginEntry{
-			{ID: "@test/release", ResolvedPath: pluginDir},
+			{ID: "@test/release", ResolvedPath: resolvedPath},
 		})
 	})
 
@@ -78,12 +83,12 @@ func TestPrintAdapterReconciliation_RequiredUnconfigured(t *testing.T) {
 
 func TestPrintAdapterReconciliation_SatisfiedByOverride(t *testing.T) {
 	platformDir := t.TempDir()
-	pluginDir := writeFakePluginManifest(t, platformDir, "@test/release", []string{"cache"}, nil)
+	resolvedPath := writeFakePluginManifest(t, platformDir, "@test/release", []string{"cache"}, nil)
 
 	out := newOutput()
 	output := captureStdout(t, func() {
 		printAdapterReconciliation(out, platformDir, map[string]string{"cache": "@kb-labs/adapters-redis@0.2.0"},
-			[]scan.PluginEntry{{ID: "@test/release", ResolvedPath: pluginDir}})
+			[]scan.PluginEntry{{ID: "@test/release", ResolvedPath: resolvedPath}})
 	})
 
 	if strings.Contains(output, "requires capability") {
@@ -102,6 +107,43 @@ func TestPrintAdapterReconciliation_UnknownRole(t *testing.T) {
 
 	if !strings.Contains(output, `"bogus-role" is not a recognized capability role`) {
 		t.Errorf("expected a warning about the unrecognized role, got:\n%s", output)
+	}
+}
+
+// TestPrintAdapterReconciliation_ResolvesRelativeToPlatformDirNotCwd pins the
+// exact bug this file's fixtures previously masked (by using an absolute
+// ResolvedPath, which happens to resolve correctly regardless of platformDir
+// prefixing): a real `kb-create install --plugins=... --platform ~/kb-platform`
+// is normally run from the user's project directory, not from inside the
+// platform dir. ResolvedPath is relative to platformDir (scanner.js), so
+// resolving it against the process's cwd instead — as printAdapterReconciliation
+// did before this fix — silently found nothing and skipped every warning.
+func TestPrintAdapterReconciliation_ResolvesRelativeToPlatformDirNotCwd(t *testing.T) {
+	platformDir := t.TempDir()
+	resolvedPath := writeFakePluginManifest(t, platformDir, "@test/release", []string{"cache"}, nil)
+
+	// A cwd that shares no relationship with platformDir at all — resolving
+	// ResolvedPath against this instead of platformDir must fail to find the
+	// manifest, not accidentally succeed.
+	unrelatedCwd := t.TempDir()
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(unrelatedCwd); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	out := newOutput()
+	output := captureStdout(t, func() {
+		printAdapterReconciliation(out, platformDir, nil, []scan.PluginEntry{
+			{ID: "@test/release", ResolvedPath: resolvedPath},
+		})
+	})
+
+	if !strings.Contains(output, `requires capability "cache"`) {
+		t.Errorf("expected the unconfigured 'cache' warning regardless of cwd, got:\n%s", output)
 	}
 }
 
