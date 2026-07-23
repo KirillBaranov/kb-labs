@@ -47,7 +47,7 @@
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/studio-plugin-tools": "workspace:*",
-    "@rspack/cli": "^1.7.0",
+    "@rspack/cli": "^2.1.2",
     "@rspack/core": "^2.1.2",
     "@types/node": "^24.3.3",
     "@types/react": "^19.0.0",
