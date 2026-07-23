@@ -7,6 +7,9 @@ import { EventEmitter } from 'node:events';
 
 const capturedNpmrc: string[] = [];
 const capturedArgs: string[][] = [];
+// Tests can override these to simulate a failing `npm publish` — reset in beforeEach.
+let mockCloseCode = 0;
+let mockStderr = '';
 
 vi.mock('node:child_process', () => ({
   spawn: vi.fn((_command: string, args: string[], options: { cwd: string }) => {
@@ -24,7 +27,12 @@ vi.mock('node:child_process', () => ({
       capturedNpmrc.push('');
     }
 
-    queueMicrotask(() => child.emit('close', 0));
+    const closeCode = mockCloseCode;
+    const stderr = mockStderr;
+    queueMicrotask(() => {
+      if (stderr) { child.stderr.emit('data', Buffer.from(stderr)); }
+      child.emit('close', closeCode);
+    });
     return child;
   }),
 }));
@@ -118,5 +126,61 @@ describe('publishPackagesProgrammatic — tarballPath (release deliver)', () => 
     });
 
     expect(capturedArgs[0]).toEqual(['publish', '--no-git-checks']);
+  });
+});
+
+describe('publishPackagesProgrammatic — permanent-failure diagnostics', () => {
+  let pkgDir: string;
+
+  beforeEach(() => {
+    pkgDir = makePackageDir();
+    capturedNpmrc.length = 0;
+    capturedArgs.length = 0;
+    mockCloseCode = 0;
+    mockStderr = '';
+  });
+
+  afterEach(() => {
+    rmSync(pkgDir, { recursive: true, force: true });
+    mockCloseCode = 0;
+    mockStderr = '';
+  });
+
+  it('extracts npm\'s own error code and attaches an actionable hint for a 403 (real-world case: npm-side package restriction, not a token problem)', async () => {
+    mockCloseCode = 1;
+    mockStderr = [
+      'npm notice Publishing to https://registry.npmjs.org/ with tag latest and default access',
+      'npm error code E403',
+      'npm error 403 403 Forbidden - PUT https://registry.npmjs.org/@kb-labs%2fadapters-fs',
+      'npm error 403 In most cases, you or one of your dependencies are requesting',
+      'npm error 403 a package version that is forbidden by your security policy, or',
+      'npm error 403 on a server you do not have access to.',
+    ].join('\n');
+
+    const result = await publishPackagesProgrammatic({
+      packages: [{ name: '@kb-labs/fixture', version: '1.0.0', path: pkgDir }],
+      token: 'npm-token',
+    });
+
+    expect(result.results).toHaveLength(1);
+    const [entry] = result.results;
+    expect(entry!.success).toBe(false);
+    expect(entry!.errorCode).toBe('E403');
+    expect(entry!.errorHint).toMatch(/npm-side restriction/);
+  });
+
+  it('leaves errorCode/errorHint undefined for an unrecognized failure message', async () => {
+    mockCloseCode = 1;
+    mockStderr = 'some completely unrelated tool crash, no npm error code here';
+
+    const result = await publishPackagesProgrammatic({
+      packages: [{ name: '@kb-labs/fixture', version: '1.0.0', path: pkgDir }],
+      token: 'npm-token',
+    });
+
+    const [entry] = result.results;
+    expect(entry!.success).toBe(false);
+    expect(entry!.errorCode).toBeUndefined();
+    expect(entry!.errorHint).toBeUndefined();
   });
 });
