@@ -1,3 +1,27 @@
+## [Binaries] - 2026-07-23
+
+**kb-create** (Go binary release, no npm package versions changed):
+
+- `kb-create install --plugins=id@version,...` / `--services=...` now accepts
+  version-pinned component IDs, resolving each plugin/service to that exact
+  version instead of always `@latest`. A component with a dev-mode local path
+  still ignores any version override — `@file:path` resolution wins there.
+- Default adapter packages per capability role (llm → adapters-kblabs-gateway,
+  storage → adapters-fs, etc.) are now config-driven from `manifest.json`
+  instead of hardcoded in `scaffold.go` — changing a default no longer
+  requires a kb-create binary release.
+- New `kb-create install --adapters "role=pkg[@version]"` flag, plus a
+  reconciliation report cross-checking each installed plugin's declared
+  platform requirements against what's actually configured (warns loudly on
+  required-and-unconfigured capabilities).
+- `core/plugin-runtime` exports `ADAPTER_REGISTRY_KEYS` and snapshots it to
+  `dist/adapter-roles.json` at build time, so kb-create can validate adapter
+  roles against the real registry instead of a hand-maintained list.
+
+See [PR #296](https://github.com/kb-labs-team/kb-labs/pull/296),
+[PR #298](https://github.com/kb-labs-team/kb-labs/pull/298),
+[PR #299](https://github.com/kb-labs-team/kb-labs/pull/299).
+
 ## [Binaries] - 2026-07-22
 
 **kb-create** (Go binary release, no npm package versions changed):
