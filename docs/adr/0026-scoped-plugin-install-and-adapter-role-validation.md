@@ -1,7 +1,8 @@
 # ADR-0026: Scoped Plugin Install and Adapter-Role Validation
 
 **Date:** 2026-07-23
-**Status:** Accepted (scoped install) / Proposed (adapter-role validation)
+**Status:** Accepted — implemented (scoped install, adapter-role validation,
+catalog-driven config rendering, version pinning, reusable CI action)
 **Deciders:** KB Labs Team
 **Last Reviewed:** 2026-07-23
 **Tags:** architecture, cli, plugin-system, tooling, platform
@@ -69,10 +70,10 @@ action, and reuses the existing non-interactive defaulting path
 (`wizard.Run(Yes: true)`) rather than re-implementing it. `release` is now a
 registered catalog entry (`@kb-labs/release-manager-cli`).
 
-### Install-time flow (current + proposed)
+### Install-time flow (as shipped)
 
 ```
-kb-create install --plugins=X --services=Y [--adapters "role=pkg@ver"]
+kb-create install --plugins=X[@ver] --services=Y[@ver] [--adapters "role=pkg@ver"]
         │
         ▼
 [1] Load manifest catalog (manifest.json, embedded)
@@ -80,10 +81,11 @@ kb-create install --plugins=X --services=Y [--adapters "role=pkg@ver"]
         ▼
 [2] Validate --plugins/--services IDs against catalog        ─┐
     Validate --adapters role names against ADAPTER_REGISTRY   │  fails fast,
-    _KEYS (proposed — see below)                               │  no network
+    _KEYS                                                      │  no network
         │                                                      │  yet
         ▼                                                     ─┘
-[3] Install packages (pnpm add) — scoped to what was requested
+[3] Install packages (pnpm add) — scoped to what was requested,
+    version-pinned per id@version when given (else @latest)
         │
         ▼
 [4] Scan node_modules → discover installed plugins' manifests
@@ -94,20 +96,22 @@ kb-create install --plugins=X --services=Y [--adapters "role=pkg@ver"]
 [5] Read each plugin's platform.requires / platform.optional
         │
         ▼
-[6] Render kb.config.jsonc adapters block:
-    existing scaffold defaults ∪ --adapters overrides (proposed)
+[6] Render kb.config.jsonc adapters block, plus services/plugins
+    toggle blocks, generically off the catalog (Options.Catalog):
+    scaffold defaults (manifest.json's adapterConfig.adapters,
+    overridable by Go literal fallback) ∪ --adapters overrides
         │
         ▼
-[7] Reconciliation report (proposed):
+[7] Reconciliation report:
     required role, no adapter anywhere  → visible warning
     optional role, unconfigured         → informational note
 ```
 
-Steps 1–5 and the "existing scaffold defaults" half of step 6 are shipped.
-The `--adapters` flag, role-name validation in step 2, and the reconciliation
-report in step 7 are the proposed next increment (not yet implemented).
+All 7 steps are shipped (#293/#294 for 1–5, #296 for the `--adapters` flag,
+role validation, and reconciliation report, #299 for the config-driven
+adapter defaults in step 6, #298 for the `id@version` pinning in step 3).
 
-### Proposed: one canonical role-name source, not three
+### One canonical role-name source, not three (shipped, PR #296)
 
 Add a single derived, serializable export from the existing canonical list
 instead of inventing a new one:
@@ -129,20 +133,28 @@ instead of inventing a new one:
   the network, and to cross-check each installed plugin's declared
   `platform.requires`/`optional` against what's actually configured.
 
-### What this does *not* fix (two distinct kinds of "source of truth")
+### Two distinct kinds of "source of truth" (both now addressed)
 
 Role **names** (is `"cache"` a real capability?) and role **default
 packages** (which npm package backs `cache` when nothing overrides it) are
-different questions. `ADAPTER_REGISTRY` can answer the first at compile time
-— capability existence is a type-level fact. It cannot answer the second —
-which package to recommend by default is an editorial/product choice, not
-something a type system enforces. That mapping stays exactly where it is
-today: hardcoded Go string literals in `scaffold.go`'s config-rendering
-template. A further improvement — moving those defaults into
-`tools/kb-create/internal/manifest/manifest.json`'s already-existing (but
-underused) `AdapterConfig` struct, so defaults become config-editable
-without a Go binary release — is worth doing but is a separate change, not
-bundled into this one.
+different questions. `ADAPTER_REGISTRY` answers the first at compile time —
+capability existence is a type-level fact, snapshotted to
+`ADAPTER_REGISTRY_KEYS`/`adapter-roles.json` as above. The second — which
+package to recommend by default — is an editorial/product choice, not
+something a type system enforces. That mapping now lives in
+`tools/kb-create/internal/manifest/manifest.json`'s `adapterConfig.adapters`
+field (shipped, PR #299): a config-editable map, checked as a middle
+priority tier between a `--adapters` CLI override (highest) and a Go
+hardcoded fallback in `scaffold.go` (lowest, kept only as a defensive
+default if `manifest.json` omits an entry). Changing a role's default
+package is now a `manifest.json` edit, not a `kb-create` binary release.
+
+No default was picked for `cache` specifically — of all packages in this
+repo, only `@kb-labs/adapters-redis` implements `ICache`, and defaulting to
+it risks install-time or runtime failures wherever no Redis is actually
+running. `cache` stays opt-in via `--adapters cache=<pkg>`; the
+reconciliation report (step 7) surfaces its absence as a visible, non-fatal
+warning instead of silently rendering nothing.
 
 ## Install Flow Map and Invariants
 
@@ -181,9 +193,10 @@ be hardcoded the way services can.
       ▼                                                          KB-Labs only)
 [2] validateComponentIDs(plugins, services)   ── FAILS HARD, ZERO SIDE EFFECTS
       unknown ID → error + list of valid IDs, before any network/fs action
-      (adapters: role validated against ADAPTER_REGISTRY_KEYS — proposed —
-       NOT against manifest.json; package spec itself is never validated
-       here, only pnpm resolving it later can tell you it doesn't exist)
+      (adapters: role validated against ADAPTER_REGISTRY_KEYS, loaded from
+       adapter-roles.json — NOT against manifest.json; package spec itself
+       is never validated here, only pnpm resolving it later can tell you
+       it doesn't exist)
       │
       ▼
 [3] wizard.Run(Yes: true) → defaultSelection()  ── single defaulting source
@@ -221,20 +234,22 @@ be hardcoded the way services can.
       │
       ▼
 [7] scaffold.generateFull() → kb.config.jsonc
-      services/plugins TOGGLE blocks: scoped to selection, BUT gated by a
-      SEPARATE hardcoded Go list (writeToggle/writePluginBlock) that must
-      be manually kept in sync with manifest.json's catalog — today it
-      ISN'T fully in sync: `gateway` and `marketplace`-as-service have no
-      toggle at all, `marketplace`-as-plugin has no block either.          ⚠ see I5
-      adapters block: NOT scoped — always fully rendered (llm/storage/
-      logger/logRingBuffer/analytics/serviceTransport get some default;
-      `cache` renders nothing at all today — proposed to fix).
+      services/plugins TOGGLE blocks: rendered by looping over
+      Options.Catalog.Services/.Plugins directly (Catalog is nil-unsafe —
+      a nil Catalog renders empty blocks, no shadow hardcoded fallback) —
+      `gateway` is the one explicit exception (has its own richer
+      auth/host/upstreams config section elsewhere, so is excluded from
+      the generic toggle to avoid a redundant second on/off switch).      fixes I5
+      adapters block: role → package resolved per role as CLI --adapters
+      override ∪ manifest.json's adapterConfig.adapters ∪ Go fallback
+      literal, in that priority order; `cache` renders only when
+      explicitly configured (no built-in default — see above).
       │
       ▼
-[8] Reconciliation report (proposed) — cross-check each discovered
+[8] Reconciliation report — cross-check each discovered
       plugin's Platform.Requires/Optional against the FINAL resolved
       adapter set (defaults ∪ --adapters overrides).
-      required + unconfigured → visible warning (not a hard fail yet)
+      required + unconfigured → visible warning (not a hard fail)
       optional + unconfigured → informational note
 ```
 
@@ -246,16 +261,62 @@ be hardcoded the way services can.
 | I2 | Non-interactive defaulting (platform dir, consent, telemetry) has exactly one implementation | `wizard.Run(Yes:true)`, step 3 | N/A — shared code path, can't drift between interactive/CI installs |
 | I3 | Core packages + the 5 baseline adapters install unconditionally, regardless of `--plugins`/`--services` selection | `CorePackageSpecs()`/`AdapterPackageSpecs()`, step 4 | Not a failure — a deliberate scoping boundary: "scoped install" scopes *plugins/services*, not the platform baseline |
 | I4 | A selected plugin's transitive npm dependencies are discovered by the scanner even though they weren't explicitly requested | `scan.Run()`, step 5 | Not a failure — expected when a plugin genuinely depends on a service (e.g. release → core-state-daemon for its `cache` requirement) |
-| I5 | A plugin/service in the manifest catalog is *installable* but not automatically *configurable/visible* in generated config — that needs a matching, separately-maintained entry in `scaffold.go`'s Go template | `writeToggle`/`writePluginBlock`, step 7 | **Known gap, not yet enforced anywhere** — `gateway`, `marketplace` (as service and as plugin) are catalog-installable today with no rendered config block at all |
-| I6 | Adapter *role names* are validated against a KB-Labs-controlled canonical list; adapter *package specs* are not validated until pnpm resolves them | proposed `ADAPTER_REGISTRY_KEYS` check, step 2 | Unknown role → hard fail early (proposed); bad package spec → pnpm failure later, same as any other package |
-| I7 | Static-JSON reads (plugin manifests, proposed adapter-roles list) are always best-effort | steps 6, 8 | Missing/invalid file never blocks install — only reduces how much the reconciliation report can say |
+| I5 | A plugin/service in the manifest catalog is automatically *configurable/visible* in generated config — driven by one loop over `Options.Catalog`, not a parallel hardcoded Go list | `writeToggle`/`writePluginBlock`, step 7 | **Fixed (PR #296)** — adding a catalog entry is now sufficient by itself; `gateway` is the one documented exception (has its own dedicated config section) |
+| I6 | Adapter *role names* are validated against a KB-Labs-controlled canonical list; adapter *package specs* are not validated until pnpm resolves them | `ADAPTER_REGISTRY_KEYS` check (PR #296), step 2 | Unknown role → hard fail early, before any network action; bad package spec → pnpm failure later, same as any other package |
+| I7 | Static-JSON reads (plugin manifests, adapter-roles list) are always best-effort | steps 6, 8 | Missing/invalid file never blocks install — only reduces how much the reconciliation report can say |
 
-I5 is the same "N hand-maintained lists that drift" shape as the adapter-role
-problem this ADR already targets, one layer further down (catalog ↔
-config-template instead of role-name ↔ role-name). Not fixed by the proposal
-above — worth its own follow-up (e.g. drive `writeToggle`/`writePluginBlock`
-generically off the catalog's `Component` list instead of a parallel
-hardcoded Go call per entry), tracked here so it isn't lost.
+I5 was the same "N hand-maintained lists that drift" shape as the
+adapter-role problem, one layer further down (catalog ↔ config-template
+instead of role-name ↔ role-name). Fixed by driving `writeToggle`/
+`writePluginBlock` generically off the catalog's `Component` list
+(`Options.Catalog`) instead of a parallel hardcoded Go call per entry
+(PR #296).
+
+## Version pinning (shipped, PR #298)
+
+`--plugins`/`--services` accept an optional `@version` suffix per ID:
+`kb-create install --plugins=release@0.2.0 --services=rest@1.4.0`, parsed by
+`splitVersionedIDs()` into separate `PluginVersions`/`ServiceVersions` maps
+on `installer.Selection` (kept separate, not a shared map, because a
+component ID like `marketplace` can independently exist in both the plugins
+and services catalogs). `selectedPkgSpecs()` uses the pinned version when
+given, `@latest` otherwise; version overrides are ignored whenever
+`LocalPath` is set (dev mode always wins — a version pin can't fight a local
+workspace package).
+
+## Config-driven adapter defaults (shipped, PR #299)
+
+Moved the role → default-package mapping out of pure Go string literals
+into `tools/kb-create/internal/manifest/manifest.json`'s `adapterConfig.
+adapters` field (`AdapterConfig.Adapters map[string]string` in
+`internal/manifest/types.go`). Resolution order in `scaffold.go`'s
+`adapterPkg` closure, highest priority first:
+
+1. `--adapters role=pkg` CLI override
+2. `manifest.json`'s `adapterConfig.adapters[role]`
+3. Go hardcoded literal fallback (kept only so an old/misconfigured
+   `manifest.json` missing the section doesn't regress existing behavior)
+
+`cache` was deliberately left out of every tier's default — see "Two
+distinct kinds of 'source of truth'" above for why (only one package in the
+repo implements `ICache`, and defaulting to it without a running instance
+would fail at runtime, not install time).
+
+## Reusable GitHub Action (shipped, PR #300)
+
+`.github/actions/kb-create-install` — a composite action wrapping this
+whole flow for CI consumers who just want a scoped platform install without
+hand-rolling the binary download + flags themselves. Downloads the released
+`kb-create` binary directly from `https://github.com/<repo>/releases/
+latest/download/kb-create-<goos>-<goarch>` — the exact naming convention
+`internal/selfupdate/selfupdate.go` already uses — then runs
+`kb-create install` with the action's `plugins`/`services`/`adapters`/
+`platform-dir`/`registry`/`version` inputs, exposing `platform-dir` and
+`config-path` as outputs. Verified live via
+`.github/workflows/kb-create-install-action-smoke.yml`
+(`workflow_dispatch`): confirmed real binary download from the actual
+`kb-labs-team/kb-labs` releases page, a scoped install with no leaked
+default services, and no marketplace/gateway/workflow pulled in.
 
 ## Consequences
 
@@ -268,21 +329,26 @@ hardcoded Go call per entry), tracked here so it isn't lost.
   instead of silently producing a config with an unrecognized key.
 - The previously-silent `cache`-unconfigured-for-`release` gap becomes a
   visible warning instead of invisible NoOp behavior nobody notices.
-- Small, additive changes on both sides — no existing behavior changes when
-  `--adapters` isn't passed.
+- Adding a plugin/service to the catalog is now sufficient by itself to get
+  it toggled in generated config — no matching Go template edit required.
+- Adapter default packages, and plugin/service versions, are now
+  config/flag-driven instead of requiring a `kb-create` binary release to
+  change.
+- CI consumers get a maintained, versioned reusable Action instead of
+  re-implementing the binary-download + flags dance themselves.
 
 ### Negative
 
 - Introduces a new build artifact (`adapter-roles.json`) and a new Go
   dependency on a specific file path inside a *transitively* installed
   package (`@kb-labs/plugin-runtime` isn't in the manifest's always-installed
-  `core` list) — resolution needs to degrade gracefully (skip validation,
-  warn softly) if the file isn't found, rather than hard-fail.
-- Does not fix the `PlatformRequirements` drift from `ADAPTER_REGISTRY` on
-  the TypeScript authoring side (a plugin author can still declare a bogus
-  capability name in their own manifest today) — deferred, see below.
-- Does not change role-name *default packages* to be config-driven — still
-  Go string literals, a second, smaller "source of truth" gap left open.
+  `core` list) — resolution degrades gracefully (skips validation, warns
+  softly) if the file isn't found, rather than hard-failing.
+- `PlatformRequirements` derives from `AdapterRegistryKey` now (PR #297,
+  see below), but a plugin manifest with a genuinely bogus `platform.
+  requires` entry still only fails at TypeScript compile time for that
+  plugin's own source — nothing prevents publishing a manifest built with an
+  older, unchecked contracts version.
 
 ### Alternatives Considered
 
@@ -293,58 +359,68 @@ hardcoded Go call per entry), tracked here so it isn't lost.
   small dedicated postbuild script in `core/plugin-runtime` is simpler and
   fully sufficient — this isn't a manifest, so it doesn't need manifest
   detection logic.
-- **Hard-fail installs on an unsatisfied required role.** Rejected for this
-  increment: every install today already leaves `cache` unconfigured for
-  `release` with no one having noticed — hard-failing immediately would be a
-  breaking change to roll out separately, after the reconciliation report has
+- **Hard-fail installs on an unsatisfied required role.** Rejected: every
+  install before this ADR already left `cache` unconfigured for `release`
+  with no one having noticed — hard-failing immediately would be a breaking
+  change better rolled out separately, after the reconciliation report has
   been observed in practice.
 - **Expose the whole `ADAPTER_REGISTRY` object to Go/JSON.** Rejected: its
   values are governance/factory functions, not serializable, and exposing
   them on the public package surface would leak internals never meant to be
   consumed outside `plugin-runtime`. A derived `ADAPTER_REGISTRY_KEYS`
   (names only) is the minimal correct surface.
+- **Default `cache` to `@kb-labs/adapters-redis`.** Rejected: it's the only
+  `ICache` implementation in the repo, but defaulting to it would install a
+  Redis-dependent adapter for every plugin declaring `cache` as optional,
+  failing at runtime for anyone without Redis running — worse than the
+  current opt-in-with-warning behavior.
 
 ## Implementation
 
-Shipped:
+All shipped:
 - `tools/kb-create/cmd/install.go`, `internal/installer/installer.go`
   (`Result.InstalledPlugins`), `internal/devservices/plugin_manifest.go`,
   `internal/manifest/manifest.json` (`release` catalog entry),
   `infra/devkit/tsup/node.js` (`emitManifestJson` extended to `kb.plugin/*`
-  schemas).
+  schemas). — PR #293/#294
+- `core/plugin-runtime/src/platform/adapter-registry.ts`
+  (`ADAPTER_REGISTRY_KEYS` export), `platform/index.ts`/`src/index.ts`
+  re-exports, `core/plugin-runtime/scripts/emit-adapter-roles.mjs`
+  (postbuild snapshot), `tools/kb-create/internal/devservices/
+  adapter_roles.go` (`LoadAdapterRoles`), `cmd/install.go` (`--adapters`
+  flag, role validation, reconciliation report),
+  `internal/scaffold/scaffold.go` (`Options.Adapters`, `cache` as a
+  renderable opt-in role), `internal/scaffold/Options.Catalog` +
+  catalog-driven `writeToggle`/`writePluginBlock` loop. — PR #296
+- `core/plugin-contracts/src/manifest.ts` — `PlatformRequirements` now
+  derives `PlatformCapability = keyof Required<PluginServices>` instead of
+  a separately hand-maintained literal union. — PR #297
+- `tools/kb-create/internal/installer/installer.go`
+  (`PluginVersions`/`ServiceVersions`), `cmd/install.go`
+  (`splitVersionedIDs`) — `id@version` pinning. — PR #298
+- `tools/kb-create/internal/manifest/types.go` (`AdapterConfig.Adapters`),
+  `manifest.json` (`adapterConfig.adapters` defaults),
+  `internal/scaffold/scaffold.go` (`adapterPkg` priority chain) — PR #299
+- `.github/actions/kb-create-install/action.yml`,
+  `.github/workflows/kb-create-install-action-smoke.yml` — PR #300
 
-Proposed, not yet implemented:
-- `core/plugin-runtime/src/platform/adapter-registry.ts` — add
-  `ADAPTER_REGISTRY_KEYS` export.
-- `core/plugin-runtime/src/platform/index.ts`, `src/index.ts` — re-export it.
-- `core/plugin-runtime/scripts/emit-adapter-roles.mjs` — new postbuild script.
-- `core/plugin-runtime/package.json` — extend `build` script.
-- `tools/kb-create/internal/devservices/adapter_roles.go` — new
-  `LoadAdapterRoles` reader.
-- `tools/kb-create/cmd/install.go` — new `--adapters` flag (reusing
-  `install_service.go`'s existing `parseAdapters`), role validation,
-  reconciliation report.
-- `tools/kb-create/internal/scaffold/scaffold.go` — new `Options.Adapters`
-  field, honor overrides, add `cache` as a renderable (opt-in, no built-in
-  default) role.
+### Remaining deferred item
 
-### Explicitly deferred (next step, not this ADR)
-
-- Fixing `core/plugin-contracts/src/manifest.ts`'s `PlatformRequirements` to
-  derive from `AdapterRegistryKey` directly, so a plugin author cannot
-  declare a bogus capability at manifest-authoring time — this is
-  manifest-authoring-time validation, a different point in the lifecycle
-  than install-time validation.
 - Validating adapter roles when installing a plugin onto an
   already-running platform via the marketplace (`plugins/marketplace`) — a
-  different install mechanism entirely, not `kb-create install`.
-- Moving role → default-package mappings out of `scaffold.go`'s Go literals
-  into `manifest.json`'s `AdapterConfig`.
+  different install mechanism entirely, not `kb-create install`. Not
+  addressed by this ADR or any of its follow-up PRs; tracked here so it
+  isn't lost.
 
 ## References
 
 - [PR #293 — kb-create static plugin manifest JSON + non-interactive install](https://github.com/kb-labs-team/kb-labs/pull/293)
 - [PR #294 — changelog + real e2e test for kb-create install --plugins](https://github.com/kb-labs-team/kb-labs/pull/294)
+- [PR #296 — adapter-role validation, reconciliation report, catalog-driven config rendering](https://github.com/kb-labs-team/kb-labs/pull/296)
+- [PR #297 — PlatformRequirements derives from ADAPTER_REGISTRY](https://github.com/kb-labs-team/kb-labs/pull/297)
+- [PR #298 — id@version pinning for --plugins/--services](https://github.com/kb-labs-team/kb-labs/pull/298)
+- [PR #299 — config-driven adapter role defaults](https://github.com/kb-labs-team/kb-labs/pull/299)
+- [PR #300 — reusable kb-create-install GitHub Action](https://github.com/kb-labs-team/kb-labs/pull/300)
 - [ADR-0001 — Slot-Based Adapter Middleware Pipeline](../../core/plugin-runtime/docs/adr/ADR-0001-adapter-pipeline.md) (the original "single source of truth" fix this ADR extends to the install boundary)
 
 ---
