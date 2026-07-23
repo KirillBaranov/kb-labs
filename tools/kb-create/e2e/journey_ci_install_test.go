@@ -19,6 +19,30 @@ import (
 	"testing"
 )
 
+// logPluginManifestState dumps whether an installed plugin's dist/manifest.json
+// exists and what it contains — the adapter reconciliation report
+// (printAdapterReconciliation in cmd/install.go) silently skips a plugin
+// entirely when this file is missing or unparseable, so a reconciliation
+// assertion failing here is otherwise indistinguishable between "the report
+// logic is broken" and "the plugin just didn't ship a static manifest in
+// this environment". Always logged (not just on failure) so a passing run
+// documents the expected shape too.
+func logPluginManifestState(t *testing.T, pkgDir string) {
+	t.Helper()
+	manifestPath := filepath.Join(pkgDir, "dist", "manifest.json")
+	data, err := os.ReadFile(manifestPath) // #nosec G304 -- path constructed from t.TempDir()
+	if err != nil {
+		entries, _ := os.ReadDir(filepath.Join(pkgDir, "dist"))
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Logf("diag: %s not found (%v) — dist/ contains: %v", manifestPath, err, names)
+		return
+	}
+	t.Logf("diag: %s:\n%s", manifestPath, data)
+}
+
 // TestCIInstallJourney_PinnedPluginsServicesAndAdapters mirrors a realistic
 // CI caller: pin one plugin to an exact version, install a second plugin
 // unpinned alongside a service, and pass an --adapters override — the same
@@ -52,6 +76,7 @@ func TestCIInstallJourney_PinnedPluginsServicesAndAdapters(t *testing.T) {
 	}
 
 	nm := filepath.Join(platformDir, "node_modules", "@kb-labs")
+	logPluginManifestState(t, filepath.Join(nm, "release-manager-cli"))
 
 	// The pinned plugin resolved to exactly the requested version, not
 	// whatever "latest" happens to be.
@@ -137,6 +162,7 @@ func TestCIInstallJourney_UnconfiguredRequiredCapabilityWarns(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("install --plugins=release (no --adapters) exited %d:\n%s", code, out)
 	}
+	logPluginManifestState(t, filepath.Join(platformDir, "node_modules", "@kb-labs", "release-manager-cli"))
 	if !strings.Contains(out, `requires capability "cache" but no adapter is configured`) {
 		t.Errorf("expected a loud warning about the unconfigured 'cache' capability:\n%s", out)
 	}

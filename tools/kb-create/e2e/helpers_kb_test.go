@@ -57,13 +57,25 @@ func testRegistry() string {
 	return os.Getenv("KB_REGISTRY_URL")
 }
 
-// runPM runs a pnpm command in dir, pointed at testRegistry() when set — used
-// to build a scaffolded plugin the same way a real developer would after
-// `kb scaffold run` (see docs/qa/scenarios/S-001-solo-install-first-run.md
-// Phase 5, steps 15-16).
+// pnpmNetworkSubcommands are the pnpm subcommands that actually hit a
+// registry — --registry is only a valid flag for these. `pnpm run build`
+// (or any `run`/exec of a package script) doesn't take --registry at all;
+// cac (pnpm's CLI parser) rejects it as an unknown option.
+var pnpmNetworkSubcommands = map[string]bool{
+	"install": true,
+	"i":       true,
+	"add":     true,
+	"update":  true,
+	"up":      true,
+}
+
+// runPM runs a pnpm command in dir, pointed at testRegistry() when set and
+// applicable — used to build a scaffolded plugin the same way a real
+// developer would after `kb scaffold run` (see
+// docs/qa/scenarios/S-001-solo-install-first-run.md Phase 5, steps 15-16).
 func runPM(t *testing.T, dir string, args ...string) (string, int) {
 	t.Helper()
-	if registry := testRegistry(); registry != "" {
+	if registry := testRegistry(); registry != "" && len(args) > 0 && pnpmNetworkSubcommands[args[0]] {
 		args = append(args, "--registry", registry)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
