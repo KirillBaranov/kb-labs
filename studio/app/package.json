@@ -59,8 +59,9 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@module-federation/enhanced": "^2.3.3",
-    "@rspack/cli": "^1.7.0",
+    "@rspack/cli": "^2.1.2",
     "@rspack/core": "^2.1.2",
+    "@rspack/dev-server": "^2.1.0",
     "@rspack/plugin-react-refresh": "^1.6.0",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.1",
