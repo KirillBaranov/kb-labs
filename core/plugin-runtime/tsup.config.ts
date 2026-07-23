@@ -1,5 +1,9 @@
 import { defineConfig } from 'tsup'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import nodePreset from '@kb-labs/devkit/tsup/node'
+
+const execFileAsync = promisify(execFile)
 
 export default defineConfig({
   ...nodePreset,
@@ -22,4 +26,18 @@ export default defineConfig({
     '@kb-labs/plugin-contracts', // Explicitly bundle this
     '@kb-labs/shared-cli-ui', // Explicitly bundle this (needed for bootstrap)
   ],
+  // Chain the preset's own onSuccess (manifest.json emission — a no-op here,
+  // this package has no kb.plugin/kb.service manifest) with
+  // scripts/emit-adapter-roles.mjs. This MUST run as part of tsup's build
+  // hook, not only as a `&&`-chained step in package.json's "build" script:
+  // kb-devkit run build (the build path CI and CLAUDE.md's "Building"
+  // section mandate — never plain `pnpm -r`/`pnpm run build`) invokes tsup
+  // directly per package, not the full npm script chain, so a postbuild
+  // step wired only via package.json silently never ran there. Spawned as
+  // its own fresh `node` process for the same reason emit-adapter-roles.mjs
+  // already documented: no module-cache staleness to worry about.
+  onSuccess: async () => {
+    await nodePreset.onSuccess?.()
+    await execFileAsync(process.execPath, ['scripts/emit-adapter-roles.mjs'])
+  },
 })
