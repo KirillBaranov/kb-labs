@@ -17,6 +17,7 @@ import {
   discoverCurrentPackages,
   resolvePublishTag,
   resolvePublishRegistry,
+  mergeConfigWithFlow,
   type ReleaseConfig,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -25,6 +26,8 @@ import { publishPackagesWithOTP, type PublishWithOTPResult } from '../../shared/
 
 interface PromoteFlags {
   scope?: string;
+  /** Named flow — selects packages the same way `release run --flow` does (e.g. excludes sdk from platform). */
+  flow?: string;
   tag?: string;
   registry?: string;
   otp?: string;
@@ -112,7 +115,8 @@ export default defineCommand({
       const repoRoot = await findRepoRoot(cwd);
 
       const fileConfig = await useConfig<ReleaseConfig>();
-      const config: ReleaseConfig = fileConfig ?? {};
+      const baseConfig: ReleaseConfig = fileConfig ?? {};
+      const config: ReleaseConfig = flags.flow ? mergeConfigWithFlow(baseConfig, flags.flow) : baseConfig;
 
       const tag = flags.tag ?? resolvePublishTag(config, 'stable');
       const registry = flags.registry ?? resolvePublishRegistry(config, 'stable');

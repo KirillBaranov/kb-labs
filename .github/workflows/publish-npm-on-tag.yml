@@ -1,0 +1,147 @@
+name: Publish npm (on release tag)
+
+# CI half of the "plugin prepares, CI delivers" release flow — the release
+# plugin (plugins/release/manager-core + manager-cli) owns every decision
+# about what ships and whether it's correct; this workflow only checks out
+# a tag, asks the plugin to pack once, and runs a thin delivery job that
+# hands the already-packed artifact to npm. See the release plan and
+# plugins/release/docs/adr/0001-*.
+#
+#   1. Prepare (local, `.kb/workflows/release-prepare.yml` or
+#      `pnpm release:platform:prepare` / `release:sdk:prepare`) — checks,
+#      build, version bump, changelog, then commits + tags + pushes git.
+#      Never touches npm, needs no npm credentials.
+#   2. Stage (this workflow, job `stage`) — `kb release stage` packs the
+#      already-committed versions into real npm tarballs, once, and
+#      uploads them as a build artifact. No re-bump, no re-plan.
+#   3. Deliver (this workflow, job `deliver-npm`) — downloads that exact
+#      artifact and runs `kb release deliver --target npm`, which
+#      publishes the tarballs as-is and verifies the result against the
+#      real registry (with retry — real npm has propagation lag).
+#
+# Tag grammar: `<flow>-v<version>` (e.g. `platform-v2.105.0`,
+# `sdk-v3.2.0`) — one literal, disjoint prefix per flow, so this workflow's
+# trigger can never collide with binaries' unrelated `v*-binaries` tags
+# (release-binaries.yml / .goreleaser.yaml — untouched, different artifact
+# family entirely). `kb release stage`/`deliver` resolve {flow, channel}
+# from the tag themselves (release.flows[*].tagPattern) — this workflow
+# never guesses.
+
+on:
+  push:
+    tags:
+      - 'platform-v*'
+      - 'sdk-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to stage + deliver (defaults to the ref that triggered this run)'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write # reserved for a future move to npm Trusted Publishing (OIDC) — unused today
+
+concurrency:
+  group: publish-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    name: Stage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Restore pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - name: Build kb-devkit (host)
+        run: make build -C tools/kb-devkit
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Rebuild at the exact tagged commit — dist/ is gitignored, so the
+      # "prepare" step's build output never made it into this checkout.
+      - name: Build (topological order)
+        run: pnpm build
+
+      - name: Stage (pack committed versions into real tarballs, once)
+        run: pnpm kb release stage --release-tag "${{ inputs.tag || github.ref_name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: .kb/release/artifacts/
+          retention-days: 7
+
+  deliver-npm:
+    name: Deliver to npm
+    needs: stage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Restore pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - name: Build kb-devkit (host)
+        run: make build -C tools/kb-devkit
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Needed to compile the `kb` CLI itself — the artifact downloaded
+      # below already has the packages to ship, this build never re-packs
+      # them.
+      - name: Build (topological order)
+        run: pnpm build
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: .kb/release/artifacts/
+
+      - name: Deliver (publish the staged tarballs as-is, verify against the registry)
+        run: pnpm kb release deliver --release-tag "${{ inputs.tag || github.ref_name }}" --target npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

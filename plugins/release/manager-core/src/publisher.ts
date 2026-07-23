@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { PackageVersion, ReleasePlan } from './types';
 import { updateCheckpointGitRoot, markCheckpointComplete } from './checkpoint';
+import { buildReleaseTag } from './tag';
 
 /**
  * Update package.json version to nextVersion
@@ -281,8 +282,19 @@ export async function commitAndTagRelease(options: {
   checkpointGitRoots?: Record<string, { committed: boolean; tagged: string[]; pushed: boolean }>;
   /** Repo-relative path to the consolidated root changelog. Defaults to DEFAULT_ROOT_CHANGELOG_PATH. */
   changelogOutputPath?: string;
+  /**
+   * The flow this release came from (e.g. "platform", "sdk"). Drives the
+   * tag grammar (`{flow}-v{version}`, see ./tag.ts). If omitted (ran
+   * without `--flow`), falls back to `"release"` and — for a genuinely
+   * divergent multi-version independent release — to the old one-tag-
+   * per-package behavior, since a single flow-level tag can't represent
+   * packages at different versions.
+   */
+  flowName?: string;
+  /** Per-flow tag template override, from `FlowConfig.tagPattern`. */
+  tagPattern?: string;
 }): Promise<{ committed: boolean; tagged: string[]; pushed: boolean }> {
-  const { cwd, plan, dryRun, noVerify = false, repoRoot, checkpointGitRoots, changelogOutputPath } = options;
+  const { cwd, plan, dryRun, noVerify = false, repoRoot, checkpointGitRoots, changelogOutputPath, flowName = 'release', tagPattern } = options;
   const simpleGit = (await import('simple-git')).default;
 
   const result = {
@@ -313,8 +325,11 @@ export async function commitAndTagRelease(options: {
       rootToPkgs.set(root, list);
     }
 
+    // Whether the whole plan shares exactly one version — true for lockstep
+    // flows, and true for a single-package independent flow (e.g. sdk).
+    // Drives one flow-level tag vs. the per-package fallback below.
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
-    const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
+    const singleVersionAcrossPlan = uniqueVersions.size === 1;
     const pushFlags: string[] = noVerify ? ['--no-verify'] : [];
 
     // Process each git root: commit → tag → push.
@@ -374,11 +389,17 @@ export async function commitAndTagRelease(options: {
 
       // 2. Tag (skip if already done)
       if (rootTagged.length === 0) {
-        if (isLockstep) {
-          const tagName = `v${plan.packages[0]!.nextVersion}`;
+        if (singleVersionAcrossPlan) {
+          // One tag per flow release: `{flow}-v{version}` (see ./tag.ts).
+          const tagName = buildReleaseTag(flowName, plan.packages[0]!.nextVersion, tagPattern);
           await rootGit.addTag(tagName);
           rootTagged = [tagName];
         } else {
+          // Packages in this release genuinely diverge in version (a
+          // multi-package independent flow) — a single flow-level tag
+          // can't represent that; fall back to one tag per package. Not a
+          // shape any configured flow uses today (see ADR/plan boundary
+          // note), kept for safety rather than crashing.
           for (const pkg of pkgs) {
             const tagName = `${pkg.name}@${pkg.nextVersion}`;
             await rootGit.addTag(tagName);

@@ -104,8 +104,10 @@ describe('runReleasePipeline — channel behavior', () => {
     const pkgJson = JSON.parse(readFileSync(join(root, 'packages', 'alpha', 'package.json'), 'utf-8'));
     expect(pkgJson.version).toBe('1.0.1');
 
+    // No --flow passed here, so the tag falls back to the "release" flow
+    // name (see commitAndTagRelease's flowName default) — `release-v1.0.1`.
     const tags = execSync('git tag', { cwd: root }).toString();
-    expect(tags).toContain('@scope/alpha@1.0.1');
+    expect(tags).toContain('release-v1.0.1');
   });
 
   it('canary: publishes with tag=canary, never bumps package.json, and skips git entirely', async () => {
@@ -137,5 +139,38 @@ describe('runReleasePipeline — channel behavior', () => {
 
     // No CHANGELOG.md written either — canary skips changelog generation.
     expect(existsSync(join(root, 'packages', 'alpha', 'CHANGELOG.md'))).toBe(false);
+  });
+
+  it('skipPublish: never calls the publisher, but still bumps package.json and commits/tags git', async () => {
+    const publisher = makePublisherSpy();
+    // No npm token / whoami stub needed — skipPublish bypasses the pre-flight
+    // entirely. Prove it by removing the stub this suite normally relies on.
+    delete process.env['NPM_TOKEN'];
+    vi.unstubAllGlobals();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network should not be reached in skipPublish mode')));
+
+    const result = await runReleasePipeline({
+      cwd: root,
+      repoRoot: root,
+      scopeCwd: root,
+      config: { bump: 'patch' },
+      skipChecks: true,
+      skipBuild: true,
+      skipVerify: true,
+      skipPublish: true,
+      publisher,
+    });
+
+    expect(result.success).toBe(true);
+    expect(publisher.calls).toHaveLength(0);
+
+    const pkgJson = JSON.parse(readFileSync(join(root, 'packages', 'alpha', 'package.json'), 'utf-8'));
+    expect(pkgJson.version).toBe('1.0.1');
+
+    const tags = execSync('git tag', { cwd: root }).toString();
+    expect(tags).toContain('release-v1.0.1');
+
+    expect(result.report.result.published ?? []).toHaveLength(0);
+    expect(result.report.result.skipped ?? []).toContain('@scope/alpha@1.0.1 (prepared, not published)');
   });
 });

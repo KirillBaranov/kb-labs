@@ -21,10 +21,28 @@ import type { PublishablePackage, VerifyResult, PluginLogger } from './types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/**
+ * Backoff schedule for the "is it published yet" poll only — tuned for
+ * registry propagation lag (seconds), not for npm rate-limiting (which
+ * `publish-programmatic.ts` already handles separately, on a much longer
+ * schedule, around the publish call itself). Verdaccio (this module's
+ * original caller) is synchronous, so `retries: 0` keeps that path's
+ * behavior exactly as before; real npm has observable lag, so `deliver`
+ * passes a non-zero `retries`.
+ */
+const DEFAULT_POLL_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000, 30_000] as const;
+
 export interface VerifyAgainstRegistryOptions {
   registry: string;
   /** Timeout (ms) for the registry HTTP check and the `npm pack` round-trip. Default: 30000. */
   timeout?: number;
+  /**
+   * Extra attempts for the "is it published yet" check before giving up —
+   * each retry waits `retryDelaysMs[attempt]` (capped at the last entry).
+   * Default: 0 (single attempt, matches pre-existing Verdaccio behavior).
+   */
+  retries?: number;
+  retryDelaysMs?: readonly number[];
   logger?: Pick<PluginLogger, 'info' | 'warn'>;
 }
 
@@ -38,25 +56,50 @@ export async function verifyAgainstRegistry(
   packages: PublishablePackage[],
   options: VerifyAgainstRegistryOptions,
 ): Promise<VerifyResult[]> {
-  const { registry, timeout = DEFAULT_TIMEOUT_MS, logger } = options;
+  const { registry, timeout = DEFAULT_TIMEOUT_MS, retries = 0, retryDelaysMs = DEFAULT_POLL_RETRY_DELAYS_MS, logger } = options;
   const results: VerifyResult[] = [];
 
   for (const pkg of packages) {
-    results.push(await verifyOneAgainstRegistry(pkg, registry, timeout, logger));
+    results.push(await verifyOneAgainstRegistry(pkg, registry, timeout, retries, retryDelaysMs, logger));
   }
 
   return results;
+}
+
+async function waitUntilPublished(
+  pkg: PublishablePackage,
+  registry: string,
+  retries: number,
+  retryDelaysMs: readonly number[],
+  logger?: Pick<PluginLogger, 'info' | 'warn'>,
+): Promise<boolean> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (await isVersionPublished(pkg.name, pkg.version, registry)) {
+      return true;
+    }
+    if (attempt < retries) {
+      const delay = retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)]!;
+      logger?.warn?.(
+        `${pkg.name}@${pkg.version} not yet visible on ${registry} (attempt ${attempt + 1}/${retries + 1}), ` +
+        `retrying in ${(delay / 1000).toFixed(0)}s — likely registry propagation lag`,
+      );
+      await new Promise<void>(r => { setTimeout(r, delay); });
+    }
+  }
+  return false;
 }
 
 async function verifyOneAgainstRegistry(
   pkg: PublishablePackage,
   registry: string,
   timeout: number,
+  retries: number,
+  retryDelaysMs: readonly number[],
   logger?: Pick<PluginLogger, 'info' | 'warn'>,
 ): Promise<VerifyResult> {
-  const published = await isVersionPublished(pkg.name, pkg.version, registry);
+  const published = await waitUntilPublished(pkg, registry, retries, retryDelaysMs, logger);
   if (!published) {
-    return { name: pkg.name, success: false, issues: [`${pkg.name}@${pkg.version} was not found on ${registry} after publish`] };
+    return { name: pkg.name, success: false, issues: [`${pkg.name}@${pkg.version} was not found on ${registry} after publish (waited through ${retries} retr${retries === 1 ? 'y' : 'ies'})`] };
   }
   logger?.info?.(`${pkg.name}@${pkg.version} confirmed on ${registry}`);
 
