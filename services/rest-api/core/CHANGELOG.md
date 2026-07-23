@@ -1,3 +1,204 @@
+## [2.105.0] - 2026-07-23
+
+**163 packages** bumped to v2.105.0
+
+<details>
+<summary>Package list (163)</summary>
+
+| Package | Previous | Bump |
+|---------|----------|------|
+| `@kb-labs/cli-bin` | 2.104.0 | minor |
+| `@kb-labs/cli-commands` | 2.104.0 | minor |
+| `@kb-labs/cli-contracts` | 2.104.0 | minor |
+| `@kb-labs/cli-runtime` | 2.104.0 | minor |
+| `@kb-labs/adapters-analytics-duckdb` | 2.104.0 | minor |
+| `@kb-labs/adapters-analytics-file` | 2.104.0 | minor |
+| `@kb-labs/adapters-analytics-sqlite` | 2.104.0 | minor |
+| `@kb-labs/adapters-environment-docker` | 2.104.0 | minor |
+| `@kb-labs/adapters-eventbus-cache` | 2.104.0 | minor |
+| `@kb-labs/adapters-fs` | 2.105.0-canary.f6d35e31 | minor |
+| `@kb-labs/adapters-kblabs-gateway` | 2.104.0 | minor |
+| `@kb-labs/adapters-log-document` | 2.104.0 | minor |
+| `@kb-labs/adapters-log-ringbuffer` | 2.104.0 | minor |
+| `@kb-labs/adapters-mongodb` | 2.104.0 | minor |
+| `@kb-labs/notifier-router` | 2.104.0 | minor |
+| `@kb-labs/adapters-openai` | 2.104.0 | minor |
+| `@kb-labs/adapters-pino` | 2.104.0 | minor |
+| `@kb-labs/adapters-pino-http` | 2.104.0 | minor |
+| `@kb-labs/adapters-qdrant` | 2.104.0 | minor |
+| `@kb-labs/adapters-redis` | 2.104.0 | minor |
+| `@kb-labs/adapters-s3` | 2.104.0 | minor |
+| `@kb-labs/adapters-snapshot-localfs` | 2.104.0 | minor |
+| `@kb-labs/adapters-service-transport-http` | 2.104.0 | minor |
+| `@kb-labs/adapters-sqlite` | 2.104.0 | minor |
+| `@kb-labs/adapters-transport` | 2.104.0 | minor |
+| `@kb-labs/adapters-voyage-ai` | 2.104.0 | minor |
+| `@kb-labs/adapters-workspace-localfs` | 2.104.0 | minor |
+| `@kb-labs/adapters-workspace-agent` | 2.104.0 | minor |
+| `@kb-labs/adapters-workspace-worktree` | 2.104.0 | minor |
+| `@kb-labs/adapters-vibeproxy` | 2.104.0 | minor |
+| `@kb-labs/adapters-telegram` | 2.104.0 | minor |
+| `@kb-labs/core-bundle` | 2.104.0 | minor |
+| `@kb-labs/core-config` | 2.104.0 | minor |
+| `@kb-labs/core-discovery` | 2.104.0 | minor |
+| `@kb-labs/core-contracts` | 2.104.0 | minor |
+| `@kb-labs/core-ipc` | 2.104.0 | minor |
+| `@kb-labs/llm-router` | 2.104.0 | minor |
+| `@kb-labs/core-platform` | 2.104.0 | minor |
+| `@kb-labs/plugin-contracts` | 2.104.0 | minor |
+| `@kb-labs/plugin-execution` | 2.104.0 | minor |
+| `@kb-labs/plugin-execution-factory` | 2.104.0 | minor |
+| `@kb-labs/plugin-runtime` | 2.104.0 | minor |
+| `@kb-labs/core-policy` | 2.104.0 | minor |
+| `@kb-labs/core-registry` | 2.104.0 | minor |
+| `@kb-labs/core-resource-broker` | 2.104.0 | minor |
+| `@kb-labs/core-runtime` | 2.104.0 | minor |
+| `@kb-labs/core-sandbox` | 2.104.0 | minor |
+| `@kb-labs/core-state-broker` | 2.104.0 | minor |
+| `@kb-labs/core-sys` | 2.104.0 | minor |
+| `@kb-labs/telemetry-client` | 2.104.0 | minor |
+| `@kb-labs/core-tenant` | 2.104.0 | minor |
+| `@kb-labs/core-types` | 2.104.0 | minor |
+| `@kb-labs/core-workspace` | 2.104.0 | minor |
+| `@kb-labs/devkit` | 2.104.0 | minor |
+| `@kb-labs/platform-client` | 2.104.0 | minor |
+| `@kb-labs/shared-command-kit` | 2.104.0 | minor |
+| `@kb-labs/shared-daemon` | 2.104.0 | minor |
+| `@kb-labs/shared-cli-ui` | 2.104.0 | minor |
+| `@kb-labs/shared-http` | 2.104.0 | minor |
+| `@kb-labs/perm-presets` | 2.104.0 | minor |
+| `@kb-labs/shared-testing` | 2.104.0 | minor |
+| `@kb-labs/shared-testing-e2e` | 2.104.0 | minor |
+| `@kb-labs/shared-testing-platform` | 2.104.0 | minor |
+| `@kb-labs/shared-tool-kit` | 2.104.0 | minor |
+| `@kb-labs/studio-app` | 2.104.0 | minor |
+| `@kb-labs/studio-data-client` | 2.104.0 | minor |
+| `@kb-labs/studio-devtools` | 2.104.0 | minor |
+| `@kb-labs/studio-event-bus` | 2.104.0 | minor |
+| `@kb-labs/studio-federation` | 2.104.0 | minor |
+| `@kb-labs/studio-hooks` | 2.104.0 | minor |
+| `@kb-labs/studio-plugin-tools` | 2.104.0 | minor |
+| `@kb-labs/studio-ui-core` | 2.104.0 | minor |
+| `@kb-labs/studio-ui-kit` | 2.104.0 | minor |
+| `@kb-labs/agent-contracts` | 2.104.0 | minor |
+| `@kb-labs/agent-entry` | 2.104.0 | minor |
+| `@kb-labs/agent-core` | 2.104.0 | minor |
+| `@kb-labs/agent-history` | 2.104.0 | minor |
+| `@kb-labs/agent-kernel` | 2.104.0 | minor |
+| `@kb-labs/agent-mcp` | 2.104.0 | minor |
+| `@kb-labs/agent-runtime` | 2.104.0 | minor |
+| `@kb-labs/agent-sdk` | 2.104.0 | minor |
+| `@kb-labs/agent-store` | 2.104.0 | minor |
+| `@kb-labs/agent-tools` | 2.104.0 | minor |
+| `@kb-labs/agent-tracing` | 2.104.0 | minor |
+| `@kb-labs/clickup-contracts` | 2.104.0 | minor |
+| `@kb-labs/clickup-core` | 2.104.0 | minor |
+| `@kb-labs/clickup-entry` | 2.104.0 | minor |
+| `@kb-labs/devlink-contracts` | 2.104.0 | minor |
+| `@kb-labs/devlink-core` | 2.104.0 | minor |
+| `@kb-labs/devlink-entry` | 2.104.0 | minor |
+| `@kb-labs/commit-core` | 2.104.0 | minor |
+| `@kb-labs/commit-contracts` | 2.104.0 | minor |
+| `@kb-labs/commit-entry` | 2.104.0 | minor |
+| `@kb-labs/impact-contracts` | 2.104.0 | minor |
+| `@kb-labs/impact-core` | 2.104.0 | minor |
+| `@kb-labs/inbox-contracts` | 2.104.0 | minor |
+| `@kb-labs/inbox-core` | 2.104.0 | minor |
+| `@kb-labs/inbox-entry` | 2.104.0 | minor |
+| `@kb-labs/infra-worker-contracts` | 2.104.0 | minor |
+| `@kb-labs/infra-worker-core` | 2.104.0 | minor |
+| `@kb-labs/marketplace-api` | 2.104.0 | minor |
+| `@kb-labs/marketplace-contracts` | 2.104.0 | minor |
+| `@kb-labs/marketplace-core` | 2.104.0 | minor |
+| `@kb-labs/marketplace-app` | 2.104.0 | minor |
+| `@kb-labs/marketplace-entry` | 2.104.0 | minor |
+| `@kb-labs/marketplace-npm` | 2.104.0 | minor |
+| `@kb-labs/marketplace-registry-api` | 2.104.0 | minor |
+| `@kb-labs/marketplace-registry-app` | 2.104.0 | minor |
+| `@kb-labs/marketplace-registry-contracts` | 2.104.0 | minor |
+| `@kb-labs/marketplace-registry-entry` | 2.104.0 | minor |
+| `@kb-labs/marketplace-registry-core` | 2.104.0 | minor |
+| `@kb-labs/mind-contracts` | 2.104.0 | minor |
+| `@kb-labs/mind-core` | 2.104.0 | minor |
+| `@kb-labs/mind-entry` | 2.104.0 | minor |
+| `@kb-labs/policy-contracts` | 2.104.0 | minor |
+| `@kb-labs/policy-core` | 2.104.0 | minor |
+| `@kb-labs/qa-core` | 2.104.0 | minor |
+| `@kb-labs/qa-contracts` | 2.104.0 | minor |
+| `@kb-labs/qa-entry` | 2.104.0 | minor |
+| `@kb-labs/quality-contracts` | 2.104.0 | minor |
+| `@kb-labs/quality-core` | 2.104.0 | minor |
+| `@kb-labs/quality-entry` | 2.104.0 | minor |
+| `@kb-labs/release-manager-changelog` | 2.104.0 | minor |
+| `@kb-labs/release-manager-checks` | 2.104.0 | minor |
+| `@kb-labs/release-manager-cli` | 2.104.0 | minor |
+| `@kb-labs/release-manager-contracts` | 2.104.0 | minor |
+| `@kb-labs/release-manager-core` | 2.104.0 | minor |
+| `@kb-labs/review-contracts` | 2.104.0 | minor |
+| `@kb-labs/review-core` | 2.104.0 | minor |
+| `@kb-labs/review-entry` | 2.104.0 | minor |
+| `@kb-labs/review-heuristic` | 2.104.0 | minor |
+| `@kb-labs/review-llm` | 2.104.0 | minor |
+| `@kb-labs/scaffold-contracts` | 2.104.0 | minor |
+| `@kb-labs/scaffold-core` | 2.104.0 | minor |
+| `@kb-labs/scaffold` | 2.104.0 | minor |
+| `@kb-labs/site-tools` | 2.104.0 | minor |
+| `@kb-labs/core-state-daemon` | 2.104.0 | minor |
+| `@kb-labs/workflow-artifacts` | 2.104.0 | minor |
+| `@kb-labs/workflow-constants` | 2.104.0 | minor |
+| `@kb-labs/workflow-contracts` | 2.104.0 | minor |
+| `@kb-labs/workflow-daemon` | 2.104.0 | minor |
+| `@kb-labs/workflow-engine` | 2.104.0 | minor |
+| `@kb-labs/workflow-entry` | 2.104.0 | minor |
+| `@kb-labs/workflow-runtime` | 2.104.0 | minor |
+| `@kb-labs/workflow-steps` | 2.104.0 | minor |
+| `@kb-labs/host-agent-app` | 2.104.0 | minor |
+| `@kb-labs/host-agent-client` | 2.104.0 | minor |
+| `@kb-labs/host-agent-contracts` | 2.104.0 | minor |
+| `@kb-labs/host-agent-core` | 2.104.0 | minor |
+| `@kb-labs/host-agent-entry` | 2.104.0 | minor |
+| `@kb-labs/host-agent-fs` | 2.104.0 | minor |
+| `@kb-labs/host-agent-transport` | 2.104.0 | minor |
+| `@kb-labs/github-contracts` | 2.104.0 | minor |
+| `@kb-labs/github-entry` | 2.104.0 | minor |
+| `@kb-labs/gateway-app` | 2.104.0 | minor |
+| `@kb-labs/gateway-auth` | 2.104.0 | minor |
+| `@kb-labs/gateway-contracts` | 2.104.0 | minor |
+| `@kb-labs/gateway-core` | 2.104.0 | minor |
+| `@kb-labs/gateway-runtime-server` | 2.104.0 | minor |
+| `@kb-labs/mcp-app` | 2.104.0 | minor |
+| `@kb-labs/rest-api-app` | 2.104.0 | minor |
+| `@kb-labs/rest-api-contracts` | 2.104.0 | minor |
+| `@kb-labs/rest-api-core` | 2.104.0 | minor |
+
+</details>
+
+### 🌐 Gateway & API
+
+- **gateway**: Introduces a human session identity for the CLI, enhancing user experience by making it easier to track and manage sessions, while also addressing the registration process gap (#291)
+
+### 🧩 Plugins
+
+- **release**: Changes the way the root changelog output path is configured, making it easier for users to manage their changelogs in a more organized manner. (#290)
+- **release**: Simplifies the display of large package-bump tables in changelogs, enhancing readability and user experience. (#289)
+- **release**: Marks certain end-to-end delivery fixture stubs as private, reducing clutter and potential confusion for users. 
+- **release**: Prevents the accidental overwriting of the root CHANGELOG.md, ensuring that users' previous changelog entries remain intact and are staged for future commits. (#288)
+- **qa**: Addresses mismatches in the fresh-install journey, providing clearer guidance and documentation for users on setup and workflows. (#287)
+- **release**: Streamlines the tagging process by pushing only new tags, which helps keep the version history clean and relevant for users. (#285)
+- **qa**: Renames a specific CLI path segment to ensure it follows established naming conventions, promoting consistency and ease of use for users. (#286)
+- **release**: Allows for the rewriting of a package's version before publishing, which helps users ensure their published packages are up-to-date. (#283)
+- **release**: Fixes a lint error in changelog tests, contributing to a more stable and reliable update process for users. (#281)
+- **release**: Adjusts the timeout settings for changelog generation to be more efficient, improving performance and responsiveness for users. (#280)
+
+### 🔧 Other
+
+- **ci**: Introduces a reusable GitHub Action for creating installations, streamlining the development process and making it easier for contributors to set up their environments efficiently. (#300)
+- **kb-create**: Adds support for version-pinned plugins and services, allowing users to specify exact versions for better compatibility and stability in their projects. (#298)
+- **kb-create**: Transforms default adapter package configurations to be driven by settings, simplifying customization and enhancing user flexibility when using adapters. (#299)
+- **kb-create,plugin-runtime**: Implements validation for adapter roles and configures them based on a catalog, ensuring users have a smoother experience by preventing misconfigurations. (#296)
+- **plugin-contracts**: Automatically derives platform requirements from plugin services, making it easier for users to understand necessary dependencies and improving overall usability. (#297)
+- **ci**: Stabilizes the end-to-end installation flow and addresses security issues identified in package audits, enhancing the reliability and safety of the installation process for users. 
+- **ci**: Grants necessary permissions to the e2e-platform call in the CI workflow, ensuring that installation tests run smoothly without permission errors for users. (#282)
 ## [2.104.0] - 2026-07-19
 
 **165 packages** bumped to v2.104.0
