@@ -27,7 +27,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "pnpm clean && tsup --config tsup.config.ts && node scripts/emit-adapter-roles.mjs",
+    "build": "pnpm clean && tsup --config tsup.config.ts",
     "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",

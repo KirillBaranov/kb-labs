@@ -46,6 +46,19 @@ type Selection struct {
 	LLMProvider      string // "openai" | "anthropic" | "" (skip)
 	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
 	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	// Adapters overrides which package backs a given capability role (e.g.
+	// "cache" -> "@kb-labs/adapters-redis@0.2.0"), from the chosen intent's
+	// bundle or the custom picker's adapter-role opt-ins.
+	Adapters map[string]string
+	// EnvValues are extra secret-shaped values collected by an intent's
+	// "envVar" wizard step (e.g. {"NPM_TOKEN": "..."}), written to .env the
+	// same way as LLMKey.
+	EnvValues map[string]string `json:"-"` // #nosec G117 -- not serialized
+	// Intent is the chosen wizard intent's ID (e.g. "release", "explore"),
+	// used post-install to print that intent's docs/next-steps. Empty when
+	// the selection didn't come from the intent-driven wizard (e.g. a future
+	// direct API caller).
+	Intent string
 	// PluginVersions/ServiceVersions override the installed version for a
 	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
 	// ID. Separate maps because a service and a plugin can share the same
@@ -216,7 +229,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 				"so devservices.yaml was not written and `kb-dev start` will fail. " +
 				"Run `kb-create update` to retry the scan."
 		}
-		ins.logPluginManifests(scanResult.Plugins)
+		ins.logPluginManifests(sel.PlatformDir, scanResult.Plugins)
 	}
 
 	// Symlink kb CLI into ~/.local/bin/ for PATH availability.
@@ -427,12 +440,19 @@ func (ins *Installer) step(n, total int, label string) {
 // gate install, validate secrets, or write config — that's follow-up work
 // once a non-interactive `kb-create install --plugins=...` surface exists.
 // Read-only, additive; never blocks or fails the install.
-func (ins *Installer) logPluginManifests(plugins []scan.PluginEntry) {
+func (ins *Installer) logPluginManifests(platformDir string, plugins []scan.PluginEntry) {
 	for _, p := range plugins {
 		if p.ResolvedPath == "" {
 			continue
 		}
-		manifestPath := filepath.Join(p.ResolvedPath, "dist", "manifest.json")
+		// p.ResolvedPath is relative to platformDir (see scanner.js's
+		// `relPath = './' + path.relative(platformDir, pkgRoot)`), not to
+		// this process's cwd — joining it bare resolved against whatever
+		// directory kb-create happened to be invoked from, so this silently
+		// found nothing whenever cwd != platformDir (the common case: a user
+		// runs `kb-create install --platform ~/kb-platform` from their
+		// project directory, not from inside the platform dir itself).
+		manifestPath := filepath.Join(platformDir, p.ResolvedPath, "dist", "manifest.json")
 		pluginManifest, err := devservices.LoadPluginManifest(manifestPath)
 		if err != nil {
 			continue // no static manifest yet, or not a plugin schema — silently skip

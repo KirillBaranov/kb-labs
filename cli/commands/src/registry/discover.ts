@@ -105,6 +105,9 @@ export const __test = {
   ensureManifestLoader,
   createManifestV3Loader,
   // resetInProcCache is exported directly (not via __test) since it's part of the public API
+  loadCache,
+  saveCache,
+  computeMarketplaceLockHashAt,
 };
 
 /**
@@ -1092,23 +1095,27 @@ async function loadCache(
       return null;
     }
     
-    // Check lockfile hash
+    // Check lockfile hash. Compare against '' (not the cached field directly)
+    // so a missing→present transition (e.g. no lockfile existed when the
+    // cache was written) is treated as a real change instead of being
+    // skipped by a "both sides truthy" guard — see the marketplace-lock
+    // checks below for the same fix and why it matters.
     const currentLockfileHash = await computeLockfileHash(cwd);
-    if (currentLockfileHash && cache.lockfileHash && cache.lockfileHash !== currentLockfileHash) {
+    if ((cache.lockfileHash ?? '') !== currentLockfileHash) {
       log('debug', 'Cache invalidated: lockfile changed');
       return null;
     }
-    
+
     // Check config hash
     const currentConfigHash = await computeConfigHash(cwd);
-    if (currentConfigHash && cache.configHash && cache.configHash !== currentConfigHash) {
+    if ((cache.configHash ?? '') !== currentConfigHash) {
       log('debug', 'Cache invalidated: kb-labs.config.json changed');
       return null;
     }
-    
+
     // Check plugins state hash
     const currentPluginsStateHash = await computePluginsStateHash(cwd);
-    if (currentPluginsStateHash && cache.pluginsStateHash && cache.pluginsStateHash !== currentPluginsStateHash) {
+    if ((cache.pluginsStateHash ?? '') !== currentPluginsStateHash) {
       log('debug', 'Cache invalidated: .kb/plugins.json changed');
       return null;
     }
@@ -1126,23 +1133,30 @@ async function loadCache(
 
     // Check marketplace lock hashes — source of truth for installed/linked
     // plugins. Both scopes are tracked; a change in either invalidates.
+    //
+    // computeMarketplaceLockHashAt returns '' when the lock file doesn't
+    // exist (see its own doc comment), and a brand-new project has no
+    // `.kb/marketplace.lock` at all until the first plugin is linked into it
+    // (e.g. `kb scaffold run plugin <name>`, which writes the file as part
+    // of its own action — see linkWithMarketplace in
+    // plugins/scaffold/entry/src/commands/scaffold.ts). The cache written by
+    // that same `kb scaffold run` invocation's own startup discovery (which
+    // runs BEFORE the scaffold action executes) therefore has
+    // projectMarketplaceLockHash===''→undefined. Requiring BOTH sides
+    // truthy here made that "no file → file created with the new plugin"
+    // transition invisible: undefined && anything is always false, so the
+    // check silently no-opped and the newly-scaffolded plugin's commands
+    // stayed unregistered until the 5-minute disk-cache TTL expired. Compare
+    // against '' instead so presence changes are caught like any other edit.
     const currentPlatformLockHash = await computeMarketplaceLockHashAt(roots.platformRoot);
-    if (
-      currentPlatformLockHash &&
-      cache.platformMarketplaceLockHash &&
-      cache.platformMarketplaceLockHash !== currentPlatformLockHash
-    ) {
+    if ((cache.platformMarketplaceLockHash ?? '') !== currentPlatformLockHash) {
       log('debug', `Cache invalidated: ${roots.platformRoot}/.kb/marketplace.lock changed`);
       return null;
     }
 
     if (roots.projectRoot !== roots.platformRoot) {
       const currentProjectLockHash = await computeMarketplaceLockHashAt(roots.projectRoot);
-      if (
-        currentProjectLockHash &&
-        cache.projectMarketplaceLockHash &&
-        cache.projectMarketplaceLockHash !== currentProjectLockHash
-      ) {
+      if ((cache.projectMarketplaceLockHash ?? '') !== currentProjectLockHash) {
         log('debug', `Cache invalidated: ${roots.projectRoot}/.kb/marketplace.lock changed`);
         return null;
       }
