@@ -80,11 +80,12 @@ describe('commitAndTagRelease — tag push with pre-existing remote tags', () =>
 
     expect(result.committed).toBe(true);
     expect(result.pushed).toBe(true);
-    // Single package (< 2) — not lockstep — tags use the per-package `name@version` form.
-    expect(result.tagged).toEqual(['@scope/alpha@1.1.0']);
+    // No flowName passed — falls back to the "release" flow name, one
+    // flow-level tag `{flow}-v{version}` (see tag.ts / commitAndTagRelease).
+    expect(result.tagged).toEqual(['release-v1.1.0']);
 
     // The new tag actually landed on the remote.
     const remoteTags = execSync(`git ls-remote --tags "${remote}"`, { cwd: root }).toString();
-    expect(remoteTags).toContain('refs/tags/@scope/alpha@1.1.0');
+    expect(remoteTags).toContain('refs/tags/release-v1.1.0');
   });
 });

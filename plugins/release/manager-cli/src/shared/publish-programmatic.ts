@@ -28,6 +28,14 @@ export interface PackageToPublish {
   name: string;
   version: string;
   path: string;
+  /**
+   * Pre-built tarball to publish instead of packing fresh from `path`
+   * (produced by `release stage` — see stage.ts). When set, `path` is
+   * only used as the cwd for npm's `.npmrc` auth lookup — no
+   * `rewriteWorkspaceDeps` mutation happens, since the tarball's
+   * package.json is already final and must ship byte-for-byte unchanged.
+   */
+  tarballPath?: string;
 }
 
 export interface ProgrammaticPublishOptions {
@@ -124,6 +132,8 @@ function resolveToken(token?: string): string | undefined {
  */
 function spawnPublish(options: {
   packagePath: string;
+  /** Publish this exact tarball instead of packing `packagePath` fresh. */
+  tarballPath?: string;
   packageManager: string;
   token: string | undefined;
   otp?: string;
@@ -132,14 +142,16 @@ function spawnPublish(options: {
   access?: string;
   registry?: string;
 }): Promise<void> {
-  const { packagePath, packageManager, token, otp, dryRun, tag, access, registry } = options;
+  const { packagePath, tarballPath, packageManager, token, otp, dryRun, tag, access, registry } = options;
 
   return new Promise((resolve, reject) => {
     const args = ['publish'];
+    if (tarballPath) { args.push(tarballPath); }
 
-    if (packageManager === 'pnpm') {
+    if (packageManager === 'pnpm' && !tarballPath) {
       // pnpm checks git cleanliness; we version-bump before publish which makes
-      // the tree dirty — bypass that check.
+      // the tree dirty — bypass that check. N/A when publishing a pre-built
+      // tarball — there's no working-tree state for pnpm to check.
       args.push('--no-git-checks');
     }
     if (dryRun)   { args.push('--dry-run'); }
@@ -226,13 +238,18 @@ async function publishOne(
   },
   logger: ReturnType<typeof useLogger>,
 ): Promise<PublishResult> {
-  const restore = rewriteWorkspaceDeps(pkg, opts.versionMap, opts.packageManager);
+  // A pre-built tarball (see PackageToPublish.tarballPath) is already final
+  // — publishing it must ship those exact bytes, so skip the package.json
+  // rewrite entirely rather than mutating a directory whose content the
+  // tarball no longer reflects.
+  const restore = pkg.tarballPath ? (() => {}) : rewriteWorkspaceDeps(pkg, opts.versionMap, opts.packageManager);
 
   try {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         await spawnPublish({
           packagePath: pkg.path,
+          tarballPath: pkg.tarballPath,
           packageManager: opts.packageManager,
           token: opts.token,
           otp: opts.otp,

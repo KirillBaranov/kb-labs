@@ -47,6 +47,7 @@ interface RunFlags {
   'skip-checks'?: boolean;
   'skip-build'?: boolean;
   'skip-verify'?: boolean;
+  'skip-publish'?: boolean;
   'no-verify'?: boolean;
   yes?: boolean;
   json?: boolean;
@@ -144,6 +145,7 @@ function buildCheckItems(checkEntries: CheckResult[], symbols: { success: string
 function buildReleaseSections(
   report: ReleaseReport,
   dryRun: boolean,
+  skipPublish: boolean,
   ctx: PluginContextV3,
 ): Array<{ header?: string; items: string[] }> {
   const sections: Array<{ header?: string; items: string[] }> = [];
@@ -166,6 +168,13 @@ function buildReleaseSections(
     sections.push({
       header: 'Would publish (dry-run)',
       items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p.replace(' (dry-run)', '')}`),
+    });
+  }
+
+  if (!dryRun && skipPublish && report.result.skipped?.length) {
+    sections.push({
+      header: 'Prepared — not published (git tag pushed, CI publishes on tag)',
+      items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p}`),
     });
   }
 
@@ -250,6 +259,7 @@ function reportPipelineResult(
   flags: RunFlags,
   result: { success: boolean; report: ReleaseReport },
   dryRun: boolean,
+  skipPublish: boolean,
 ): void {
   if (flags.json) {
     ctx.ui?.json?.(result.report);
@@ -257,7 +267,7 @@ function reportPipelineResult(
   }
   ctx.ui?.sideBox?.({
     title: 'Release',
-    sections: buildReleaseSections(result.report, dryRun, ctx),
+    sections: buildReleaseSections(result.report, dryRun, skipPublish, ctx),
     status: result.success ? 'success' : 'error',
     timing: result.report.result.timingMs,
   });
@@ -288,25 +298,34 @@ export default defineCommand({
       configLoader.succeed('Configuration loaded');
 
       const channel: ReleaseChannel = config.channel ?? 'stable';
+      const skipPublish = flags['skip-publish'] === true;
       const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
 
-      // 1b. Pre-flight — fail fast before planning (which is slow)
+      // 1b. Pre-flight — fail fast before planning (which is slow).
+      // The npm-credentials check is skipped entirely in prepare-only mode:
+      // no npm access is needed to build, version, changelog, and git-tag a
+      // release. The separate `kb release promote` step (run by CI on the
+      // tag this pushes) does its own npm pre-flight. Flow validity is
+      // always checked, publish or not.
       if (!dryRun) {
         const preErrors: string[] = [];
-        const registry = resolvePublishRegistry(config, channel);
-        if (!token) {
-          preErrors.push('NPM_TOKEN or NODE_AUTH_TOKEN is not set');
-        } else {
-          try {
-            const res = await fetch(`${registry}/-/whoami`, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: AbortSignal.timeout(8000),
-            });
-            if (!res.ok) {
-              preErrors.push(`npm token invalid or expired (HTTP ${res.status} from ${registry})`);
+
+        if (!skipPublish) {
+          const registry = resolvePublishRegistry(config, channel);
+          if (!token) {
+            preErrors.push('NPM_TOKEN or NODE_AUTH_TOKEN is not set');
+          } else {
+            try {
+              const res = await fetch(`${registry}/-/whoami`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: AbortSignal.timeout(8000),
+              });
+              if (!res.ok) {
+                preErrors.push(`npm token invalid or expired (HTTP ${res.status} from ${registry})`);
+              }
+            } catch (e) {
+              preErrors.push(`npm registry unreachable: ${e instanceof Error ? e.message : String(e)}`);
             }
-          } catch (e) {
-            preErrors.push(`npm registry unreachable: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
 
@@ -386,6 +405,7 @@ export default defineCommand({
         skipChecks: flags['skip-checks'],
         skipBuild: flags['skip-build'],
         skipVerify: flags['skip-verify'],
+        skipPublish,
         noVerify: flags['no-verify'],
         checks: resolveChecks(flags, config),
         publisher,
@@ -399,7 +419,7 @@ export default defineCommand({
 
       pipelineLoader.succeed(result.success ? 'Release completed' : 'Release failed');
 
-      reportPipelineResult(ctx, flags, result, dryRun);
+      reportPipelineResult(ctx, flags, result, dryRun, skipPublish);
 
       return { exitCode: result.success ? 0 : 1, report: result.report };
     },

@@ -46,6 +46,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   const {
     cwd: _cwd, repoRoot, scopeCwd, scope, config, dryRun = false,
     skipChecks = false, skipBuild = false, skipVerify = false,
+    skipPublish = false,
     noVerify = false,
     checks: checkConfigs, publisher, changelog: changelogGen,
     logger, onProgress,
@@ -65,7 +66,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   try {
   return await _runPipeline({
     repoRoot, scopeCwd, scope, flow, config, dryRun, skipChecks, skipBuild, skipVerify,
-    noVerify, checkConfigs, publisher, changelogGen, logger, startTime, progress,
+    skipPublish, noVerify, checkConfigs, publisher, changelogGen, logger, startTime, progress,
     options,
   });
   } finally {
@@ -83,6 +84,7 @@ async function _runPipeline(ctx: {
   skipChecks: boolean;
   skipBuild: boolean;
   skipVerify: boolean;
+  skipPublish: boolean;
   noVerify: boolean;
   checkConfigs: PipelineOptions['checks'];
   publisher: PipelineOptions['publisher'];
@@ -94,16 +96,18 @@ async function _runPipeline(ctx: {
 }): Promise<PipelineResult> {
   const {
     repoRoot, scopeCwd, scope, flow, config, dryRun,
-    skipChecks, skipBuild, skipVerify, noVerify,
+    skipChecks, skipBuild, skipVerify, skipPublish, noVerify,
     checkConfigs, publisher, changelogGen, logger, startTime, progress,
   } = ctx;
 
   // 0b. Pre-flight: verify npm credentials before doing any real work.
+  // Skipped entirely in prepare-only mode — no npm access is needed to
+  // build, version, changelog, and git-tag a release.
   const channel = config.channel ?? 'stable';
   const publishTag = resolvePublishTag(config, channel);
   const publishRegistry = resolvePublishRegistry(config, channel);
 
-  if (!dryRun) {
+  if (!dryRun && !skipPublish) {
     const registry = publishRegistry;
     const authError = await verifyNpmAuth(registry);
     if (authError) {
@@ -145,7 +149,8 @@ async function _runPipeline(ctx: {
   progress('planning', `Found ${plan.packages.length} package(s) to release`);
 
   // 1b. Check for resumable checkpoint — publish already done, only git remains.
-  if (!dryRun) {
+  // N/A in prepare-only mode: skipPublish never writes a checkpoint.
+  if (!dryRun && !skipPublish) {
     const existingCheckpoint = loadCheckpoint(repoRoot);
     if (existingCheckpoint) {
       const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
@@ -160,6 +165,8 @@ async function _runPipeline(ctx: {
           repoRoot,
           checkpointGitRoots: existingCheckpoint.gitRoots,
           changelogOutputPath: config.changelog?.outputPath,
+          flowName: flow,
+          tagPattern: flow ? config.flows?.[flow]?.tagPattern : undefined,
         });
         deleteCheckpoint(repoRoot);
         const resumeReport = buildReport('verifying', plan, repoRoot, dryRun, startTime, {
@@ -312,20 +319,33 @@ async function _runPipeline(ctx: {
     await mergeRootChangelog({ repoRoot, plan, changelog: changelogMd, outputPath: config.changelog?.outputPath });
   }
 
-  // 8. Publish (before git — see module comment)
-  progress('publishing', dryRun ? 'Simulating publish (dry-run)...' : 'Publishing packages...');
+  // 8. Publish (before git — see module comment).
+  // Prepare-only mode (skipPublish) never calls the publisher — it produces
+  // a synthetic "nothing published yet" result and falls straight through to
+  // git commit/tag. A separate CI job (`kb release promote`), triggered by
+  // the tag this run pushes, does the actual npm publish. See
+  // plugins/release/docs/adr/0001-*.
+  progress('publishing', dryRun ? 'Simulating publish (dry-run)...' : skipPublish ? 'Skipping publish (prepare-only)...' : 'Publishing packages...');
   const packagesToPublish = plan.packages.map(pkg => ({
     name: pkg.name,
     version: pkg.nextVersion,
     path: pkg.path,
   }));
 
-  const publishResult = await publisher.publish(packagesToPublish, {
-    dryRun,
-    access: config.publish?.access ?? 'public',
-    tag: publishTag,
-    registry: publishRegistry,
-  });
+  const publishResult = skipPublish
+    ? {
+      published: [],
+      alreadyPublished: [],
+      failed: [],
+      skipped: packagesToPublish.map(p => `${p.name}@${p.version} (prepared, not published)`),
+      errors: [],
+    }
+    : await publisher.publish(packagesToPublish, {
+      dryRun,
+      access: config.publish?.access ?? 'public',
+      tag: publishTag,
+      registry: publishRegistry,
+    });
 
   // If any package genuinely failed to publish, abort before touching git.
   // "alreadyPublished" entries are fine — they are counted as success.
@@ -351,8 +371,9 @@ async function _runPipeline(ctx: {
   // 8b. Write checkpoint after successful publish — enables git-only retry on failure.
   // Skipped for canary: there's no git step to resume into, and canary versions
   // are deterministic per (base version, shortSha) so retries are naturally
-  // idempotent via the publisher's already-published handling.
-  if (!dryRun && channel === 'stable') {
+  // idempotent via the publisher's already-published handling. Skipped for
+  // skipPublish: nothing was published, there's nothing to check-point.
+  if (!dryRun && !skipPublish && channel === 'stable') {
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const cpVersion = uniqueVersions.size === 1 ? plan.packages[0]!.nextVersion : 'independent';
     writeCheckpoint(repoRoot, {
@@ -373,8 +394,9 @@ async function _runPipeline(ctx: {
   // each package actually landed and re-runs the same static checks against
   // what the registry served back, catching publish-time corruption distinct
   // from pre-publish source issues. Canary skips this — it never goes through
-  // a Verdaccio pre-promote gate.
-  if (!dryRun && channel === 'stable') {
+  // a Verdaccio pre-promote gate. skipPublish skips it too — nothing landed
+  // on any registry this run; `kb release promote` verifies its own publish.
+  if (!dryRun && !skipPublish && channel === 'stable') {
     progress('verifying', 'Verifying published artifacts against the registry...');
     const registryVerifyResults = await verifyAgainstRegistry(packagesToPublish, {
       registry: publishRegistry,
@@ -406,6 +428,8 @@ async function _runPipeline(ctx: {
     gitResult = await commitAndTagRelease({
       cwd: scopeCwd, plan, dryRun, noVerify, repoRoot,
       changelogOutputPath: config.changelog?.outputPath,
+      flowName: flow,
+      tagPattern: flow ? config.flows?.[flow]?.tagPattern : undefined,
     });
     deleteCheckpoint(repoRoot);
   }

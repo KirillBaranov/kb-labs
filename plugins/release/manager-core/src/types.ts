@@ -147,6 +147,14 @@ export interface FlowConfig {
   versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
   /** If set, replaces global checks for this flow. */
   checks?: CustomCheckConfig[];
+  /**
+   * Git tag template for this flow's stable releases. Tokens: `{flow}`
+   * (the flow's config key, e.g. "platform") and `{version}` (the release
+   * version). Default: `{flow}-v{version}` (e.g. `platform-v2.105.0`).
+   * Used both to generate the tag (`buildReleaseTag`) and to parse a tag
+   * back into a flow (`resolveFlowFromTag`) — see `./tag.ts`.
+   */
+  tagPattern?: string;
 }
 
 export interface PackagesFilter {
@@ -330,6 +338,14 @@ export interface PipelineOptions {
   skipChecks?: boolean;
   skipBuild?: boolean;
   skipVerify?: boolean;
+  /**
+   * Prepare-only mode: run checks/build/verify/version-bump/changelog and
+   * commit+tag git, but never call the publisher. No npm credentials are
+   * required. Intended for a local/CI "prepare" step whose git tag is the
+   * trigger for a separate CI job that runs `kb release promote` to do the
+   * actual npm publish. See plugins/release/docs/adr/0001-*.
+   */
+  skipPublish?: boolean;
 
   /** Custom check configs from kb.config.json */
   checks?: CustomCheckConfig[];

@@ -2,7 +2,7 @@ version: 2
 
 # Single goreleaser config for all KB Labs Go binaries.
 #
-# Triggered by pushing a tag like `binaries-v0.4.0`. GitHub Actions runs
+# Triggered by pushing a tag like `v0.4.0-binaries`. GitHub Actions runs
 # goreleaser, which builds each tool in tools/<name>/, uploads raw
 # binaries to a GitHub Release, and writes a checksums.txt.
 #

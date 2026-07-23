@@ -162,6 +162,10 @@ export const manifest = {
           'skip-checks': { type: 'boolean', description: 'Skip pre-release checks' },
           'skip-build': { type: 'boolean', description: 'Skip build step' },
           'skip-verify': { type: 'boolean', description: 'Skip artifact verification (npm pack check)' },
+          'skip-publish': {
+            type: 'boolean',
+            description: 'Prepare-only: build, version, changelog, git commit/tag — never publish to npm. No npm credentials required. Pair with a tag-triggered CI job running `kb release promote`.',
+          },
           'no-verify': { type: 'boolean', description: 'Pass --no-verify to git push (bypasses pre-push hooks)' },
           yes: { type: 'boolean', description: 'Skip confirmation prompt — for CI/headless mode' },
           json: { type: 'boolean', description: 'Print result as JSON' },
@@ -177,6 +181,7 @@ export const manifest = {
           'kb release run --skip-checks --skip-build',
           'kb release run --strict --json',
           'kb release run --channel canary --yes',
+          'kb release run --flow platform --skip-publish --yes',
         ],
       },
 
@@ -213,6 +218,35 @@ export const manifest = {
         ],
       },
 
+      // release:stage - Pack the currently-committed versions into real tarballs, once
+      {
+        path: 'release stage',
+        category: 'Publish',
+        describe: 'Pack the currently-committed package versions for a flow into real npm tarballs, once, for `release deliver` to ship',
+        operationType: 'execute' as const,
+        longDescription:
+          'Produces the actual npm tarball artifacts for a flow\'s already-committed package.json versions ' +
+          '— no re-bump, no rebuild. Writes a manifest.json (name/version/tarball/sha256) alongside the tarballs. ' +
+          'Intended to run once in CI right after checking out a release tag; every `release deliver` target then ' +
+          'ships these exact bytes instead of re-packing independently. Not the same command as `release pack` ' +
+          '(that one verifies proposed packages before a release is decided; this one packs an already-decided one).',
+
+        handler: './cli/commands/stage.js#default',
+
+        flags: defineCommandFlags({
+          'release-tag': { type: 'string', description: 'Git tag to resolve {flow, channel} from (via release.flows[*].tagPattern) — alternative to --flow' },
+          flow: { type: 'string', description: 'Named flow — selects packages the same way `release run --flow` does (e.g. excludes sdk from platform)' },
+          'out-dir': { type: 'string', description: 'Output directory for tarballs + manifest.json (default: .kb/release/artifacts)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release stage --flow platform',
+          'kb release stage --release-tag platform-v2.105.0',
+          'kb release stage --flow sdk --out-dir .kb/release/artifacts',
+        ],
+      },
+
       // release:promote - Promote an already-released version to npm
       {
         path: 'release promote',
@@ -229,6 +263,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named flow — selects packages the same way `release run --flow` does (e.g. excludes sdk from platform)' },
           tag: { type: 'string', description: 'npm dist-tag override (default: config.publish.stableTag, falls back to "latest")' },
           registry: { type: 'string', description: 'Registry override (default: config.publish.npmRegistry, falls back to real npm)' },
           otp: { type: 'string', description: 'One-time password (optional, will prompt if needed)' },
@@ -244,9 +279,52 @@ export const manifest = {
 
         examples: [
           'kb release promote',
+          'kb release promote --flow platform',
+          'kb release promote --flow sdk',
           'kb release promote --scope @kb-labs/core',
           'kb release promote --dry-run',
           'kb release promote --tag next',
+        ],
+      },
+
+      // release:deliver - Ship a `release stage`d artifact to a target (npm)
+      {
+        path: 'release deliver',
+        category: 'Publish',
+        describe: 'Ship the tarballs `release stage` already packed to a target — no packing, no rebuild',
+        operationType: 'execute' as const,
+        longDescription:
+          'CI-side half of the "plugin prepares, CI delivers" release flow: reads manifest.json written by ' +
+          '`release stage` and ships those exact tarballs to --target (only "npm" is implemented this pass). ' +
+          'Resolves {flow, channel} from --release-tag via release.flows[*].tagPattern so CI never needs to ' +
+          'guess the flow itself — just pass the tag. Verifies the delivery against the real registry ' +
+          'afterwards (with retry, since real npm has propagation lag); never attempts npm unpublish on a ' +
+          'verification failure — that is a human decision.',
+
+        handler: './cli/commands/deliver.js#default',
+
+        flags: defineCommandFlags({
+          'release-tag': { type: 'string', description: 'Git tag to resolve {flow, channel} from (via release.flows[*].tagPattern) — alternative to --flow' },
+          flow: { type: 'string', description: 'Named flow — alternative to --release-tag' },
+          target: { type: 'string', choices: ['npm'] as const, description: 'Delivery target (default: npm — the only target implemented this pass)' },
+          'artifacts-dir': { type: 'string', description: 'Where `release stage` wrote tarballs + manifest.json (default: .kb/release/artifacts)' },
+          tag: { type: 'string', description: 'npm dist-tag override (default: config.publish.stableTag, falls back to "latest")' },
+          registry: { type: 'string', description: 'Registry override (default: config.publish.npmRegistry, falls back to real npm)' },
+          otp: { type: 'string', description: 'One-time password (optional, will prompt if needed)' },
+          'dry-run': { type: 'boolean', description: 'Simulate delivery without actually publishing' },
+          access: {
+            type: 'string',
+            choices: ['public', 'restricted'] as const,
+            description: 'Package access level',
+          },
+          token: { type: 'string', description: 'NPM auth token (overrides NPM_TOKEN env)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release deliver --release-tag platform-v2.105.0 --target npm',
+          'kb release deliver --flow sdk --target npm',
+          'kb release deliver --release-tag sdk-v3.2.0 --dry-run',
         ],
       },
 
