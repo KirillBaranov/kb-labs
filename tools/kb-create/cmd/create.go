@@ -21,6 +21,7 @@ import (
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/onboarding"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/preflight"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/telemetry"
 	"github.com/kb-labs/create/internal/types"
@@ -86,6 +87,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	sel.DevMode = flagDevManifest != ""
 	sel.Registry = flagRegistry
 
+	// Do not create a checkpoint, platform directory, or log until the local
+	// environment can support the selected install.
+	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
+	if err := preflight.Check(sel.ProjectCWD, sel.PlatformDir, packageManager); err != nil {
+		return fmt.Errorf("preflight failed: %w", err)
+	}
+
 	// ── Telemetry ────────────────────────────────────────────────────────
 	// Build TelemetryConfig from wizard result, then init client.
 	tcfg := config.TelemetryConfig{
@@ -125,7 +133,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 
-	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
 	log.Printf("Using %s", packageManager.Name())
 
 	tc.Set("pm", packageManager.Name())
