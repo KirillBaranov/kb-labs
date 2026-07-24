@@ -117,6 +117,10 @@ var kbOverrides = map[string]string{
 	"@kb-labs/sdk":               ">=2.0.0",
 	"@kb-labs/core-runtime":      ">=2.0.0",
 	"@kb-labs/core-platform":     ">=2.0.0",
+	// Temporary registry compatibility pin: gateway-app 2.106.0 declares
+	// ^2.106.0, but adapters-fs has only been published through 2.104.0.
+	// Remove this once an adapters-fs 2.106.x release is available.
+	"@kb-labs/adapters-fs": "2.104.0",
 }
 
 func ensurePackageJSON(dir string) error {
@@ -152,6 +156,15 @@ func ensurePackageJSON(dir string) error {
 	}
 	pnpmBlock["overrides"] = overrides
 	pkg["pnpm"] = pnpmBlock
+
+	// npm does not read pnpm.overrides. Mirror the narrow compatibility pins
+	// in its native field so a launcher fallback to npm resolves identically.
+	npmOverrides, _ := pkg["overrides"].(map[string]interface{})
+	if npmOverrides == nil {
+		npmOverrides = map[string]interface{}{}
+	}
+	npmOverrides["@kb-labs/adapters-fs"] = kbOverrides["@kb-labs/adapters-fs"]
+	pkg["overrides"] = npmOverrides
 
 	data, err := json.MarshalIndent(pkg, "", "  ")
 	if err != nil {

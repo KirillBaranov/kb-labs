@@ -100,6 +100,12 @@ func TestEnsurePackageJSONMergesOverrides(t *testing.T) {
 	if !strings.Contains(content, `"@kb-labs/sdk"`) {
 		t.Errorf("package.json missing @kb-labs/sdk override: %s", content)
 	}
+	if !strings.Contains(content, `"@kb-labs/adapters-fs": "2.104.0"`) {
+		t.Errorf("package.json missing temporary adapters-fs pin: %s", content)
+	}
+	if !strings.Contains(content, `"overrides"`) {
+		t.Errorf("package.json missing npm overrides: %s", content)
+	}
 }
 
 // TestEnsurePackageJSONCreatesDir verifies that ensurePackageJSON creates the
