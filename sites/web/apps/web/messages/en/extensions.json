@@ -1,0 +1,40 @@
+{
+  "extensions": {
+    "meta": {
+      "title": "Extensions — KB Labs",
+      "description": "Keep KB Labs CLI-first, then add Studio, MCP, or workflows only when they help your local development loop."
+    },
+    "hero": {
+      "eyebrow": "CLI-FIRST",
+      "title": "Start small.",
+      "titleHighlight": "Extend deliberately.",
+      "description": "The CLI is the base. Choose local capabilities when they are useful to your work, not because the platform requires them."
+    },
+    "items": [
+      {
+        "title": "Studio",
+        "description": "A local visual workspace for observing runs, logs, and plugin surfaces after you start the services.",
+        "command": "kb-dev start  →  http://127.0.0.1:3000",
+        "note": "Optional. The CLI remains fully usable without it."
+      },
+      {
+        "title": "MCP",
+        "description": "Expose KB Labs tools to an MCP-compatible coding agent running on your machine.",
+        "command": "MCP server  →  localhost:7779",
+        "note": "Optional. Add it only when an agent needs this integration."
+      },
+      {
+        "title": "Workflows",
+        "description": "Run repeatable multi-step automation when a single command grows into a durable process.",
+        "command": "Workflow daemon  →  localhost:7778",
+        "note": "Optional. Start with a command and add a workflow when it earns its complexity."
+      }
+    ],
+    "cta": {
+      "eyebrow": "YOUR CHOICE",
+      "title": "Choose extensions during setup.",
+      "description": "The launcher presents these capabilities as an optional page after you choose an outcome.",
+      "button": "Open setup"
+    }
+  }
+}
