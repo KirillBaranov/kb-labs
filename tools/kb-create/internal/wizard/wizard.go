@@ -1113,6 +1113,8 @@ func (m wizardModel) viewConfirm() string {
 	if intent != nil && intent.ID == "plugin-author" {
 		fmt.Fprintf(&b, "  Command:   %s\n", focusStyle.Render(m.commandInput.Value()))
 		fmt.Fprintf(&b, "             %s\n", dimStyle.Render(m.descriptionInput.Value()))
+		fmt.Fprintf(&b, "  Creates:   %s\n", dimStyle.Render(".kb/plugins/"+m.commandInput.Value()))
+		fmt.Fprintf(&b, "  First run: %s\n", focusStyle.Render("kb "+m.commandInput.Value()+" hello"))
 	}
 	fmt.Fprintf(&b, "  Mode:      %s\n", dimStyle.Render("Local on this computer — Studio stays on 127.0.0.1"))
 
@@ -1188,7 +1190,7 @@ func (m wizardModel) viewConfirm() string {
 	}
 	fmt.Fprintf(&b, "  Analytics:  %s\n", dimStyle.Render(telLabel))
 
-	if intent != nil && len(intent.NextSteps) > 0 {
+	if intent != nil && intent.ID != "plugin-author" && len(intent.NextSteps) > 0 {
 		b.WriteString("\n  " + sectionStyle.Render("Next steps") + "\n")
 		for _, step := range intent.NextSteps {
 			fmt.Fprintf(&b, "    %s\n", dimStyle.Render(step))

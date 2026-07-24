@@ -311,6 +311,27 @@ func TestCustomContractAcceptsTypedInput(t *testing.T) {
 	}
 }
 
+func TestPluginAuthorConfirmationDescribesGeneratedPluginNotScaffoldWork(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "plugin-author")
+	m.manifest.Intents[m.selectedIntent].NextSteps = []string{"kb scaffold plugin --name my-plugin"}
+	m.commandInput.SetValue("feedback-note")
+	m.descriptionInput.SetValue("Summarize feedback")
+
+	out := m.viewConfirm()
+	for _, want := range []string{".kb/plugins/feedback-note", "kb feedback-note hello"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("confirmation missing generated-plugin detail %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "scaffold plugin") {
+		t.Errorf("confirmation exposes an internal scaffold step as user work:\n%s", out)
+	}
+}
+
 func TestProgressLabelUsesOutcomeSpecificStepCount(t *testing.T) {
 	man := sampleManifest()
 	explore := wizardModel{manifest: man, selectedIntent: intentIndex(man, "explore"), stage: stageAnalytics}
