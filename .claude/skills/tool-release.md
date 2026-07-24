@@ -15,9 +15,9 @@ CLI entry point: `pnpm kb release <command>`.
 
 > ## ⛔ КРИТИЧЕСКИЕ ПРАВИЛА — НАРУШЕНИЕ ЛОМАЕТ РЕЛИЗ
 >
-> **1. ТОЛЬКО через скрипты `pnpm release:*` (и `kb release promote`/`kb release stage`+`kb release deliver`) — никаких других способов.**
+> **1. ТОЛЬКО через воркфлоу `release-prepare` (предпочтительно) или скрипты `pnpm release:*` (и `kb release promote`/`kb release stage`+`kb release deliver`) — никаких других способов.**
 > Запрещено: `pnpm publish`, `npm publish`, `pnpm kb release run` напрямую (кроме `--channel canary`, см. ниже), `pnpm -r publish`.
-> Только: `pnpm release:platform`, `pnpm release:sdk`, `pnpm release:platform:dry`, `pnpm release:sdk:dry`, `pnpm release:platform:prepare`, `pnpm release:sdk:prepare`, `pnpm kb release promote`, `pnpm kb release stage`, `pnpm kb release deliver`.
+> Предпочтительно: `pnpm kb workflow run --workflow-id release-prepare --input '{"flow":"platform"}'` (approval-гейт перед тегом/пушем, см. "Как агенту катить релиз"). Без демона: `pnpm release:platform:prepare`, `pnpm release:sdk:prepare` (нет approval-гейта — получи "ок" от человека до запуска). Дальше в обоих случаях: `pnpm release:platform:dry`, `pnpm release:sdk:dry`, `pnpm kb release promote`, `pnpm kb release stage`, `pnpm kb release deliver`.
 >
 > **`stage`/`deliver` vs `promote` — two different tag-triggered CI flows, don't mix them:**
 > `kb release stage --release-tag <tag>` packs the already-committed versions into real npm tarballs, once; `kb release deliver --release-tag <tag> --target npm` ships those exact tarballs and verifies against the registry. Both resolve `{flow, channel}` from the tag itself via `release.flows[*].tagPattern` (`<flow>-v<version>`, e.g. `platform-v2.105.0`) — no `--flow` needed when `--release-tag` is given. This is the CI-thin half of the local `.kb/workflows/release-prepare.yml` → tag push → `.github/workflows/publish-npm-on-tag.yml` flow. `promote` is the older Verdaccio-pre-flight command and still works standalone, but doesn't verify post-publish and re-packs from source at publish time — prefer `stage`+`deliver` for anything tag-triggered.
@@ -34,17 +34,39 @@ CLI entry point: `pnpm kb release <command>`.
 
 ## Как агенту катить релиз
 
-**Единственный шаг, который делает агент — `prepare`.** Он ничего не публикует, npm-токен не нужен:
+**Всегда через воркфлоу `release-prepare`, не через голый `pnpm release:*:prepare`.**
+Тот же `prepare` (checks → build → version bump → changelog → `git commit` +
+`git tag` + `git push`), но с human approval-гейтом, который показывает
+план ДО того как что-либо бампается/тегается/пушится — нужен локально
+запущенный daemon (`kb-dev start`):
 
 ```bash
-pnpm release:platform:prepare
-# или:
-pnpm release:sdk:prepare
+pnpm kb workflow run --workflow-id release-prepare --input '{"flow":"platform"}'
+# сохрани run-id из вывода, затем последи за прогрессом:
+pnpm kb workflow runs status --run-id <runId>
 ```
 
-Это прогоняет checks → build → version bump → changelog → `git commit` +
-`git tag` + `git push`. Тег имеет вид `<flow>-v<version>` (например
-`platform-v2.105.0`, `sdk-v3.2.0`) — сам этот push и есть триггер CI.
+Воркфлоу дойдёт до шага `Confirm release` и встанет в `waiting_approval` —
+это и есть точка, где план (что именно забампится) уже посчитан и ждёт
+решения. Approve отдаёт человек (или агент — **только** после того, как
+человек в чате явно сказал "ок, апрувь"; это реальный тег + push, ничего
+не публикует в npm само по себе, но необратимо в смысле git-истории):
+
+```bash
+pnpm kb workflow runs approve --run-id <runId>
+```
+
+После approve воркфлоу сам доводит `prepare` до конца (version bump,
+changelog, `git commit` + `git tag` + `git push`). Тег имеет вид
+`<flow>-v<version>` (например `platform-v2.105.0`, `sdk-v3.2.0`) — этот
+push и есть триггер CI. `flow` — `"platform"` или `"sdk"` (см. Release
+Order ниже), передаётся через `--input`.
+
+Определение воркфлоу: `.kb/workflows/release-prepare.yml` (тонкая обёртка
+над `kb release plan`/`kb release run --skip-build --skip-publish --yes` —
+никакой отдельной checks/version/changelog/git-логики). ID воркфлоу —
+`release-prepare`, без каких-либо префиксов (`kb workflow list` или
+`GET /api/v1/workflows` на daemon, если сомневаешься в актуальном списке).
 
 Дальше — **не паблишить самому**, а посмотреть, что CI подхватил тег и
 делает остальное:
@@ -63,21 +85,17 @@ CI-часть (`stage` → `deliver-npm`, см. `.github/workflows/publish-npm-o
 джобу (`gh run rerun <run-id> --job=deliver-npm`), паблиш идемпотентен,
 тарболы переиспользуются, не пересобираются.
 
-**Тот же `prepare`, но через workflow-движок** (добавляет human approval-гейт
-с превью плана перед тем как тег вообще создаётся — нужен локально
-запущенный daemon, `kb-dev start`):
+**Если что-то пошло не так до пуша тега** (checks/build упали, approval
+отклонён) — просто чинить и перезапускать воркфлоу заново, тег ещё не
+создан, ничего не сломано. **Если тег уже запушен, а `stage`/`deliver-npm`
+красные** — не трогать git руками (не удалять тег, не форсить), разбираться
+в логах CI (`gh run view <run-id> --log-failed`) и перезапускать нужную
+джобу.
 
-```bash
-kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform"}'
-```
-
-См. `.kb/workflows/release-prepare.yml`. Дальше — тот же CI-flow, что и выше.
-
-**Если что-то пошло не так до пуша тега** (checks/build упали) — просто
-чинить и перезапускать `prepare` заново, тег ещё не создан, ничего не
-сломано. **Если тег уже запушен, а `stage`/`deliver-npm` красные** — не
-трогать git руками (не удалять тег, не форсить), разбираться в логах CI
-(`gh run view <run-id> --log-failed`) и перезапускать нужную джобу.
+**Без демона** (`kb-dev start` не поднят) воркфлоу-движок недоступен, и
+голый `pnpm release:platform:prepare` — единственный fallback; в этом
+случае approval-гейта нет, поэтому получи явное "ок, катим" от человека в
+чате перед запуском, а не после.
 
 ---
 

@@ -237,11 +237,43 @@ func TestDefaultSelectionCustomIntentErrors(t *testing.T) {
 	}
 }
 
-func TestDefaultSelectionNoIntentsInManifestErrors(t *testing.T) {
+// A manifest with no "intents" array predates the intent system — covers
+// --dev-manifest overrides and any other manifest nobody has updated yet
+// (e.g. e2e/platform/registry-manifest.json). Regression: bare --yes against
+// such a manifest used to hard-fail with "unknown --intent \"explore\"" once
+// intent-based selection became the default path — see the platform E2E
+// failure this reproduces (kb-create ... --yes --dev-manifest ...).
+func TestDefaultSelectionNoIntentsInManifestFallsBackToLegacyDefaults(t *testing.T) {
+	m := &manifest.Manifest{
+		Version: "1.0.0",
+		Services: []manifest.Component{
+			{ID: "rest", Default: true},
+			{ID: "studio", Default: false},
+		},
+		Plugins: []manifest.Component{
+			{ID: "mind", Default: true},
+		},
+	}
+	sel, err := defaultSelection(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("defaultSelection() with no intents and no explicit --intent should fall back to legacy defaults, got error: %v", err)
+	}
+	if len(sel.Services) != 1 || sel.Services[0] != "rest" {
+		t.Errorf("Services = %v, want [rest] (only default:true services)", sel.Services)
+	}
+	if len(sel.Plugins) != 1 || sel.Plugins[0] != "mind" {
+		t.Errorf("Plugins = %v, want [mind]", sel.Plugins)
+	}
+}
+
+// An explicitly-requested --intent against a manifest with no intents array
+// must still error — silently falling back would hide that the caller asked
+// for a named scenario the manifest doesn't define.
+func TestDefaultSelectionExplicitIntentAgainstEmptyManifestErrors(t *testing.T) {
 	m := &manifest.Manifest{Version: "1.0.0"}
-	_, err := defaultSelection(m, WizardOptions{})
+	_, err := defaultSelection(m, WizardOptions{Intent: "release"})
 	if err == nil {
-		t.Fatal("defaultSelection() with no intents configured should error, got nil")
+		t.Fatal("defaultSelection() with an explicit --intent and no intents configured should error, got nil")
 	}
 }
 

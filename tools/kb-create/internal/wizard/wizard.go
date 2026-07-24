@@ -1058,8 +1058,21 @@ func (m wizardModel) toSelection() *installer.Selection {
 // defaultSelection returns the chosen (or "explore") intent's bundle without
 // the TUI. opts.Intent selects a named intent non-interactively; empty means
 // "explore" — the same footprint bare --yes has always installed.
+//
+// Manifests that predate the intent system (--dev-manifest overrides,
+// e2e/platform/registry-manifest.json, any third-party manifest with no
+// "intents" array) have Intents == nil. For those, an unspecified --intent
+// falls back to legacyDefaultSelection (the pre-intent default-marked-items
+// bundle) instead of erroring on a missing "explore" entry — so bare --yes
+// keeps working unchanged against manifests nobody has updated. An
+// explicitly-passed --intent against such a manifest still errors: the
+// caller asked for a named scenario that doesn't exist, and silently
+// falling back would hide that.
 func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Selection, error) {
 	intentID := opts.Intent
+	if intentID == "" && len(m.Intents) == 0 {
+		return legacyDefaultSelection(m, opts), nil
+	}
 	if intentID == "" {
 		intentID = "explore"
 	}
@@ -1105,6 +1118,54 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 		TelemetryEnabled: false,
 		Intent:           intent.ID,
 	}, nil
+}
+
+// legacyDefaultSelection is the pre-intent default-marked-items bundle —
+// every service/plugin/binary with "default": true in the manifest. Used
+// when a manifest has no "intents" array at all (see defaultSelection).
+func legacyDefaultSelection(m *manifest.Manifest, opts WizardOptions) *installer.Selection {
+	home, _ := os.UserHomeDir()
+	platformDir := opts.DefaultPlatformDir
+	if platformDir == "" {
+		platformDir = filepath.Join(home, "kb-platform")
+	}
+	cwd := opts.DefaultProjectCWD
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
+
+	var services, plugins, binaries []string
+	for _, s := range m.Services {
+		if s.Default {
+			services = append(services, s.ID)
+		}
+	}
+	for _, p := range m.Plugins {
+		if p.Default {
+			plugins = append(plugins, p.ID)
+		}
+	}
+	for _, b := range m.Binaries {
+		if b.Default {
+			binaries = append(binaries, b.ID)
+		}
+	}
+
+	consent := types.ConsentSkipped
+	if opts.DemoMode {
+		consent = types.ConsentDemo
+	}
+
+	return &installer.Selection{
+		PlatformDir:      expandHome(platformDir),
+		ProjectCWD:       expandHome(cwd),
+		Services:         services,
+		Plugins:          plugins,
+		Binaries:         binaries,
+		DemoMode:         opts.DemoMode,
+		Consent:          consent,
+		TelemetryEnabled: false,
+	}
 }
 
 func validIntentIDs(m *manifest.Manifest) string {
