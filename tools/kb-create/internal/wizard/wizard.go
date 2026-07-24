@@ -138,21 +138,19 @@ type checkItem struct {
 }
 
 type wizardModel struct {
-	manifest         *manifest.Manifest
-	errMsg           string
-	services         []checkItem
-	plugins          []checkItem
-	adapterRoles     []checkItem
-	binaries         []checkItem
-	extensions       []checkItem
-	platformInput    textinput.Model
-	cwdInput         textinput.Model
-	commandInput     textinput.Model
-	descriptionInput textinput.Model
+	manifest      *manifest.Manifest
+	errMsg        string
+	services      []checkItem
+	plugins       []checkItem
+	adapterRoles  []checkItem
+	binaries      []checkItem
+	extensions    []checkItem
+	platformInput textinput.Model
+	cwdInput      textinput.Model
+	commandInput  textinput.Model
 
 	stage       stage
 	activeInput int // 0 = platform, 1 = project (dirs stage)
-	customInput int // 0 = command name, 1 = command description
 	cursor      int
 	cancelled   bool
 
@@ -236,11 +234,6 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	command.Width = 50
 	command.CharLimit = 63
 
-	description := textinput.New()
-	description.Placeholder = "e.g. Create a task from the current branch"
-	description.Width = 70
-	description.CharLimit = 160
-
 	// Pre-fill services/plugins/binaries using their default flag — this is
 	// the starting point the "custom" intent's picker adjusts from; every
 	// other intent overwrites it via applyIntentBundle once chosen.
@@ -262,21 +255,20 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	}
 
 	return wizardModel{
-		manifest:         m,
-		stage:            stageDirs,
-		platformInput:    pi,
-		cwdInput:         ci,
-		commandInput:     command,
-		descriptionInput: description,
-		envInput:         ei,
-		llmKeyInput:      lki,
-		services:         services,
-		plugins:          plugins,
-		binaries:         binaries,
-		extensions:       extensionItems(m.Extensions),
-		adapterRoles:     adapterRoles,
-		demoMode:         opts.DemoMode,
-		selectedIntent:   -1,
+		manifest:       m,
+		stage:          stageDirs,
+		platformInput:  pi,
+		cwdInput:       ci,
+		commandInput:   command,
+		envInput:       ei,
+		llmKeyInput:    lki,
+		services:       services,
+		plugins:        plugins,
+		binaries:       binaries,
+		extensions:     extensionItems(m.Extensions),
+		adapterRoles:   adapterRoles,
+		demoMode:       opts.DemoMode,
+		selectedIntent: -1,
 		// Local-first is the launch default. Cloud/team onboarding is not a
 		// launch-ready flow, so it must never be selected implicitly.
 		localMode:        true,
@@ -315,16 +307,15 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case stageCustomContract:
-		if m.customInput == 0 {
-			m.commandInput, cmd = m.commandInput.Update(msg)
-		} else {
-			m.descriptionInput, cmd = m.descriptionInput.Update(msg)
-		}
+		m.commandInput, cmd = m.commandInput.Update(msg)
 	}
 	return m, cmd
 }
 
 func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == "esc" && m.stage != stageDirs && m.stage != stageStep {
+		return m.goBack()
+	}
 	switch m.stage {
 	case stageDirs:
 		return m.handleDirsKey(msg)
@@ -389,6 +380,66 @@ func (m *wizardModel) advanceStep() {
 	m.resetCurrentStepState()
 }
 
+// goBack preserves every completed choice and returns to the nearest prior
+// main page. It intentionally does not use a raw history snapshot: setup
+// steps can contain sensitive key input, which should not be replayed merely
+// because the user wants to revise an earlier selection.
+func (m wizardModel) goBack() (tea.Model, tea.Cmd) {
+	switch m.stage {
+	case stageIntent:
+		m.stage = stageDirs
+		m.activeInput = 0
+		m.platformInput.Focus()
+		m.cwdInput.Blur()
+	case stageCustom:
+		m.stage = stageIntent
+	case stageCustomContract:
+		m.stage = stageIntent
+		m.commandInput.Blur()
+	case stageExtensions:
+		m.backBeforeExtensions()
+	case stageStep:
+		if m.stepIndex > 0 {
+			m.stepIndex--
+			m.resetCurrentStepState()
+		} else {
+			m.backBeforeAnalytics()
+		}
+	case stageAnalytics:
+		if len(m.currentIntent().Steps) > 0 {
+			m.stage = stageStep
+			m.stepIndex = len(m.currentIntent().Steps) - 1
+			m.resetCurrentStepState()
+		} else {
+			m.backBeforeAnalytics()
+		}
+	case stageConfirm:
+		m.stage = stageAnalytics
+	}
+	return m, nil
+}
+
+func (m *wizardModel) backBeforeExtensions() {
+	if m.currentIntent().ID == "plugin-author" {
+		m.stage = stageCustomContract
+		m.commandInput.Focus()
+		return
+	}
+	m.stage = stageIntent
+}
+
+func (m *wizardModel) backBeforeAnalytics() {
+	if m.currentIntent().ID == "custom" {
+		m.stage = stageCustom
+		return
+	}
+	if len(m.extensions) > 0 {
+		m.stage = stageExtensions
+		return
+	}
+	m.backBeforeExtensions()
+}
+
 // resetCurrentStepState clears sub-step UI state (e.g. "show key input")
 // left over from a previous step, so each step starts on its top-level view.
 func (m *wizardModel) resetCurrentStepState() {
@@ -437,9 +488,11 @@ func (m wizardModel) handleDirsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	indexes := m.visibleIntentIndexes()
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.intentCursor > 0 {
 			m.intentCursor--
@@ -459,7 +512,6 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if intent.ID == "plugin-author" {
 			m.stage = stageCustomContract
-			m.customInput = 0
 			m.commandInput.Focus()
 			return m, textinput.Blink
 		}
@@ -472,53 +524,36 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m wizardModel) handleCustomContractKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
-	case "tab", "down", "up":
-		m.customInput = 1 - m.customInput
-		if m.customInput == 0 {
-			m.commandInput.Focus()
-			m.descriptionInput.Blur()
-		} else {
-			m.descriptionInput.Focus()
-			m.commandInput.Blur()
-		}
-		return m, textinput.Blink
 	case "enter":
-		if m.customInput == 0 {
-			m.customInput = 1
-			m.commandInput.Blur()
-			m.descriptionInput.Focus()
-			return m, textinput.Blink
-		}
-		if err := validateCustomContract(m.commandInput.Value(), m.descriptionInput.Value()); err != nil {
+		if err := validateCustomContract(m.commandInput.Value()); err != nil {
 			m.errMsg = err.Error()
 			return m, nil
 		}
 		m.errMsg = ""
 		m.applyIntentBundle(m.currentIntent().Bundle)
 		m.enterExtensions()
+		return m, nil
 	}
 
 	// Update() routes all key messages here before the focused textinput gets
 	// a chance to see them. Forward ordinary input explicitly; otherwise this
 	// screen renders a cursor but silently drops every typed character.
 	var cmd tea.Cmd
-	if m.customInput == 0 {
-		m.commandInput, cmd = m.commandInput.Update(msg)
-	} else {
-		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
-	}
+	m.commandInput, cmd = m.commandInput.Update(msg)
 	return m, cmd
 }
 
 func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	total := len(m.services) + len(m.plugins) + len(m.adapterRoles) + len(m.binaries)
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -554,7 +589,7 @@ func (m *wizardModel) enterExtensions() {
 
 func (m wizardModel) handleExtensionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
 	case "up", "k":
@@ -623,9 +658,11 @@ func (m wizardModel) handleEnvVarKey(msg tea.KeyMsg, step manifest.IntentStep) (
 	}
 
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.envCursor > 0 {
 			m.envCursor--
@@ -672,9 +709,11 @@ func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.llmProviderCursor > 0 {
 			m.llmProviderCursor--
@@ -709,9 +748,11 @@ var studioAccessOptions = []struct {
 
 func (m wizardModel) handleStudioAccessKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.studioCursor > 0 {
 			m.studioCursor--
@@ -846,23 +887,20 @@ func (m wizardModel) viewExtensions() string {
 		fmt.Fprintf(&b, "%s %s  %s\n", cursor, check, style.Render(extension.Label))
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(extension.Description))
 	}
-	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter continue · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter continue · esc back · ctrl+c quit"))
 	return b.String()
 }
 
 func (m wizardModel) viewCustomContract() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("  KB Labs") + "  create your command\n\n")
-	b.WriteString("  " + sectionStyle.Render("What should this command do?") + "\n")
-	b.WriteString(dimStyle.Render("  KB Labs will scaffold one editable plugin. You approve its name before files are created.") + "\n\n")
-	b.WriteString("  " + sectionStyle.Render("Command name") + "\n")
+	b.WriteString(titleStyle.Render("  KB Labs") + "  name your plugin\n\n")
+	b.WriteString("  " + sectionStyle.Render("Plugin name") + "\n")
+	b.WriteString(dimStyle.Render("  KB Labs will scaffold one editable plugin. You can shape what it does afterwards.") + "\n\n")
 	b.WriteString("  " + m.commandInput.View() + "\n\n")
-	b.WriteString("  " + sectionStyle.Render("Expected result") + "\n")
-	b.WriteString("  " + m.descriptionInput.View() + "\n")
 	if m.errMsg != "" {
 		b.WriteString("\n  " + errorStyle.Render("✖ "+m.errMsg) + "\n")
 	}
-	b.WriteString("\n" + helpStyle.Render("  tab switch · enter next · esc quit"))
+	b.WriteString("\n" + helpStyle.Render("  enter next · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -889,7 +927,7 @@ func (m wizardModel) viewAnalytics() string {
 		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
 	}
-	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -977,7 +1015,7 @@ func (m wizardModel) viewCustom() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter next · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter next · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -1026,7 +1064,7 @@ func (m wizardModel) viewEnvVarStep(step manifest.IntentStep) string {
 		fmt.Fprintf(&b, "\n      %s\n", dimStyle.Render(step.SkipHint))
 	}
 
-	b.WriteString("\n" + helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString("\n" + helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -1065,7 +1103,7 @@ func (m wizardModel) viewLLMProviderStep() string {
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -1090,7 +1128,7 @@ func (m wizardModel) viewStudioAccessStep() string {
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -1112,7 +1150,6 @@ func (m wizardModel) viewConfirm() string {
 	}
 	if intent != nil && intent.ID == "plugin-author" {
 		fmt.Fprintf(&b, "  Command:   %s\n", focusStyle.Render(m.commandInput.Value()))
-		fmt.Fprintf(&b, "             %s\n", dimStyle.Render(m.descriptionInput.Value()))
 		fmt.Fprintf(&b, "  Creates:   %s\n", dimStyle.Render(".kb/plugins/"+m.commandInput.Value()))
 		fmt.Fprintf(&b, "  First run: %s\n", focusStyle.Render("kb "+m.commandInput.Value()+" hello"))
 	}
@@ -1204,7 +1241,7 @@ func (m wizardModel) viewConfirm() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("  enter install · n cancel"))
+	b.WriteString(helpStyle.Render("  enter install · esc back · n cancel"))
 	return b.String()
 }
 
@@ -1308,7 +1345,7 @@ func (m wizardModel) validateDirs() error {
 	return nil
 }
 
-func validateCustomContract(name, description string) error {
+func validateCustomContract(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return fmt.Errorf("command name is required")
@@ -1320,9 +1357,6 @@ func validateCustomContract(name, description string) error {
 		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
 			return fmt.Errorf("command name must be lowercase kebab-case")
 		}
-	}
-	if strings.TrimSpace(description) == "" {
-		return fmt.Errorf("expected result is required")
 	}
 	return nil
 }
@@ -1411,7 +1445,7 @@ func (m wizardModel) toSelection() *installer.Selection {
 		Intent:                   intentID,
 		FirstCommand:             firstCommand,
 		CustomCommandName:        strings.TrimSpace(m.commandInput.Value()),
-		CustomCommandDescription: strings.TrimSpace(m.descriptionInput.Value()),
+		CustomCommandDescription: defaultCustomDescription(m.commandInput.Value()),
 	}
 	if m.llmProvider != "" {
 		sel.LLMKey = m.llmKeyInput.Value()
@@ -1420,6 +1454,10 @@ func (m wizardModel) toSelection() *installer.Selection {
 		sel.EnvValues = map[string]string{"NPM_TOKEN": v}
 	}
 	return sel
+}
+
+func defaultCustomDescription(commandName string) string {
+	return "Implement the " + strings.TrimSpace(commandName) + " command."
 }
 
 func (m wizardModel) serviceSelected(id string) bool {

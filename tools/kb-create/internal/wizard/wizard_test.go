@@ -272,16 +272,16 @@ func TestDefaultSelectionRejectsRequiredLLMIntent(t *testing.T) {
 
 func TestValidateCustomContract(t *testing.T) {
 	for _, tc := range []struct {
-		name, description string
-		wantErr           bool
+		name    string
+		wantErr bool
 	}{
-		{"create-task", "Create a task from the current branch", false},
-		{"Create task", "Create a task", true},
-		{"create-task", "", true},
+		{"create-task", false},
+		{"Create task", true},
+		{"", true},
 	} {
-		err := validateCustomContract(tc.name, tc.description)
+		err := validateCustomContract(tc.name)
 		if (err != nil) != tc.wantErr {
-			t.Errorf("validateCustomContract(%q, %q) error = %v, wantErr %v", tc.name, tc.description, err, tc.wantErr)
+			t.Errorf("validateCustomContract(%q) error = %v, wantErr %v", tc.name, err, tc.wantErr)
 		}
 	}
 }
@@ -292,7 +292,6 @@ func TestCustomContractAcceptsTypedInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.stage = stageCustomContract
-	m.customInput = 0
 	m.commandInput.Focus()
 
 	next, _ := m.handleCustomContractKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("feedback-note")})
@@ -301,13 +300,8 @@ func TestCustomContractAcceptsTypedInput(t *testing.T) {
 		t.Fatalf("command input = %q, want typed value", got)
 	}
 
-	m.customInput = 1
-	m.commandInput.Blur()
-	m.descriptionInput.Focus()
-	next, _ = m.handleCustomContractKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Summarize feedback")})
-	m = next.(wizardModel)
-	if got := m.descriptionInput.Value(); got != "Summarize feedback" {
-		t.Fatalf("description input = %q, want typed value", got)
+	if got := m.viewCustomContract(); strings.Contains(got, "Expected result") {
+		t.Fatalf("custom contract still asks for an expected result:\n%s", got)
 	}
 }
 
@@ -319,7 +313,6 @@ func TestPluginAuthorConfirmationDescribesGeneratedPluginNotScaffoldWork(t *test
 	m.selectedIntent = intentIndex(m.manifest, "plugin-author")
 	m.manifest.Intents[m.selectedIntent].NextSteps = []string{"kb scaffold plugin --name my-plugin"}
 	m.commandInput.SetValue("feedback-note")
-	m.descriptionInput.SetValue("Summarize feedback")
 
 	out := m.viewConfirm()
 	for _, want := range []string{".kb/plugins/feedback-note", "kb feedback-note hello"} {
@@ -329,6 +322,36 @@ func TestPluginAuthorConfirmationDescribesGeneratedPluginNotScaffoldWork(t *test
 	}
 	if strings.Contains(out, "scaffold plugin") {
 		t.Errorf("confirmation exposes an internal scaffold step as user work:\n%s", out)
+	}
+}
+
+func TestEscapeMovesBackThroughOnboardingPages(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "release")
+	m.stage = stageConfirm
+
+	next, _ := m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageAnalytics {
+		t.Fatalf("confirm escape stage = %v, want stageAnalytics", m.stage)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageStep || m.stepIndex != 0 {
+		t.Fatalf("analytics escape = stage %v step %d, want first setup step", m.stage, m.stepIndex)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageExtensions {
+		t.Fatalf("setup escape stage = %v, want stageExtensions", m.stage)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageIntent {
+		t.Fatalf("extensions escape stage = %v, want stageIntent", m.stage)
 	}
 }
 
@@ -346,14 +369,13 @@ func TestProgressLabelUsesOutcomeSpecificStepCount(t *testing.T) {
 
 func TestToSelectionPreservesCustomCommandContract(t *testing.T) {
 	m := wizardModel{
-		platformInput:    makeInput("/platform"),
-		cwdInput:         makeInput("/project"),
-		commandInput:     makeInput("create-task"),
-		descriptionInput: makeInput("Create a task from the current branch"),
-		selectedIntent:   -1,
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		commandInput:   makeInput("create-task"),
+		selectedIntent: -1,
 	}
 	sel := m.toSelection()
-	if sel.CustomCommandName != "create-task" || sel.CustomCommandDescription == "" {
+	if sel.CustomCommandName != "create-task" || sel.CustomCommandDescription != "Implement the create-task command." {
 		t.Errorf("custom contract = (%q, %q), want preserved", sel.CustomCommandName, sel.CustomCommandDescription)
 	}
 }
