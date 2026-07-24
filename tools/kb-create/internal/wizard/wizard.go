@@ -1261,6 +1261,14 @@ func (m wizardModel) toSelection() *installer.Selection {
 		intent := m.currentIntent()
 		intentID = intent.ID
 		firstCommand = intent.FirstCommand
+		if intent.ID == "plugin-author" && strings.TrimSpace(m.commandInput.Value()) != "" {
+			firstCommand = &manifest.FirstCommand{
+				Command:     "kb " + strings.TrimSpace(m.commandInput.Value()) + " hello",
+				Description: "Run the generated plugin's first safe command.",
+				Operation:   manifest.CommandOperationAnalyze,
+				Studio:      true,
+			}
+		}
 	}
 	sel := &installer.Selection{
 		PlatformDir:              expandHome(m.platformInput.Value()),

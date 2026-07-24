@@ -247,6 +247,17 @@ func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand, pend
 	fmt.Println()
 }
 
+func printCustomPluginSummary(pluginDir, commandName string) {
+	if pluginDir == "" || commandName == "" {
+		return
+	}
+	fmt.Println("  " + styleBold.Render("Your plugin"))
+	fmt.Println("  " + styleMuted.Render(pluginDir))
+	fmt.Println("  Manifest: " + styleMuted.Render(pluginDir+"/packages/"+commandName+"-entry/src/manifest.ts"))
+	fmt.Println("  Handler:  " + styleMuted.Render(pluginDir+"/packages/"+commandName+"-entry/src"))
+	fmt.Println()
+}
+
 // printSupportHint shows a compact support block with GitHub Issues and
 // Telegram contact — called whenever an install or doctor run fails.
 func printSupportHint() {

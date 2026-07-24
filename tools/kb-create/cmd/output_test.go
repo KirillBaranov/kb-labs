@@ -99,6 +99,17 @@ func TestPrintOutcomeHandoffExplainsPendingInput(t *testing.T) {
 	}
 }
 
+func TestPrintCustomPluginSummaryShowsPaths(t *testing.T) {
+	got := captureStdout(t, func() {
+		printCustomPluginSummary("/project/.kb/plugins/create-task", "create-task")
+	})
+	for _, want := range []string{"Your plugin", "manifest.ts", "Handler"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("summary missing %q: %q", want, got)
+		}
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout

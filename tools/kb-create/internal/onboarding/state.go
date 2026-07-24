@@ -20,15 +20,18 @@ const relativeStatePath = ".kb/onboarding/state.json"
 // State intentionally contains no credentials, diff, prompt, or analytics
 // payload. It is safe to keep in the project as a recovery checkpoint.
 type State struct {
-	Version      int                    `json:"version"`
-	Outcome      string                 `json:"outcome"`
-	ProjectDir   string                 `json:"projectDir"`
-	PlatformDir  string                 `json:"platformDir"`
-	LocalMode    bool                   `json:"localMode"`
-	Status       string                 `json:"status"`
-	FirstCommand *manifest.FirstCommand `json:"firstCommand,omitempty"`
-	PendingInput string                 `json:"pendingInput,omitempty"`
-	UpdatedAt    time.Time              `json:"updatedAt"`
+	Version                  int                    `json:"version"`
+	Outcome                  string                 `json:"outcome"`
+	ProjectDir               string                 `json:"projectDir"`
+	PlatformDir              string                 `json:"platformDir"`
+	LocalMode                bool                   `json:"localMode"`
+	Status                   string                 `json:"status"`
+	FirstCommand             *manifest.FirstCommand `json:"firstCommand,omitempty"`
+	PendingInput             string                 `json:"pendingInput,omitempty"`
+	CustomCommandName        string                 `json:"customCommandName,omitempty"`
+	CustomCommandDescription string                 `json:"customCommandDescription,omitempty"`
+	CustomPluginDir          string                 `json:"customPluginDir,omitempty"`
+	UpdatedAt                time.Time              `json:"updatedAt"`
 }
 
 func Path(projectDir string) string { return filepath.Join(projectDir, relativeStatePath) }

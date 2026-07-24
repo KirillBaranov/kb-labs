@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
+	"github.com/kb-labs/create/internal/customplugin"
 	"github.com/kb-labs/create/internal/detect"
 	"github.com/kb-labs/create/internal/eligibility"
 	"github.com/kb-labs/create/internal/installer"
@@ -167,13 +169,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		},
 	}
 	if err := onboarding.Write(onboarding.State{
-		Outcome:      sel.Intent,
-		ProjectDir:   sel.ProjectCWD,
-		PlatformDir:  sel.PlatformDir,
-		LocalMode:    flagLocal || sel.LocalMode,
-		Status:       "installing",
-		FirstCommand: sel.FirstCommand,
-		PendingInput: sel.PendingInput,
+		Outcome:           sel.Intent,
+		ProjectDir:        sel.ProjectCWD,
+		PlatformDir:       sel.PlatformDir,
+		LocalMode:         flagLocal || sel.LocalMode,
+		Status:            "installing",
+		FirstCommand:      sel.FirstCommand,
+		PendingInput:      sel.PendingInput,
+		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
 	}); err != nil {
 		return fmt.Errorf("save onboarding checkpoint: %w", err)
 	}
@@ -277,26 +280,46 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
+	customPluginDir := ""
+	if sel.Intent == "plugin-author" {
+		custom, err := customplugin.Create(context.Background(), sel.ProjectCWD, customplugin.Contract{
+			Name:        sel.CustomCommandName,
+			Description: sel.CustomCommandDescription,
+		})
+		if err != nil {
+			_ = onboarding.Write(onboarding.State{
+				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
+				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
+				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+			})
+			return fmt.Errorf("create custom plugin: %w; run kb-create doctor", err)
+		}
+		customPluginDir = custom.PluginDir
+	}
 	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
 		_ = onboarding.Write(onboarding.State{
-			Outcome:      sel.Intent,
-			ProjectDir:   sel.ProjectCWD,
-			PlatformDir:  sel.PlatformDir,
-			LocalMode:    flagLocal || sel.LocalMode,
-			Status:       "needs-repair",
-			FirstCommand: sel.FirstCommand,
-			PendingInput: sel.PendingInput,
+			Outcome:           sel.Intent,
+			ProjectDir:        sel.ProjectCWD,
+			PlatformDir:       sel.PlatformDir,
+			LocalMode:         flagLocal || sel.LocalMode,
+			Status:            "needs-repair",
+			FirstCommand:      sel.FirstCommand,
+			PendingInput:      sel.PendingInput,
+			CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+			CustomPluginDir: customPluginDir,
 		})
 		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
 	}
 	if err := onboarding.Write(onboarding.State{
-		Outcome:      sel.Intent,
-		ProjectDir:   sel.ProjectCWD,
-		PlatformDir:  sel.PlatformDir,
-		LocalMode:    flagLocal || sel.LocalMode,
-		Status:       "ready",
-		FirstCommand: sel.FirstCommand,
-		PendingInput: sel.PendingInput,
+		Outcome:           sel.Intent,
+		ProjectDir:        sel.ProjectCWD,
+		PlatformDir:       sel.PlatformDir,
+		LocalMode:         flagLocal || sel.LocalMode,
+		Status:            "ready",
+		FirstCommand:      sel.FirstCommand,
+		PendingInput:      sel.PendingInput,
+		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+		CustomPluginDir: customPluginDir,
 	}); err != nil {
 		return fmt.Errorf("save onboarding readiness: %w", err)
 	}
@@ -337,6 +360,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// run it; onboarding never reviews code, creates a git commit, or contacts
 	// an external provider on their behalf.
 	printOutcomeHandoff(result, sel.FirstCommand, sel.PendingInput)
+	printCustomPluginSummary(customPluginDir, sel.CustomCommandName)
 
 	return nil
 }
