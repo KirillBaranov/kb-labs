@@ -120,6 +120,9 @@ func TestPrintCustomPluginSummaryShowsPaths(t *testing.T) {
 func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 	got := captureStdout(t, printSupportHint)
 	for _, want := range []string{
+		"Thanks for taking the time",
+		"helps us make KB Labs more reliable",
+		"Please include the failure details above",
 		"https://docs.kblabs.ru/en/guides/troubleshooting",
 		"https://github.com/kb-labs-team/kb-labs/issues",
 		"@kirill_baranov",

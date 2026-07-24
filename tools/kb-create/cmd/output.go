@@ -281,7 +281,10 @@ func printSupportHint() {
 	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
 
 	fmt.Println()
-	line(white.Render("Need help resolving this?"))
+	line(white.Render("Thanks for taking the time to report this."))
+	line(dim.Render("Your report helps us make KB Labs more reliable."))
+	line("")
+	line(dim.Render("Please include the failure details above."))
 	line("")
 	line("  " + dim.Render("Troubleshooting  ") + url.Render("https://docs.kblabs.ru/en/guides/troubleshooting"))
 	line("  " + dim.Render("GitHub issues    ") + url.Render("https://github.com/kb-labs-team/kb-labs/issues"))
