@@ -15,11 +15,11 @@ import (
 
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
-	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/detect"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/onboarding"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/telemetry"
@@ -146,6 +146,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			sp.setDetail(line)
 		},
 	}
+	if err := onboarding.Write(onboarding.State{
+		Outcome:      sel.Intent,
+		ProjectDir:   sel.ProjectCWD,
+		PlatformDir:  sel.PlatformDir,
+		LocalMode:    flagLocal || sel.LocalMode,
+		Status:       "installing",
+		FirstCommand: sel.FirstCommand,
+	}); err != nil {
+		return fmt.Errorf("save onboarding checkpoint: %w", err)
+	}
 
 	sp.start()
 	result, err := ins.Install(sel, m)
@@ -246,6 +256,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
+	if err := onboarding.Write(onboarding.State{
+		Outcome:      sel.Intent,
+		ProjectDir:   sel.ProjectCWD,
+		PlatformDir:  sel.PlatformDir,
+		LocalMode:    flagLocal || sel.LocalMode,
+		Status:       "ready",
+		FirstCommand: sel.FirstCommand,
+	}); err != nil {
+		return fmt.Errorf("save onboarding readiness: %w", err)
+	}
 
 	// Non-local installs seed a bootstrap admin (see GatewayAuthEnabled above) —
 	// print the login once so the user can actually get in and isn't relying
@@ -253,12 +273,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if scaffoldOpts.BootstrapAdminEmail != "" && scaffoldOpts.BootstrapAdminPassword != "" {
 		printBootstrapAdminCredentials(scaffoldOpts.BootstrapAdminEmail, scaffoldOpts.BootstrapAdminPassword)
 	}
-
-	// Post-install: run review + offer commit on existing diff.
-	_ = demo.RunFirstDemo(sel.ProjectCWD, wantsLLM)
-
-	printNextSteps(result, wantsLLM)
-	printIntentNextSteps(m, sel.Intent)
 
 	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
 	// All failures here are non-fatal: the platform install itself is already
@@ -285,10 +299,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Commit all KB Labs-owned files added during install so they don't
-	// pollute the user's next `kb commit commit` run.
-	// Non-fatal: if the repo has no git, is bare, or commit fails — skip silently.
-	_ = demo.CommitPlatformFiles(sel.ProjectCWD)
+	// Installation only prepares the chosen command. The user decides when to
+	// run it; onboarding never reviews code, creates a git commit, or contacts
+	// an external provider on their behalf.
+	printOutcomeHandoff(result, sel.FirstCommand)
 
 	return nil
 }

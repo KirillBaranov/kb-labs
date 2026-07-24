@@ -219,6 +219,43 @@ func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	}
 }
 
+func TestDefaultSelectionUsesLocalMode(t *testing.T) {
+	sel, err := defaultSelection(sampleManifest(), WizardOptions{Intent: "release"})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
+	if !sel.LocalMode {
+		t.Error("LocalMode = false, want true for the local-first launch flow")
+	}
+}
+
+func TestIntentPickerHidesLegacyIntents(t *testing.T) {
+	m := sampleManifest()
+	m.Intents[0].Hidden = true // explore
+	m.Intents[3].Hidden = true // ai-review
+	model, err := newModel(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("newModel() error = %v", err)
+	}
+	view := model.viewIntent()
+	if strings.Contains(view, "Just look around") || strings.Contains(view, "Add AI review") {
+		t.Errorf("viewIntent() exposes hidden intents:\n%s", view)
+	}
+	if !strings.Contains(view, "Automate releases") || !strings.Contains(view, "Write my own plugin") {
+		t.Errorf("viewIntent() omitted visible intents:\n%s", view)
+	}
+}
+
+func TestNewModelRejectsManifestWithOnlyHiddenIntents(t *testing.T) {
+	m := sampleManifest()
+	for i := range m.Intents {
+		m.Intents[i].Hidden = true
+	}
+	if _, err := newModel(m, WizardOptions{}); err == nil {
+		t.Fatal("newModel() error = nil, want error for a manifest with no visible intents")
+	}
+}
+
 func TestDefaultSelectionUnknownIntentErrors(t *testing.T) {
 	m := sampleManifest()
 	_, err := defaultSelection(m, WizardOptions{Intent: "bogus"})

@@ -155,10 +155,14 @@ type FirstCommand struct {
 // interactive wizard — "what are you here to do?" instead of "which
 // services/plugins/adapters do you want?". See docs/adr for the rationale.
 type Intent struct {
-	ID          string       `json:"id"`
-	Label       string       `json:"label"`
-	Description string       `json:"description"`
-	Bundle      IntentBundle `json:"bundle"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	// Hidden keeps legacy and power-user scenarios available to scripted
+	// installs without presenting them in the first-run outcome picker.
+	// Omitted remains false for compatibility with third-party manifests.
+	Hidden bool         `json:"hidden,omitempty"`
+	Bundle IntentBundle `json:"bundle"`
 	// FirstCommand is the one safe command that demonstrates the outcome
 	// immediately after installation. Older manifests may omit it while they
 	// continue using NextSteps during the migration.

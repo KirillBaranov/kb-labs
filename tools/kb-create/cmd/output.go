@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
 )
@@ -204,54 +203,12 @@ func printBootstrapAdminCredentials(email, password string) {
 	fmt.Println()
 }
 
-// ── next steps ────────────────────────────────────────────────────────────────
+// ── outcome handoff ─────────────────────────────────────────────────────────
 
-// nextStep is one line in the "What's next" section.
-type nextStep struct {
-	cmd  string
-	desc string
-}
-
-// buildNextSteps returns the ordered list of post-install commands to show.
-// Each step is only included when its prerequisites are actually satisfied,
-// so the user never sees a command that won't work.
-func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
-	reviewCmd := "kb review run"
-	if llmEnabled {
-		reviewCmd = "kb review run --mode=full"
-	}
-	steps := []nextStep{
-		{"cd " + r.ProjectCWD, ""},
-	}
-	// `kb review run` / `kb commit commit` both require a git repo with a
-	// diff to look at — pointless (and confusing) to suggest them first on
-	// a brand-new project that has neither yet.
-	if demo.IsGitRepo(r.ProjectCWD) {
-		steps = append(steps,
-			nextStep{reviewCmd, "review your last diff"},
-			nextStep{"kb commit commit", "generate a commit message"},
-		)
-	} else {
-		steps = append(steps, nextStep{"git init", "start tracking your code — unlocks review/commit"})
-	}
-
-	// Suggest service startup after the user has seen the first results.
-	kbDevInstalled := false
-	for _, name := range r.InstalledBinaries {
-		if name == "kb-dev" {
-			kbDevInstalled = true
-			break
-		}
-	}
-	if kbDevInstalled && r.HasServices {
-		steps = append(steps, nextStep{"kb-dev start", "start background services (gateway, workflow, studio)"})
-	}
-
-	steps = append(steps, nextStep{"kb --help", "explore all commands"})
-	return steps
-}
-
-func printNextSteps(r *installer.Result, llmEnabled bool) {
+// printOutcomeHandoff ends onboarding with one safe, runnable next step. The
+// selected outcome is the sole source of this action: it never infers review,
+// commit, or service commands from the project.
+func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand) {
 	if r.ServicesWarning != "" {
 		newOutput().Warn(r.ServicesWarning)
 		fmt.Println()
@@ -259,42 +216,29 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 
 	fmt.Println(styleDivider)
 	fmt.Println()
-	fmt.Println("  " + styleBold.Render("What's next"))
-	fmt.Println()
-
-	arrow := styleAccent.Render("→")
-	for _, s := range buildNextSteps(r, llmEnabled) {
-		padded := fmt.Sprintf("%-32s", s.cmd)
-		fmt.Printf("  %s  %s%s\n", arrow, styleWhite.Render(padded), styleMuted.Render(s.desc))
-	}
-	fmt.Println()
-}
-
-// printIntentNextSteps prints the chosen intent's own docs/next-steps
-// (e.g. "release" → `pnpm kb release plan` + the CI-install guide link),
-// alongside the generic ones from printNextSteps. No-op when intentID is
-// empty (not chosen via the intent wizard) or the intent declares none.
-func printIntentNextSteps(m *manifest.Manifest, intentID string) {
-	if intentID == "" {
+	if first == nil {
+		fmt.Println("  " + styleBold.Render("Installation is ready"))
+		fmt.Println()
+		fmt.Println("  Run " + styleWhite.Render("kb-create doctor") + " to verify this installation.")
+		fmt.Println()
 		return
 	}
-	var intent *manifest.Intent
-	for i := range m.Intents {
-		if m.Intents[i].ID == intentID {
-			intent = &m.Intents[i]
-			break
-		}
-	}
-	if intent == nil || (len(intent.NextSteps) == 0 && len(intent.Docs) == 0) {
+	if first.Operation != manifest.CommandOperationAnalyze {
+		newOutput().Warn("The selected first command is not safe to run automatically.")
+		fmt.Println("  Run " + styleWhite.Render("kb-create doctor") + " to inspect the installation before continuing.")
+		fmt.Println()
 		return
 	}
 
-	arrow := styleAccent.Render("→")
-	for _, s := range intent.NextSteps {
-		fmt.Printf("  %s  %s\n", arrow, styleWhite.Render(s))
-	}
-	for _, d := range intent.Docs {
-		fmt.Printf("  %s  %s: %s\n", arrow, styleWhite.Render(d.Label), styleMuted.Render(d.URL))
+	fmt.Println("  " + styleBold.Render("Ready"))
+	fmt.Println()
+	fmt.Println("  " + styleMuted.Render(first.Description))
+	fmt.Println()
+	fmt.Println("  Run this next:")
+	fmt.Println("    " + styleWhite.Render(first.Command))
+	if first.Studio {
+		fmt.Println()
+		fmt.Println("  Diagnostics: " + styleMuted.Render("kb-create doctor"))
 	}
 	fmt.Println()
 }

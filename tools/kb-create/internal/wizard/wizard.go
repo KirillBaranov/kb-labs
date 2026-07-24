@@ -150,7 +150,7 @@ type wizardModel struct {
 	cancelled   bool
 
 	// Intent selection.
-	intentCursor   int
+	intentCursor   int // index into visibleIntentIndexes
 	selectedIntent int // index into manifest.Intents, -1 = not yet chosen
 
 	// Step runner (envVar / llmProvider / studioAccess), driven by the
@@ -181,6 +181,16 @@ type wizardModel struct {
 func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	if len(m.Intents) == 0 {
 		return wizardModel{}, fmt.Errorf("manifest has no intents configured — cannot run the interactive wizard")
+	}
+	visible := false
+	for _, intent := range m.Intents {
+		if !intent.Hidden {
+			visible = true
+			break
+		}
+	}
+	if !visible {
+		return wizardModel{}, fmt.Errorf("manifest has no visible intents configured — cannot run the interactive wizard")
 	}
 
 	platformDir := opts.DefaultPlatformDir
@@ -234,19 +244,22 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	}
 
 	return wizardModel{
-		manifest:         m,
-		stage:            stageDirs,
-		platformInput:    pi,
-		cwdInput:         ci,
-		envInput:         ei,
-		llmKeyInput:      lki,
-		services:         services,
-		plugins:          plugins,
-		binaries:         binaries,
-		adapterRoles:     adapterRoles,
-		demoMode:         opts.DemoMode,
-		selectedIntent:   -1,
-		telemetryEnabled: true,
+		manifest:       m,
+		stage:          stageDirs,
+		platformInput:  pi,
+		cwdInput:       ci,
+		envInput:       ei,
+		llmKeyInput:    lki,
+		services:       services,
+		plugins:        plugins,
+		binaries:       binaries,
+		adapterRoles:   adapterRoles,
+		demoMode:       opts.DemoMode,
+		selectedIntent: -1,
+		// Local-first is the launch default. Cloud/team onboarding is not a
+		// launch-ready flow, so it must never be selected implicitly.
+		localMode:        true,
+		telemetryEnabled: false,
 	}, nil
 }
 
@@ -388,7 +401,7 @@ func (m wizardModel) handleDirsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	intents := m.manifest.Intents
+	indexes := m.visibleIntentIndexes()
 	switch msg.String() {
 	case "ctrl+c", "esc":
 		m.cancelled = true
@@ -398,11 +411,11 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.intentCursor--
 		}
 	case "down", "j":
-		if m.intentCursor < len(intents)-1 {
+		if m.intentCursor < len(indexes)-1 {
 			m.intentCursor++
 		}
 	case "enter":
-		m.selectedIntent = m.intentCursor
+		m.selectedIntent = indexes[m.intentCursor]
 		intent := m.currentIntent()
 
 		if intent.ID == "custom" {
@@ -658,14 +671,15 @@ func (m wizardModel) viewIntent() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  what are you here to do?\n\n")
 
-	for i, intent := range m.manifest.Intents {
+	for cursorIndex, intentIndex := range m.visibleIntentIndexes() {
+		intent := m.manifest.Intents[intentIndex]
 		cursor := "  "
-		if i == m.intentCursor {
+		if cursorIndex == m.intentCursor {
 			cursor = focusStyle.Render(" ▶")
 		}
 		radio := "○"
 		nameStyle := normalStyle
-		if i == m.intentCursor {
+		if cursorIndex == m.intentCursor {
 			radio = focusStyle.Render("●")
 			nameStyle = focusStyle
 		}
@@ -841,7 +855,12 @@ func (m wizardModel) viewConfirm() string {
 		i := m.currentIntent()
 		intent = &i
 		fmt.Fprintf(&b, "  Goal:      %s\n", focusStyle.Render(intent.Label))
+		if intent.FirstCommand != nil {
+			fmt.Fprintf(&b, "  First run: %s\n", focusStyle.Render(intent.FirstCommand.Command))
+			fmt.Fprintf(&b, "             %s\n", dimStyle.Render(intent.FirstCommand.Description))
+		}
 	}
+	fmt.Fprintf(&b, "  Mode:      %s\n", dimStyle.Render("Local on this computer — Studio stays on 127.0.0.1"))
 
 	// Show selected components. A component (e.g. "marketplace") can be both
 	// a default service and a default plugin in the manifest, so dedupe by id
@@ -877,9 +896,12 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "  Adapters:   %s\n", dimStyle.Render(strings.Join(adapterRoleNames, ", ")))
 	}
 
-	// LLM status — always shown, since the free gateway is wired for every
-	// install regardless of which intent/steps ran.
-	llmLabel := "free KB Labs gateway (~50 requests) · bring your own key anytime in kb.config.jsonc"
+	// Only explain an LLM when the chosen first command needs one. A release
+	// plan should not look as though it sends data to an AI service.
+	llmLabel := "not needed for this outcome"
+	if intent != nil && intent.FirstCommand != nil && intent.FirstCommand.Requirements.LLM != "" {
+		llmLabel = "free KB Labs gateway (~50 requests) · bring your own key anytime in kb.config.jsonc"
+	}
 	if m.llmProvider != "" {
 		providerName := m.llmProvider
 		for _, opt := range llmProviderOptions {
@@ -891,6 +913,9 @@ func (m wizardModel) viewConfirm() string {
 		llmLabel = providerName + " (key saved to .env)"
 	}
 	fmt.Fprintf(&b, "\n  LLM:        %s\n", focusStyle.Render(llmLabel))
+	if intent != nil && intent.FirstCommand != nil && intent.FirstCommand.DataBoundary != "" {
+		fmt.Fprintf(&b, "  Data:       %s\n", dimStyle.Render(intent.FirstCommand.DataBoundary))
+	}
 
 	if len(m.envValues) > 0 {
 		var keys []string
@@ -993,6 +1018,19 @@ func (m wizardModel) validateDirs() error {
 		return fmt.Errorf("project directory is required")
 	}
 	return nil
+}
+
+// visibleIntentIndexes hides legacy/full-platform routes from the first-run
+// launcher while retaining their stable IDs for --yes --intent and existing
+// automation.
+func (m wizardModel) visibleIntentIndexes() []int {
+	indexes := make([]int, 0, len(m.manifest.Intents))
+	for i, intent := range m.manifest.Intents {
+		if !intent.Hidden {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
 }
 
 func (m wizardModel) toSelection() *installer.Selection {
@@ -1122,6 +1160,7 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 		DemoMode:         opts.DemoMode,
 		Consent:          consent,
 		TelemetryEnabled: false,
+		LocalMode:        true,
 		Intent:           intent.ID,
 		FirstCommand:     intent.FirstCommand,
 	}, nil

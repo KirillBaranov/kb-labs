@@ -136,6 +136,7 @@
       "id": "explore",
       "label": "Just look around",
       "description": "Install the full default platform and explore.",
+      "hidden": true,
       "bundle": {
         "services": ["rest", "workflow", "gateway", "marketplace", "studio"],
         "plugins": ["marketplace", "ai-review", "commit", "scaffold"],
@@ -170,8 +171,8 @@
     },
     {
       "id": "release",
-      "label": "Automate releases",
-      "description": "Plan, version, and publish releases from your workspace.",
+      "label": "Prepare a release",
+      "description": "Calculate a release plan without publishing anything.",
       "bundle": {
         "plugins": ["release"]
       },
@@ -181,15 +182,6 @@
         "operation": "analyze",
         "studio": true
       },
-      "steps": [
-        {
-          "type": "envVar",
-          "key": "NPM_TOKEN",
-          "label": "npm publish token",
-          "skippable": true,
-          "skipHint": "release plan/build/changelog/version work without this — add NPM_TOKEN later when you're ready to publish."
-        }
-      ],
       "docs": [
         { "label": "CI-install guide", "url": "https://kblabs.ru/docs/guides/ci-install" }
       ],
@@ -197,8 +189,8 @@
     },
     {
       "id": "plugin-author",
-      "label": "Write my own plugin",
-      "description": "Scaffold a new plugin with a working local dev loop.",
+      "label": "Create my own command",
+      "description": "Scaffold one command for a process unique to your team or agent.",
       "bundle": {
         "services": ["rest", "gateway"],
         "plugins": ["scaffold"],
@@ -213,6 +205,7 @@
       "id": "ai-review",
       "label": "Add AI review to my repo",
       "description": "Automated code review, with or without your own LLM key.",
+      "hidden": true,
       "bundle": {
         "plugins": ["review"]
       },
@@ -226,7 +219,7 @@
     },
     {
       "id": "custom",
-      "label": "Choose exactly what I need",
+      "label": "Advanced: choose components myself",
       "description": "Pick services, plugins, and adapters yourself.",
       "bundle": {},
       "steps": [
