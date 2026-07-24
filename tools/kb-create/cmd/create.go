@@ -131,7 +131,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if profile != nil {
 		out := newOutput()
 		out.Info("Detecting project")
-		fmt.Println(profile.Summary())
+		if summary := profile.Summary(); summary != "" {
+			fmt.Println(summary)
+		}
 	}
 
 	// Create platform directory.
