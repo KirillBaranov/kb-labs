@@ -80,6 +80,57 @@ type Manifest struct {
 	// AdapterConfig specifies adapter bindings to include in the generated
 	// platform config. Optional — omit to use platform defaults.
 	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`
+	// Intents are the named, guided scenarios offered by the interactive
+	// wizard (e.g. "automate releases", "add AI review") — each a bundle of
+	// services/plugins/adapters plus an ordered list of setup steps. Adding
+	// a scenario is a manifest edit, not a wizard code change.
+	Intents []Intent `json:"intents,omitempty"`
+}
+
+// IntentBundle names the services/plugins/adapter-roles an intent installs.
+// nil Services/Plugins means "none" (unlike Component's nil-means-all
+// convention elsewhere) — every intent bundle is explicit about what it
+// installs. Adapters maps a role name (e.g. "cache") to the package that
+// backs it; only roles with no wired default in AdapterConfig.Adapters are
+// meaningful here.
+type IntentBundle struct {
+	Services []string          `json:"services,omitempty"`
+	Plugins  []string          `json:"plugins,omitempty"`
+	Binaries []string          `json:"binaries,omitempty"`
+	Adapters map[string]string `json:"adapters,omitempty"`
+}
+
+// IntentDoc is a single doc link shown alongside an intent's next steps.
+type IntentDoc struct {
+	Label string `json:"label"`
+	URL   string `json:"url"`
+}
+
+// IntentStep is one screen in the guided setup flow for an intent, rendered
+// by the wizard's stepRunner. Type must be one of "envVar", "llmProvider",
+// "studioAccess" — the fixed, small vocabulary of step renderers the wizard
+// implements; adding a new type is a wizard code change, adding a new
+// intent that reuses existing types is not.
+type IntentStep struct {
+	Type string `json:"type"`
+	// Key/Label/SkipHint apply to the "envVar" step type only.
+	Key       string `json:"key,omitempty"`
+	Label     string `json:"label,omitempty"`
+	Skippable bool   `json:"skippable,omitempty"`
+	SkipHint  string `json:"skipHint,omitempty"`
+}
+
+// Intent is a named, guided installation scenario offered by the
+// interactive wizard — "what are you here to do?" instead of "which
+// services/plugins/adapters do you want?". See docs/adr for the rationale.
+type Intent struct {
+	ID          string       `json:"id"`
+	Label       string       `json:"label"`
+	Description string       `json:"description"`
+	Bundle      IntentBundle `json:"bundle"`
+	Steps       []IntentStep `json:"steps,omitempty"`
+	Docs        []IntentDoc  `json:"docs,omitempty"`
+	NextSteps   []string     `json:"nextSteps,omitempty"`
 }
 
 // CorePackageNames returns plain package name strings from Core.

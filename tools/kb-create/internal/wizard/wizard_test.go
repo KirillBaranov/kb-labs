@@ -19,6 +19,10 @@ func makeInput(value string) textinput.Model {
 	return ti
 }
 
+// sampleManifest mirrors the shape of the real launch intents (explore /
+// release / plugin-author / ai-review / custom) but reuses the sample's own
+// component ids — the tests are about wizard mechanics, not production
+// catalog content.
 func sampleManifest() *manifest.Manifest {
 	return &manifest.Manifest{
 		Version: "1.0.0",
@@ -31,14 +35,81 @@ func sampleManifest() *manifest.Manifest {
 			{ID: "mind", Pkg: "@kb-labs/mind", Default: true},
 			{ID: "agents", Pkg: "@kb-labs/agents", Default: true},
 		},
+		Binaries: []manifest.Binary{
+			{ID: "kb-dev", Name: "kb-dev", Default: true},
+		},
+		Intents: []manifest.Intent{
+			{
+				ID:          "explore",
+				Label:       "Just look around",
+				Description: "Install the full default set.",
+				Bundle: manifest.IntentBundle{
+					Services: []string{"rest", "studio"},
+					Plugins:  []string{"mind", "agents"},
+					Binaries: []string{"kb-dev"},
+				},
+			},
+			{
+				ID:          "release",
+				Label:       "Automate releases",
+				Description: "Just one plugin, no services.",
+				Bundle: manifest.IntentBundle{
+					Plugins: []string{"mind"},
+				},
+				Steps: []manifest.IntentStep{
+					{Type: stepEnvVar, Key: "NPM_TOKEN", Label: "npm publish token",
+						Skippable: true, SkipHint: "add NPM_TOKEN later"},
+				},
+			},
+			{
+				ID:          "plugin-author",
+				Label:       "Write my own plugin",
+				Description: "No extra steps.",
+				Bundle: manifest.IntentBundle{
+					Services: []string{"rest"},
+					Plugins:  []string{"agents"},
+				},
+			},
+			{
+				ID:          "ai-review",
+				Label:       "Add AI review",
+				Description: "One LLM step.",
+				Bundle: manifest.IntentBundle{
+					Plugins: []string{"mind"},
+				},
+				Steps: []manifest.IntentStep{{Type: stepLLMProvider}},
+			},
+			{
+				ID:          "custom",
+				Label:       "Choose exactly what I need",
+				Description: "Pick yourself.",
+				Bundle:      manifest.IntentBundle{},
+				Steps: []manifest.IntentStep{
+					{Type: stepLLMProvider},
+					{Type: stepStudioAccess},
+				},
+			},
+		},
 	}
 }
 
-// ── defaultSelection (--yes mode = recommended preset) ──────────────────────
+func intentIndex(m *manifest.Manifest, id string) int {
+	for i, intent := range m.Intents {
+		if intent.ID == id {
+			return i
+		}
+	}
+	return -1
+}
 
-func TestDefaultSelectionInstallsEverything(t *testing.T) {
+// ── defaultSelection (--yes mode, optionally --intent=<id>) ─────────────────
+
+func TestDefaultSelectionInstallsExploreByDefault(t *testing.T) {
 	m := sampleManifest()
-	sel := defaultSelection(m, WizardOptions{})
+	sel, err := defaultSelection(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
 
 	if len(sel.Services) != 2 {
 		t.Errorf("Services = %v, want all 2", sel.Services)
@@ -46,12 +117,20 @@ func TestDefaultSelectionInstallsEverything(t *testing.T) {
 	if len(sel.Plugins) != 2 {
 		t.Errorf("Plugins = %v, want all 2", sel.Plugins)
 	}
+	if len(sel.Binaries) != 1 {
+		t.Errorf("Binaries = %v, want 1 (kb-dev)", sel.Binaries)
+	}
+	if sel.Intent != "explore" {
+		t.Errorf("Intent = %q, want explore", sel.Intent)
+	}
 }
 
 func TestDefaultSelectionPlatformDirOverride(t *testing.T) {
 	m := sampleManifest()
-	sel := defaultSelection(m, WizardOptions{DefaultPlatformDir: "/custom/platform"})
-
+	sel, err := defaultSelection(m, WizardOptions{DefaultPlatformDir: "/custom/platform"})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
 	if sel.PlatformDir != "/custom/platform" {
 		t.Errorf("PlatformDir = %q, want /custom/platform", sel.PlatformDir)
 	}
@@ -59,8 +138,10 @@ func TestDefaultSelectionPlatformDirOverride(t *testing.T) {
 
 func TestDefaultSelectionCWDOverride(t *testing.T) {
 	m := sampleManifest()
-	sel := defaultSelection(m, WizardOptions{DefaultProjectCWD: "/custom/project"})
-
+	sel, err := defaultSelection(m, WizardOptions{DefaultProjectCWD: "/custom/project"})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
 	if sel.ProjectCWD != "/custom/project" {
 		t.Errorf("ProjectCWD = %q, want /custom/project", sel.ProjectCWD)
 	}
@@ -72,13 +153,19 @@ func TestDefaultSelectionCWDOverride(t *testing.T) {
 // only when picking the telemetry consent value (types.ConsentDemo). A user
 // running `kb-create --demo` got the exact same package set as plain
 // `--yes`, silently. This pins that `--demo` (still) does not affect the
-// preset — see cmd/create.go's --demo flag description for the corrected,
+// bundle — see cmd/create.go's --demo flag description for the corrected,
 // accurate claim (writes an example workflow instead).
 func TestDefaultSelectionDemoModeDoesNotChangePackageSelection(t *testing.T) {
 	m := sampleManifest()
 
-	plain := defaultSelection(m, WizardOptions{})
-	demo := defaultSelection(m, WizardOptions{DemoMode: true})
+	plain, err := defaultSelection(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
+	demo, err := defaultSelection(m, WizardOptions{DemoMode: true})
+	if err != nil {
+		t.Fatalf("defaultSelection(demo) error = %v", err)
+	}
 
 	if strings.Join(plain.Services, ",") != strings.Join(demo.Services, ",") {
 		t.Errorf("Services differ between --yes (%v) and --yes --demo (%v), want identical", plain.Services, demo.Services)
@@ -93,7 +180,10 @@ func TestDefaultSelectionDemoModeDoesNotChangePackageSelection(t *testing.T) {
 
 func TestDefaultSelectionFallsBackToHomeAndCWD(t *testing.T) {
 	m := sampleManifest()
-	sel := defaultSelection(m, WizardOptions{})
+	sel, err := defaultSelection(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
 
 	home, _ := os.UserHomeDir()
 	if !strings.HasPrefix(sel.PlatformDir, home) {
@@ -105,65 +195,59 @@ func TestDefaultSelectionFallsBackToHomeAndCWD(t *testing.T) {
 	}
 }
 
-// ── Presets ──────────────────────────────────────────────────────────────────
-
-func TestRecommendedPresetSelectsAll(t *testing.T) {
+func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	m := sampleManifest()
-	preset := AllPresets[0] // recommended
-	if preset.ID != "recommended" {
-		t.Fatalf("first preset ID = %q, want recommended", preset.ID)
+	sel, err := defaultSelection(m, WizardOptions{Intent: "release"})
+	if err != nil {
+		t.Fatalf("defaultSelection(--intent=release) error = %v", err)
 	}
-
-	svcs, plugs := resolvePreset(preset, m)
-	if len(svcs) != 2 {
-		t.Errorf("recommended services = %v, want all 2", svcs)
+	if len(sel.Services) != 0 {
+		t.Errorf("release Services = %v, want none", sel.Services)
 	}
-	if len(plugs) != 2 {
-		t.Errorf("recommended plugins = %v, want all 2", plugs)
+	if len(sel.Plugins) != 1 || sel.Plugins[0] != "mind" {
+		t.Errorf("release Plugins = %v, want [mind]", sel.Plugins)
+	}
+	if sel.Intent != "release" {
+		t.Errorf("Intent = %q, want release", sel.Intent)
 	}
 }
 
-func TestMinimalPresetSelectsNothing(t *testing.T) {
+func TestDefaultSelectionUnknownIntentErrors(t *testing.T) {
 	m := sampleManifest()
-	var minimal Preset
-	for _, p := range AllPresets {
-		if p.ID == "minimal" {
-			minimal = p
-			break
-		}
+	_, err := defaultSelection(m, WizardOptions{Intent: "bogus"})
+	if err == nil {
+		t.Fatal("defaultSelection(--intent=bogus) should error, got nil")
 	}
-	if minimal.ID == "" {
-		t.Fatal("minimal preset not found")
+	if !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("error = %q, want it to mention the unknown intent", err.Error())
 	}
-
-	svcs, plugs := resolvePreset(minimal, m)
-	if len(svcs) != 0 {
-		t.Errorf("minimal services = %v, want []", svcs)
-	}
-	if len(plugs) != 0 {
-		t.Errorf("minimal plugins = %v, want []", plugs)
+	if !strings.Contains(err.Error(), "explore") {
+		t.Errorf("error = %q, want it to list valid intent ids", err.Error())
 	}
 }
 
-func TestCustomPresetReturnsNil(t *testing.T) {
+func TestDefaultSelectionCustomIntentErrors(t *testing.T) {
 	m := sampleManifest()
-	var custom Preset
-	for _, p := range AllPresets {
-		if p.ID == "custom" {
-			custom = p
-			break
-		}
+	_, err := defaultSelection(m, WizardOptions{Intent: "custom"})
+	if err == nil {
+		t.Fatal("defaultSelection(--intent=custom) should error, got nil")
 	}
-
-	svcs, plugs := resolvePreset(custom, m)
-	if svcs != nil || plugs != nil {
-		t.Errorf("custom preset should return nil,nil; got %v, %v", svcs, plugs)
+	if !strings.Contains(err.Error(), "interactive") {
+		t.Errorf("error = %q, want it to point at the interactive wizard", err.Error())
 	}
 }
 
-// ── applySelection ──────────────────────────────────────────────────────────
+func TestDefaultSelectionNoIntentsInManifestErrors(t *testing.T) {
+	m := &manifest.Manifest{Version: "1.0.0"}
+	_, err := defaultSelection(m, WizardOptions{})
+	if err == nil {
+		t.Fatal("defaultSelection() with no intents configured should error, got nil")
+	}
+}
 
-func TestApplySelectionChecksCorrectItems(t *testing.T) {
+// ── applyIntentBundle ────────────────────────────────────────────────────────
+
+func TestApplyIntentBundleChecksCorrectItems(t *testing.T) {
 	m := wizardModel{
 		services: []checkItem{
 			{id: "rest", checked: true},
@@ -173,9 +257,19 @@ func TestApplySelectionChecksCorrectItems(t *testing.T) {
 			{id: "mind", checked: true},
 			{id: "agents", checked: true},
 		},
+		adapterRoles: []checkItem{
+			{id: "cache"},
+		},
+		binaries: []checkItem{
+			{id: "kb-dev", checked: true},
+		},
 	}
 
-	m.applySelection([]string{"rest"}, []string{"mind"})
+	m.applyIntentBundle(manifest.IntentBundle{
+		Services: []string{"rest"},
+		Plugins:  []string{"mind"},
+		Adapters: map[string]string{"cache": "@kb-labs/adapters-redis@0.2.0"},
+	})
 
 	if !m.services[0].checked || m.services[1].checked {
 		t.Errorf("services: rest=%v studio=%v, want true/false",
@@ -185,14 +279,278 @@ func TestApplySelectionChecksCorrectItems(t *testing.T) {
 		t.Errorf("plugins: mind=%v agents=%v, want true/false",
 			m.plugins[0].checked, m.plugins[1].checked)
 	}
+	if !m.adapterRoles[0].checked {
+		t.Error("adapterRoles: cache should be checked when present in bundle.Adapters")
+	}
+	// Bundle.Binaries is empty (nil) — binaries are left at their prior state,
+	// not forced to none, since no launch intent needs to turn off a default tool.
+	if !m.binaries[0].checked {
+		t.Error("binaries: kb-dev should be left unchanged when bundle.Binaries is empty")
+	}
+}
+
+func TestApplyIntentBundleOverwritesBinariesWhenSpecified(t *testing.T) {
+	m := wizardModel{
+		binaries: []checkItem{{id: "kb-dev", checked: false}},
+	}
+	m.applyIntentBundle(manifest.IntentBundle{Binaries: []string{"kb-dev"}})
+	if !m.binaries[0].checked {
+		t.Error("binaries: kb-dev should be checked when explicitly listed in bundle.Binaries")
+	}
+}
+
+// ── enterSteps / advanceStep ─────────────────────────────────────────────────
+
+func TestEnterStepsSkipsToConfirmWhenIntentHasNoSteps(t *testing.T) {
+	m := wizardModel{
+		manifest:       sampleManifest(),
+		selectedIntent: intentIndex(sampleManifest(), "explore"),
+	}
+	m.enterSteps()
+	if m.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm — explore has no steps, must be a 1-screen-to-confirm intent", m.stage)
+	}
+}
+
+func TestEnterStepsEntersStepRunnerWhenIntentHasSteps(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"),
+	}
+	m.enterSteps()
+	if m.stage != stageStep {
+		t.Errorf("stage = %v, want stageStep — release has an envVar step", m.stage)
+	}
+	if m.stepIndex != 0 {
+		t.Errorf("stepIndex = %d, want 0", m.stepIndex)
+	}
+}
+
+func TestAdvanceStepMovesToConfirmAfterLastStep(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"), // exactly one step
+		stepIndex:      0,
+		stage:          stageStep,
+	}
+	m.advanceStep()
+	if m.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm after the only step advances", m.stage)
+	}
+}
+
+func TestAdvanceStepMovesToNextStepWhenMoreRemain(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "custom"), // two steps: llmProvider, studioAccess
+		stepIndex:      0,
+		stage:          stageStep,
+	}
+	m.advanceStep()
+	if m.stage != stageStep {
+		t.Errorf("stage = %v, want stageStep — one more step remains", m.stage)
+	}
+	if m.stepIndex != 1 {
+		t.Errorf("stepIndex = %d, want 1", m.stepIndex)
+	}
+}
+
+// ── envVar step ──────────────────────────────────────────────────────────────
+
+func TestHandleEnvVarKeySkipProducesNoValue(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"),
+		stage:          stageStep,
+		stepIndex:      0,
+		envCursor:      1, // "Skip for now"
+	}
+	step, _ := m.currentStep()
+	next, _ := m.handleEnvVarKey(tea.KeyMsg{Type: tea.KeyEnter}, step)
+	got := next.(wizardModel)
+
+	if len(got.envValues) != 0 {
+		t.Errorf("envValues = %v, want empty after skip", got.envValues)
+	}
+	if got.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm (release's only step just advanced)", got.stage)
+	}
+}
+
+func TestHandleEnvVarKeyConfigureThenSubmitStoresValue(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"),
+		stage:          stageStep,
+		stepIndex:      0,
+		envCursor:      0, // "Configure it now"
+		envInput:       makeInput(""),
+	}
+	step, _ := m.currentStep()
+
+	// First Enter opens the masked input.
+	next, _ := m.handleEnvVarKey(tea.KeyMsg{Type: tea.KeyEnter}, step)
+	got := next.(wizardModel)
+	if !got.envShowInput {
+		t.Fatal("envShowInput = false after choosing 'Configure it now', want true")
+	}
+
+	// Type a value, then Enter commits it.
+	got.envInput.SetValue("npm_abc123")
+	next2, _ := got.handleEnvVarKey(tea.KeyMsg{Type: tea.KeyEnter}, step)
+	got2 := next2.(wizardModel)
+
+	if got2.envValues["NPM_TOKEN"] != "npm_abc123" {
+		t.Errorf("envValues[NPM_TOKEN] = %q, want npm_abc123", got2.envValues["NPM_TOKEN"])
+	}
+	if got2.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	}
+}
+
+func TestHandleEnvVarKeyEmptyValueDoesNotAdvance(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"),
+		stage:          stageStep,
+		stepIndex:      0,
+		envShowInput:   true,
+		envInput:       makeInput(""),
+	}
+	step, _ := m.currentStep()
+	next, _ := m.handleEnvVarKey(tea.KeyMsg{Type: tea.KeyEnter}, step)
+	got := next.(wizardModel)
+	if got.stage != stageStep {
+		t.Errorf("stage = %v, want stageStep — empty value must not advance", got.stage)
+	}
+}
+
+// ── LLM provider step ────────────────────────────────────────────────────────
+
+func TestHandleLLMProviderKeySkipAdvances(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:          man,
+		selectedIntent:    intentIndex(man, "ai-review"), // single llmProvider step
+		stage:             stageStep,
+		stepIndex:         0,
+		llmProviderCursor: len(llmProviderOptions) - 1, // "Skip"
+	}
+	next, _ := m.handleLLMProviderKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if got.llmProvider != "" {
+		t.Errorf("llmProvider = %q, want empty (skip)", got.llmProvider)
+	}
+	if got.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm", got.stage)
+	}
+}
+
+func TestHandleLLMProviderKeyOpenAIRequiresKey(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		manifest:          man,
+		selectedIntent:    intentIndex(man, "ai-review"),
+		stage:             stageStep,
+		stepIndex:         0,
+		llmProviderCursor: 0, // openai
+		llmKeyInput:       makeInput(""),
+	}
+	next, _ := m.handleLLMProviderKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if !got.llmShowKeyInput {
+		t.Fatal("llmShowKeyInput = false after choosing openai, want true")
+	}
+	if got.stage != stageStep {
+		t.Errorf("stage = %v, want stageStep — key not entered yet", got.stage)
+	}
+
+	got.llmKeyInput.SetValue("sk-test")
+	next2, _ := got.handleLLMProviderKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got2 := next2.(wizardModel)
+	if got2.llmProvider != "openai" {
+		t.Errorf("llmProvider = %q, want openai", got2.llmProvider)
+	}
+	if got2.stage != stageConfirm {
+		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	}
+}
+
+// ── Studio access step ───────────────────────────────────────────────────────
+
+// TestHandleStudioAccessKeySelectsLocal verifies the step maps cursor → localMode
+// and advances past the last step in the intent's step list.
+func TestHandleStudioAccessKeySelectsLocal(t *testing.T) {
+	man := &manifest.Manifest{
+		Intents: []manifest.Intent{
+			{ID: "x", Steps: []manifest.IntentStep{{Type: stepStudioAccess}}},
+		},
+	}
+	m := wizardModel{
+		manifest:       man,
+		selectedIntent: 0,
+		stage:          stageStep,
+		stepIndex:      0,
+		studioCursor:   1, // Local
+	}
+	next, _ := m.handleStudioAccessKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if !got.localMode {
+		t.Errorf("localMode = false after selecting Local, want true")
+	}
+	if got.stage != stageConfirm {
+		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
+	}
+}
+
+// ── custom picker: services/plugins/adapters/tools toggling ─────────────────
+
+func TestToggleCursorCoversAllFourGroups(t *testing.T) {
+	m := wizardModel{
+		services:     []checkItem{{id: "rest"}},
+		plugins:      []checkItem{{id: "mind"}},
+		adapterRoles: []checkItem{{id: "cache"}},
+		binaries:     []checkItem{{id: "kb-dev"}},
+	}
+
+	m.cursor = 0 // services[0]
+	m.toggleCursor()
+	if !m.services[0].checked {
+		t.Error("toggleCursor at cursor 0 should check services[0]")
+	}
+
+	m.cursor = 1 // plugins[0]
+	m.toggleCursor()
+	if !m.plugins[0].checked {
+		t.Error("toggleCursor at cursor 1 should check plugins[0]")
+	}
+
+	m.cursor = 2 // adapterRoles[0] ("cache")
+	m.toggleCursor()
+	if !m.adapterRoles[0].checked {
+		t.Error("toggleCursor at cursor 2 should check adapterRoles[0] (cache)")
+	}
+
+	m.cursor = 3 // binaries[0]
+	m.toggleCursor()
+	if !m.binaries[0].checked {
+		t.Error("toggleCursor at cursor 3 should check binaries[0]")
+	}
 }
 
 // ── toSelection ─────────────────────────────────────────────────────────────
 
 func TestToSelectionCheckedItems(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/platform"),
-		cwdInput:      makeInput("/project"),
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		selectedIntent: -1,
 		services: []checkItem{
 			{id: "rest", checked: true},
 			{id: "studio", checked: false},
@@ -215,8 +573,9 @@ func TestToSelectionCheckedItems(t *testing.T) {
 
 func TestToSelectionAllChecked(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/p"),
-		cwdInput:      makeInput("/c"),
+		platformInput:  makeInput("/p"),
+		cwdInput:       makeInput("/c"),
+		selectedIntent: -1,
 		services: []checkItem{
 			{id: "rest", checked: true},
 			{id: "studio", checked: true},
@@ -233,6 +592,48 @@ func TestToSelectionAllChecked(t *testing.T) {
 	}
 	if len(sel.Plugins) != 2 {
 		t.Errorf("Plugins len = %d, want 2", len(sel.Plugins))
+	}
+}
+
+func TestToSelectionIncludesAdapterRoleWhenChecked(t *testing.T) {
+	m := wizardModel{
+		platformInput:  makeInput("/p"),
+		cwdInput:       makeInput("/c"),
+		selectedIntent: -1,
+		adapterRoles: []checkItem{
+			{id: "cache", pkg: "@kb-labs/adapters-redis@0.2.0", checked: true},
+		},
+	}
+	sel := m.toSelection()
+	if sel.Adapters["cache"] != "@kb-labs/adapters-redis@0.2.0" {
+		t.Errorf("Adapters[cache] = %q, want @kb-labs/adapters-redis@0.2.0", sel.Adapters["cache"])
+	}
+}
+
+func TestToSelectionEnvValuesIncludesNPMToken(t *testing.T) {
+	m := wizardModel{
+		platformInput:  makeInput("/p"),
+		cwdInput:       makeInput("/c"),
+		selectedIntent: -1,
+		envValues:      map[string]string{"NPM_TOKEN": "npm_abc"},
+	}
+	sel := m.toSelection()
+	if sel.EnvValues["NPM_TOKEN"] != "npm_abc" {
+		t.Errorf("EnvValues[NPM_TOKEN] = %q, want npm_abc", sel.EnvValues["NPM_TOKEN"])
+	}
+}
+
+func TestToSelectionSetsIntentID(t *testing.T) {
+	man := sampleManifest()
+	m := wizardModel{
+		platformInput:  makeInput("/p"),
+		cwdInput:       makeInput("/c"),
+		manifest:       man,
+		selectedIntent: intentIndex(man, "release"),
+	}
+	sel := m.toSelection()
+	if sel.Intent != "release" {
+		t.Errorf("Intent = %q, want release", sel.Intent)
 	}
 }
 
@@ -257,17 +658,17 @@ func TestExpandHomeAbsolute(t *testing.T) {
 	}
 }
 
-// ── LLM provider wizard step (B-001 replacement) ─────────────────────────────
+// ── LLM provider (toSelection propagation) ──────────────────────────────────
 
 // TestToSelectionLLMProviderOpenAI verifies that when the user picks openai
 // and enters a key, toSelection() propagates LLMProvider and LLMKey.
-// Before the fix these fields did not exist; after the fix they are set.
 func TestToSelectionLLMProviderOpenAI(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/platform"),
-		cwdInput:      makeInput("/project"),
-		llmProvider:   "openai",
-		llmKeyInput:   makeInput("sk-test-key-123"),
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		selectedIntent: -1,
+		llmProvider:    "openai",
+		llmKeyInput:    makeInput("sk-test-key-123"),
 	}
 
 	sel := m.toSelection()
@@ -284,9 +685,10 @@ func TestToSelectionLLMProviderOpenAI(t *testing.T) {
 // LLMProvider and LLMKey — no credentials written to .env.
 func TestToSelectionLLMProviderSkip(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/platform"),
-		cwdInput:      makeInput("/project"),
-		llmProvider:   "",
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		selectedIntent: -1,
+		llmProvider:    "",
 	}
 
 	sel := m.toSelection()
@@ -301,51 +703,32 @@ func TestToSelectionLLMProviderSkip(t *testing.T) {
 
 // ── Studio access mode (B-023) ───────────────────────────────────────────────
 
-// TestToSelectionStudioSecuredDefault verifies that the default (Secured) leaves
-// LocalMode false — auth stays on, the safe default for any install.
 func TestToSelectionStudioSecuredDefault(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/platform"),
-		cwdInput:      makeInput("/project"),
-		localMode:     false, // Secured (studioCursor 0)
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		selectedIntent: -1,
+		localMode:      false, // Secured (studioCursor 0)
 	}
 	if sel := m.toSelection(); sel.LocalMode {
 		t.Errorf("LocalMode = true, want false (Secured is the default)")
 	}
 }
 
-// TestToSelectionStudioLocal verifies that choosing Local single-user mode sets
-// LocalMode, which create.go turns into gateway auth-off + loopback bind.
 func TestToSelectionStudioLocal(t *testing.T) {
 	m := wizardModel{
-		platformInput: makeInput("/platform"),
-		cwdInput:      makeInput("/project"),
-		localMode:     true, // Local (studioCursor 1)
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		selectedIntent: -1,
+		localMode:      true, // Local (studioCursor 1)
 	}
 	if sel := m.toSelection(); !sel.LocalMode {
 		t.Errorf("LocalMode = false, want true (user chose Local)")
 	}
 }
 
-// TestHandleStudioKeySelectsLocal verifies the Studio stage maps cursor → localMode.
-func TestHandleStudioKeySelectsLocal(t *testing.T) {
-	m := wizardModel{stage: stageStudio, studioCursor: 1} // Local highlighted
-	next, _ := m.handleStudioKey(tea.KeyMsg{Type: tea.KeyEnter})
-	got := next.(wizardModel)
-	if !got.localMode {
-		t.Errorf("localMode = false after selecting Local, want true")
-	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
-	}
-}
+// ── Confirm stage: cancel vs confirm vs telemetry toggle ────────────────────
 
-// ── Confirm stage: cancel vs confirm (installation-flow.md "F6 -- cancel") ──
-
-// TestHandleConfirmKeyCancels verifies that esc/n/N/ctrl+c at the confirm
-// stage sets cancelled=true and quits the program. wizard.Run turns this
-// into the "installation cancelled" error (wizard.go Run(), result.cancelled
-// branch) — nothing gets written to disk.
 func TestHandleConfirmKeyCancels(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -357,7 +740,7 @@ func TestHandleConfirmKeyCancels(t *testing.T) {
 		{"N", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("N")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := wizardModel{stage: stageConfirm}
+			m := wizardModel{stage: stageConfirm, selectedIntent: -1}
 			next, cmd := m.handleConfirmKey(tc.msg)
 			got := next.(wizardModel)
 			if !got.cancelled {
@@ -370,8 +753,6 @@ func TestHandleConfirmKeyCancels(t *testing.T) {
 	}
 }
 
-// TestHandleConfirmKeyConfirms verifies that enter/y/Y at the confirm stage
-// quits the program WITHOUT setting cancelled — the install proceeds.
 func TestHandleConfirmKeyConfirms(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -382,7 +763,7 @@ func TestHandleConfirmKeyConfirms(t *testing.T) {
 		{"Y", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Y")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := wizardModel{stage: stageConfirm}
+			m := wizardModel{stage: stageConfirm, selectedIntent: -1}
 			next, cmd := m.handleConfirmKey(tc.msg)
 			got := next.(wizardModel)
 			if got.cancelled {
@@ -395,14 +776,20 @@ func TestHandleConfirmKeyConfirms(t *testing.T) {
 	}
 }
 
-// ── Run(): no TTY + no --yes → abort (installation-flow.md "E1: Abort: run with --yes") ──
+func TestHandleConfirmKeyTogglesTelemetry(t *testing.T) {
+	m := wizardModel{stage: stageConfirm, selectedIntent: -1, telemetryEnabled: true}
+	next, _ := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
+	got := next.(wizardModel)
+	if got.telemetryEnabled {
+		t.Error("telemetryEnabled = true after 't', want false")
+	}
+	if got.cancelled {
+		t.Error("cancelled = true after 't', want false — toggling telemetry must not quit")
+	}
+}
 
-// TestRunNoTTYAbortsWithoutYes verifies that Run() refuses to launch the
-// interactive wizard when stdin isn't a terminal and --yes wasn't passed —
-// it must return an error mentioning --yes rather than hang or panic trying
-// to drive a TUI against a non-tty stdin. Under `go test`, os.Stdin is
-// never a real terminal, so this exercises the exact branch a CI-piped or
-// scripted invocation of kb-create would hit.
+// ── Run(): no TTY + no --yes → abort ─────────────────────────────────────────
+
 func TestRunNoTTYAbortsWithoutYes(t *testing.T) {
 	if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
 		t.Skip("test process stdin is a real TTY — can't exercise the no-TTY branch here")
@@ -428,7 +815,7 @@ func TestViewConfirm_DedupesComponentsAppearingAsServiceAndPlugin(t *testing.T) 
 	m := wizardModel{
 		platformInput:  makeInput("/tmp/platform"),
 		cwdInput:       makeInput("/tmp/project"),
-		selectedPreset: -1,
+		selectedIntent: -1,
 		services: []checkItem{
 			{id: "marketplace", checked: true},
 			{id: "rest", checked: true},

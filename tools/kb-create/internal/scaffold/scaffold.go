@@ -57,6 +57,10 @@ type Options struct {
 	// When non-empty, LLMKey is written to .env as the provider-specific env var.
 	LLMProvider string
 	LLMKey      string // #nosec G117 -- written to .env with 0600 permissions
+	// EnvValues are extra secret-shaped values collected by an intent's
+	// "envVar" wizard step (e.g. {"NPM_TOKEN": "..."}), written to .env the
+	// same way as LLMKey — never into kb.config.jsonc.
+	EnvValues map[string]string // #nosec G117 -- written to .env with 0600 permissions
 	// DocumentDatabase is the npm package that implements IDocumentDatabase
 	// (e.g. "@kb-labs/adapters-sqlite"). When non-empty it is written into the
 	// adapters section of the generated platform config so the gateway can
@@ -188,7 +192,7 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	}
 
 	// API keys / gateway secrets stay in projectDir (gitignored) — never in platformDir.
-	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey, opts.BootstrapAdminPassword); err != nil {
+	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey, opts.BootstrapAdminPassword, opts.EnvValues); err != nil {
 		return fmt.Errorf("scaffold .env: %w", err)
 	}
 
@@ -876,9 +880,9 @@ jobs:
 
 // writeEnvFile writes LLM/gateway credentials to .env in the project root.
 // This file is gitignored by ensureGitignore, keeping secrets out of version control.
-func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey, bootstrapAdminPassword string) error {
+func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey, bootstrapAdminPassword string, extra map[string]string) error {
 	// Nothing to write if no credentials provided.
-	if gc == nil && llmKey == "" && bootstrapAdminPassword == "" {
+	if gc == nil && llmKey == "" && bootstrapAdminPassword == "" && len(extra) == 0 {
 		return nil
 	}
 
@@ -919,6 +923,17 @@ func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey, boot
 	if bootstrapAdminPassword != "" && !strings.Contains(string(existing), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=") {
 		buf.WriteString("\n# Gateway bootstrap admin password (#271, auto-configured by kb-create)\n")
 		buf.WriteString("GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=" + bootstrapAdminPassword + "\n")
+	}
+	if len(extra) > 0 {
+		keys := make([]string, 0, len(extra))
+		for k := range extra {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		buf.WriteString("\n# Configured during setup (kb-create)\n")
+		for _, k := range keys {
+			buf.WriteString(k + "=" + extra[k] + "\n")
+		}
 	}
 	_, err = f.WriteString(buf.String())
 	return err

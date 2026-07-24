@@ -131,6 +131,82 @@
       "serviceTransport": "@kb-labs/adapters-service-transport-http"
     }
   },
+  "intents": [
+    {
+      "id": "explore",
+      "label": "Just look around",
+      "description": "Install the full default platform and explore.",
+      "bundle": {
+        "services": ["rest", "workflow", "gateway", "marketplace", "studio"],
+        "plugins": ["marketplace", "ai-review", "commit", "scaffold"],
+        "binaries": ["kb-dev"]
+      },
+      "docs": [
+        { "label": "Quick Start", "url": "https://kblabs.ru/docs/quick-start" }
+      ],
+      "nextSteps": ["kb-dev start", "pnpm kb --help"]
+    },
+    {
+      "id": "release",
+      "label": "Automate releases",
+      "description": "Plan, version, and publish releases from your workspace.",
+      "bundle": {
+        "plugins": ["release"]
+      },
+      "steps": [
+        {
+          "type": "envVar",
+          "key": "NPM_TOKEN",
+          "label": "npm publish token",
+          "skippable": true,
+          "skipHint": "release plan/build/changelog/version work without this — add NPM_TOKEN later when you're ready to publish."
+        }
+      ],
+      "docs": [
+        { "label": "CI-install guide", "url": "https://kblabs.ru/docs/guides/ci-install" }
+      ],
+      "nextSteps": ["pnpm kb release plan", "pnpm kb release changelog"]
+    },
+    {
+      "id": "plugin-author",
+      "label": "Write my own plugin",
+      "description": "Scaffold a new plugin with a working local dev loop.",
+      "bundle": {
+        "services": ["rest", "gateway"],
+        "plugins": ["scaffold"],
+        "binaries": ["kb-dev"]
+      },
+      "docs": [
+        { "label": "First Plugin guide", "url": "https://kblabs.ru/docs/guides/first-plugin" }
+      ],
+      "nextSteps": ["pnpm kb scaffold plugin --name my-plugin", "kb-dev start"]
+    },
+    {
+      "id": "ai-review",
+      "label": "Add AI review to my repo",
+      "description": "Automated code review, with or without your own LLM key.",
+      "bundle": {
+        "plugins": ["review"]
+      },
+      "steps": [
+        { "type": "llmProvider" }
+      ],
+      "docs": [
+        { "label": "LLM setup guide", "url": "https://kblabs.ru/docs/guides/llm-setup" }
+      ],
+      "nextSteps": ["pnpm kb review run --repos . --mode heuristic"]
+    },
+    {
+      "id": "custom",
+      "label": "Choose exactly what I need",
+      "description": "Pick services, plugins, and adapters yourself.",
+      "bundle": {},
+      "steps": [
+        { "type": "llmProvider" },
+        { "type": "studioAccess" }
+      ]
+    }
+  ],
   "binaries": [
     {
       "id": "kb-dev",

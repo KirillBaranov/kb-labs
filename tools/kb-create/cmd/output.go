@@ -9,6 +9,7 @@ import (
 
 	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/manifest"
 )
 
 var (
@@ -265,6 +266,35 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 	for _, s := range buildNextSteps(r, llmEnabled) {
 		padded := fmt.Sprintf("%-32s", s.cmd)
 		fmt.Printf("  %s  %s%s\n", arrow, styleWhite.Render(padded), styleMuted.Render(s.desc))
+	}
+	fmt.Println()
+}
+
+// printIntentNextSteps prints the chosen intent's own docs/next-steps
+// (e.g. "release" → `pnpm kb release plan` + the CI-install guide link),
+// alongside the generic ones from printNextSteps. No-op when intentID is
+// empty (not chosen via the intent wizard) or the intent declares none.
+func printIntentNextSteps(m *manifest.Manifest, intentID string) {
+	if intentID == "" {
+		return
+	}
+	var intent *manifest.Intent
+	for i := range m.Intents {
+		if m.Intents[i].ID == intentID {
+			intent = &m.Intents[i]
+			break
+		}
+	}
+	if intent == nil || (len(intent.NextSteps) == 0 && len(intent.Docs) == 0) {
+		return
+	}
+
+	arrow := styleAccent.Render("→")
+	for _, s := range intent.NextSteps {
+		fmt.Printf("  %s  %s\n", arrow, styleWhite.Render(s))
+	}
+	for _, d := range intent.Docs {
+		fmt.Printf("  %s  %s: %s\n", arrow, styleWhite.Render(d.Label), styleMuted.Render(d.URL))
 	}
 	fmt.Println()
 }

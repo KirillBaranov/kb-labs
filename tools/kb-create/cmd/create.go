@@ -36,6 +36,7 @@ var (
 	flagNoClaudeMd  bool
 	flagDevManifest string
 	flagRegistry    string
+	flagIntent      string
 )
 
 func init() {
@@ -47,6 +48,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&flagNoClaudeMd, "no-claude-md", false, "install Claude Code skills only; skip CLAUDE.md merge")
 	rootCmd.Flags().StringVar(&flagDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
+	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -73,6 +75,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// (demo mode) or defaults to off (--yes mode).
 	sel, err := wizard.Run(m, wizard.WizardOptions{
 		Yes:                flagYes,
+		Intent:             flagIntent,
 		DemoMode:           flagDemo,
 		DefaultProjectCWD:  projectCWD,
 		DefaultPlatformDir: flagPlatform,
@@ -169,8 +172,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 		// Dynamic gateway plan from discovery → rendered into kb.config.jsonc.
-		Gateway: result.Gateway,
-		Catalog: m,
+		Gateway:   result.Gateway,
+		Catalog:   m,
+		Adapters:  sel.Adapters,
+		EnvValues: sel.EnvValues,
 	}
 	// Local single-user mode is an EXPLICIT opt-in (--local flag or the wizard
 	// "Studio access" choice) — never an implicit default of --yes. In local mode
@@ -253,6 +258,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	_ = demo.RunFirstDemo(sel.ProjectCWD, wantsLLM)
 
 	printNextSteps(result, wantsLLM)
+	printIntentNextSteps(m, sel.Intent)
 
 	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
 	// All failures here are non-fatal: the platform install itself is already

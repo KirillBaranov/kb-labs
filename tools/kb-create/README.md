@@ -48,11 +48,28 @@ For pre-releases (for example `v0.2.0-beta.1`) always pass `--version`.
 kb-create my-project
 ```
 
-The wizard guides you through:
-1. Platform directory (where node_modules live)
-2. Project directory (your actual work folder)
-3. Services to install (REST API, Workflow, Studio)
-4. Plugins to install (mind, agents, ai-review, commit)
+The wizard doesn't start by asking which services/plugins/adapters you
+want — that's KB Labs' internal taxonomy, not something a first-time user
+should need to know. Instead it asks **what you're here to do**, and only
+walks you through the specific setup that scenario actually needs:
+
+1. Platform directory + project directory (pre-filled with sane defaults)
+2. **What are you here to do?** — pick one:
+   - **Just look around** — the full default platform, straight to confirm
+   - **Automate releases** — installs only the `release` plugin; optionally
+     configure an npm publish token (skippable, add it later)
+   - **Write my own plugin** — a working local dev loop (`scaffold`, REST +
+     gateway, `kb-dev`), no AI setup in the way
+   - **Add AI review to my repo** — one LLM-provider question (bring your
+     own OpenAI/Anthropic key, or stay on the free KB Labs gateway)
+   - **Choose exactly what I need** — the full manual picker (services,
+     plugins, adapter roles, tools), for anyone who wants full control
+3. Confirm & install
+
+Every install — regardless of which option you pick — gets a working `llm`
+adapter by default (KB Labs' free shared gateway, ~50 requests included);
+bringing your own provider key is always optional, never required to get
+started.
 
 ### Silent install with defaults
 
@@ -60,7 +77,18 @@ The wizard guides you through:
 kb-create my-project --yes
 ```
 
-Installs core + default services/plugins without any prompts.
+Installs the same footprint as the "Just look around" option, without any
+prompts. Pick a different scenario non-interactively with `--intent`:
+
+```bash
+kb-create my-project --yes --intent=release
+kb-create my-project --yes --intent=plugin-author
+kb-create my-project --yes --intent=ai-review
+```
+
+`--intent=custom` isn't valid with `--yes` — custom picking needs either the
+interactive wizard or [`kb-create install --plugins/--services`](#kb-create-install)
+for scripted arbitrary selection.
 
 ## How It Works
 
@@ -73,13 +101,18 @@ kb-create my-project
    Platform dir:  ~/kb-platform
    Project cwd:   ~/projects/my-project
 
-   ◉ REST API       REST daemon (port 5050)
-   ◉ Workflow       Workflow engine (port 7778)
-   ○ Studio         Web UI (port 3000)
-
-   ◉ mind           AI code search (RAG)
-   ○ agents         Autonomous agents
+   What are you here to do?
+   ◉ Just look around
+   ○ Automate releases
+   ○ Write my own plugin
+   ○ Add AI review to my repo
+   ○ Choose exactly what I need
    ─────────────────────────────────────────────────
+        │
+        ▼
+   (only the steps that scenario needs — e.g. an npm token
+   prompt for "Automate releases", an LLM-provider choice for
+   "Add AI review" — skippable, with a doc link either way)
         │
         ▼
    npm/pnpm install @kb-labs/* packages
@@ -90,8 +123,13 @@ kb-create my-project
    { "platform": "~/kb-platform", "cwd": "~/projects/my-project" }
         │
         ▼
-   ✅ Done — run: kb dev:start
+   ✅ Done — next steps + docs links specific to what you picked
 ```
+
+New scenarios are added as a `manifest.json` entry (see
+[Manifest](#manifest) below), not a wizard code change — see
+[ADR-0026](../../docs/adr/0026-scoped-plugin-install-and-adapter-role-validation.md)
+for the full rationale and the CI-facing side of this (`kb-create install`).
 
 ### Platform vs Project separation
 
