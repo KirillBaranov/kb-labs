@@ -267,8 +267,9 @@ func printAgentHandoff(path string) {
 	fmt.Println()
 }
 
-// printSupportHint shows a compact support block with GitHub Issues and
-// Telegram contact — called whenever an install or doctor run fails.
+// printSupportHint gives a compact recovery route after an install or doctor
+// failure. It intentionally uses one left rail instead of a closed box: the
+// error above remains the primary information, while support is a next step.
 func printSupportHint() {
 	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
@@ -276,20 +277,14 @@ func printSupportHint() {
 	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 
 	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
 	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
 
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
 	fmt.Println()
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Need help?"))
+	line(white.Render("Need help resolving this?"))
 	line("")
-	line("  " + dim.Render("Open an issue   ") + url.Render("github.com/kb-labs-team/kb-labs/issues"))
-	line("  " + dim.Render("Telegram        ") + url.Render("@kirill_baranov"))
-	fmt.Printf("  %s%s\n", botLeft, rule)
+	line("  " + dim.Render("Troubleshooting  ") + url.Render("https://docs.kblabs.ru/en/guides/troubleshooting"))
+	line("  " + dim.Render("GitHub issues    ") + url.Render("https://github.com/kb-labs-team/kb-labs/issues"))
+	line("  " + dim.Render("Telegram         ") + url.Render("@kirill_baranov"))
 	fmt.Println()
 }
 

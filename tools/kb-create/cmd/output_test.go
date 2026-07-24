@@ -116,6 +116,25 @@ func TestPrintCustomPluginSummaryShowsPaths(t *testing.T) {
 	}
 }
 
+func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
+	got := captureStdout(t, printSupportHint)
+	for _, want := range []string{
+		"https://docs.kblabs.ru/en/guides/troubleshooting",
+		"https://github.com/kb-labs-team/kb-labs/issues",
+		"@kirill_baranov",
+		"│",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("support hint missing %q: %q", want, got)
+		}
+	}
+	for _, unwanted := range []string{"╭", "╰", "──"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("support hint still renders a closed box %q: %q", unwanted, got)
+		}
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
