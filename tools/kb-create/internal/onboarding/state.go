@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/platform"
 )
 
 const relativeStatePath = ".kb/onboarding/state.json"
@@ -79,4 +82,32 @@ func Read(projectDir string) (State, error) {
 		return State{}, fmt.Errorf("unsupported or incomplete onboarding state")
 	}
 	return state, nil
+}
+
+// CheckReadiness verifies only the local discovery prerequisites for the first
+// command. It does not execute the command, so onboarding never turns a
+// business action into an implicit post-install side effect.
+func CheckReadiness(platformDir string, first *manifest.FirstCommand) error {
+	if first == nil {
+		return nil
+	}
+	if first.Operation != manifest.CommandOperationAnalyze || strings.TrimSpace(first.Command) == "" {
+		return fmt.Errorf("first command contract is not a safe analyze command")
+	}
+	binJS := filepath.Join(platformDir, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
+	if _, err := os.Stat(binJS); err != nil {
+		return fmt.Errorf("KB CLI was not discovered at %s: %w", binJS, err)
+	}
+	binDir, err := platform.UserBinDir()
+	if err != nil {
+		return fmt.Errorf("resolve KB CLI launcher directory: %w", err)
+	}
+	launcher := filepath.Join(binDir, "kb")
+	if runtime.GOOS == "windows" {
+		launcher += ".cmd"
+	}
+	if _, err := os.Stat(launcher); err != nil {
+		return fmt.Errorf("KB CLI launcher was not discovered at %s: %w", launcher, err)
+	}
+	return nil
 }

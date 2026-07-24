@@ -263,6 +263,17 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
+	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
+		_ = onboarding.Write(onboarding.State{
+			Outcome:      sel.Intent,
+			ProjectDir:   sel.ProjectCWD,
+			PlatformDir:  sel.PlatformDir,
+			LocalMode:    flagLocal || sel.LocalMode,
+			Status:       "needs-repair",
+			FirstCommand: sel.FirstCommand,
+		})
+		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
+	}
 	if err := onboarding.Write(onboarding.State{
 		Outcome:      sel.Intent,
 		ProjectDir:   sel.ProjectCWD,

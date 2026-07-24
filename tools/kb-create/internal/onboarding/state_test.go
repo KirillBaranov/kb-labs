@@ -40,3 +40,12 @@ func TestWriteReadRoundTripOmitsSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckReadinessRejectsUnsafeOrMissingCommand(t *testing.T) {
+	if err := CheckReadiness(t.TempDir(), &manifest.FirstCommand{Command: "kb release publish", Operation: manifest.CommandOperationMutate}); err == nil {
+		t.Fatal("CheckReadiness() accepted a mutating first command")
+	}
+	if err := CheckReadiness(t.TempDir(), &manifest.FirstCommand{Command: "kb release plan", Operation: manifest.CommandOperationAnalyze}); err == nil {
+		t.Fatal("CheckReadiness() accepted a platform with no CLI")
+	}
+}
