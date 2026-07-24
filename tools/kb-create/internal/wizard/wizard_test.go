@@ -251,6 +251,18 @@ func TestValidateCustomContract(t *testing.T) {
 	}
 }
 
+func TestProgressLabelUsesOutcomeSpecificStepCount(t *testing.T) {
+	man := sampleManifest()
+	explore := wizardModel{manifest: man, selectedIntent: intentIndex(man, "explore"), stage: stageAnalytics}
+	if got := explore.progressLabel(); !strings.Contains(got, "Step 3 of 4") {
+		t.Errorf("explore progress = %q, want Step 3 of 4", got)
+	}
+	custom := wizardModel{manifest: man, selectedIntent: intentIndex(man, "custom"), stage: stageCustom}
+	if got := custom.progressLabel(); !strings.Contains(got, "Step 3 of 7") {
+		t.Errorf("custom progress = %q, want Step 3 of 7", got)
+	}
+}
+
 func TestToSelectionPreservesCustomCommandContract(t *testing.T) {
 	m := wizardModel{
 		platformInput:    makeInput("/platform"),

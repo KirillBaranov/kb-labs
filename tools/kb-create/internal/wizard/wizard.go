@@ -703,23 +703,62 @@ func (m wizardModel) handleAnalyticsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // ── View ─────────────────────────────────────────────────────────────────────
 
 func (m wizardModel) View() string {
+	var body string
 	switch m.stage {
 	case stageDirs:
-		return m.viewDirs()
+		body = m.viewDirs()
 	case stageIntent:
-		return m.viewIntent()
+		body = m.viewIntent()
 	case stageCustom:
-		return m.viewCustom()
+		body = m.viewCustom()
 	case stageCustomContract:
-		return m.viewCustomContract()
+		body = m.viewCustomContract()
 	case stageStep:
-		return m.viewStep()
+		body = m.viewStep()
 	case stageAnalytics:
-		return m.viewAnalytics()
+		body = m.viewAnalytics()
 	case stageConfirm:
-		return m.viewConfirm()
+		body = m.viewConfirm()
 	}
-	return ""
+	if body == "" {
+		return ""
+	}
+	return m.progressLabel() + "\n\n" + body
+}
+
+// progressLabel keeps the wizard predictable without exposing an intimidating
+// checklist. The total is outcome-specific: a simple release path is short,
+// while the advanced picker honestly includes its extra decisions.
+func (m wizardModel) progressLabel() string {
+	step, total := 1, 4
+	if m.stage == stageIntent {
+		step = 2
+	}
+	if m.selectedIntent < 0 {
+		return dimStyle.Render(fmt.Sprintf("  Step %d of %d", step, total))
+	}
+
+	intent := m.currentIntent()
+	customPrefix := 0
+	if intent.ID == "custom" || intent.ID == "plugin-author" {
+		customPrefix = 1
+	}
+	total = 2 + customPrefix + len(intent.Steps) + 2 // dirs, outcome, optional custom step, setup, analytics, confirm
+	switch m.stage {
+	case stageDirs:
+		step = 1
+	case stageIntent:
+		step = 2
+	case stageCustom, stageCustomContract:
+		step = 3
+	case stageStep:
+		step = 3 + customPrefix + m.stepIndex
+	case stageAnalytics:
+		step = total - 1
+	case stageConfirm:
+		step = total
+	}
+	return dimStyle.Render(fmt.Sprintf("  Step %d of %d", step, total))
 }
 
 func (m wizardModel) viewCustomContract() string {
