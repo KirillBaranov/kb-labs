@@ -23,13 +23,6 @@ var (
 	styleMuted  = newStyle("244")
 	styleAccent = newStyle("141") // soft purple
 
-	styleBanner = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("141")).
-			Padding(0, 2).
-			Bold(true).
-			Foreground(lipgloss.Color("15"))
-
 	styleDivider = styleDim.Render(strings.Repeat("─", 45))
 
 	styleKV = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
@@ -99,12 +92,10 @@ func (o output) BulletDim(label, details string) {
 
 func printSuccess(r *installer.Result) {
 	fmt.Println()
-	fmt.Println(styleBanner.Render("✦  KB Labs installed successfully"))
-	fmt.Println()
-
-	kw := styleKV.Render
-	fmt.Printf("  %s   %s\n", kw("Platform"), styleBlue.Render(r.PlatformDir))
-	fmt.Printf("  %s    %s\n", kw("Project"), styleBlue.Render(r.ProjectCWD))
+	printRailBlock("KB Labs installed successfully", []string{
+		railKeyValue("Platform", styleBlue.Render(r.PlatformDir)),
+		railKeyValue("Project", styleBlue.Render(r.ProjectCWD)),
+	})
 	fmt.Println()
 }
 
@@ -142,31 +133,19 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 // printLLMRecommendation prints a one-time notice explaining what LLM adds,
 // how the data flows, and how to opt in — shown only when LLM is off.
 func printLLMRecommendation() {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
 
-	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
-
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Enable LLM for a better experience"))
-	line("")
-	line("  " + dim.Render("AI commit messages") + "    " + cmd.Render("kb commit commit"))
-	line("  " + dim.Render("AI code review") + "        " + cmd.Render("kb review run"))
-	line("")
-	line(dim.Render("These use an LLM. Configure your own provider key:"))
-	line("")
-	line("Re-run:  " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI / Anthropic"))
-	line("Or set:  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"))
-	line(dim.Render("Docs: https://docs.kblabs.ru/adapters/built-in#llm-illm"))
-	fmt.Printf("  %s%s\n", botLeft, rule)
+	printRailBlock("Enable LLM for a better experience", []string{
+		railKeyValue("AI commit messages", cmd.Render("kb commit commit")),
+		railKeyValue("AI code review", cmd.Render("kb review run")),
+		"",
+		dim.Render("These commands use an LLM. Configure your own provider key:"),
+		"",
+		"Re-run  " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI or Anthropic"),
+		"Or set  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"),
+		"Docs    " + dim.Render("https://docs.kblabs.ru/adapters/built-in#llm-illm"),
+	})
 	fmt.Println()
 }
 
@@ -177,30 +156,17 @@ func printLLMRecommendation() {
 // CLI credential to ~/.kb/credentials.json, but neither of those is a substitute
 // for showing it here: a user who loses .env has no other way to log into Studio.
 func printBootstrapAdminCredentials(email, password string) {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-	warn := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
 
-	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
-
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Studio admin login") + "  " + warn.Render("(shown once — save it now)"))
-	line("")
-	line(dim.Render("Email     ") + cmd.Render(email))
-	line(dim.Render("Password  ") + cmd.Render(password))
-	line("")
-	line(dim.Render("Also saved to .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and to"))
-	line(dim.Render("~/.kb/credentials.json (separate CLI token) — this is the only"))
-	line(dim.Render("place the password itself is printed."))
-	fmt.Printf("  %s%s\n", botLeft, rule)
+	printRailBlock("Studio admin login  "+styleMuted.Render("(shown once — save it now)"), []string{
+		railKeyValue("Email", cmd.Render(email)),
+		railKeyValue("Password", cmd.Render(password)),
+		"",
+		dim.Render("Also saved to .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and"),
+		dim.Render("~/.kb/credentials.json (separate CLI token). This is the only"),
+		dim.Render("place the password itself is printed."),
+	})
 	fmt.Println()
 }
 
@@ -272,24 +238,40 @@ func printAgentHandoff(path string) {
 // failure. It intentionally uses one left rail instead of a closed box: the
 // error above remains the primary information, while support is a next step.
 func printSupportHint() {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 
-	border := accent.Render("│")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
+	fmt.Println()
+	printRailBlock("Thanks for taking the time to report this.", []string{
+		dim.Render("Your report helps us make KB Labs more reliable."),
+		"",
+		dim.Render("Please include the failure details above."),
+		"",
+		railKeyValue("Troubleshooting", url.Render("https://docs.kblabs.ru/en/guides/troubleshooting")),
+		railKeyValue("GitHub issues", url.Render("https://github.com/kb-labs-team/kb-labs/issues")),
+		railKeyValue("Telegram", url.Render("@kirill_baranov")),
+	})
+	fmt.Println()
+}
 
-	fmt.Println()
-	line(white.Render("Thanks for taking the time to report this."))
-	line(dim.Render("Your report helps us make KB Labs more reliable."))
-	line("")
-	line(dim.Render("Please include the failure details above."))
-	line("")
-	line("  " + dim.Render("Troubleshooting  ") + url.Render("https://docs.kblabs.ru/en/guides/troubleshooting"))
-	line("  " + dim.Render("GitHub issues    ") + url.Render("https://github.com/kb-labs-team/kb-labs/issues"))
-	line("  " + dim.Render("Telegram         ") + url.Render("@kirill_baranov"))
-	fmt.Println()
+// printRailBlock is the shared terminal UI primitive for onboarding notices.
+// It deliberately starts at column zero: a single left rail groups related
+// information without a boxed frame, inherited indentation, or competing
+// visual language.
+func printRailBlock(title string, lines []string) {
+	rail := styleAccent.Render("│")
+	fmt.Println(styleAccent.Render("◆") + " " + styleBold.Render(title))
+	for _, line := range lines {
+		if line == "" {
+			fmt.Println(rail)
+			continue
+		}
+		fmt.Println(rail + " " + line)
+	}
+}
+
+func railKeyValue(label, value string) string {
+	return styleMuted.Render(fmt.Sprintf("%-18s", label)) + " " + value
 }
 
 // printFatalError preserves the complete fatal error in the terminal so it can

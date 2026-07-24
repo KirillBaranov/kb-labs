@@ -139,6 +139,30 @@ func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 	}
 }
 
+func TestOnboardingNoticesUseSharedLeftRail(t *testing.T) {
+	got := captureStdout(t, func() {
+		printLLMRecommendation()
+		printBootstrapAdminCredentials("admin@example.com", "secret")
+	})
+
+	for _, want := range []string{
+		"Enable LLM for a better experience",
+		"Studio admin login",
+		"AI commit messages",
+		"Email",
+		"│",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("notice missing %q: %q", want, got)
+		}
+	}
+	for _, unwanted := range []string{"╭", "╰", "──", "\n  │"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("notice must use a flush-left left rail, found %q: %q", unwanted, got)
+		}
+	}
+}
+
 func TestPrintFatalErrorPreservesDetailsAndSafeRuntimeContext(t *testing.T) {
 	got := captureStdout(t, func() {
 		printFatalError(errors.New("install: ERR_PNPM_NO_MATCHING_VERSION\nmissing package"), "2.106.0")
