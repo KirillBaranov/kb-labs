@@ -112,6 +112,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "  project detection: %v (continuing)\n", detectErr)
 	}
 	sel.Project = profile
+	if sel.Intent == "commit" {
+		hasChanges, isGitRepo := eligibility.CommitInput(sel.ProjectCWD)
+		switch {
+		case !isGitRepo:
+			sel.PendingInput = "This folder is not a Git repository yet. Initialize Git and make a change before running this command."
+		case !hasChanges:
+			sel.PendingInput = "No changes found yet. Make or stage a change, then run this command to create your commit plan."
+		}
+	}
 	if sel.Intent == "release" && !eligibility.ReleaseEligible(sel.ProjectCWD, profile) {
 		return fmt.Errorf("release setup needs a publishable npm package (name and version, not private) — choose another outcome or run kb-create again in the package workspace")
 	}
@@ -164,6 +173,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		LocalMode:    flagLocal || sel.LocalMode,
 		Status:       "installing",
 		FirstCommand: sel.FirstCommand,
+		PendingInput: sel.PendingInput,
 	}); err != nil {
 		return fmt.Errorf("save onboarding checkpoint: %w", err)
 	}
@@ -275,6 +285,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			LocalMode:    flagLocal || sel.LocalMode,
 			Status:       "needs-repair",
 			FirstCommand: sel.FirstCommand,
+			PendingInput: sel.PendingInput,
 		})
 		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
 	}
@@ -285,6 +296,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		LocalMode:    flagLocal || sel.LocalMode,
 		Status:       "ready",
 		FirstCommand: sel.FirstCommand,
+		PendingInput: sel.PendingInput,
 	}); err != nil {
 		return fmt.Errorf("save onboarding readiness: %w", err)
 	}
@@ -324,7 +336,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Installation only prepares the chosen command. The user decides when to
 	// run it; onboarding never reviews code, creates a git commit, or contacts
 	// an external provider on their behalf.
-	printOutcomeHandoff(result, sel.FirstCommand)
+	printOutcomeHandoff(result, sel.FirstCommand, sel.PendingInput)
 
 	return nil
 }

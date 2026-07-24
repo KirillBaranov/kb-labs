@@ -38,6 +38,6 @@ func runContinue(_ *cobra.Command, args []string) error {
 	if state.Status != "ready" {
 		return fmt.Errorf("onboarding for %q is incomplete — run kb-create doctor, then rerun kb-create %q", state.Outcome, projectDir)
 	}
-	printOutcomeHandoff(&installer.Result{ProjectCWD: projectDir}, state.FirstCommand)
+	printOutcomeHandoff(&installer.Result{ProjectCWD: projectDir}, state.FirstCommand, state.PendingInput)
 	return nil
 }

@@ -27,6 +27,7 @@ type State struct {
 	LocalMode    bool                   `json:"localMode"`
 	Status       string                 `json:"status"`
 	FirstCommand *manifest.FirstCommand `json:"firstCommand,omitempty"`
+	PendingInput string                 `json:"pendingInput,omitempty"`
 	UpdatedAt    time.Time              `json:"updatedAt"`
 }
 

@@ -3,8 +3,10 @@
 package eligibility
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/kb-labs/create/internal/detect"
@@ -43,4 +45,22 @@ func publishablePackage(dir string) bool {
 		return false
 	}
 	return !pkg.Private && pkg.Name != "" && pkg.Version != ""
+}
+
+// CommitInput reports whether git currently has something for a commit plan.
+// A clean repository is a valid installation target, but its handoff must be
+// pending rather than pretend the first command will succeed immediately.
+func CommitInput(projectDir string) (hasChanges bool, isGitRepo bool) {
+	root := exec.Command("git", "rev-parse", "--show-toplevel") // #nosec G204 -- fixed command
+	root.Dir = projectDir
+	if root.Run() != nil {
+		return false, false
+	}
+	status := exec.Command("git", "status", "--porcelain") // #nosec G204 -- fixed command
+	status.Dir = projectDir
+	output, err := status.Output()
+	if err != nil {
+		return false, true
+	}
+	return len(bytes.TrimSpace(output)) > 0, true
 }

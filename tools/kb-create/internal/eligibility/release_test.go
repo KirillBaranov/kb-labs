@@ -2,6 +2,7 @@ package eligibility
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -22,6 +23,25 @@ func TestReleaseEligible(t *testing.T) {
 	profile := &detect.ProjectProfile{Monorepo: &detect.MonorepoInfo{Packages: []detect.PackageInfo{{Path: "packages/lib"}}}}
 	if !ReleaseEligible(project, profile) {
 		t.Fatal("publishable workspace package must be release eligible")
+	}
+}
+
+func TestCommitInput(t *testing.T) {
+	project := t.TempDir()
+	if changes, git := CommitInput(project); changes || git {
+		t.Fatalf("CommitInput(non-git) = (%v, %v), want (false, false)", changes, git)
+	}
+	if err := exec.Command("git", "init", "-q", project).Run(); err != nil {
+		t.Fatal(err)
+	}
+	if changes, git := CommitInput(project); changes || !git {
+		t.Fatalf("CommitInput(clean) = (%v, %v), want (false, true)", changes, git)
+	}
+	if err := os.WriteFile(filepath.Join(project, "change.txt"), []byte("change"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if changes, git := CommitInput(project); !changes || !git {
+		t.Fatalf("CommitInput(dirty) = (%v, %v), want (true, true)", changes, git)
 	}
 }
 

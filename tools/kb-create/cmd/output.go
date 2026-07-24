@@ -208,7 +208,7 @@ func printBootstrapAdminCredentials(email, password string) {
 // printOutcomeHandoff ends onboarding with one safe, runnable next step. The
 // selected outcome is the sole source of this action: it never infers review,
 // commit, or service commands from the project.
-func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand) {
+func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand, pendingInput string) {
 	if r.ServicesWarning != "" {
 		newOutput().Warn(r.ServicesWarning)
 		fmt.Println()
@@ -236,6 +236,10 @@ func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand) {
 	fmt.Println()
 	fmt.Println("  Run this next:")
 	fmt.Println("    " + styleWhite.Render(first.Command))
+	if pendingInput != "" {
+		fmt.Println()
+		fmt.Println("  Before you run it: " + styleMuted.Render(pendingInput))
+	}
 	if first.Studio {
 		fmt.Println()
 		fmt.Println("  Diagnostics: " + styleMuted.Render("kb-create doctor"))

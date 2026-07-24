@@ -63,6 +63,10 @@ type Selection struct {
 	// gives post-install code one stable, safe command to hand back to the
 	// user instead of deriving it from generic help text.
 	FirstCommand *manifest.FirstCommand
+	// PendingInput describes a valid install whose first command needs user
+	// input (for example, a commit plan on a clean repository). It is not an
+	// installation error and is persisted for `kb-create continue`.
+	PendingInput string
 	// PluginVersions/ServiceVersions override the installed version for a
 	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
 	// ID. Separate maps because a service and a plugin can share the same

@@ -63,7 +63,7 @@ func TestPrintOutcomeHandoffShowsOnlySelectedSafeCommand(t *testing.T) {
 			Description: "Prepare a release plan without publishing packages.",
 			Operation:   manifest.CommandOperationAnalyze,
 			Studio:      true,
-		})
+		}, "")
 	})
 	if !strings.Contains(got, "kb release plan") {
 		t.Fatalf("handoff did not show first command: %q", got)
@@ -80,10 +80,22 @@ func TestPrintOutcomeHandoffRefusesMutatingFirstCommand(t *testing.T) {
 		printOutcomeHandoff(&installer.Result{}, &manifest.FirstCommand{
 			Command:   "kb release publish",
 			Operation: manifest.CommandOperationMutate,
-		})
+		}, "")
 	})
 	if strings.Contains(got, "Run this next") || strings.Contains(got, "kb release publish") {
 		t.Errorf("mutating command must not be offered in handoff: %q", got)
+	}
+}
+
+func TestPrintOutcomeHandoffExplainsPendingInput(t *testing.T) {
+	got := captureStdout(t, func() {
+		printOutcomeHandoff(&installer.Result{}, &manifest.FirstCommand{
+			Command:   "kb commit generate",
+			Operation: manifest.CommandOperationAnalyze,
+		}, "No changes found yet. Make a change first.")
+	})
+	if !strings.Contains(got, "Before you run it") || !strings.Contains(got, "No changes found yet") {
+		t.Errorf("handoff did not explain pending input: %q", got)
 	}
 }
 

@@ -11,11 +11,12 @@ import (
 func TestWriteReadRoundTripOmitsSecrets(t *testing.T) {
 	project := t.TempDir()
 	want := State{
-		Outcome:     "release",
-		ProjectDir:  project,
-		PlatformDir: "/tmp/platform",
-		LocalMode:   true,
-		Status:      "ready",
+		Outcome:      "release",
+		ProjectDir:   project,
+		PlatformDir:  "/tmp/platform",
+		LocalMode:    true,
+		Status:       "ready",
+		PendingInput: "No changes found yet.",
 		FirstCommand: &manifest.FirstCommand{
 			Command: "kb release plan", Operation: manifest.CommandOperationAnalyze,
 		},
@@ -29,6 +30,9 @@ func TestWriteReadRoundTripOmitsSecrets(t *testing.T) {
 	}
 	if got.Outcome != want.Outcome || got.FirstCommand == nil || got.FirstCommand.Command != want.FirstCommand.Command {
 		t.Fatalf("state = %+v, want outcome and first command preserved", got)
+	}
+	if got.PendingInput != want.PendingInput {
+		t.Errorf("PendingInput = %q, want %q", got.PendingInput, want.PendingInput)
 	}
 	raw, err := os.ReadFile(Path(project))
 	if err != nil {
