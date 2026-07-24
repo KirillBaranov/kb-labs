@@ -47,29 +47,16 @@ func (stdPrompter) ConfirmAddClaudeMd(snippet string) claude.PromptResponse {
 	}
 }
 
-// printClaudePlan makes the optional agent setup explicit before package
-// installation starts. It describes additive destinations only — no existing
-// CLAUDE.md text or non-KB Labs skill is ever replaced.
-func printClaudePlan(projectDir string, skipClaudeMd bool) {
-	lines := []string{
-		"KB Labs skills will be added under " + filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"),
-		"They cover plugin creation, workflows, and troubleshooting.",
-	}
-	if skipClaudeMd {
-		lines = append(lines, "CLAUDE.md will not be changed.")
-	} else {
-		lines = append(lines, "A separately marked KB Labs section will be added to "+filepath.Join(projectDir, "CLAUDE.md")+".")
-	}
-	lines = append(lines, "Existing content and non-KB Labs skills are preserved.")
-	printRailBlock("Agent tools selected", lines)
-	fmt.Println()
-}
-
 // printClaudeSummary shows the exact additive changes after setup completes.
 func printClaudeSummary(projectDir string, r *claude.Result) {
 	if r == nil {
 		return
 	}
+	printRailNotice("Agent tools installed", claudeSummaryLines(projectDir, r))
+	fmt.Println()
+}
+
+func claudeSummaryLines(projectDir string, r *claude.Result) []string {
 	added, updated, removed := len(r.SkillsAdded), len(r.SkillsUpdated), len(r.SkillsRemoved)
 	lines := make([]string, 0, 4)
 	if added+updated+removed > 0 {
@@ -97,12 +84,7 @@ func printClaudeSummary(projectDir string, r *claude.Result) {
 		lines = append(lines, "CLAUDE.md was left unchanged.")
 	}
 	lines = append(lines, "Existing content and non-KB Labs skills were preserved.")
-	title := "Agent tools installed"
-	if removed > 0 {
-		title = "Agent tools removed"
-	}
-	printRailBlock(title, lines)
-	fmt.Println()
+	return lines
 }
 
 func claudeMdActionLabel(action, version string) string {

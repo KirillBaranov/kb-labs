@@ -146,10 +146,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			fmt.Println(summary)
 		}
 	}
-	if sel.ClaudeEnabled {
-		printClaudePlan(sel.ProjectCWD, sel.SkipClaudeMd)
-	}
-
 	// Create platform directory.
 	if err := os.MkdirAll(sel.PlatformDir, 0o750); err != nil {
 		return fmt.Errorf("create platform dir: %w", err)
@@ -213,8 +209,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	tc.Track("install_completed", map[string]string{
 		"duration_s": fmt.Sprintf("%.0f", result.Duration.Seconds()),
 	})
-
-	printSuccess(result)
 
 	// Write project .kb/kb.config.jsonc — after install so we can include
 	// Gateway credentials (demo mode) obtained from the already-registered
@@ -286,8 +280,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		scaffoldOpts.LLMKey = sel.LLMKey
 	}
 
-	printDataConsent(sel.TelemetryEnabled, wantsLLM)
-
 	// Write full platform config to platformDir (installer-owned, always overwritten).
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold platform config: %w", err)
@@ -301,11 +293,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 	customPluginDir := ""
 	agentHandoffPath := ""
+	agentLines := []string{}
 	if sel.Intent == "plugin-author" {
+		customSpinner := newSpinner()
+		customSpinner.setLabel("[5/5] Installing custom plugin")
+		customSpinner.start()
 		custom, err := customplugin.Create(context.Background(), sel.ProjectCWD, customplugin.Contract{
 			Name:        sel.CustomCommandName,
 			Description: sel.CustomCommandDescription,
-		})
+		}, customplugin.Hooks{OnStep: customSpinner.setLabel})
+		customSpinner.stop(err)
 		if err != nil {
 			_ = onboarding.Write(onboarding.State{
 				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
@@ -332,6 +329,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("write custom plugin agent handoff: %w", err)
 		}
 	}
+
 	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
 		_ = onboarding.Write(onboarding.State{
 			Outcome:           sel.Intent,
@@ -385,7 +383,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if cerr != nil {
 			log.Printf("claude assets: %v (continuing)", cerr)
 		} else if cr != nil {
-			printClaudeSummary(result.ProjectCWD, cr)
+			agentLines = claudeSummaryLines(result.ProjectCWD, cr)
 			tc.Track("claude_installed", map[string]string{
 				"devkit":   cr.DevkitVersion,
 				"added":    fmt.Sprintf("%d", len(cr.SkillsAdded)),
@@ -398,9 +396,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Installation only prepares the chosen command. The user decides when to
 	// run it; onboarding never reviews code, creates a git commit, or contacts
 	// an external provider on their behalf.
-	printOutcomeHandoff(result, sel.FirstCommand, sel.PendingInput)
-	printCustomPluginSummary(customPluginDir, sel.CustomCommandName)
-	printAgentHandoff(agentHandoffPath)
+	printCompletionBlock(result, sel.FirstCommand, sel.PendingInput, customPluginDir, sel.CustomCommandName, agentHandoffPath, agentLines, wantsLLM, sel.TelemetryEnabled)
 
 	return nil
 }
@@ -526,7 +522,6 @@ func (s *spinner) start() {
 
 	go func() {
 		i := 0
-		started := time.Now()
 		for {
 			select {
 			case <-s.done:
@@ -539,13 +534,13 @@ func (s *spinner) start() {
 
 				frame := frames[i%len(frames)]
 				i++
-				message := dim.Render(loaderMessage(time.Since(started)))
 
 				// \r returns to column 0; \033[K clears to end of line. Keep
-				// the live UI to one line — package-manager detail is captured,
-				// not mixed with the user's progress indicator.
+				// the live UI to one physical line. A decorative trailing message
+				// can wrap on narrow terminals (80 columns), after which \r starts
+				// on the wrapped line and leaves apparent duplicate spinners.
 				if detail == "" {
-					fmt.Print(spinnerLine(frame, label, dim.Render("│")+"  "+message))
+					fmt.Print(spinnerLine(frame, label, ""))
 					continue
 				}
 				fmt.Print(spinnerLine(frame, label, dim.Render(detail)))

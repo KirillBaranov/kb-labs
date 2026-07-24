@@ -515,6 +515,13 @@ func (ins *Installer) symlinkCLI(platformDir string) {
 	case result.NeedRestart && result.HintCmd != "":
 		ins.Log.Printf("  [PATH] Run to activate: %s", result.HintCmd)
 	}
+	if repaired, repairErr := platform.RepairLegacyKBAliases(); repairErr != nil {
+		ins.Log.Printf("  [WARN] repair legacy kb shell aliases: %v", repairErr)
+	} else {
+		for _, path := range repaired {
+			ins.Log.Printf("  [SHELL] removed legacy kb alias from %s", path)
+		}
+	}
 }
 
 // installBinaries downloads Go binaries from GitHub Releases into <platformDir>/bin/

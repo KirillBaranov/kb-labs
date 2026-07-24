@@ -41,9 +41,17 @@ func runContinue(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	printOutcomeHandoff(&installer.Result{ProjectCWD: projectDir}, state.FirstCommand, state.PendingInput)
-	printCustomPluginSummary(state.CustomPluginDir, state.CustomCommandName)
-	printAgentHandoff(state.AgentHandoff)
+	printCompletionBlock(
+		&installer.Result{ProjectCWD: projectDir, PlatformDir: state.PlatformDir},
+		state.FirstCommand,
+		state.PendingInput,
+		state.CustomPluginDir,
+		state.CustomCommandName,
+		state.AgentHandoff,
+		nil,
+		false,
+		false,
+	)
 	return nil
 }
 
@@ -66,6 +74,12 @@ func recoverOnboarding(state onboarding.State) (onboarding.State, error) {
 		return onboarding.State{}, fmt.Errorf("onboarding for %q is not ready: %w — run kb-create doctor, then rerun kb-create %q", state.Outcome, err, state.ProjectDir)
 	}
 	if state.CustomCommandName != "" {
+		if state.CustomPluginDir == "" {
+			return onboarding.State{}, fmt.Errorf("custom command %q has no plugin directory in onboarding state — run kb-create %q", state.CustomCommandName, state.ProjectDir)
+		}
+		if err := customplugin.EnsureBuilt(context.Background(), state.CustomPluginDir); err != nil {
+			return onboarding.State{}, fmt.Errorf("build custom command %q: %w — run kb-create doctor, then rerun kb-create %q", state.CustomCommandName, err, state.ProjectDir)
+		}
 		if err := customplugin.CheckDiscovery(context.Background(), state.ProjectDir, state.CustomCommandName); err != nil {
 			return onboarding.State{}, fmt.Errorf("custom command %q is not ready: %w — run kb-create doctor, then rerun kb-create %q", state.CustomCommandName, err, state.ProjectDir)
 		}

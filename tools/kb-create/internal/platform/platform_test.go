@@ -258,6 +258,42 @@ func TestEnsureInPATH_AlreadyInPATH(t *testing.T) {
 	}
 }
 
+func TestRepairLegacyKBAliasesRemovesOnlyKnownLines(t *testing.T) {
+	home := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	t.Setenv("HOME", home)
+	t.Cleanup(func() { _ = os.Setenv("HOME", oldHome) })
+
+	rc := filepath.Join(home, ".zshrc")
+	content := "export PATH=\"$HOME/.local/bin:$PATH\"\n" +
+		"alias kb='pnpm --silent kb'\n" +
+		`pnpm() { if [[ "$1" == "kb" ]]; then command pnpm --silent "$@"; else command pnpm "$@"; fi }` + "\n" +
+		"alias ll='ls -la'\n"
+	if err := os.WriteFile(rc, []byte(content), 0o644); err != nil {
+		t.Fatalf("write shell config: %v", err)
+	}
+
+	changed, err := RepairLegacyKBAliases()
+	if err != nil {
+		t.Fatalf("RepairLegacyKBAliases: %v", err)
+	}
+	if len(changed) != 1 || changed[0] != rc {
+		t.Fatalf("changed = %v, want [%s]", changed, rc)
+	}
+
+	data, err := os.ReadFile(rc)
+	if err != nil {
+		t.Fatalf("read shell config: %v", err)
+	}
+	got := string(data)
+	if strings.Contains(got, "alias kb=") || strings.Contains(got, "pnpm()") {
+		t.Fatalf("legacy kb integration remains:\n%s", got)
+	}
+	if !strings.Contains(got, "alias ll='ls -la'") || !strings.Contains(got, "export PATH") {
+		t.Fatalf("unrelated shell config was changed:\n%s", got)
+	}
+}
+
 // wrapperName returns the OS-specific wrapper filename used by
 // WriteCLIWrapper (`kb` on Unix, `kb.cmd` on Windows).
 func wrapperName() string {

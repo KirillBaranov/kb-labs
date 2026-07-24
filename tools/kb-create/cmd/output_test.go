@@ -117,6 +117,46 @@ func TestPrintCustomPluginSummaryShowsPaths(t *testing.T) {
 	}
 }
 
+func TestPrintCompletionBlockUsesOneSharedRail(t *testing.T) {
+	got := captureStdout(t, func() {
+		printCompletionBlock(&installer.Result{
+			PlatformDir: "/platform",
+			ProjectCWD:  "/project",
+		}, &manifest.FirstCommand{
+			Command:   "kb hello-world hello",
+			Operation: manifest.CommandOperationAnalyze,
+		}, "", "/project/.kb/plugins/hello-world", "hello-world", "/project/.kb/onboarding/agent-handoff.md", []string{
+			"Skills             +6 added",
+		}, false, false)
+	})
+	for _, want := range []string{
+		"◆ KB Labs is ready",
+		"│ Installed",
+		"│ Agent tools",
+		"│ Next step",
+		"│ Continue",
+		"│ Configuration",
+		"hello-world",
+		"https://docs.kblabs.ru/en/guides/first-plugin",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("completion block missing %q: %q", want, got)
+		}
+	}
+}
+
+func TestPrintFatalErrorUsesErrorRail(t *testing.T) {
+	got := captureStdout(t, func() {
+		printFatalError(errors.New("something broke"), "dev")
+	})
+	if !strings.Contains(got, "✗ Installation failed") {
+		t.Fatalf("fatal error did not use the error rail: %q", got)
+	}
+	if !strings.Contains(got, "something broke") {
+		t.Fatalf("fatal error omitted the error details: %q", got)
+	}
+}
+
 func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 	got := captureStdout(t, printSupportHint)
 	for _, want := range []string{

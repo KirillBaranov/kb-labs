@@ -88,15 +88,85 @@ func (o output) BulletDim(label, details string) {
 	fmt.Printf("    %s %-15s  %s\n", o.dim.Render("○"), o.dim.Render(label), o.dim.Render(details))
 }
 
-// ── install success banner ────────────────────────────────────────────────────
+// ── shared rail UI kit ───────────────────────────────────────────────────────
 
-func printSuccess(r *installer.Result) {
-	fmt.Println()
-	printRailBlock("KB Labs installed successfully", []string{
+type railSection struct {
+	Title string
+	Lines []string
+}
+
+type railBlock struct {
+	Title    string
+	Sections []railSection
+	Footer   []string
+	Error    bool
+}
+
+// printCompletionBlock renders the single end-of-install handoff. Keep all
+// user-facing next steps here so success output does not fragment into a
+// collection of unrelated notices.
+func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pendingInput, pluginDir, commandName, handoffPath string, agentLines []string, llmEnabled, analyticsEnabled bool) {
+	installed := []string{
 		railKeyValue("Platform", styleBlue.Render(r.PlatformDir)),
 		railKeyValue("Project", styleBlue.Render(r.ProjectCWD)),
-	})
-	fmt.Println()
+	}
+	if pluginDir != "" && commandName != "" {
+		installed = append(installed,
+			railKeyValue("Plugin", commandName),
+			railKeyValue("Status", "registered and ready"),
+		)
+	}
+
+	next := []string{}
+	if first == nil {
+		next = append(next, railKeyValue("Run", "kb-create doctor"))
+	} else if first.Operation != manifest.CommandOperationAnalyze {
+		next = append(next, "Run kb-create doctor before continuing.")
+	} else {
+		next = append(next, railKeyValue("Run", styleWhite.Render("cd "+shellQuote(r.ProjectCWD)+" && "+first.Command)))
+		if pendingInput != "" {
+			next = append(next, "Before running it: "+styleMuted.Render(pendingInput))
+		}
+	}
+
+	continueLines := []string{
+		"With an agent — paste this prompt:",
+		"Create a KB Labs plugin that [describe your business case].",
+		"It should expose a safe first command and include tests.",
+		railKeyValue("Read docs", styleBlue.Render("https://docs.kblabs.ru/en/guides/first-plugin")),
+	}
+	if handoffPath != "" {
+		continueLines = append(continueLines, railKeyValue("Handoff", styleMuted.Render(handoffPath)))
+	}
+
+	configLines := []string{
+		railKeyValue("LLM", statusLabel(llmEnabled)),
+		railKeyValue("Analytics", statusLabel(analyticsEnabled)),
+	}
+	sections := []railSection{{Title: "Installed", Lines: installed}}
+	if len(agentLines) > 0 {
+		sections = append(sections, railSection{Title: "Agent tools", Lines: agentLines})
+	}
+	sections = append(sections,
+		railSection{Title: "Next step", Lines: next},
+		railSection{Title: "Continue", Lines: continueLines},
+		railSection{Title: "Configuration", Lines: configLines},
+	)
+	printRailBlock(railBlock{Title: "KB Labs is ready", Sections: sections})
+}
+
+func statusLabel(enabled bool) string {
+	if enabled {
+		return styleBlue.Render("on")
+	}
+	return styleMuted.Render("off")
+}
+
+func shellQuote(value string) string {
+	if value != "" && !strings.ContainsAny(value, " \t\n'\";$&()[]{}<>|*") {
+		return value
+	}
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 // printDataConsent shows a short data-use summary so the user always knows
@@ -137,7 +207,7 @@ func printBootstrapAdminCredentials(email, password string) {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
 
-	printRailBlock("Studio admin login  "+styleMuted.Render("(shown once — save it now)"), []string{
+	printRailNotice("Studio admin login  "+styleMuted.Render("(shown once — save it now)"), []string{
 		railKeyValue("Email", cmd.Render(email)),
 		railKeyValue("Password", cmd.Render(password)),
 		"",
@@ -220,7 +290,7 @@ func printSupportHint() {
 	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 
 	fmt.Println()
-	printRailBlock("Thanks for taking the time to report this.", []string{
+	printRailNotice("Thanks for taking the time to report this.", []string{
 		dim.Render("Your report helps us make KB Labs more reliable."),
 		"",
 		dim.Render("Please include the failure details above."),
@@ -236,16 +306,41 @@ func printSupportHint() {
 // It deliberately starts at column zero: a single left rail groups related
 // information without a boxed frame, inherited indentation, or competing
 // visual language.
-func printRailBlock(title string, lines []string) {
+func printRailBlock(block railBlock) {
 	rail := styleAccent.Render("│")
-	fmt.Println(styleAccent.Render("◆") + " " + styleBold.Render(title))
-	for _, line := range lines {
-		if line == "" {
-			fmt.Println(rail)
-			continue
-		}
-		fmt.Println(rail + " " + line)
+	icon := styleAccent.Render("◆")
+	if block.Error {
+		icon = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("✗")
 	}
+	fmt.Println(icon + " " + styleBold.Render(block.Title))
+	for _, section := range block.Sections {
+		if section.Title != "" {
+			fmt.Println(rail)
+			fmt.Println(rail + " " + styleBold.Render(section.Title))
+		}
+		for _, line := range section.Lines {
+			printRailLine(rail, line)
+		}
+	}
+	for _, line := range block.Footer {
+		printRailLine(rail, line)
+	}
+}
+
+func printRailNotice(title string, lines []string) {
+	printRailBlock(railBlock{Title: title, Sections: []railSection{{Lines: lines}}})
+}
+
+func printRailErrorBlock(title string, lines []string) {
+	printRailBlock(railBlock{Title: title, Error: true, Sections: []railSection{{Lines: lines}}})
+}
+
+func printRailLine(rail, line string) {
+	if line == "" {
+		fmt.Println(rail)
+		return
+	}
+	fmt.Println(rail + " " + line)
 }
 
 func railKeyValue(label, value string) string {
@@ -256,17 +351,12 @@ func railKeyValue(label, value string) string {
 // be pasted into an issue. It intentionally includes only runtime facts, never
 // project paths, source code, API keys, or user configuration values.
 func printFatalError(err error, version string) {
-	fmt.Println()
-	fmt.Println(styleDivider)
-	fmt.Println()
-	fmt.Println("  " + styleBold.Render("Installation failed"))
-	fmt.Println()
-	fmt.Println("  " + styleMuted.Render("Failure details — copy this when reporting the issue:"))
+	lines := []string{"Failure details — copy this when reporting the issue:"}
 	for _, line := range strings.Split(strings.TrimSpace(err.Error()), "\n") {
-		fmt.Println("  " + line)
+		lines = append(lines, line)
 	}
-	fmt.Println()
-	fmt.Println("  " + styleMuted.Render("Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version))
+	lines = append(lines, "", "Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version)
+	printRailErrorBlock("Installation failed", lines)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

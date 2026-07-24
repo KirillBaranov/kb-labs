@@ -177,6 +177,66 @@ func EnsureInPATH(binDir string) PathResult {
 	}
 }
 
+// RepairLegacyKBAliases removes the old shell integration that routed `kb`
+// through `pnpm --silent kb`. That alias shadows the real launcher we install
+// in ~/.local/bin/kb and makes every command appear to succeed without output.
+// Only the exact legacy lines are removed; unrelated shell configuration is
+// left untouched.
+func RepairLegacyKBAliases() ([]string, error) {
+	if runtime.GOOS == "windows" {
+		return nil, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolve home directory: %w", err)
+	}
+
+	legacy := map[string]struct{}{
+		"alias kb='pnpm --silent kb'": {},
+		`alias kb="pnpm --silent kb"`: {},
+		`pnpm() { if [[ "$1" == "kb" ]]; then command pnpm --silent "$@"; else command pnpm "$@"; fi }`: {},
+	}
+	paths := []string{
+		filepath.Join(home, ".zshrc"),
+		filepath.Join(home, ".zprofile"),
+		filepath.Join(home, ".bashrc"),
+		filepath.Join(home, ".bash_profile"),
+	}
+	var changed []string
+	for _, path := range paths {
+		data, err := os.ReadFile(path) // #nosec G304 -- paths are fixed shell rc files in the user's home
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return changed, fmt.Errorf("read shell config %s: %w", path, err)
+		}
+
+		lines := strings.SplitAfter(string(data), "\n")
+		kept := make([]string, 0, len(lines))
+		removed := false
+		for _, line := range lines {
+			if _, ok := legacy[strings.TrimSpace(line)]; ok {
+				removed = true
+				continue
+			}
+			kept = append(kept, line)
+		}
+		if !removed {
+			continue
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return changed, fmt.Errorf("stat shell config %s: %w", path, err)
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(kept, "")), info.Mode().Perm()); err != nil { // #nosec G306 -- preserve the existing shell config permissions
+			return changed, fmt.Errorf("write shell config %s: %w", path, err)
+		}
+		changed = append(changed, path)
+	}
+	return changed, nil
+}
+
 // ── Unix ──────────────────────────────────────────────────────────────────────
 
 func ensureUnixPATH(binDir string) PathResult {
