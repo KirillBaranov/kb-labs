@@ -124,6 +124,7 @@ const (
 	stageIntent
 	stageCustom
 	stageStep // generic runner for the chosen intent's envVar/llmProvider/studioAccess steps
+	stageAnalytics
 	stageConfirm
 )
 
@@ -175,6 +176,7 @@ type wizardModel struct {
 	studioCursor int // 0 = Secured, 1 = Local
 
 	telemetryEnabled bool
+	analyticsCursor  int // 0 = share anonymous technical events, 1 = keep analytics off
 	demoMode         bool
 }
 
@@ -259,6 +261,7 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 		// Local-first is the launch default. Cloud/team onboarding is not a
 		// launch-ready flow, so it must never be selected implicitly.
 		localMode:        true,
+		analyticsCursor:  1,
 		telemetryEnabled: false,
 	}, nil
 }
@@ -306,6 +309,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCustomKey(msg)
 	case stageStep:
 		return m.handleStepKey(msg)
+	case stageAnalytics:
+		return m.handleAnalyticsKey(msg)
 	case stageConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -332,24 +337,24 @@ func (m wizardModel) currentStep() (manifest.IntentStep, bool) {
 	return steps[m.stepIndex], true
 }
 
-// enterSteps moves into stageStep, or straight to stageConfirm when the
-// chosen intent has no setup steps at all — the true "1 screen to confirm"
-// fast path for intents like "explore" and "plugin-author".
+// enterSteps moves into stageStep, or to the independent analytics decision
+// when the chosen intent has no setup steps.
 func (m *wizardModel) enterSteps() {
 	m.stepIndex = 0
 	if len(m.currentIntent().Steps) == 0 {
-		m.stage = stageConfirm
+		m.stage = stageAnalytics
 		return
 	}
 	m.stage = stageStep
 	m.resetCurrentStepState()
 }
 
-// advanceStep moves to the next step, or stageConfirm once the list is exhausted.
+// advanceStep moves to the next step, or the independent analytics decision
+// once the list is exhausted.
 func (m *wizardModel) advanceStep() {
 	m.stepIndex++
 	if m.stepIndex >= len(m.currentIntent().Steps) {
-		m.stage = stageConfirm
+		m.stage = stageAnalytics
 		return
 	}
 	m.resetCurrentStepState()
@@ -606,11 +611,28 @@ func (m wizardModel) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "esc", "n", "N":
 		m.cancelled = true
 		return m, tea.Quit
-	case "t", "T":
-		m.telemetryEnabled = !m.telemetryEnabled
-		return m, nil
 	case "enter", "y", "Y":
 		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m wizardModel) handleAnalyticsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.analyticsCursor > 0 {
+			m.analyticsCursor--
+		}
+	case "down", "j":
+		if m.analyticsCursor < 1 {
+			m.analyticsCursor++
+		}
+	case "enter":
+		m.telemetryEnabled = m.analyticsCursor == 0
+		m.stage = stageConfirm
 	}
 	return m, nil
 }
@@ -627,10 +649,39 @@ func (m wizardModel) View() string {
 		return m.viewCustom()
 	case stageStep:
 		return m.viewStep()
+	case stageAnalytics:
+		return m.viewAnalytics()
 	case stageConfirm:
 		return m.viewConfirm()
 	}
 	return ""
+}
+
+func (m wizardModel) viewAnalytics() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  analytics\n\n")
+	b.WriteString("  " + sectionStyle.Render("Share anonymous technical usage events?") + "\n")
+	b.WriteString(dimStyle.Render("  This helps improve onboarding. It never changes what KB Labs installs or runs.") + "\n\n")
+	options := []struct{ name, desc string }{
+		{"Share analytics", "Installation outcome, selected outcome ID, package manager, and error category. No code, diff, secrets, or prompts."},
+		{"Keep analytics off", "No usage events are sent. You can enable it later without reinstalling."},
+	}
+	for i, opt := range options {
+		cursor := "  "
+		if i == m.analyticsCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.analyticsCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	return b.String()
 }
 
 func (m wizardModel) viewDirs() string {
@@ -938,7 +989,7 @@ func (m wizardModel) viewConfirm() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("  enter install · t toggle analytics · n cancel"))
+	b.WriteString(helpStyle.Render("  enter install · n cancel"))
 	return b.String()
 }
 

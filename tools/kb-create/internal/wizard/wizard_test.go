@@ -393,14 +393,14 @@ func TestApplyIntentBundleOverwritesBinariesWhenSpecified(t *testing.T) {
 
 // ── enterSteps / advanceStep ─────────────────────────────────────────────────
 
-func TestEnterStepsSkipsToConfirmWhenIntentHasNoSteps(t *testing.T) {
+func TestEnterStepsMovesToAnalyticsWhenIntentHasNoSteps(t *testing.T) {
 	m := wizardModel{
 		manifest:       sampleManifest(),
 		selectedIntent: intentIndex(sampleManifest(), "explore"),
 	}
 	m.enterSteps()
-	if m.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm — explore has no steps, must be a 1-screen-to-confirm intent", m.stage)
+	if m.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics — every interactive path must choose analytics", m.stage)
 	}
 }
 
@@ -419,7 +419,7 @@ func TestEnterStepsEntersStepRunnerWhenIntentHasSteps(t *testing.T) {
 	}
 }
 
-func TestAdvanceStepMovesToConfirmAfterLastStep(t *testing.T) {
+func TestAdvanceStepMovesToAnalyticsAfterLastStep(t *testing.T) {
 	man := sampleManifest()
 	m := wizardModel{
 		manifest:       man,
@@ -428,8 +428,8 @@ func TestAdvanceStepMovesToConfirmAfterLastStep(t *testing.T) {
 		stage:          stageStep,
 	}
 	m.advanceStep()
-	if m.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm after the only step advances", m.stage)
+	if m.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics after the only step advances", m.stage)
 	}
 }
 
@@ -468,8 +468,8 @@ func TestHandleEnvVarKeySkipProducesNoValue(t *testing.T) {
 	if len(got.envValues) != 0 {
 		t.Errorf("envValues = %v, want empty after skip", got.envValues)
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm (release's only step just advanced)", got.stage)
+	if got.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics (release's only step just advanced)", got.stage)
 	}
 }
 
@@ -500,8 +500,8 @@ func TestHandleEnvVarKeyConfigureThenSubmitStoresValue(t *testing.T) {
 	if got2.envValues["NPM_TOKEN"] != "npm_abc123" {
 		t.Errorf("envValues[NPM_TOKEN] = %q, want npm_abc123", got2.envValues["NPM_TOKEN"])
 	}
-	if got2.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	if got2.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics", got2.stage)
 	}
 }
 
@@ -575,8 +575,8 @@ func TestHandleLLMProviderKeyOpenAIRequiresKey(t *testing.T) {
 	if got2.llmProvider != "openai" {
 		t.Errorf("llmProvider = %q, want openai", got2.llmProvider)
 	}
-	if got2.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	if got2.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics", got2.stage)
 	}
 }
 
@@ -602,8 +602,8 @@ func TestHandleStudioAccessKeySelectsLocal(t *testing.T) {
 	if !got.localMode {
 		t.Errorf("localMode = false after selecting Local, want true")
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
+	if got.stage != stageAnalytics {
+		t.Errorf("stage = %v after Studio selection, want stageAnalytics", got.stage)
 	}
 }
 
@@ -825,7 +825,23 @@ func TestToSelectionStudioLocal(t *testing.T) {
 	}
 }
 
-// ── Confirm stage: cancel vs confirm vs telemetry toggle ────────────────────
+// ── Analytics and confirm stages ────────────────────────────────────────────
+
+func TestHandleAnalyticsKeyRequiresExplicitChoice(t *testing.T) {
+	m := wizardModel{stage: stageAnalytics, analyticsCursor: 1}
+	next, _ := m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if got.stage != stageConfirm || got.telemetryEnabled {
+		t.Errorf("analytics off selection = stage %v, telemetry %v; want confirm and false", got.stage, got.telemetryEnabled)
+	}
+
+	m.analyticsCursor = 0
+	next, _ = m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got = next.(wizardModel)
+	if got.stage != stageConfirm || !got.telemetryEnabled {
+		t.Errorf("analytics on selection = stage %v, telemetry %v; want confirm and true", got.stage, got.telemetryEnabled)
+	}
+}
 
 func TestHandleConfirmKeyCancels(t *testing.T) {
 	for _, tc := range []struct {
@@ -871,18 +887,6 @@ func TestHandleConfirmKeyConfirms(t *testing.T) {
 				t.Errorf("handleConfirmKey(%s): expected tea.Quit cmd, got nil", tc.name)
 			}
 		})
-	}
-}
-
-func TestHandleConfirmKeyTogglesTelemetry(t *testing.T) {
-	m := wizardModel{stage: stageConfirm, selectedIntent: -1, telemetryEnabled: true}
-	next, _ := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
-	got := next.(wizardModel)
-	if got.telemetryEnabled {
-		t.Error("telemetryEnabled = true after 't', want false")
-	}
-	if got.cancelled {
-		t.Error("cancelled = true after 't', want false — toggling telemetry must not quit")
 	}
 }
 
