@@ -18,6 +18,17 @@ type Logger struct {
 
 // New creates a logger that writes to stderr and to <platformDir>/.kb/logs/install-<ts>.log.
 func New(platformDir string) (*Logger, error) {
+	return newLogger(platformDir, true)
+}
+
+// NewFileOnly creates an install logger that writes only to the log file.
+// Interactive commands use it while their terminal UI owns the cursor; raw
+// package-manager output remains available in the log and fatal diagnostics.
+func NewFileOnly(platformDir string) (*Logger, error) {
+	return newLogger(platformDir, false)
+}
+
+func newLogger(platformDir string, includeStderr bool) (*Logger, error) {
 	logsDir := filepath.Join(platformDir, ".kb", "logs")
 	if err := os.MkdirAll(logsDir, 0o750); err != nil {
 		return nil, fmt.Errorf("create logs dir: %w", err)
@@ -32,10 +43,11 @@ func New(platformDir string) (*Logger, error) {
 		return nil, fmt.Errorf("create log file: %w", err)
 	}
 
-	return &Logger{
-		w:    io.MultiWriter(os.Stderr, f),
-		file: f,
-	}, nil
+	w := io.Writer(f)
+	if includeStderr {
+		w = io.MultiWriter(os.Stderr, f)
+	}
+	return &Logger{w: w, file: f}, nil
 }
 
 // NewDiscard returns a logger that only writes to a temp file (used when no platform dir yet).

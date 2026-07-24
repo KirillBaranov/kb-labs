@@ -140,8 +140,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("create platform dir: %w", err)
 	}
 
-	// Set up logger (writes to stderr + log file).
-	log, err := logger.New(sel.PlatformDir)
+	// The wizard's spinner owns the terminal while installing. Keep raw package
+	// manager output in the install log instead of interleaving it with the UI.
+	log, err := logger.NewFileOnly(sel.PlatformDir)
 	if err != nil {
 		return err
 	}
