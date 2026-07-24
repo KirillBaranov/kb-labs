@@ -152,6 +152,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	log.Printf("Using %s", packageManager.Name())
 
 	tc.Set("pm", packageManager.Name())
+	tc.Set("outcome", sel.Intent)
+	tc.Set("local_mode", fmt.Sprintf("%t", flagLocal || sel.LocalMode))
 	tc.Set("services", strings.Join(sel.Services, ","))
 	tc.Set("plugins", strings.Join(sel.Plugins, ","))
 	tc.Track("install_started", nil)
@@ -187,8 +189,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	sp.stop(err)
 
 	if err != nil {
-		tc.Track("install_failed", map[string]string{"error": err.Error()})
-		printSupportHint()
+		if details := sp.failureDetails(); details != "" {
+			err = fmt.Errorf("%w\n\nPackage-manager output:\n%s", err, details)
+		}
+		tc.Track("install_failed", map[string]string{"error_category": telemetryFailureCategory(err)})
 		return fmt.Errorf("installation failed: %w", err)
 	}
 
@@ -386,6 +390,22 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func telemetryFailureCategory(err error) string {
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "no_matching_version") || strings.Contains(message, "no matching version"):
+		return "dependency_version"
+	case strings.Contains(message, "preflight"):
+		return "environment_preflight"
+	case strings.Contains(message, "permission denied"):
+		return "filesystem_permission"
+	case strings.Contains(message, "network") || strings.Contains(message, "econn") || strings.Contains(message, "etimedout"):
+		return "network"
+	default:
+		return "unknown"
+	}
+}
+
 // generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
 // string, used to seed the gateway's bootstrap admin account (#271) for
 // non-local installs. Same crypto/rand + hex pattern as telemetry.GenerateDeviceID.
@@ -433,10 +453,11 @@ func initTelemetry(version string, tcfg *config.TelemetryConfig) *telemetry.Clie
 // spinner renders a rotating indicator with a label and a detail line
 // that updates in-place while the install is running.
 type spinner struct {
-	done   chan struct{}
-	label  string
-	detail string
-	mu     sync.Mutex
+	done       chan struct{}
+	label      string
+	detail     string
+	rawDetails []string
+	mu         sync.Mutex
 }
 
 func newSpinner() *spinner { return &spinner{done: make(chan struct{})} }
@@ -449,12 +470,25 @@ func (s *spinner) setLabel(l string) {
 
 func (s *spinner) setDetail(d string) {
 	s.mu.Lock()
+	// Keep a bounded, untruncated tail for the final fatal report. The live
+	// spinner stays compact, but an issue needs the package manager's real
+	// diagnostic rather than only "exit status 1".
+	s.rawDetails = append(s.rawDetails, d)
+	if len(s.rawDetails) > 80 {
+		s.rawDetails = s.rawDetails[len(s.rawDetails)-80:]
+	}
 	// Truncate long npm lines so they fit on one terminal line.
 	if len(d) > 72 {
 		d = d[:69] + "..."
 	}
 	s.detail = d
 	s.mu.Unlock()
+}
+
+func (s *spinner) failureDetails() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return strings.Join(s.rawDetails, "\n")
 }
 
 // start launches the render loop in a goroutine.

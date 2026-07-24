@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -286,6 +287,23 @@ func printSupportHint() {
 	line("  " + dim.Render("GitHub issues    ") + url.Render("https://github.com/kb-labs-team/kb-labs/issues"))
 	line("  " + dim.Render("Telegram         ") + url.Render("@kirill_baranov"))
 	fmt.Println()
+}
+
+// printFatalError preserves the complete fatal error in the terminal so it can
+// be pasted into an issue. It intentionally includes only runtime facts, never
+// project paths, source code, API keys, or user configuration values.
+func printFatalError(err error, version string) {
+	fmt.Println()
+	fmt.Println(styleDivider)
+	fmt.Println()
+	fmt.Println("  " + styleBold.Render("Installation failed"))
+	fmt.Println()
+	fmt.Println("  " + styleMuted.Render("Failure details — copy this when reporting the issue:"))
+	for _, line := range strings.Split(strings.TrimSpace(err.Error()), "\n") {
+		fmt.Println("  " + line)
+	}
+	fmt.Println()
+	fmt.Println("  " + styleMuted.Render("Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version))
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

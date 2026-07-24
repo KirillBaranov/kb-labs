@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -52,5 +53,28 @@ func TestDemoFlagUsage_DoesNotOverpromise(t *testing.T) {
 	}
 	if strings.Contains(f.Usage, "run pipeline") {
 		t.Errorf("--demo usage = %q, claims to run a pipeline, but nothing is run automatically", f.Usage)
+	}
+}
+
+func TestTelemetryFailureCategoryAvoidsRawErrorPayload(t *testing.T) {
+	for _, tc := range []struct {
+		err  error
+		want string
+	}{
+		{errors.New("ERR_PNPM_NO_MATCHING_VERSION: @kb-labs/adapters-fs"), "dependency_version"},
+		{errors.New("preflight failed: node is missing"), "environment_preflight"},
+		{errors.New("permission denied: /private/project"), "filesystem_permission"},
+	} {
+		if got := telemetryFailureCategory(tc.err); got != tc.want {
+			t.Errorf("telemetryFailureCategory(%q) = %q, want %q", tc.err, got, tc.want)
+		}
+	}
+}
+
+func TestSpinnerKeepsUntruncatedTailForFatalReport(t *testing.T) {
+	spinner := newSpinner()
+	spinner.setDetail("ERR_PNPM_NO_MATCHING_VERSION " + strings.Repeat("x", 100))
+	if got := spinner.failureDetails(); !strings.Contains(got, strings.Repeat("x", 100)) {
+		t.Errorf("failureDetails() truncated package-manager output: %q", got)
 	}
 }

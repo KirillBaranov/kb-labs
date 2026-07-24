@@ -86,6 +86,15 @@ func Execute() {
 	if err == nil {
 		return
 	}
+	if outputMode() == result.ModeHuman {
+		if err.Error() == "installation cancelled" {
+			fmt.Fprintln(os.Stderr, "Installation cancelled.")
+			os.Exit(1)
+		}
+		printFatalError(err, rootCmd.Version)
+		printSupportHint()
+		os.Exit(1)
+	}
 	var d *diag.Diag
 	if !errors.As(err, &d) {
 		d = diag.Wrap(err, "ERR_UNKNOWN", err.Error())

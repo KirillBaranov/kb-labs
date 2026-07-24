@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -131,6 +132,17 @@ func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 	for _, unwanted := range []string{"╭", "╰", "──"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("support hint still renders a closed box %q: %q", unwanted, got)
+		}
+	}
+}
+
+func TestPrintFatalErrorPreservesDetailsAndSafeRuntimeContext(t *testing.T) {
+	got := captureStdout(t, func() {
+		printFatalError(errors.New("install: ERR_PNPM_NO_MATCHING_VERSION\nmissing package"), "2.106.0")
+	})
+	for _, want := range []string{"ERR_PNPM_NO_MATCHING_VERSION", "missing package", "Runtime:", "kb-create 2.106.0"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("fatal error output missing %q: %q", want, got)
 		}
 	}
 }
