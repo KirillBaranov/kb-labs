@@ -56,6 +56,10 @@ func sampleManifest() *manifest.Manifest {
 				Bundle: manifest.IntentBundle{
 					Plugins: []string{"mind"},
 				},
+				FirstCommand: &manifest.FirstCommand{
+					Command:   "kb release plan",
+					Operation: manifest.CommandOperationAnalyze,
+				},
 				Steps: []manifest.IntentStep{
 					{Type: stepEnvVar, Key: "NPM_TOKEN", Label: "npm publish token",
 						Skippable: true, SkipHint: "add NPM_TOKEN later"},
@@ -209,6 +213,9 @@ func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	}
 	if sel.Intent != "release" {
 		t.Errorf("Intent = %q, want release", sel.Intent)
+	}
+	if sel.FirstCommand == nil || sel.FirstCommand.Command != "kb release plan" {
+		t.Errorf("FirstCommand = %+v, want kb release plan", sel.FirstCommand)
 	}
 }
 

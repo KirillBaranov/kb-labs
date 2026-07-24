@@ -1028,9 +1028,14 @@ func (m wizardModel) toSelection() *installer.Selection {
 		}
 	}
 
-	var intentID string
+	var (
+		intentID     string
+		firstCommand *manifest.FirstCommand
+	)
 	if m.selectedIntent >= 0 {
-		intentID = m.currentIntent().ID
+		intent := m.currentIntent()
+		intentID = intent.ID
+		firstCommand = intent.FirstCommand
 	}
 	sel := &installer.Selection{
 		PlatformDir:      expandHome(m.platformInput.Value()),
@@ -1045,6 +1050,7 @@ func (m wizardModel) toSelection() *installer.Selection {
 		LLMProvider:      m.llmProvider,
 		LocalMode:        m.localMode,
 		Intent:           intentID,
+		FirstCommand:     firstCommand,
 	}
 	if m.llmProvider != "" {
 		sel.LLMKey = m.llmKeyInput.Value()
@@ -1117,6 +1123,7 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 		Consent:          consent,
 		TelemetryEnabled: false,
 		Intent:           intent.ID,
+		FirstCommand:     intent.FirstCommand,
 	}, nil
 }
 

@@ -59,6 +59,10 @@ type Selection struct {
 	// the selection didn't come from the intent-driven wizard (e.g. a future
 	// direct API caller).
 	Intent string
+	// FirstCommand is copied from the selected intent's outcome contract. It
+	// gives post-install code one stable, safe command to hand back to the
+	// user instead of deriving it from generic help text.
+	FirstCommand *manifest.FirstCommand
 	// PluginVersions/ServiceVersions override the installed version for a
 	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
 	// ID. Separate maps because a service and a plugin can share the same

@@ -120,6 +120,37 @@ type IntentStep struct {
 	SkipHint  string `json:"skipHint,omitempty"`
 }
 
+// CommandOperation describes the side-effect level of an intent's first
+// command. The onboarding flow only hands users an analyze command by
+// default; mutation commands require a later, explicit confirmation.
+type CommandOperation string
+
+const (
+	CommandOperationAnalyze CommandOperation = "analyze"
+	CommandOperationMutate  CommandOperation = "mutate"
+)
+
+// CommandRequirements declares only the capabilities needed to make the
+// first command useful. It lets the wizard ask for consent or configuration
+// only when a selected outcome actually needs it.
+type CommandRequirements struct {
+	LLM      string   `json:"llm,omitempty"` // "optional" or "required"
+	Env      []string `json:"env,omitempty"`
+	Services []string `json:"services,omitempty"`
+}
+
+// FirstCommand is the outcome contract used by the wizard, readiness checks,
+// and post-install handoff. It is intentionally product-facing: no caller
+// needs to infer the first useful command from generic next-step strings.
+type FirstCommand struct {
+	Command      string              `json:"command"`
+	Description  string              `json:"description"`
+	Operation    CommandOperation    `json:"operation"`
+	Requirements CommandRequirements `json:"requires,omitempty"`
+	DataBoundary string              `json:"dataBoundary,omitempty"`
+	Studio       bool                `json:"studio,omitempty"`
+}
+
 // Intent is a named, guided installation scenario offered by the
 // interactive wizard — "what are you here to do?" instead of "which
 // services/plugins/adapters do you want?". See docs/adr for the rationale.
@@ -128,9 +159,24 @@ type Intent struct {
 	Label       string       `json:"label"`
 	Description string       `json:"description"`
 	Bundle      IntentBundle `json:"bundle"`
-	Steps       []IntentStep `json:"steps,omitempty"`
-	Docs        []IntentDoc  `json:"docs,omitempty"`
-	NextSteps   []string     `json:"nextSteps,omitempty"`
+	// FirstCommand is the one safe command that demonstrates the outcome
+	// immediately after installation. Older manifests may omit it while they
+	// continue using NextSteps during the migration.
+	FirstCommand *FirstCommand `json:"firstCommand,omitempty"`
+	Steps        []IntentStep  `json:"steps,omitempty"`
+	Docs         []IntentDoc   `json:"docs,omitempty"`
+	NextSteps    []string      `json:"nextSteps,omitempty"`
+}
+
+// IntentByID returns the manifest intent with id, or nil when no matching
+// guided path is defined.
+func (m *Manifest) IntentByID(id string) *Intent {
+	for i := range m.Intents {
+		if m.Intents[i].ID == id {
+			return &m.Intents[i]
+		}
+	}
+	return nil
 }
 
 // CorePackageNames returns plain package name strings from Core.

@@ -147,11 +147,39 @@
       "nextSteps": ["kb-dev start", "pnpm kb --help"]
     },
     {
+      "id": "commit",
+      "label": "Prepare my commits",
+      "description": "Create a reviewable commit plan from your current changes.",
+      "bundle": {
+        "plugins": ["commit"]
+      },
+      "firstCommand": {
+        "command": "kb commit generate",
+        "description": "Create a commit plan without writing git history.",
+        "operation": "analyze",
+        "requires": {
+          "llm": "required"
+        },
+        "dataBoundary": "Your current git diff is sent only after you choose a free gateway or your own provider.",
+        "studio": true
+      },
+      "steps": [
+        { "type": "llmProvider" }
+      ],
+      "nextSteps": ["kb commit generate"]
+    },
+    {
       "id": "release",
       "label": "Automate releases",
       "description": "Plan, version, and publish releases from your workspace.",
       "bundle": {
         "plugins": ["release"]
+      },
+      "firstCommand": {
+        "command": "kb release plan",
+        "description": "Prepare a release plan without publishing packages.",
+        "operation": "analyze",
+        "studio": true
       },
       "steps": [
         {
