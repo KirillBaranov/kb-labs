@@ -67,6 +67,11 @@ type Selection struct {
 	// input (for example, a commit plan on a clean repository). It is not an
 	// installation error and is persisted for `kb-create continue`.
 	PendingInput string
+	// CustomCommandName and CustomCommandDescription form the user-approved
+	// contract for the custom-plugin path. They are plain product intent, not
+	// credentials or prompt content.
+	CustomCommandName        string
+	CustomCommandDescription string
 	// PluginVersions/ServiceVersions override the installed version for a
 	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
 	// ID. Separate maps because a service and a plugin can share the same

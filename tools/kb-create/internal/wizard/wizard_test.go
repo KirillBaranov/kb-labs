@@ -235,6 +235,36 @@ func TestDefaultSelectionRejectsRequiredLLMIntent(t *testing.T) {
 	}
 }
 
+func TestValidateCustomContract(t *testing.T) {
+	for _, tc := range []struct {
+		name, description string
+		wantErr           bool
+	}{
+		{"create-task", "Create a task from the current branch", false},
+		{"Create task", "Create a task", true},
+		{"create-task", "", true},
+	} {
+		err := validateCustomContract(tc.name, tc.description)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("validateCustomContract(%q, %q) error = %v, wantErr %v", tc.name, tc.description, err, tc.wantErr)
+		}
+	}
+}
+
+func TestToSelectionPreservesCustomCommandContract(t *testing.T) {
+	m := wizardModel{
+		platformInput:    makeInput("/platform"),
+		cwdInput:         makeInput("/project"),
+		commandInput:     makeInput("create-task"),
+		descriptionInput: makeInput("Create a task from the current branch"),
+		selectedIntent:   -1,
+	}
+	sel := m.toSelection()
+	if sel.CustomCommandName != "create-task" || sel.CustomCommandDescription == "" {
+		t.Errorf("custom contract = (%q, %q), want preserved", sel.CustomCommandName, sel.CustomCommandDescription)
+	}
+}
+
 func TestDefaultSelectionUsesLocalMode(t *testing.T) {
 	sel, err := defaultSelection(sampleManifest(), WizardOptions{Intent: "release"})
 	if err != nil {

@@ -123,6 +123,7 @@ const (
 	stageDirs stage = iota
 	stageIntent
 	stageCustom
+	stageCustomContract
 	stageStep // generic runner for the chosen intent's envVar/llmProvider/studioAccess steps
 	stageAnalytics
 	stageConfirm
@@ -136,17 +137,20 @@ type checkItem struct {
 }
 
 type wizardModel struct {
-	manifest      *manifest.Manifest
-	errMsg        string
-	services      []checkItem
-	plugins       []checkItem
-	adapterRoles  []checkItem
-	binaries      []checkItem
-	platformInput textinput.Model
-	cwdInput      textinput.Model
+	manifest         *manifest.Manifest
+	errMsg           string
+	services         []checkItem
+	plugins          []checkItem
+	adapterRoles     []checkItem
+	binaries         []checkItem
+	platformInput    textinput.Model
+	cwdInput         textinput.Model
+	commandInput     textinput.Model
+	descriptionInput textinput.Model
 
 	stage       stage
 	activeInput int // 0 = platform, 1 = project (dirs stage)
+	customInput int // 0 = command name, 1 = command description
 	cursor      int
 	cancelled   bool
 
@@ -225,6 +229,16 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	lki.Width = 50
 	lki.EchoMode = textinput.EchoPassword
 
+	command := textinput.New()
+	command.Placeholder = "e.g. create-branch-task"
+	command.Width = 50
+	command.CharLimit = 63
+
+	description := textinput.New()
+	description.Placeholder = "e.g. Create a task from the current branch"
+	description.Width = 70
+	description.CharLimit = 160
+
 	// Pre-fill services/plugins/binaries using their default flag — this is
 	// the starting point the "custom" intent's picker adjusts from; every
 	// other intent overwrites it via applyIntentBundle once chosen.
@@ -246,18 +260,20 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	}
 
 	return wizardModel{
-		manifest:       m,
-		stage:          stageDirs,
-		platformInput:  pi,
-		cwdInput:       ci,
-		envInput:       ei,
-		llmKeyInput:    lki,
-		services:       services,
-		plugins:        plugins,
-		binaries:       binaries,
-		adapterRoles:   adapterRoles,
-		demoMode:       opts.DemoMode,
-		selectedIntent: -1,
+		manifest:         m,
+		stage:            stageDirs,
+		platformInput:    pi,
+		cwdInput:         ci,
+		commandInput:     command,
+		descriptionInput: description,
+		envInput:         ei,
+		llmKeyInput:      lki,
+		services:         services,
+		plugins:          plugins,
+		binaries:         binaries,
+		adapterRoles:     adapterRoles,
+		demoMode:         opts.DemoMode,
+		selectedIntent:   -1,
 		// Local-first is the launch default. Cloud/team onboarding is not a
 		// launch-ready flow, so it must never be selected implicitly.
 		localMode:        true,
@@ -295,6 +311,12 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case stageCustomContract:
+		if m.customInput == 0 {
+			m.commandInput, cmd = m.commandInput.Update(msg)
+		} else {
+			m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+		}
 	}
 	return m, cmd
 }
@@ -307,6 +329,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleIntentKey(msg)
 	case stageCustom:
 		return m.handleCustomKey(msg)
+	case stageCustomContract:
+		return m.handleCustomContractKey(msg)
 	case stageStep:
 		return m.handleStepKey(msg)
 	case stageAnalytics:
@@ -428,8 +452,47 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			return m, nil
 		}
+		if intent.ID == "plugin-author" {
+			m.stage = stageCustomContract
+			m.customInput = 0
+			m.commandInput.Focus()
+			return m, textinput.Blink
+		}
 
 		m.applyIntentBundle(intent.Bundle)
+		m.enterSteps()
+	}
+	return m, nil
+}
+
+func (m wizardModel) handleCustomContractKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "tab", "down", "up":
+		m.customInput = 1 - m.customInput
+		if m.customInput == 0 {
+			m.commandInput.Focus()
+			m.descriptionInput.Blur()
+		} else {
+			m.descriptionInput.Focus()
+			m.commandInput.Blur()
+		}
+		return m, textinput.Blink
+	case "enter":
+		if m.customInput == 0 {
+			m.customInput = 1
+			m.commandInput.Blur()
+			m.descriptionInput.Focus()
+			return m, textinput.Blink
+		}
+		if err := validateCustomContract(m.commandInput.Value(), m.descriptionInput.Value()); err != nil {
+			m.errMsg = err.Error()
+			return m, nil
+		}
+		m.errMsg = ""
+		m.applyIntentBundle(m.currentIntent().Bundle)
 		m.enterSteps()
 	}
 	return m, nil
@@ -647,6 +710,8 @@ func (m wizardModel) View() string {
 		return m.viewIntent()
 	case stageCustom:
 		return m.viewCustom()
+	case stageCustomContract:
+		return m.viewCustomContract()
 	case stageStep:
 		return m.viewStep()
 	case stageAnalytics:
@@ -655,6 +720,22 @@ func (m wizardModel) View() string {
 		return m.viewConfirm()
 	}
 	return ""
+}
+
+func (m wizardModel) viewCustomContract() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  create your command\n\n")
+	b.WriteString("  " + sectionStyle.Render("What should this command do?") + "\n")
+	b.WriteString(dimStyle.Render("  KB Labs will scaffold one editable plugin. You approve its name before files are created.") + "\n\n")
+	b.WriteString("  " + sectionStyle.Render("Command name") + "\n")
+	b.WriteString("  " + m.commandInput.View() + "\n\n")
+	b.WriteString("  " + sectionStyle.Render("Expected result") + "\n")
+	b.WriteString("  " + m.descriptionInput.View() + "\n")
+	if m.errMsg != "" {
+		b.WriteString("\n  " + errorStyle.Render("✖ "+m.errMsg) + "\n")
+	}
+	b.WriteString("\n" + helpStyle.Render("  tab switch · enter next · esc quit"))
+	return b.String()
 }
 
 func (m wizardModel) viewAnalytics() string {
@@ -901,6 +982,10 @@ func (m wizardModel) viewConfirm() string {
 			fmt.Fprintf(&b, "             %s\n", dimStyle.Render(intent.FirstCommand.Description))
 		}
 	}
+	if intent != nil && intent.ID == "plugin-author" {
+		fmt.Fprintf(&b, "  Command:   %s\n", focusStyle.Render(m.commandInput.Value()))
+		fmt.Fprintf(&b, "             %s\n", dimStyle.Render(m.descriptionInput.Value()))
+	}
 	fmt.Fprintf(&b, "  Mode:      %s\n", dimStyle.Render("Local on this computer — Studio stays on 127.0.0.1"))
 
 	// Show selected components. A component (e.g. "marketplace") can be both
@@ -1064,6 +1149,25 @@ func (m wizardModel) validateDirs() error {
 	return nil
 }
 
+func validateCustomContract(name, description string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("command name is required")
+	}
+	if len(name) > 63 || name[0] == '-' || name[len(name)-1] == '-' {
+		return fmt.Errorf("command name must be lowercase kebab-case")
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+			return fmt.Errorf("command name must be lowercase kebab-case")
+		}
+	}
+	if strings.TrimSpace(description) == "" {
+		return fmt.Errorf("expected result is required")
+	}
+	return nil
+}
+
 // visibleIntentIndexes hides legacy/full-platform routes from the first-run
 // launcher while retaining their stable IDs for --yes --intent and existing
 // automation.
@@ -1120,19 +1224,21 @@ func (m wizardModel) toSelection() *installer.Selection {
 		firstCommand = intent.FirstCommand
 	}
 	sel := &installer.Selection{
-		PlatformDir:      expandHome(m.platformInput.Value()),
-		ProjectCWD:       expandHome(m.cwdInput.Value()),
-		Services:         services,
-		Plugins:          plugins,
-		Binaries:         binaries,
-		Adapters:         adapters,
-		DemoMode:         m.demoMode,
-		Consent:          consent,
-		TelemetryEnabled: m.telemetryEnabled,
-		LLMProvider:      m.llmProvider,
-		LocalMode:        m.localMode,
-		Intent:           intentID,
-		FirstCommand:     firstCommand,
+		PlatformDir:              expandHome(m.platformInput.Value()),
+		ProjectCWD:               expandHome(m.cwdInput.Value()),
+		Services:                 services,
+		Plugins:                  plugins,
+		Binaries:                 binaries,
+		Adapters:                 adapters,
+		DemoMode:                 m.demoMode,
+		Consent:                  consent,
+		TelemetryEnabled:         m.telemetryEnabled,
+		LLMProvider:              m.llmProvider,
+		LocalMode:                m.localMode,
+		Intent:                   intentID,
+		FirstCommand:             firstCommand,
+		CustomCommandName:        strings.TrimSpace(m.commandInput.Value()),
+		CustomCommandDescription: strings.TrimSpace(m.descriptionInput.Value()),
 	}
 	if m.llmProvider != "" {
 		sel.LLMKey = m.llmKeyInput.Value()
