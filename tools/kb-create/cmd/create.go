@@ -297,6 +297,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create custom plugin: %w; run kb-create doctor", err)
 		}
 		customPluginDir = custom.PluginDir
+		if err := customplugin.CheckDiscovery(context.Background(), sel.ProjectCWD, sel.CustomCommandName); err != nil {
+			_ = onboarding.Write(onboarding.State{
+				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
+				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
+				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+				CustomPluginDir: customPluginDir,
+			})
+			return fmt.Errorf("custom command is not discoverable: %w; run kb-create doctor", err)
+		}
 		agentHandoffPath, err = agenthandoff.Write(agenthandoff.Input{
 			ProjectDir: sel.ProjectCWD, PluginDir: customPluginDir,
 			CommandName: sel.CustomCommandName, Description: sel.CustomCommandDescription,

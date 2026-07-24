@@ -11,3 +11,9 @@ func TestCreateRequiresNameBeforeLookingUpCLI(t *testing.T) {
 		t.Fatal("Create() error = nil, want missing name error")
 	}
 }
+
+func TestCheckDiscoveryRequiresNameBeforeLookingUpCLI(t *testing.T) {
+	if err := CheckDiscovery(context.Background(), t.TempDir(), ""); err == nil {
+		t.Fatal("CheckDiscovery() error = nil, want missing name error")
+	}
+}

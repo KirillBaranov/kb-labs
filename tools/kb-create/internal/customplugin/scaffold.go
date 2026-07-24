@@ -45,3 +45,23 @@ func Create(ctx context.Context, projectDir string, contract Contract) (Result, 
 		HandlerHint: filepath.Join(pluginDir, "packages", contract.Name+"-entry", "src"),
 	}, nil
 }
+
+// CheckDiscovery proves that the freshly scaffolded command is available to
+// the same CLI a user or coding agent will invoke. `--help` is intentionally
+// used so this check cannot perform the command's business action.
+func CheckDiscovery(ctx context.Context, projectDir, commandName string) error {
+	if commandName == "" {
+		return fmt.Errorf("custom command name is required")
+	}
+	kbPath, err := exec.LookPath("kb")
+	if err != nil {
+		return fmt.Errorf("locate kb CLI: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, kbPath, commandName, "hello", "--help") // #nosec G204 -- kb path comes from PATH; command name is wizard-validated
+	cmd.Dir = projectDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("discover custom command %q: %w\n%s", commandName, err, output)
+	}
+	return nil
+}
