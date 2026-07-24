@@ -16,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/detect"
+	"github.com/kb-labs/create/internal/eligibility"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
@@ -111,6 +112,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "  project detection: %v (continuing)\n", detectErr)
 	}
 	sel.Project = profile
+	if sel.Intent == "release" && !eligibility.ReleaseEligible(sel.ProjectCWD, profile) {
+		return fmt.Errorf("release setup needs a publishable npm package (name and version, not private) — choose another outcome or run kb-create again in the package workspace")
+	}
 
 	if profile != nil {
 		out := newOutput()
