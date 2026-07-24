@@ -3,6 +3,7 @@ package pm
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,18 @@ func TestPnpmManagerName(t *testing.T) {
 	p := &PnpmManager{}
 	if got := p.Name(); got != "pnpm" {
 		t.Errorf("PnpmManager.Name() = %q, want \"pnpm\"", got)
+	}
+}
+
+func TestPnpmInstallArgsUseAppendOnlyReporter(t *testing.T) {
+	p := &PnpmManager{Registry: "http://localhost:4873"}
+	args := p.installArgs("add", "/tmp/project", []string{"@kb-labs/gateway-app"})
+
+	if !slices.Contains(args, "--reporter=append-only") {
+		t.Errorf("pnpm install args = %q, want append-only reporter", args)
+	}
+	if !slices.Contains(args, "--registry") || !slices.Contains(args, "http://localhost:4873") {
+		t.Errorf("pnpm install args = %q, want configured registry", args)
 	}
 }
 

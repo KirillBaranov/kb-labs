@@ -26,19 +26,23 @@ func (p *PnpmManager) Name() string        { return "pnpm" }
 func (p *PnpmManager) RegistryURL() string { return p.Registry }
 
 func (p *PnpmManager) Install(dir string, pkgs []string, progress chan<- Progress) error {
-	args := append([]string{"add", "--dir", dir}, pkgs...)
-	if p.Registry != "" {
-		args = append(args, "--registry", p.Registry)
-	}
-	return p.run(dir, args, progress)
+	return p.run(dir, p.installArgs("add", dir, pkgs), progress)
 }
 
 func (p *PnpmManager) Update(dir string, pkgs []string, progress chan<- Progress) error {
-	args := append([]string{"update", "--dir", dir}, pkgs...)
+	return p.run(dir, p.installArgs("update", dir, pkgs), progress)
+}
+
+// installArgs selects pnpm's append-only reporter. The default reporter owns
+// the terminal cursor and emits carriage-return updates, which conflicts with
+// kb-create's single-line spinner. Raw output is still collected for a fatal
+// error report; it is simply no longer allowed to redraw the user's terminal.
+func (p *PnpmManager) installArgs(command, dir string, pkgs []string) []string {
+	args := append([]string{command, "--dir", dir, "--reporter=append-only"}, pkgs...)
 	if p.Registry != "" {
 		args = append(args, "--registry", p.Registry)
 	}
-	return p.run(dir, args, progress)
+	return args
 }
 
 func (p *PnpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
