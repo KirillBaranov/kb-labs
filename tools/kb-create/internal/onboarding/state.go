@@ -31,6 +31,7 @@ type State struct {
 	CustomCommandName        string                 `json:"customCommandName,omitempty"`
 	CustomCommandDescription string                 `json:"customCommandDescription,omitempty"`
 	CustomPluginDir          string                 `json:"customPluginDir,omitempty"`
+	AgentHandoff             string                 `json:"agentHandoff,omitempty"`
 	UpdatedAt                time.Time              `json:"updatedAt"`
 }
 

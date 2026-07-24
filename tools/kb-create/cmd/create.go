@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/create/internal/agenthandoff"
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/customplugin"
@@ -281,6 +282,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
 	customPluginDir := ""
+	agentHandoffPath := ""
 	if sel.Intent == "plugin-author" {
 		custom, err := customplugin.Create(context.Background(), sel.ProjectCWD, customplugin.Contract{
 			Name:        sel.CustomCommandName,
@@ -295,6 +297,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create custom plugin: %w; run kb-create doctor", err)
 		}
 		customPluginDir = custom.PluginDir
+		agentHandoffPath, err = agenthandoff.Write(agenthandoff.Input{
+			ProjectDir: sel.ProjectCWD, PluginDir: customPluginDir,
+			CommandName: sel.CustomCommandName, Description: sel.CustomCommandDescription,
+		})
+		if err != nil {
+			return fmt.Errorf("write custom plugin agent handoff: %w", err)
+		}
 	}
 	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
 		_ = onboarding.Write(onboarding.State{
@@ -307,6 +316,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			PendingInput:      sel.PendingInput,
 			CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
 			CustomPluginDir: customPluginDir,
+			AgentHandoff:    agentHandoffPath,
 		})
 		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
 	}
@@ -320,6 +330,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		PendingInput:      sel.PendingInput,
 		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
 		CustomPluginDir: customPluginDir,
+		AgentHandoff:    agentHandoffPath,
 	}); err != nil {
 		return fmt.Errorf("save onboarding readiness: %w", err)
 	}
@@ -361,6 +372,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// an external provider on their behalf.
 	printOutcomeHandoff(result, sel.FirstCommand, sel.PendingInput)
 	printCustomPluginSummary(customPluginDir, sel.CustomCommandName)
+	printAgentHandoff(agentHandoffPath)
 
 	return nil
 }

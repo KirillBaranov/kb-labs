@@ -258,6 +258,14 @@ func printCustomPluginSummary(pluginDir, commandName string) {
 	fmt.Println()
 }
 
+func printAgentHandoff(path string) {
+	if path == "" {
+		return
+	}
+	fmt.Println("  Agent handoff: " + styleMuted.Render(path))
+	fmt.Println()
+}
+
 // printSupportHint shows a compact support block with GitHub Issues and
 // Telegram contact — called whenever an install or doctor run fails.
 func printSupportHint() {

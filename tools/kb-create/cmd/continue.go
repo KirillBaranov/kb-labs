@@ -40,5 +40,6 @@ func runContinue(_ *cobra.Command, args []string) error {
 	}
 	printOutcomeHandoff(&installer.Result{ProjectCWD: projectDir}, state.FirstCommand, state.PendingInput)
 	printCustomPluginSummary(state.CustomPluginDir, state.CustomCommandName)
+	printAgentHandoff(state.AgentHandoff)
 	return nil
 }
