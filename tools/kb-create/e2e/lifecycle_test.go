@@ -87,8 +87,14 @@ exit 0
 		t.Fatalf("write fake pnpm: %v", err)
 	}
 
-	// Fake PATH: only our stub pnpm plus /usr/bin /bin (for mkdir, echo, bash).
-	env = append(os.Environ(), "PATH="+fakeBin+":/usr/bin:/bin")
+	// Keep the real Node.js directory available because kb-create preflight
+	// verifies Node before it writes any installer state.
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("locate node for lifecycle harness: %v", err)
+	}
+	// Fake PATH: stub pnpm, real node, and basic shell tools.
+	env = append(os.Environ(), "PATH="+fakeBin+":"+filepath.Dir(nodePath)+":/usr/bin:/bin")
 	return platformDir, kbCreate, env
 }
 
@@ -245,8 +251,8 @@ func TestPlatformDirMkdirFailsHardAbort(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected kb-create to fail against a read-only platform parent, got success:\n%s", out)
 	}
-	if !strings.Contains(out, "create platform dir") {
-		t.Errorf("expected error output to mention \"create platform dir\", got:\n%s", out)
+	if !strings.Contains(out, "platform destination") || !strings.Contains(out, "not writable") {
+		t.Errorf("expected actionable platform permission diagnostic, got:\n%s", out)
 	}
 	if _, statErr := os.Stat(platformDir); statErr == nil {
 		t.Errorf("platform dir %s was created despite the read-only parent", platformDir)
