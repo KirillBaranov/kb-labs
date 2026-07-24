@@ -108,7 +108,7 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // dim
 
 	llmStatus := offStyle.Render("off")
-	llmHint := styleMuted.Render("(re-run and pick a provider, or add OPENAI_API_KEY to .env)")
+	llmHint := styleMuted.Render("(set OPENAI_API_KEY in .env to enable)")
 	if llmEnabled {
 		llmStatus = onStyle.Render("on")
 		llmHint = styleMuted.Render("API key in .env")
@@ -125,28 +125,6 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	fmt.Printf("  %-11s %s  %s\n", kw("Analytics"), analyticsStatus, analyticsHint)
 	fmt.Println()
 
-	if !llmEnabled {
-		printLLMRecommendation()
-	}
-}
-
-// printLLMRecommendation prints a one-time notice explaining what LLM adds,
-// how the data flows, and how to opt in — shown only when LLM is off.
-func printLLMRecommendation() {
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-
-	printRailBlock("Enable LLM for a better experience", []string{
-		railKeyValue("AI commit messages", cmd.Render("kb commit commit")),
-		railKeyValue("AI code review", cmd.Render("kb review run")),
-		"",
-		dim.Render("These commands use an LLM. Configure your own provider key:"),
-		"",
-		"Re-run   " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI and Anthropic"),
-		"And set  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"),
-		"Docs    " + dim.Render("https://docs.kblabs.ru/adapters/built-in#llm-illm"),
-	})
-	fmt.Println()
 }
 
 // printBootstrapAdminCredentials shows the seeded admin login once, right after

@@ -141,16 +141,11 @@ func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 
 func TestOnboardingNoticesUseSharedLeftRail(t *testing.T) {
 	got := captureStdout(t, func() {
-		printLLMRecommendation()
 		printBootstrapAdminCredentials("admin@example.com", "secret")
 	})
 
 	for _, want := range []string{
-		"Enable LLM for a better experience",
 		"Studio admin login",
-		"AI commit messages",
-		"pick OpenAI and Anthropic",
-		"And set",
 		"Email",
 		"│",
 	} {
@@ -169,6 +164,18 @@ func TestSpinnerLineStartsAtLeftEdge(t *testing.T) {
 	got := spinnerLine("⠹", "[2/4] Installing 1 binary", "│ Putting the platform together")
 	if !strings.HasPrefix(got, "\r\x1b[K⠹") {
 		t.Errorf("spinner line has unexpected indentation: %q", got)
+	}
+}
+
+func TestPrintDataConsentExplainsOpenAIOnlySetup(t *testing.T) {
+	got := captureStdout(t, func() { printDataConsent(false, false) })
+	if !strings.Contains(got, "OPENAI_API_KEY") {
+		t.Fatalf("LLM-off status must explain how to enable OpenAI: %q", got)
+	}
+	for _, unwanted := range []string{"ANTHROPIC_API_KEY", "Enable LLM for a better experience"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("LLM-off status must not advertise unsupported provider UI %q: %q", unwanted, got)
+		}
 	}
 }
 
