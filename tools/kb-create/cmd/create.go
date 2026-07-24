@@ -530,7 +530,7 @@ func (s *spinner) start() {
 				// the live UI to one line — package-manager detail is captured,
 				// not mixed with the user's progress indicator.
 				if detail == "" {
-					fmt.Printf("\r\033[K  %s %s  %s", frame, label, message)
+					fmt.Printf("\r\033[K  %s %s  %s  %s", frame, label, dim.Render("│"), message)
 					continue
 				}
 				fmt.Printf("\r\033[K  %s %s  %s", frame, label, dim.Render(detail))
