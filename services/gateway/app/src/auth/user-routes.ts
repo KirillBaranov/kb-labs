@@ -106,6 +106,11 @@ export interface UserAuthRouteDeps {
   pdp: IPolicyDecisionPoint;
   /** Resolves the tenant from the Host header — used to prevent tenantId bypass via body. */
   tenantResolver: TenantResolver;
+  /** Final fallback when neither the Host header nor the request body resolve a tenant
+   *  (direct/local gateway access, no subdomain routing) — see bootstrapTenantId in
+   *  services/gateway/app/src/bootstrap.ts. Without this, login for the bootstrap admin
+   *  account looks up tenantId `''` and always 401s regardless of password correctness. */
+  bootstrapTenantId: string;
   cookieOpts: CookieOptions;
   accessTtlSec: number;
   refreshTtlSec: number;
@@ -272,7 +277,7 @@ async function recordLoginFailure(
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
-  const { userAuthService, users, sessions, invites, providers, pdp, tenantResolver, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit, oauthState, oauthCallbackPerIpPerMinute } = deps;
+  const { userAuthService, users, sessions, invites, providers, pdp, tenantResolver, bootstrapTenantId, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit, oauthState, oauthCallbackPerIpPerMinute } = deps;
   // Apply config defaults so the rest of the handler can use them without null-checks.
   const authRateLimitCfg = { loginPerIpPerMinute: 10, loginPerEmailPerMinute: 5, ...authRateLimit };
 
@@ -351,9 +356,12 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     // bodyTenantId is accepted only as a fallback when the Host doesn't resolve to
     // a valid tenant (e.g. direct gateway access: localhost:4000, CI without nginx).
     // This prevents tenant isolation bypass via body in subdomain deployments.
+    // bootstrapTenantId is the final fallback for direct/local access with no body
+    // tenantId either — without it, this looks up tenantId '' and the bootstrap
+    // admin account (seeded under bootstrapTenantId) can never log in.
     const host = typeof request.headers.host === 'string' ? request.headers.host : '';
     const hostTenant = tenantResolver.resolve(host);
-    const tenantId = hostTenant ?? bodyTenantId ?? '';
+    const tenantId = hostTenant ?? bodyTenantId ?? bootstrapTenantId;
 
     // Rate-limit GATE (peek, non-incrementing) BEFORE invoking the provider,
     // which runs a bcrypt compare (~300ms CPU at cost 12). Once the per-IP or
@@ -421,9 +429,10 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       return reply.code(400).send({ error: 'Bad Request', message: 'password is required' });
     }
 
+    // See the /auth/login handler above for why bootstrapTenantId is the final fallback.
     const host = typeof request.headers.host === 'string' ? request.headers.host : '';
     const hostTenant = tenantResolver.resolve(host);
-    const tenantId = hostTenant ?? bodyTenantId ?? '';
+    const tenantId = hostTenant ?? bodyTenantId ?? bootstrapTenantId;
 
     if (rateLimiter) {
       const emailNorm = email.toLowerCase().trim();

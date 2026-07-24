@@ -89,6 +89,9 @@ interface BuildAppOpts {
   rateLimit?: { loginPerIpPerMinute: number; loginPerEmailPerMinute: number };
   /** When true, disables auth middleware (LOCAL_ADMIN context injected). */
   authDisabled?: boolean;
+  /** Tenant used as the final fallback when Host resolves no tenant and the body
+   *  carries none either. Defaults to TENANT_ID so existing tests are unaffected. */
+  bootstrapTenantId?: string;
 }
 
 async function buildApp(opts: BuildAppOpts = {}): Promise<TestCtx> {
@@ -143,6 +146,7 @@ async function buildApp(opts: BuildAppOpts = {}): Promise<TestCtx> {
     providers,
     pdp,
     tenantResolver,
+    bootstrapTenantId: opts.bootstrapTenantId ?? TENANT_ID,
     cookieOpts: { cookieSecure: false },
     accessTtlSec: 900,
     refreshTtlSec: HOUR / 1000,
@@ -312,6 +316,19 @@ describe('POST /auth/login', () => {
     });
     expect(r.statusCode).toBe(400);
   });
+
+  it('falls back to bootstrapTenantId when Host resolves no tenant and body carries none (direct/local gateway access, e.g. localhost:4000 — regression for the kb-create bootstrap-admin login bug)', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { host: 'localhost:4000' },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const cookies = r.headers['set-cookie'] as string[];
+    expect(cookies.map((c) => c.split('=')[0])).toContain(COOKIE_ACCESS);
+  });
 });
 
 describe('POST /auth/login/cli', () => {
@@ -360,6 +377,20 @@ describe('POST /auth/login/cli', () => {
       method: 'POST', url: '/auth/login/cli', headers: { host: HOST }, payload: { email: 'admin@test.com' },
     });
     expect(r2.statusCode).toBe(400);
+  });
+
+  it('falls back to bootstrapTenantId when Host resolves no tenant (regression for `kb auth login` against a direct/local gateway URL)', async () => {
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/login/cli',
+      headers: { host: 'localhost:4000' },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as { accessToken: string; tenantId: string };
+    expect(body.accessToken).toBeTruthy();
+    expect(body.tenantId).toBe(TENANT_ID);
   });
 });
 

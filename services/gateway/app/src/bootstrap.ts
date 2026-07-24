@@ -202,6 +202,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       providers,
       pdp,
       tenantResolver,
+      bootstrapTenantId,
       cookieSecure,
       accessTtlSec,
       refreshTtlSec,

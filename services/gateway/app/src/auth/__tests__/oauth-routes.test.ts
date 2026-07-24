@@ -143,6 +143,7 @@ async function buildApp(opts: BuildOpts = {}): Promise<TestCtx> {
     providers,
     pdp,
     tenantResolver,
+    bootstrapTenantId: TENANT_ID,
     cookieOpts: { cookieSecure: false },
     accessTtlSec: 900,
     refreshTtlSec: HOUR / 1000,

@@ -58,6 +58,11 @@ export interface UserAuthServerDeps {
   providers: ProviderRegistry;
   pdp: IPolicyDecisionPoint;
   tenantResolver: TenantResolver;
+  /** Tenant to use when the Host header resolves no tenant and the request body carries
+   *  none either (direct/local gateway access with no subdomain routing). Without this,
+   *  such logins silently look up tenantId `''` and always fail with invalid_credentials,
+   *  even for the correct password — see bootstrapTenantId in bootstrap.ts. */
+  bootstrapTenantId: string;
   cookieSecure: boolean;
   accessTtlSec: number;
   refreshTtlSec: number;
@@ -280,6 +285,7 @@ export async function createServer(
           providers: userAuth.providers,
           pdp: userAuth.pdp,
           tenantResolver: userAuth.tenantResolver,
+          bootstrapTenantId: userAuth.bootstrapTenantId,
           cookieOpts: { cookieSecure: userAuth.cookieSecure },
           accessTtlSec: userAuth.accessTtlSec,
           refreshTtlSec: userAuth.refreshTtlSec,
