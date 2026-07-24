@@ -149,6 +149,8 @@ func TestOnboardingNoticesUseSharedLeftRail(t *testing.T) {
 		"Enable LLM for a better experience",
 		"Studio admin login",
 		"AI commit messages",
+		"pick OpenAI and Anthropic",
+		"And set",
 		"Email",
 		"│",
 	} {

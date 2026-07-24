@@ -142,8 +142,8 @@ func printLLMRecommendation() {
 		"",
 		dim.Render("These commands use an LLM. Configure your own provider key:"),
 		"",
-		"Re-run  " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI or Anthropic"),
-		"Or set  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"),
+		"Re-run   " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI and Anthropic"),
+		"And set  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"),
 		"Docs    " + dim.Render("https://docs.kblabs.ru/adapters/built-in#llm-illm"),
 	})
 	fmt.Println()
