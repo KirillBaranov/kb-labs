@@ -48,7 +48,7 @@ To simplify maintenance and align with ecosystem trends, we decided to adopt a s
 - Easier maintenance: one config format for all
 
 **Cons**
-- Requires Node.js 20+ in all environments
+- Requires Node.js 22+ in all environments
 - Some older ecosystem tools may not support ESM-only; such tools are not supported in KB Labs projects
 
 ## Alternatives Considered

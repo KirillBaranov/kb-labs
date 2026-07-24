@@ -83,7 +83,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -117,7 +117,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Check Single Version Policy (versions + format)
@@ -132,7 +132,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: node infra/devkit/bin/devkit-check-plugins.mjs --ci
 
@@ -153,7 +153,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
@@ -186,7 +186,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -211,7 +211,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
@@ -262,7 +262,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - uses: actions/setup-go@v5
