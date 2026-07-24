@@ -76,6 +76,9 @@ func TestPrintOutcomeHandoffShowsOnlySelectedSafeCommand(t *testing.T) {
 	if !strings.Contains(got, "http://127.0.0.1:3000") {
 		t.Errorf("Studio handoff is missing its local URL: %q", got)
 	}
+	if !strings.Contains(got, "status and logs") || !strings.Contains(got, "next available action") {
+		t.Errorf("Studio handoff does not explain what to use Studio for: %q", got)
+	}
 }
 
 func TestPrintOutcomeHandoffRefusesMutatingFirstCommand(t *testing.T) {

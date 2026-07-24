@@ -243,6 +243,7 @@ func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand, pend
 	if first.Studio {
 		fmt.Println()
 		fmt.Println("  Observe in Studio: " + styleMuted.Render("kb-dev start  →  http://127.0.0.1:3000"))
+		fmt.Println("  " + styleMuted.Render("Use it when the command needs attention: inspect its status and logs, then choose the next available action."))
 	}
 	fmt.Println()
 }
