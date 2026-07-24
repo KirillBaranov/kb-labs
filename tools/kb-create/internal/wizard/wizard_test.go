@@ -219,6 +219,22 @@ func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	}
 }
 
+func TestDefaultSelectionRejectsRequiredLLMIntent(t *testing.T) {
+	m := sampleManifest()
+	for i := range m.Intents {
+		if m.Intents[i].ID == "ai-review" {
+			m.Intents[i].FirstCommand = &manifest.FirstCommand{
+				Command: "kb review run", Operation: manifest.CommandOperationAnalyze,
+				Requirements: manifest.CommandRequirements{LLM: "required"},
+			}
+		}
+	}
+	_, err := defaultSelection(m, WizardOptions{Intent: "ai-review"})
+	if err == nil || !strings.Contains(err.Error(), "LLM provider key") {
+		t.Fatalf("defaultSelection(required LLM) error = %v, want actionable provider setup error", err)
+	}
+}
+
 func TestDefaultSelectionUsesLocalMode(t *testing.T) {
 	sel, err := defaultSelection(sampleManifest(), WizardOptions{Intent: "release"})
 	if err != nil {

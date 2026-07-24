@@ -1127,6 +1127,9 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 	if intent == nil {
 		return nil, fmt.Errorf("unknown --intent %q — valid intents: %s", intentID, validIntentIDs(m))
 	}
+	if intent.FirstCommand != nil && intent.FirstCommand.Requirements.LLM == "required" {
+		return nil, fmt.Errorf("--intent=%s needs an LLM provider key — run kb-create interactively to configure OpenAI or Anthropic", intentID)
+	}
 
 	home, _ := os.UserHomeDir()
 	platformDir := opts.DefaultPlatformDir
