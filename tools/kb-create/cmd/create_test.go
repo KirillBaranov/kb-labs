@@ -77,4 +77,7 @@ func TestSpinnerKeepsUntruncatedTailForFatalReport(t *testing.T) {
 	if got := spinner.failureDetails(); !strings.Contains(got, strings.Repeat("x", 100)) {
 		t.Errorf("failureDetails() truncated package-manager output: %q", got)
 	}
+	if spinner.detail != "" {
+		t.Errorf("spinner leaked package-manager detail into live UI: %q", spinner.detail)
+	}
 }

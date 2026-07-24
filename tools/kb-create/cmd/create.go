@@ -477,11 +477,10 @@ func (s *spinner) setDetail(d string) {
 	if len(s.rawDetails) > 80 {
 		s.rawDetails = s.rawDetails[len(s.rawDetails)-80:]
 	}
-	// Truncate long npm lines so they fit on one terminal line.
-	if len(d) > 72 {
-		d = d[:69] + "..."
-	}
-	s.detail = d
+	// Package managers emit their own animated progress UI. Rendering it inside
+	// our spinner produces garbled terminal output, so keep it hidden during a
+	// successful install and reveal the captured tail only after a fatal error.
+	s.detail = ""
 	s.mu.Unlock()
 }
 
@@ -511,14 +510,14 @@ func (s *spinner) start() {
 				frame := frames[i%len(frames)]
 				i++
 
-				// \r returns to column 0; \033[K clears to end of line.
-				fmt.Printf("\r\033[K  %s %s\n\r\033[K    %s",
-					frame,
-					label,
-					dim.Render(detail),
-				)
-				// Move cursor up one line so next tick overwrites both lines.
-				fmt.Print("\033[1A")
+				// \r returns to column 0; \033[K clears to end of line. Keep
+				// the live UI to one line — package-manager detail is captured,
+				// not mixed with the user's progress indicator.
+				if detail == "" {
+					fmt.Printf("\r\033[K  %s %s", frame, label)
+					continue
+				}
+				fmt.Printf("\r\033[K  %s %s  %s", frame, label, dim.Render(detail))
 			}
 		}
 	}()
@@ -533,8 +532,8 @@ func (s *spinner) stop(err error) {
 	label := s.label
 	s.mu.Unlock()
 
-	// Clear both lines used by the spinner.
-	fmt.Print("\r\033[K\033[1B\r\033[K\033[1A")
+	// Clear the single live spinner line.
+	fmt.Print("\r\033[K")
 
 	out := newOutput()
 	if err == nil {
