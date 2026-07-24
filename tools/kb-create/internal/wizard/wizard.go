@@ -500,7 +500,17 @@ func (m wizardModel) handleCustomContractKey(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		m.applyIntentBundle(m.currentIntent().Bundle)
 		m.enterExtensions()
 	}
-	return m, nil
+
+	// Update() routes all key messages here before the focused textinput gets
+	// a chance to see them. Forward ordinary input explicitly; otherwise this
+	// screen renders a cursor but silently drops every typed character.
+	var cmd tea.Cmd
+	if m.customInput == 0 {
+		m.commandInput, cmd = m.commandInput.Update(msg)
+	} else {
+		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+	}
+	return m, cmd
 }
 
 func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

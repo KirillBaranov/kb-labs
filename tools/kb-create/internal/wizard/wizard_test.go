@@ -286,6 +286,31 @@ func TestValidateCustomContract(t *testing.T) {
 	}
 }
 
+func TestCustomContractAcceptsTypedInput(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.stage = stageCustomContract
+	m.customInput = 0
+	m.commandInput.Focus()
+
+	next, _ := m.handleCustomContractKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("feedback-note")})
+	m = next.(wizardModel)
+	if got := m.commandInput.Value(); got != "feedback-note" {
+		t.Fatalf("command input = %q, want typed value", got)
+	}
+
+	m.customInput = 1
+	m.commandInput.Blur()
+	m.descriptionInput.Focus()
+	next, _ = m.handleCustomContractKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Summarize feedback")})
+	m = next.(wizardModel)
+	if got := m.descriptionInput.Value(); got != "Summarize feedback" {
+		t.Fatalf("description input = %q, want typed value", got)
+	}
+}
+
 func TestProgressLabelUsesOutcomeSpecificStepCount(t *testing.T) {
 	man := sampleManifest()
 	explore := wizardModel{manifest: man, selectedIntent: intentIndex(man, "explore"), stage: stageAnalytics}
