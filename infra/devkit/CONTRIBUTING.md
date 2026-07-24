@@ -10,7 +10,7 @@ Thank you for helping improve `@kb-labs/devkit`! This guide explains how to set 
 ## Getting started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22+
 - pnpm 9+
 - Git
 
@@ -243,7 +243,7 @@ jobs:
 - For consumer repos, wire a release workflow that calls ours and passes `publish: true` when appropriate.
 
 ## Code style
-- ESM-first, Node 20 as baseline runtime.
+- ESM-first, Node 22 as baseline runtime.
 - All presets use ESM format (JS files for easy importing from TS configs).
 - ESLint 9 flat config format.
 - TypeScript with NodeNext module resolution.

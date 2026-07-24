@@ -31,7 +31,7 @@ RUN cd /src/kb-create && go build -o /out/kb-create .
 RUN cd /src/kb-dev    && go build -o /out/kb-dev .
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────
-FROM node:20-bookworm
+FROM node:22-bookworm
 
 RUN apt-get update -qq && \
     apt-get install -y -qq curl ca-certificates git jq && \
