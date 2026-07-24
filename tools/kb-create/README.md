@@ -55,21 +55,21 @@ walks you through the specific setup that scenario actually needs:
 
 1. Platform directory + project directory (pre-filled with sane defaults)
 2. **What are you here to do?** — pick one:
-   - **Just look around** — the full default platform, straight to confirm
-   - **Automate releases** — installs only the `release` plugin; optionally
-     configure an npm publish token (skippable, add it later)
-   - **Write my own plugin** — a working local dev loop (`scaffold`, REST +
+   - **Prepare my commits** — creates a reviewable commit plan without
+     writing git history
+   - **Prepare a release** — installs only the `release` plugin and plans
+     versions without publishing
+   - **Create my own command** — a working local dev loop (`scaffold`, REST +
      gateway, `kb-dev`), no AI setup in the way
-   - **Add AI review to my repo** — one LLM-provider question (bring your
-     own OpenAI/Anthropic key, or stay on the free KB Labs gateway)
-   - **Choose exactly what I need** — the full manual picker (services,
+   - **Advanced: choose components myself** — the full manual picker (services,
      plugins, adapter roles, tools), for anyone who wants full control
 3. Confirm & install
 
-Every install — regardless of which option you pick — gets a working `llm`
-adapter by default (KB Labs' free shared gateway, ~50 requests included);
-bringing your own provider key is always optional, never required to get
-started.
+AI outcomes ask for an explicit OpenAI or Anthropic key. The KB Labs shared
+gateway (50 free calls per device) is currently unavailable while its
+infrastructure is being repaired, so it is intentionally hidden from the
+provider picker. Re-enable it by changing the centralized feature switch in
+`internal/wizard/free_gateway.go` when the service is healthy.
 
 ### Silent install with defaults
 

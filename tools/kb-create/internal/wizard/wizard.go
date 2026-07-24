@@ -522,22 +522,8 @@ func (m wizardModel) handleEnvVarKey(msg tea.KeyMsg, step manifest.IntentStep) (
 	return m, nil
 }
 
-// llmProviderOptions lists provider choices shown in the llmProvider step.
-// This is not "pick an LLM from scratch" — the free KB Labs gateway is
-// already wired as the default `llm` adapter on every install regardless of
-// this choice (manifest.json's adapterConfig.adapters.llm, unconditional).
-// This step is only "bring your own key instead?"
-var llmProviderOptions = []struct {
-	id   string
-	name string
-	desc string
-}{
-	{"openai", "OpenAI", "OPENAI_API_KEY — GPT-4o, GPT-4-turbo, etc."},
-	{"anthropic", "Anthropic", "ANTHROPIC_API_KEY — Claude 3.5 Sonnet, etc."},
-	{"", "Skip — use the free KB Labs gateway", "~50 requests included · bring your own key anytime later"},
-}
-
 func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	options := llmProviderOptions()
 	if m.llmShowKeyInput {
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -550,7 +536,7 @@ func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if key == "" {
 				return m, nil
 			}
-			m.llmProvider = llmProviderOptions[m.llmProviderCursor].id
+			m.llmProvider = options[m.llmProviderCursor].id
 			m.advanceStep()
 			return m, nil
 		}
@@ -568,11 +554,11 @@ func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.llmProviderCursor--
 		}
 	case "down", "j":
-		if m.llmProviderCursor < len(llmProviderOptions)-1 {
+		if m.llmProviderCursor < len(options)-1 {
 			m.llmProviderCursor++
 		}
 	case "enter":
-		chosen := llmProviderOptions[m.llmProviderCursor]
+		chosen := options[m.llmProviderCursor]
 		if chosen.id == "" {
 			m.llmProvider = ""
 			m.advanceStep()
@@ -787,9 +773,10 @@ func (m wizardModel) viewEnvVarStep(step manifest.IntentStep) string {
 func (m wizardModel) viewLLMProviderStep() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  LLM provider\n\n")
+	options := llmProviderOptions()
 
 	if m.llmShowKeyInput {
-		provider := llmProviderOptions[m.llmProviderCursor]
+		provider := options[m.llmProviderCursor]
 		b.WriteString("  " + sectionStyle.Render(provider.name+" API key") + "\n")
 		b.WriteString(dimStyle.Render("  "+provider.desc) + "\n\n")
 		b.WriteString("  " + m.llmKeyInput.View() + "\n\n")
@@ -798,9 +785,12 @@ func (m wizardModel) viewLLMProviderStep() string {
 		return b.String()
 	}
 
-	b.WriteString("  " + sectionStyle.Render("Bring your own key instead of the free gateway?") + "\n\n")
+	b.WriteString("  " + sectionStyle.Render("Choose your AI provider") + "\n\n")
+	if !freeGatewayFeature.Enabled {
+		b.WriteString("  " + dimStyle.Render(freeGatewayFeature.Label+" — "+freeGatewayFeature.DisabledReason) + "\n\n")
+	}
 
-	for i, opt := range llmProviderOptions {
+	for i, opt := range options {
 		cursor := "  "
 		if i == m.llmProviderCursor {
 			cursor = focusStyle.Render(" ▶")
@@ -900,11 +890,14 @@ func (m wizardModel) viewConfirm() string {
 	// plan should not look as though it sends data to an AI service.
 	llmLabel := "not needed for this outcome"
 	if intent != nil && intent.FirstCommand != nil && intent.FirstCommand.Requirements.LLM != "" {
-		llmLabel = "free KB Labs gateway (~50 requests) · bring your own key anytime in kb.config.jsonc"
+		llmLabel = "your own provider is required"
+		if !freeGatewayFeature.Enabled {
+			llmLabel += " · KB Labs Gateway is temporarily unavailable"
+		}
 	}
 	if m.llmProvider != "" {
 		providerName := m.llmProvider
-		for _, opt := range llmProviderOptions {
+		for _, opt := range llmProviderOptions() {
 			if opt.id == m.llmProvider {
 				providerName = opt.name
 				break

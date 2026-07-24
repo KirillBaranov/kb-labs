@@ -509,22 +509,28 @@ func TestHandleEnvVarKeyEmptyValueDoesNotAdvance(t *testing.T) {
 
 // ── LLM provider step ────────────────────────────────────────────────────────
 
-func TestHandleLLMProviderKeySkipAdvances(t *testing.T) {
+func TestLLMProviderStepHidesDisabledFreeGateway(t *testing.T) {
 	man := sampleManifest()
 	m := wizardModel{
-		manifest:          man,
-		selectedIntent:    intentIndex(man, "ai-review"), // single llmProvider step
-		stage:             stageStep,
-		stepIndex:         0,
-		llmProviderCursor: len(llmProviderOptions) - 1, // "Skip"
+		manifest:       man,
+		selectedIntent: intentIndex(man, "ai-review"), // single llmProvider step
+		stage:          stageStep,
+		stepIndex:      0,
 	}
-	next, _ := m.handleLLMProviderKey(tea.KeyMsg{Type: tea.KeyEnter})
-	got := next.(wizardModel)
-	if got.llmProvider != "" {
-		t.Errorf("llmProvider = %q, want empty (skip)", got.llmProvider)
+	if freeGatewayFeature.Enabled {
+		t.Fatal("test requires the free gateway feature to be disabled")
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got.stage)
+	view := m.viewLLMProviderStep()
+	if strings.Contains(view, "50 free AI calls") {
+		t.Errorf("disabled gateway must not be selectable: %s", view)
+	}
+	if !strings.Contains(strings.ToLower(view), "temporarily unavailable") {
+		t.Errorf("disabled gateway reason is missing: %s", view)
+	}
+	for _, option := range llmProviderOptions() {
+		if option.id == "" {
+			t.Errorf("disabled free gateway must not appear in provider options: %+v", option)
+		}
 	}
 }
 

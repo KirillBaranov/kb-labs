@@ -161,7 +161,7 @@
         "requires": {
           "llm": "required"
         },
-        "dataBoundary": "Your current git diff is sent only after you choose a free gateway or your own provider.",
+        "dataBoundary": "Your current git diff is sent directly to the provider whose key you choose. KB Labs Gateway is temporarily unavailable.",
         "studio": true
       },
       "steps": [
