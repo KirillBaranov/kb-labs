@@ -462,6 +462,20 @@ type spinner struct {
 
 func newSpinner() *spinner { return &spinner{done: make(chan struct{})} }
 
+var loaderMessages = []string{
+	"Putting the platform together",
+	"Installing the useful bits",
+	"Checking that the bolts are tight",
+	"Saving a cookie for after the install",
+}
+
+func loaderMessage(elapsed time.Duration) string {
+	if len(loaderMessages) == 0 {
+		return ""
+	}
+	return loaderMessages[int(elapsed/(2*time.Second))%len(loaderMessages)]
+}
+
 func (s *spinner) setLabel(l string) {
 	s.mu.Lock()
 	s.label = l
@@ -497,6 +511,7 @@ func (s *spinner) start() {
 
 	go func() {
 		i := 0
+		started := time.Now()
 		for {
 			select {
 			case <-s.done:
@@ -509,12 +524,13 @@ func (s *spinner) start() {
 
 				frame := frames[i%len(frames)]
 				i++
+				message := dim.Render(loaderMessage(time.Since(started)))
 
 				// \r returns to column 0; \033[K clears to end of line. Keep
 				// the live UI to one line — package-manager detail is captured,
 				// not mixed with the user's progress indicator.
 				if detail == "" {
-					fmt.Printf("\r\033[K  %s %s", frame, label)
+					fmt.Printf("\r\033[K  %s %s  %s", frame, label, message)
 					continue
 				}
 				fmt.Printf("\r\033[K  %s %s  %s", frame, label, dim.Render(detail))

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestEnvOrDefault_RespectsBootstrapEnvVars guards against a regression where
@@ -79,5 +80,14 @@ func TestSpinnerKeepsUntruncatedTailForFatalReport(t *testing.T) {
 	}
 	if spinner.detail != "" {
 		t.Errorf("spinner leaked package-manager detail into live UI: %q", spinner.detail)
+	}
+}
+
+func TestLoaderMessageRotatesWithoutLosingFriendlyCopy(t *testing.T) {
+	if got := loaderMessage(0); got != "Putting the platform together" {
+		t.Errorf("loaderMessage(0) = %q", got)
+	}
+	if got := loaderMessage(2 * time.Second); got != "Installing the useful bits" {
+		t.Errorf("loaderMessage(2s) = %q", got)
 	}
 }
