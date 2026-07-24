@@ -84,12 +84,23 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:           flagDemo,
 		DefaultProjectCWD:  projectCWD,
 		DefaultPlatformDir: flagPlatform,
+		ShowAgentSetup:     !flagYes && !flagSkipClaude,
 	})
 	if err != nil {
 		return err // includes "cancelled"
 	}
 	sel.DevMode = flagDevManifest != ""
 	sel.Registry = flagRegistry
+	// Keep scripted --yes installs backward compatible: they continue to add
+	// the optional agent assets unless explicitly disabled. Interactive runs
+	// receive their own consent screen in the wizard.
+	if flagYes && !flagSkipClaude {
+		sel.ClaudeEnabled = true
+	}
+	if flagSkipClaude {
+		sel.ClaudeEnabled = false
+	}
+	sel.SkipClaudeMd = flagNoClaudeMd
 
 	// Do not create a checkpoint, platform directory, or log until the local
 	// environment can support the selected install.
@@ -134,6 +145,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if summary := profile.Summary(); summary != "" {
 			fmt.Println(summary)
 		}
+	}
+	if sel.ClaudeEnabled {
+		printClaudePlan(sel.ProjectCWD, sel.SkipClaudeMd)
 	}
 
 	// Create platform directory.
@@ -358,19 +372,20 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
 	// All failures here are non-fatal: the platform install itself is already
 	// complete and we never want to fail the run because of optional assets.
-	if !flagSkipClaude {
+	if sel.ClaudeEnabled {
 		cr, cerr := claude.Install(claude.Options{
 			ProjectDir:   result.ProjectCWD,
 			PlatformDir:  result.PlatformDir,
-			SkipClaudeMd: flagNoClaudeMd,
-			Yes:          flagYes,
-			Log:          log,
-			Prompter:     stdPrompter{},
+			SkipClaudeMd: sel.SkipClaudeMd,
+			// The interactive agent-tools screen is the explicit consent to
+			// append the isolated managed section when CLAUDE.md already exists.
+			Yes: true,
+			Log: log,
 		})
 		if cerr != nil {
 			log.Printf("claude assets: %v (continuing)", cerr)
 		} else if cr != nil {
-			printClaudeSummary(newOutput(), cr)
+			printClaudeSummary(result.ProjectCWD, cr)
 			tc.Track("claude_installed", map[string]string{
 				"devkit":   cr.DevkitVersion,
 				"added":    fmt.Sprintf("%d", len(cr.SkillsAdded)),

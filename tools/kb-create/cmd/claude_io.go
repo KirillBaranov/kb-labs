@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/kb-labs/create/internal/claude"
@@ -46,20 +47,31 @@ func (stdPrompter) ConfirmAddClaudeMd(snippet string) claude.PromptResponse {
 	}
 }
 
-// printClaudeSummary renders a compact summary of what claude.Install/Update did.
-// It is intentionally minimal: a one-line section header plus up to two bullets.
-func printClaudeSummary(out output, r *claude.Result) {
+// printClaudePlan makes the optional agent setup explicit before package
+// installation starts. It describes additive destinations only — no existing
+// CLAUDE.md text or non-KB Labs skill is ever replaced.
+func printClaudePlan(projectDir string, skipClaudeMd bool) {
+	lines := []string{
+		"KB Labs skills will be added under " + filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"),
+		"They cover plugin creation, workflows, and troubleshooting.",
+	}
+	if skipClaudeMd {
+		lines = append(lines, "CLAUDE.md will not be changed.")
+	} else {
+		lines = append(lines, "A separately marked KB Labs section will be added to "+filepath.Join(projectDir, "CLAUDE.md")+".")
+	}
+	lines = append(lines, "Existing content and non-KB Labs skills are preserved.")
+	printRailBlock("Agent tools selected", lines)
+	fmt.Println()
+}
+
+// printClaudeSummary shows the exact additive changes after setup completes.
+func printClaudeSummary(projectDir string, r *claude.Result) {
 	if r == nil {
 		return
 	}
 	added, updated, removed := len(r.SkillsAdded), len(r.SkillsUpdated), len(r.SkillsRemoved)
-	if added+updated+removed == 0 && (r.ClaudeMdAction == "" || r.ClaudeMdAction == "skipped" || r.ClaudeMdAction == "unchanged") {
-		// Nothing interesting happened — stay silent to keep install output tidy.
-		return
-	}
-
-	out.Section("Claude Code assets")
-
+	lines := make([]string, 0, 4)
 	if added+updated+removed > 0 {
 		parts := make([]string, 0, 3)
 		if added > 0 {
@@ -71,13 +83,26 @@ func printClaudeSummary(out output, r *claude.Result) {
 		if removed > 0 {
 			parts = append(parts, fmt.Sprintf("-%d removed", removed))
 		}
-		out.KeyValue("Skills", strings.Join(parts, ", "))
+		lines = append(lines, railKeyValue("Skills", strings.Join(parts, ", ")))
+		lines = append(lines, "Location  "+filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"))
+	} else {
+		lines = append(lines, "Skills are already up to date in "+filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"))
 	}
 
 	if r.ClaudeMdAction != "" && r.ClaudeMdAction != "skipped" && r.ClaudeMdAction != "unchanged" {
 		label := claudeMdActionLabel(r.ClaudeMdAction, r.DevkitVersion)
-		out.KeyValue("CLAUDE.md", label)
+		lines = append(lines, railKeyValue("CLAUDE.md", label))
+		lines = append(lines, "Location  "+filepath.Join(projectDir, "CLAUDE.md"))
+	} else if r.ClaudeMdAction == "skipped" {
+		lines = append(lines, "CLAUDE.md was left unchanged.")
 	}
+	lines = append(lines, "Existing content and non-KB Labs skills were preserved.")
+	title := "Agent tools installed"
+	if removed > 0 {
+		title = "Agent tools removed"
+	}
+	printRailBlock(title, lines)
+	fmt.Println()
 }
 
 func claudeMdActionLabel(action, version string) string {

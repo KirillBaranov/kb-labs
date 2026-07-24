@@ -64,6 +64,10 @@ type WizardOptions struct {
 	Yes                bool // skip TUI, use the "explore" intent
 	Intent             string
 	DemoMode           bool
+	// ShowAgentSetup adds the optional Claude Code skills screen. It is enabled
+	// by kb-create's interactive flow; leaving it false preserves the small
+	// focused wizard used by embedding callers and unit tests.
+	ShowAgentSetup bool
 }
 
 // Run shows the interactive wizard and returns the user's selection.
@@ -127,6 +131,7 @@ const (
 	stageExtensions
 	stageStep // generic runner for the chosen intent's envVar/llmProvider/studioAccess steps
 	stageAnalytics
+	stageAgents
 	stageConfirm
 )
 
@@ -179,9 +184,12 @@ type wizardModel struct {
 	localMode    bool
 	studioCursor int // 0 = Secured, 1 = Local
 
-	telemetryEnabled bool
-	analyticsCursor  int // 0 = share anonymous technical events, 1 = keep analytics off
-	demoMode         bool
+	telemetryEnabled  bool
+	analyticsCursor   int // 0 = share anonymous technical events, 1 = keep analytics off
+	demoMode          bool
+	showAgentSetup    bool
+	agentSetupEnabled bool
+	agentCursor       int // 0 = install KB Labs skills + CLAUDE.md guidance, 1 = skip
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
@@ -271,9 +279,11 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 		selectedIntent: -1,
 		// Local-first is the launch default. Cloud/team onboarding is not a
 		// launch-ready flow, so it must never be selected implicitly.
-		localMode:        true,
-		analyticsCursor:  1,
-		telemetryEnabled: false,
+		localMode:         true,
+		analyticsCursor:   1,
+		telemetryEnabled:  false,
+		showAgentSetup:    opts.ShowAgentSetup,
+		agentSetupEnabled: true,
 	}, nil
 }
 
@@ -331,6 +341,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleStepKey(msg)
 	case stageAnalytics:
 		return m.handleAnalyticsKey(msg)
+	case stageAgents:
+		return m.handleAgentsKey(msg)
 	case stageConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -413,8 +425,14 @@ func (m wizardModel) goBack() (tea.Model, tea.Cmd) {
 		} else {
 			m.backBeforeAnalytics()
 		}
-	case stageConfirm:
+	case stageAgents:
 		m.stage = stageAnalytics
+	case stageConfirm:
+		if m.showAgentSetup {
+			m.stage = stageAgents
+		} else {
+			m.stage = stageAnalytics
+		}
 	}
 	return m, nil
 }
@@ -794,6 +812,32 @@ func (m wizardModel) handleAnalyticsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		m.telemetryEnabled = m.analyticsCursor == 0
+		if m.showAgentSetup {
+			m.stage = stageAgents
+		} else {
+			m.stage = stageConfirm
+		}
+	}
+	return m, nil
+}
+
+func (m wizardModel) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		m.cancelled = true
+		return m, tea.Quit
+	case "esc":
+		return m.goBack()
+	case "up", "k":
+		if m.agentCursor > 0 {
+			m.agentCursor--
+		}
+	case "down", "j":
+		if m.agentCursor < 1 {
+			m.agentCursor++
+		}
+	case "enter":
+		m.agentSetupEnabled = m.agentCursor == 0
 		m.stage = stageConfirm
 	}
 	return m, nil
@@ -818,6 +862,8 @@ func (m wizardModel) View() string {
 		body = m.viewStep()
 	case stageAnalytics:
 		body = m.viewAnalytics()
+	case stageAgents:
+		body = m.viewAgents()
 	case stageConfirm:
 		body = m.viewConfirm()
 	}
@@ -849,6 +895,9 @@ func (m wizardModel) progressLabel() string {
 		extensionStep = 1
 	}
 	total = 2 + customPrefix + extensionStep + len(intent.Steps) + 2 // dirs, outcome, optional custom step, extensions, setup, analytics, confirm
+	if m.showAgentSetup {
+		total++
+	}
 	switch m.stage {
 	case stageDirs:
 		step = 1
@@ -861,6 +910,12 @@ func (m wizardModel) progressLabel() string {
 	case stageStep:
 		step = 3 + customPrefix + extensionStep + m.stepIndex
 	case stageAnalytics:
+		if m.showAgentSetup {
+			step = total - 2
+		} else {
+			step = total - 1
+		}
+	case stageAgents:
 		step = total - 1
 	case stageConfirm:
 		step = total
@@ -921,6 +976,37 @@ func (m wizardModel) viewAnalytics() string {
 		radio := "○"
 		nameStyle := normalStyle
 		if i == m.analyticsCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
+	return b.String()
+}
+
+func (m wizardModel) viewAgents() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  agent tools\n\n")
+	b.WriteString("  " + sectionStyle.Render("Give Claude Code KB Labs context?") + "\n")
+	b.WriteString(dimStyle.Render("  Adds KB Labs skills for creating plugins, working with workflows, and troubleshooting the platform.") + "\n\n")
+
+	options := []struct{ name, desc string }{
+		{"Install KB Labs skills and guidance", "Adds only .claude/skills/kb-labs-* and a separately marked KB Labs section in CLAUDE.md."},
+		{"Skip for now", "No Claude Code files are changed. You can add the agent tools later with kb-create update."},
+	}
+	if _, err := os.Stat(filepath.Join(expandHome(m.cwdInput.Value()), "CLAUDE.md")); err == nil {
+		b.WriteString(dimStyle.Render("  Existing CLAUDE.md detected: choosing install appends the managed KB Labs section only; your content stays untouched.") + "\n\n")
+	}
+	for i, opt := range options {
+		cursor := "  "
+		if i == m.agentCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.agentCursor {
 			radio = focusStyle.Render("●")
 			nameStyle = focusStyle
 		}
@@ -1226,6 +1312,13 @@ func (m wizardModel) viewConfirm() string {
 		telLabel = "on"
 	}
 	fmt.Fprintf(&b, "  Analytics:  %s\n", dimStyle.Render(telLabel))
+	if m.showAgentSetup {
+		agentLabel := "off"
+		if m.agentSetupEnabled {
+			agentLabel = "KB Labs skills + CLAUDE.md guidance"
+		}
+		fmt.Fprintf(&b, "  Agent tools: %s\n", dimStyle.Render(agentLabel))
+	}
 
 	if intent != nil && intent.ID != "plugin-author" && len(intent.NextSteps) > 0 {
 		b.WriteString("\n  " + sectionStyle.Render("Next steps") + "\n")
@@ -1442,6 +1535,7 @@ func (m wizardModel) toSelection() *installer.Selection {
 		TelemetryEnabled:         m.telemetryEnabled,
 		LLMProvider:              m.llmProvider,
 		LocalMode:                m.localMode,
+		ClaudeEnabled:            m.agentSetupEnabled,
 		Intent:                   intentID,
 		FirstCommand:             firstCommand,
 		CustomCommandName:        strings.TrimSpace(m.commandInput.Value()),

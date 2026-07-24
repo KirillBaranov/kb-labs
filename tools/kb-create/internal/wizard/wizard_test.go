@@ -988,6 +988,36 @@ func TestHandleAnalyticsKeyRequiresExplicitChoice(t *testing.T) {
 	}
 }
 
+func TestAgentSetupScreenRequiresExplicitChoiceAndExplainsSafeMerge(t *testing.T) {
+	project := t.TempDir()
+	if err := os.WriteFile(filepath.Join(project, "CLAUDE.md"), []byte("# My existing notes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := wizardModel{
+		stage:           stageAnalytics,
+		showAgentSetup:  true,
+		cwdInput:        makeInput(project),
+		analyticsCursor: 1,
+	}
+	next, _ := m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if got.stage != stageAgents {
+		t.Fatalf("analytics completion stage = %v, want agent setup", got.stage)
+	}
+	for _, want := range []string{"creating plugins", "workflows", "troubleshooting", "Existing CLAUDE.md detected", "stays untouched"} {
+		if !strings.Contains(got.viewAgents(), want) {
+			t.Errorf("agent setup screen missing %q: %s", want, got.viewAgents())
+		}
+	}
+
+	got.agentCursor = 1
+	next, _ = got.handleAgentsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got = next.(wizardModel)
+	if got.stage != stageConfirm || got.agentSetupEnabled {
+		t.Errorf("skip agent setup = stage %v, enabled %t; want confirm and false", got.stage, got.agentSetupEnabled)
+	}
+}
+
 func TestHandleConfirmKeyCancels(t *testing.T) {
 	for _, tc := range []struct {
 		name string

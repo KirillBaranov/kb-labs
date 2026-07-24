@@ -196,7 +196,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			if cerr != nil {
 				log.Printf("claude assets: %v (continuing)", cerr)
 			} else if cr != nil {
-				printClaudeSummary(out, cr)
+				printClaudeSummary(cfg.CWD, cr)
 			}
 		}
 	}

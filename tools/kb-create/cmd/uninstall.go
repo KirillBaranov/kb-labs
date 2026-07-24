@@ -72,7 +72,7 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	}); cerr != nil {
 		out.Warn(fmt.Sprintf("claude assets: %v (continuing)", cerr))
 	} else if cr != nil && (len(cr.SkillsRemoved) > 0 || cr.ClaudeMdAction != "") {
-		printClaudeSummary(out, cr)
+		printClaudeSummary(cfg.CWD, cr)
 	}
 
 	// Remove CLI wrappers and binaries from user bin dir.

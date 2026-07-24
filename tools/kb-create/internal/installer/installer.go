@@ -46,6 +46,13 @@ type Selection struct {
 	LLMProvider      string // "openai" | "anthropic" | "" (skip)
 	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
 	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	// ClaudeEnabled controls the optional KB Labs agent setup: managed skills
+	// under .claude/skills/kb-labs-* plus a separately marked CLAUDE.md section.
+	// It never authorizes replacing user-authored files.
+	ClaudeEnabled bool
+	// SkipClaudeMd keeps the skills-only option available to the CLI flag while
+	// preserving user-owned CLAUDE.md content.
+	SkipClaudeMd bool
 	// Adapters overrides which package backs a given capability role (e.g.
 	// "cache" -> "@kb-labs/adapters-redis@0.2.0"), from the chosen intent's
 	// bundle or the custom picker's adapter-role opt-ins.
