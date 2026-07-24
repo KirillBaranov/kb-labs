@@ -163,6 +163,13 @@ func TestOnboardingNoticesUseSharedLeftRail(t *testing.T) {
 	}
 }
 
+func TestSpinnerLineStartsAtLeftEdge(t *testing.T) {
+	got := spinnerLine("⠹", "[2/4] Installing 1 binary", "│ Putting the platform together")
+	if !strings.HasPrefix(got, "\r\x1b[K⠹") {
+		t.Errorf("spinner line has unexpected indentation: %q", got)
+	}
+}
+
 func TestPrintFatalErrorPreservesDetailsAndSafeRuntimeContext(t *testing.T) {
 	got := captureStdout(t, func() {
 		printFatalError(errors.New("install: ERR_PNPM_NO_MATCHING_VERSION\nmissing package"), "2.106.0")

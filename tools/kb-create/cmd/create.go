@@ -130,9 +130,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	if profile != nil {
 		out := newOutput()
-		out.Section("Detecting project")
-		fmt.Printf("  %s\n", profile.Summary())
-		fmt.Println()
+		out.Info("Detecting project")
+		fmt.Println(profile.Summary())
 	}
 
 	// Create platform directory.
@@ -147,8 +146,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer func() { _ = log.Close() }()
-
-	fmt.Println()
 
 	log.Printf("Using %s", packageManager.Name())
 
@@ -531,13 +528,19 @@ func (s *spinner) start() {
 				// the live UI to one line — package-manager detail is captured,
 				// not mixed with the user's progress indicator.
 				if detail == "" {
-					fmt.Printf("\r\033[K  %s %s  %s  %s", frame, label, dim.Render("│"), message)
+					fmt.Print(spinnerLine(frame, label, dim.Render("│")+"  "+message))
 					continue
 				}
-				fmt.Printf("\r\033[K  %s %s  %s", frame, label, dim.Render(detail))
+				fmt.Print(spinnerLine(frame, label, dim.Render(detail)))
 			}
 		}
 	}()
+}
+
+// spinnerLine deliberately begins at column zero after clearing the previous
+// frame. The spinner is a primary progress indicator, not nested content.
+func spinnerLine(frame, label, trailing string) string {
+	return fmt.Sprintf("\r\033[K%s %s  %s", frame, label, trailing)
 }
 
 // stop halts the spinner and prints a final status line.
