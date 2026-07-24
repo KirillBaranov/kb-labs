@@ -85,6 +85,19 @@ type Manifest struct {
 	// services/plugins/adapters plus an ordered list of setup steps. Adding
 	// a scenario is a manifest edit, not a wizard code change.
 	Intents []Intent `json:"intents,omitempty"`
+	// Extensions are optional capabilities offered after an outcome is chosen.
+	// They keep the CLI-only path small while making larger local tooling an
+	// explicit choice.
+	Extensions []Extension `json:"extensions,omitempty"`
+}
+
+// Extension is an optional, product-facing capability. Its bundle is merged
+// with the selected outcome only when the user checks it in the wizard.
+type Extension struct {
+	ID          string       `json:"id"`
+	Label       string       `json:"label"`
+	Description string       `json:"description"`
+	Bundle      IntentBundle `json:"bundle"`
 }
 
 // IntentBundle names the services/plugins/adapter-roles an intent installs.

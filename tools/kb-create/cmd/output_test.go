@@ -68,10 +68,13 @@ func TestPrintOutcomeHandoffShowsOnlySelectedSafeCommand(t *testing.T) {
 	if !strings.Contains(got, "kb release plan") {
 		t.Fatalf("handoff did not show first command: %q", got)
 	}
-	for _, unwanted := range []string{"kb review run", "kb commit commit", "kb-dev start", "kb --help"} {
+	for _, unwanted := range []string{"kb review run", "kb commit commit", "kb --help"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("handoff must not suggest unrelated command %q: %q", unwanted, got)
 		}
+	}
+	if !strings.Contains(got, "http://127.0.0.1:3000") {
+		t.Errorf("Studio handoff is missing its local URL: %q", got)
 	}
 }
 

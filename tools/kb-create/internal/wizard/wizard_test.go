@@ -94,6 +94,10 @@ func sampleManifest() *manifest.Manifest {
 				},
 			},
 		},
+		Extensions: []manifest.Extension{
+			{ID: "studio", Label: "Studio", Description: "Observe local runs", Bundle: manifest.IntentBundle{Services: []string{"studio"}, Binaries: []string{"kb-dev"}}},
+			{ID: "mcp", Label: "MCP", Description: "Connect an agent", Bundle: manifest.IntentBundle{Services: []string{"mcp"}, Binaries: []string{"kb-dev"}}},
+		},
 	}
 }
 
@@ -217,6 +221,37 @@ func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	if sel.FirstCommand == nil || sel.FirstCommand.Command != "kb release plan" {
 		t.Errorf("FirstCommand = %+v, want kb release plan", sel.FirstCommand)
 	}
+}
+
+func TestExtensionsAreOptInAndMergeWithOutcome(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "release")
+	m.applyIntentBundle(m.currentIntent().Bundle)
+	m.enterExtensions()
+	if m.stage != stageExtensions {
+		t.Fatalf("stage = %v, want stageExtensions", m.stage)
+	}
+	if m.serviceSelected("studio") {
+		t.Fatal("Studio is selected before the extension page is confirmed")
+	}
+
+	next, _ := m.handleExtensionsKey(tea.KeyMsg{Type: tea.KeySpace})
+	m = next.(wizardModel)
+	next, _ = m.handleExtensionsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m = next.(wizardModel)
+	if !m.serviceSelected("studio") {
+		t.Fatal("Studio extension did not add the Studio service")
+	}
+	if !m.stageIsAfterExtensions() {
+		t.Fatalf("stage = %v, want next onboarding stage", m.stage)
+	}
+}
+
+func (m wizardModel) stageIsAfterExtensions() bool {
+	return m.stage == stageAnalytics || m.stage == stageStep
 }
 
 func TestDefaultSelectionRejectsRequiredLLMIntent(t *testing.T) {

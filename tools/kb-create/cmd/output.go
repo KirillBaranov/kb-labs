@@ -242,7 +242,7 @@ func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand, pend
 	}
 	if first.Studio {
 		fmt.Println()
-		fmt.Println("  Diagnostics: " + styleMuted.Render("kb-create doctor"))
+		fmt.Println("  Observe in Studio: " + styleMuted.Render("kb-dev start  →  http://127.0.0.1:3000"))
 	}
 	fmt.Println()
 }

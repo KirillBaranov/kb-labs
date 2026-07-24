@@ -124,6 +124,7 @@ const (
 	stageIntent
 	stageCustom
 	stageCustomContract
+	stageExtensions
 	stageStep // generic runner for the chosen intent's envVar/llmProvider/studioAccess steps
 	stageAnalytics
 	stageConfirm
@@ -143,6 +144,7 @@ type wizardModel struct {
 	plugins          []checkItem
 	adapterRoles     []checkItem
 	binaries         []checkItem
+	extensions       []checkItem
 	platformInput    textinput.Model
 	cwdInput         textinput.Model
 	commandInput     textinput.Model
@@ -271,6 +273,7 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 		services:         services,
 		plugins:          plugins,
 		binaries:         binaries,
+		extensions:       extensionItems(m.Extensions),
 		adapterRoles:     adapterRoles,
 		demoMode:         opts.DemoMode,
 		selectedIntent:   -1,
@@ -331,6 +334,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCustomKey(msg)
 	case stageCustomContract:
 		return m.handleCustomContractKey(msg)
+	case stageExtensions:
+		return m.handleExtensionsKey(msg)
 	case stageStep:
 		return m.handleStepKey(msg)
 	case stageAnalytics:
@@ -460,7 +465,7 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		m.applyIntentBundle(intent.Bundle)
-		m.enterSteps()
+		m.enterExtensions()
 	}
 	return m, nil
 }
@@ -493,7 +498,7 @@ func (m wizardModel) handleCustomContractKey(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		}
 		m.errMsg = ""
 		m.applyIntentBundle(m.currentIntent().Bundle)
-		m.enterSteps()
+		m.enterExtensions()
 	}
 	return m, nil
 }
@@ -515,6 +520,49 @@ func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.toggleCursor()
 	case "enter":
+		m.enterSteps()
+	}
+	return m, nil
+}
+
+func extensionItems(extensions []manifest.Extension) []checkItem {
+	items := make([]checkItem, len(extensions))
+	for i, extension := range extensions {
+		items[i] = checkItem{id: extension.ID, desc: extension.Description}
+	}
+	return items
+}
+
+func (m *wizardModel) enterExtensions() {
+	if len(m.extensions) == 0 {
+		m.enterSteps()
+		return
+	}
+	m.stage = stageExtensions
+	m.cursor = 0
+}
+
+func (m wizardModel) handleExtensionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.extensions)-1 {
+			m.cursor++
+		}
+	case " ":
+		m.extensions[m.cursor].checked = !m.extensions[m.cursor].checked
+	case "enter":
+		for i, extension := range m.manifest.Extensions {
+			if m.extensions[i].checked {
+				m.mergeIntentBundle(extension.Bundle)
+			}
+		}
 		m.enterSteps()
 	}
 	return m, nil
@@ -713,6 +761,8 @@ func (m wizardModel) View() string {
 		body = m.viewCustom()
 	case stageCustomContract:
 		body = m.viewCustomContract()
+	case stageExtensions:
+		body = m.viewExtensions()
 	case stageStep:
 		body = m.viewStep()
 	case stageAnalytics:
@@ -743,7 +793,11 @@ func (m wizardModel) progressLabel() string {
 	if intent.ID == "custom" || intent.ID == "plugin-author" {
 		customPrefix = 1
 	}
-	total = 2 + customPrefix + len(intent.Steps) + 2 // dirs, outcome, optional custom step, setup, analytics, confirm
+	extensionStep := 0
+	if intent.ID != "custom" && len(m.extensions) > 0 {
+		extensionStep = 1
+	}
+	total = 2 + customPrefix + extensionStep + len(intent.Steps) + 2 // dirs, outcome, optional custom step, extensions, setup, analytics, confirm
 	switch m.stage {
 	case stageDirs:
 		step = 1
@@ -751,14 +805,39 @@ func (m wizardModel) progressLabel() string {
 		step = 2
 	case stageCustom, stageCustomContract:
 		step = 3
+	case stageExtensions:
+		step = 3 + customPrefix
 	case stageStep:
-		step = 3 + customPrefix + m.stepIndex
+		step = 3 + customPrefix + extensionStep + m.stepIndex
 	case stageAnalytics:
 		step = total - 1
 	case stageConfirm:
 		step = total
 	}
 	return dimStyle.Render(fmt.Sprintf("  Step %d of %d", step, total))
+}
+
+func (m wizardModel) viewExtensions() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  extensions\n\n")
+	b.WriteString("  " + sectionStyle.Render("Optional local capabilities") + "\n")
+	b.WriteString(dimStyle.Render("  CLI remains the base. Add only the local tools you want now; you can install these later.") + "\n\n")
+	for i, extension := range m.manifest.Extensions {
+		cursor := "  "
+		if i == m.cursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		check := "○"
+		style := normalStyle
+		if m.extensions[i].checked {
+			check = selectedStyle.Render("●")
+			style = selectedStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, check, style.Render(extension.Label))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(extension.Description))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter continue · esc quit"))
+	return b.String()
 }
 
 func (m wizardModel) viewCustomContract() string {
@@ -1158,6 +1237,35 @@ func (m *wizardModel) applyIntentBundle(b manifest.IntentBundle) {
 	}
 }
 
+// mergeIntentBundle adds an explicitly selected extension without changing
+// the outcome's existing components. Extensions are opt-in additions, unlike
+// applyIntentBundle which resets the base outcome selection.
+func (m *wizardModel) mergeIntentBundle(b manifest.IntentBundle) {
+	svcSet := toSet(b.Services)
+	plSet := toSet(b.Plugins)
+	binSet := toSet(b.Binaries)
+	for i := range m.services {
+		if svcSet[m.services[i].id] {
+			m.services[i].checked = true
+		}
+	}
+	for i := range m.plugins {
+		if plSet[m.plugins[i].id] {
+			m.plugins[i].checked = true
+		}
+	}
+	for i := range m.adapterRoles {
+		if _, ok := b.Adapters[m.adapterRoles[i].id]; ok {
+			m.adapterRoles[i].checked = true
+		}
+	}
+	for i := range m.binaries {
+		if binSet[m.binaries[i].id] {
+			m.binaries[i].checked = true
+		}
+	}
+}
+
 func (m *wizardModel) toggleCursor() {
 	idx := m.cursor
 	if idx < len(m.services) {
@@ -1266,8 +1374,14 @@ func (m wizardModel) toSelection() *installer.Selection {
 				Command:     "kb " + strings.TrimSpace(m.commandInput.Value()) + " hello",
 				Description: "Run the generated plugin's first safe command.",
 				Operation:   manifest.CommandOperationAnalyze,
-				Studio:      true,
+				Studio:      m.serviceSelected("studio"),
 			}
+		} else if firstCommand != nil {
+			// Studio is an opt-in extension, never an implication of an
+			// outcome. Keep the readiness contract truthful for its handoff.
+			copy := *firstCommand
+			copy.Studio = m.serviceSelected("studio")
+			firstCommand = &copy
 		}
 	}
 	sel := &installer.Selection{
@@ -1294,6 +1408,15 @@ func (m wizardModel) toSelection() *installer.Selection {
 		sel.EnvValues = map[string]string{"NPM_TOKEN": v}
 	}
 	return sel
+}
+
+func (m wizardModel) serviceSelected(id string) bool {
+	for _, service := range m.services {
+		if service.id == id {
+			return service.checked
+		}
+	}
+	return false
 }
 
 // defaultSelection returns the chosen (or "explore") intent's bundle without

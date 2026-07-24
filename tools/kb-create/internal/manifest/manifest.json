@@ -68,6 +68,13 @@
       "description": "Web UI (port 3000)",
       "default": true,
       "port": 3000
+    },
+    {
+      "id": "mcp",
+      "pkg": "@kb-labs/mcp-app",
+      "description": "MCP server (port 7779)",
+      "default": false,
+      "port": 7779
     }
   ],
   "adapters": [
@@ -131,6 +138,26 @@
       "serviceTransport": "@kb-labs/adapters-service-transport-http"
     }
   },
+  "extensions": [
+    {
+      "id": "studio",
+      "label": "Studio",
+      "description": "A local visual workspace for observing runs after you start it.",
+      "bundle": { "services": ["studio"], "binaries": ["kb-dev"] }
+    },
+    {
+      "id": "mcp",
+      "label": "MCP",
+      "description": "Expose KB Labs tools to an MCP-compatible coding agent on your machine.",
+      "bundle": { "services": ["mcp"], "binaries": ["kb-dev"] }
+    },
+    {
+      "id": "workflows",
+      "label": "Workflows",
+      "description": "Run repeatable multi-step automation with the workflow daemon.",
+      "bundle": { "services": ["workflow"], "binaries": ["kb-dev"] }
+    }
+  ],
   "intents": [
     {
       "id": "explore",
@@ -161,8 +188,7 @@
         "requires": {
           "llm": "required"
         },
-        "dataBoundary": "Your current git diff is sent directly to the provider whose key you choose. KB Labs Gateway is temporarily unavailable.",
-        "studio": true
+        "dataBoundary": "Your current git diff is sent directly to the provider whose key you choose. KB Labs Gateway is temporarily unavailable."
       },
       "steps": [
         { "type": "llmProvider" }
@@ -179,8 +205,7 @@
       "firstCommand": {
         "command": "kb release plan",
         "description": "Prepare a release plan without publishing packages.",
-        "operation": "analyze",
-        "studio": true
+        "operation": "analyze"
       },
       "docs": [
         { "label": "CI-install guide", "url": "https://kblabs.ru/docs/guides/ci-install" }
