@@ -146,5 +146,13 @@ plugins/**/.kb/
 tools/**/.kb/
 **/.npmrc
 
+# Compiled Go CLI binaries — built locally via ./bootstrap.sh or `make -C tools/<tool> build`,
+# never committed (git filemode tracking on these caused repeated exec-bit regressions)
+tools/kb-create/kb-create
+tools/kb-dev/kb-dev
+tools/kb-deploy/kb-deploy
+tools/kb-devkit/kb-devkit
+tools/kb-monitor/kb-monitor
+
 # Module Federation dev-mode type cache (Rspack)
 **/.__mf__temp/

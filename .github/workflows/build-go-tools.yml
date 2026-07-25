@@ -1,0 +1,56 @@
+name: Build Go tools (reusable)
+
+# Builds kb-devkit from source, then uses it to build the rest of the Go CLI
+# tools, and uploads them as the "go-tools" artifact. Extracted from ci.yml /
+# ci-pr.yml, which had this exact sequence duplicated. These binaries are
+# never committed to git — see tools/kb-*/kb-* in .gitignore.
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: >-
+          Comma-separated package list forwarded to `kb-devkit run build --packages`.
+        type: string
+        default: "github.com/kb-labs/clikit,github.com/kb-labs/devkit,github.com/kb-labs/dev,kb-create,github.com/kb-labs/kb-deploy,github.com/kb-labs/kb-monitor"
+      fetch-depth:
+        description: Passed through to actions/checkout.
+        type: number
+        default: 0
+
+jobs:
+  build:
+    name: Build Go tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: |
+            tools/clikit/go.sum
+            tools/kb-devkit/go.sum
+            tools/kb-dev/go.sum
+            tools/kb-create/go.sum
+            tools/kb-deploy/go.sum
+            tools/kb-monitor/go.sum
+      - name: Build kb-devkit (host)
+        run: make build
+        working-directory: tools/kb-devkit
+      - name: Build all Go binaries via devkit
+        run: ./tools/kb-devkit/kb-devkit run build --packages ${{ inputs.packages }}
+      - name: Collect binaries
+        run: |
+          mkdir -p go-tools
+          cp tools/kb-devkit/kb-devkit go-tools/kb-devkit
+          cp tools/kb-dev/kb-dev       go-tools/kb-dev
+          cp tools/kb-create/kb-create go-tools/kb-create
+          cp tools/kb-deploy/kb-deploy go-tools/kb-deploy
+          cp tools/kb-monitor/kb-monitor go-tools/kb-monitor
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-tools
+          path: go-tools/
+          retention-days: 1
