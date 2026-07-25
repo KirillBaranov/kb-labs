@@ -15,7 +15,7 @@ import (
 // manager selected for the install. It performs only filesystem metadata and
 // PATH reads; callers can safely run it before creating a checkpoint.
 func Check(projectDir, platformDir string, manager pm.PackageManager) error {
-	if err := existingDirectory("project", projectDir); err != nil {
+	if err := projectDestination(projectDir); err != nil {
 		return err
 	}
 	if err := writableParent("platform", platformDir); err != nil {
@@ -31,6 +31,23 @@ func Check(projectDir, platformDir string, manager pm.PackageManager) error {
 		return fmt.Errorf("%s was not found in PATH — install it and run this command again", manager.Name())
 	}
 	return nil
+}
+
+// projectDestination accepts both an existing project and the new directory
+// form used by `kb-create my-project`. Creation is owned by the installer so
+// preflight remains read-only; here we only verify that the path is usable.
+func projectDestination(path string) error {
+	info, err := os.Stat(path)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("project path %q is not a directory", path)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("inspect project directory %q: %w", path, err)
+	}
+	return writableParent("project", path)
 }
 
 func existingDirectory(label, path string) error {

@@ -9,14 +9,26 @@ import (
 	"github.com/kb-labs/create/internal/pm"
 )
 
-func TestCheckRejectsMissingProjectBeforeWriting(t *testing.T) {
+func TestCheckAcceptsNewProjectDirectory(t *testing.T) {
 	root := t.TempDir()
 	err := Check(filepath.Join(root, "missing"), filepath.Join(root, "platform"), pm.Detect())
-	if err == nil || !strings.Contains(err.Error(), "project directory") {
-		t.Fatalf("Check() error = %v, want missing project diagnostic", err)
+	if err != nil {
+		t.Fatalf("Check() error = %v, want new project path to be accepted", err)
 	}
 	if _, statErr := os.Stat(filepath.Join(root, "platform")); !os.IsNotExist(statErr) {
-		t.Fatalf("Check() created platform directory before failing: %v", statErr)
+		t.Fatalf("Check() created platform directory during read-only preflight: %v", statErr)
+	}
+}
+
+func TestCheckRejectsProjectFile(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	if err := os.WriteFile(project, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := Check(project, filepath.Join(root, "platform"), pm.Detect())
+	if err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("Check() error = %v, want non-directory project diagnostic", err)
 	}
 }
 
