@@ -86,7 +86,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 
@@ -173,7 +173,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 
@@ -238,7 +238,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: actions/setup-go@v5
         with:

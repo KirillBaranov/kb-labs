@@ -4,7 +4,7 @@
 #
 # Build context: e2e/  (so COPY packages/ works)
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 # pnpm is required for publishing — it writes sha512 integrity hashes that
 # pnpm on the consuming side (platform container) can verify.

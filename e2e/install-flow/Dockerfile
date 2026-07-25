@@ -7,7 +7,7 @@
 # Build:  docker build -t kb-e2e -f e2e/install-flow/Dockerfile .
 # Run:    docker run --rm kb-e2e
 
-FROM node:20-bullseye
+FROM node:22-bullseye
 
 RUN apt-get update -qq && \
     apt-get install -y -qq curl ca-certificates git jq && \

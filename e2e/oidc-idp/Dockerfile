@@ -6,16 +6,16 @@
 # IDP_CLIENT_SECRET, IDP_TLS_KEY/CERT, IDP_AUTHORIZATION_ENDPOINT, etc.
 
 # ── Build stage: bundle src/bin.ts → dist/bin.mjs ──────────────────────────────
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /build
 COPY src ./src
 RUN npm install --no-save esbuild@0.24.0 jose@5.9.6 \
  && npx esbuild src/bin.ts \
-      --bundle --platform=node --format=esm --target=node20 \
+      --bundle --platform=node --format=esm --target=node22 \
       --outfile=dist/bin.mjs
 
 # ── Run stage: just node + the bundle ──────────────────────────────────────────
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 COPY --from=build /build/dist/bin.mjs ./bin.mjs
 # Certs are mounted at runtime via the compose volume (IDP_TLS_KEY/CERT point at
