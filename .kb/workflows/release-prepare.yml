@@ -44,6 +44,17 @@ jobs:
   prepare:
     runsOn: local
     steps:
+      - name: Verify release branch
+        id: branch
+        phase: preview
+        run: |
+          set -e
+          branch="$(git branch --show-current)"
+          if [ "$branch" != "main" ]; then
+            echo "Release preparation is allowed only from main (current branch: ${branch:-detached})" >&2
+            exit 1
+          fi
+
       - name: Preview
         id: plan
         phase: preview
