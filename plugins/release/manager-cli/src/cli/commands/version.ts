@@ -14,6 +14,7 @@ import { findRepoRoot } from '../../shared/utils';
 
 interface VersionFlags {
   scope?: string;
+  flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
   'dry-run'?: boolean;
   json?: boolean;
@@ -76,6 +77,7 @@ export default defineCommand({
         cwd: repoRoot,
         config,
         scope: flags.scope,
+        flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
       });
 

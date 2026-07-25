@@ -32,11 +32,6 @@ on:
     tags:
       - 'platform-v*'
       - 'sdk-v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Git tag to stage + deliver (defaults to the ref that triggered this run)'
-        required: false
 
 permissions:
   contents: read
@@ -47,13 +42,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  stage:
-    name: Stage
+  validate-tag:
+    name: Validate release tag source
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Reject tags outside main
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release tags must point to a commit already reachable from main."
+            echo "::error::Tag: $GITHUB_REF_NAME; commit: $GITHUB_SHA"
+            exit 1
+          fi
+
+  stage:
+    name: Stage
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
@@ -86,7 +101,7 @@ jobs:
         run: pnpm build
 
       - name: Stage (pack committed versions into real tarballs, once)
-        run: pnpm kb release stage --release-tag "${{ inputs.tag || github.ref_name }}"
+        run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -101,7 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
@@ -141,7 +156,7 @@ jobs:
           path: .kb/release/artifacts/
 
       - name: Deliver (publish the staged tarballs as-is, verify against the registry)
-        run: pnpm kb release deliver --release-tag "${{ inputs.tag || github.ref_name }}" --target npm
+        run: pnpm kb release deliver --release-tag "${{ github.ref_name }}" --target npm
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -162,13 +177,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Extract changelog section for this version
         id: notes
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
+          TAG="${{ github.ref_name }}"
           FLOW="${TAG%%-v*}"
           VERSION="${TAG#"$FLOW"-v}"
           awk -v ver="$VERSION" '
@@ -190,7 +205,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           name: "${{ steps.notes.outputs.flow }} v${{ steps.notes.outputs.version }}"
           body_path: release-notes.md
           draft: false
@@ -213,7 +228,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { run_install: false }

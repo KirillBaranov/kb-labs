@@ -109,6 +109,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           bump: {
             type: 'string',
             choices: ['patch', 'minor', 'major', 'auto'] as const,
@@ -374,6 +375,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Filter to specific package' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           from: { type: 'string', description: 'Start commit/tag' },
           to: { type: 'string', description: 'End commit/tag (default: HEAD)' },
           'since-tag': { type: 'string', description: 'Shorthand for --from <tag>' },
@@ -453,6 +455,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           json: { type: 'boolean', description: 'Output in JSON format' },
         }),
 
@@ -475,6 +478,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           json: { type: 'boolean', description: 'Output in JSON format' },
         }),
 
@@ -519,6 +523,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           bump: {
             type: 'string',
             choices: ['patch', 'minor', 'major', 'auto'] as const,
@@ -549,6 +554,7 @@ export const manifest = {
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          flow: { type: 'string', description: 'Named release flow from release.flows' },
           bump: {
             type: 'string',
             choices: ['patch', 'minor', 'major', 'auto'] as const,
