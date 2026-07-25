@@ -736,7 +736,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.6
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.8)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.8.3)
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.8.3)
 
   adapters/telegram:
     devDependencies:
