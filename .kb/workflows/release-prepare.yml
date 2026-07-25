@@ -94,6 +94,17 @@ jobs:
         timeoutMs: 1200000
         run: pnpm kb release version --flow ${{ inputs.flow }} --json
 
+      - name: Verify release branch before git operations
+        id: git-branch
+        phase: git
+        run: |
+          set -e
+          branch="$(git branch --show-current)"
+          if [ "$branch" != "main" ]; then
+            echo "Refusing to create release commit or tag outside main (current branch: ${branch:-detached})" >&2
+            exit 1
+          fi
+
       - name: Commit and tag
         id: git
         phase: git
