@@ -14,6 +14,7 @@ import { findRepoRoot } from '../../shared/utils';
 
 interface BuildFlags {
   scope?: string;
+  flow?: string;
   json?: boolean;
 }
 
@@ -68,7 +69,7 @@ export default defineCommand({
 
       const planLoader = useLoader('Discovering packages...');
       planLoader.start();
-      const plan = await planRelease({ cwd: repoRoot, config, scope: flags.scope });
+      const plan = await planRelease({ cwd: repoRoot, config, scope: flags.scope, flow: flags.flow });
       planLoader.succeed(`Found ${plan.packages.length} package(s)`);
 
       if (plan.packages.length === 0) {

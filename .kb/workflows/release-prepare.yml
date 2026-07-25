@@ -1,0 +1,90 @@
+# Local release "prepare" step — checks, version bump, changelog, git
+# commit/tag/push, gated on a human sign-off after seeing the plan. Runs
+# only on the developer's own machine (kb-dev start must be up), never in
+# CI — see plugins/release/docs/adr/0001-* and the release plan.
+#
+# Deliberately a thin wrapper around the existing, already-tested atomic
+# release commands — no release logic is reimplemented here.
+#
+# Run: kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform"}'
+
+name: release-prepare
+version: 1.0.0
+description: Prepare a release (version, changelog, git tag/push) with a human approval gate — never publishes to npm.
+on:
+  manual: true
+
+inputs:
+  flow:
+    type: string
+    description: Release flow to prepare — must match a key under release.flows in .kb/kb.config.json (e.g. "platform", "sdk")
+    required: true
+
+phases:
+  preview:
+    label: Preview
+    description: Compute the release plan (no side effects)
+  checks:
+    label: Checks
+    description: Run configured pre-release checks
+  build:
+    label: Build
+    description: Build packages included in the release
+  approval:
+    label: Approval
+    description: Human sign-off before changing files or pushing git refs
+  prepare:
+    label: Prepare
+    description: Generate changelog and update package versions
+  git:
+    label: Git
+    description: Commit, tag, and push the prepared release
+
+jobs:
+  prepare:
+    runsOn: local
+    steps:
+      - name: Preview
+        id: plan
+        phase: preview
+        timeoutMs: 1200000
+        run: |
+          set -e
+          pnpm kb release plan --flow ${{ inputs.flow }} --json
+
+      - name: Checks
+        id: checks
+        phase: checks
+        timeoutMs: 1200000
+        run: pnpm kb release checks --flow ${{ inputs.flow }} --json
+
+      - name: Build
+        id: build
+        phase: build
+        timeoutMs: 1200000
+        run: pnpm kb release build --flow ${{ inputs.flow }} --json
+
+      - name: Confirm release
+        phase: approval
+        uses: builtin:approval
+        with:
+          title: "Release ${{ inputs.flow }} — proceed?"
+          instructions: Review the plan, checks, and build output above before generating the changelog and bumping versions. Nothing is published to npm here — that happens in CI, triggered by the tag pushed at the end.
+
+      - name: Generate changelog
+        id: changelog
+        phase: prepare
+        timeoutMs: 1200000
+        run: pnpm kb release changelog --flow ${{ inputs.flow }} --json
+
+      - name: Bump versions
+        id: version
+        phase: prepare
+        timeoutMs: 1200000
+        run: pnpm kb release version --flow ${{ inputs.flow }} --json
+
+      - name: Commit and tag
+        id: git
+        phase: git
+        timeoutMs: 1200000
+        run: pnpm kb release git --flow ${{ inputs.flow }} --bump auto --json
