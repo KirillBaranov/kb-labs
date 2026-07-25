@@ -1627,9 +1627,10 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 		DemoMode:         opts.DemoMode,
 		Consent:          consent,
 		TelemetryEnabled: false,
-		LocalMode:        true,
-		Intent:           intent.ID,
-		FirstCommand:     intent.FirstCommand,
+		// Secured mode is the non-interactive default; --local is explicit.
+		LocalMode:    false,
+		Intent:       intent.ID,
+		FirstCommand: intent.FirstCommand,
 	}, nil
 }
 

@@ -380,13 +380,13 @@ func TestToSelectionPreservesCustomCommandContract(t *testing.T) {
 	}
 }
 
-func TestDefaultSelectionUsesLocalMode(t *testing.T) {
+func TestDefaultSelectionUsesSecuredMode(t *testing.T) {
 	sel, err := defaultSelection(sampleManifest(), WizardOptions{Intent: "release"})
 	if err != nil {
 		t.Fatalf("defaultSelection() error = %v", err)
 	}
-	if !sel.LocalMode {
-		t.Error("LocalMode = false, want true for the local-first launch flow")
+	if sel.LocalMode {
+		t.Error("LocalMode = true, want false for the secured non-interactive flow")
 	}
 }
 

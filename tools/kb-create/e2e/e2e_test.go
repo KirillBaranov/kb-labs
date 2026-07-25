@@ -901,9 +901,9 @@ func TestNoPeerDepWarnings(t *testing.T) {
 	}
 }
 
-// ── CommitPlatformFiles: git log has KB Labs commit ──────────────────────────
+// ── Platform files are generated without mutating git history ───────────────
 
-func TestPlatformFilesCommitted(t *testing.T) {
+func TestPlatformFilesGenerated(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping network test in -short mode")
 	}
@@ -912,12 +912,12 @@ func TestPlatformFilesCommitted(t *testing.T) {
 	platformDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	// Init git repo with an initial commit and an untracked .ts file so the
-	// installer's CommitPlatformFiles step has something to work with.
+	// Init git repo with an initial commit and an untracked .ts file. The
+	// installer must generate its files without taking ownership of git history.
 	mustGit(t, projectDir, "init")
 	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
 	write(t, filepath.Join(projectDir, "main.ts"), "export const x = 1")
-	// Do NOT stage main.ts — it stays untracked so CommitPlatformFiles runs.
+	// Do NOT stage main.ts — it must remain unrelated user work.
 
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
 
@@ -928,29 +928,17 @@ func TestPlatformFilesCommitted(t *testing.T) {
 		t.Fatalf("install exited %d", code)
 	}
 
-	// git log --oneline in the project dir.
-	cmd := exec.CommandContext(context.Background(), "git", "log", "--oneline") // #nosec G204
-	cmd.Dir = projectDir
-	logOut, err := cmd.CombinedOutput()
+	if _, err := os.Stat(filepath.Join(projectDir, ".kb", "kb.config.jsonc")); err != nil {
+		t.Fatalf("project config was not generated: %v", err)
+	}
+	statusCmd := exec.CommandContext(context.Background(), "git", "status", "--short") // #nosec G204
+	statusCmd.Dir = projectDir
+	statusOut, err := statusCmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("git log failed: %v\n%s", err, logOut)
+		t.Fatalf("git status failed: %v\n%s", err, statusOut)
 	}
-	logStr := strings.ToLower(string(logOut))
-
-	if !strings.Contains(logStr, "kb labs") && !strings.Contains(logStr, "add kb labs platform") {
-		t.Errorf("no KB Labs platform commit found in git log:\n%s", string(logOut))
-		return
-	}
-
-	// The KB Labs commit must be authored by "KB Labs".
-	authorCmd := exec.CommandContext(context.Background(), "git", "log", `--format=%an`) // #nosec G204
-	authorCmd.Dir = projectDir
-	authorOut, err := authorCmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git log --format=%%an failed: %v\n%s", err, authorOut)
-	}
-	if !strings.Contains(string(authorOut), "KB Labs") {
-		t.Errorf("KB Labs platform commit not authored by 'KB Labs':\n%s", string(authorOut))
+	if !strings.Contains(string(statusOut), "main.ts") {
+		t.Errorf("installer changed git state unexpectedly:\n%s", statusOut)
 	}
 }
 
