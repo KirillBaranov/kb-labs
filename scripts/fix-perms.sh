@@ -3,13 +3,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 FILES=(
-  # Go binaries
-  tools/kb-dev/kb-dev
-  tools/kb-devkit/kb-devkit
-  tools/kb-deploy/kb-deploy
-  tools/kb-monitor/kb-monitor
-  tools/kb-create/kb-create
-
   # Install scripts
   tools/kb-dev/install.sh
   tools/kb-devkit/install.sh
