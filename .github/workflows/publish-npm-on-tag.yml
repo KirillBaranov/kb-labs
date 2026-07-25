@@ -146,6 +146,58 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  # Create a GitHub Release for the tag, with the actual changelog section
+  # for this version as the release body — so the tag shows up as a real,
+  # readable release instead of a bare tag with no notes. The release plugin
+  # already writes per-version entries into the repo-root CHANGELOG.md
+  # (plugins/release/manager-core/src/publisher.ts); this just slices out
+  # the one section for the version this tag names and hands it to
+  # softprops/action-gh-release verbatim.
+  github-release:
+    name: GitHub Release
+    needs: deliver-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Extract changelog section for this version
+        id: notes
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          FLOW="${TAG%%-v*}"
+          VERSION="${TAG#"$FLOW"-v}"
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ ("^## \\[" ver "\\]")) { found=1; next }
+              next
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "_No changelog entry found for ${VERSION} — see commit history._" > release-notes.md
+          fi
+
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: "${{ steps.notes.outputs.flow }} v${{ steps.notes.outputs.version }}"
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # Post-publish launcher smoke (kb-create e2e) — runs the full kb-create
   # end-to-end suite against the packages we just delivered to npm. Last-mile
   # gate: if any transitive dep was published with broken workspace:* deps,
