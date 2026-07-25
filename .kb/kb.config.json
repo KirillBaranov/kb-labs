@@ -266,7 +266,8 @@
                   "@product-name/*",
                   "tmp/notifier-test",
                   "tmp/notifier-test/*",
-                  "tmp/notifier-test/packages/*"
+                  "tmp/notifier-test/packages/*",
+                  "@kb-labs/adapters-fs"
                 ]
               },
               "checks": [
