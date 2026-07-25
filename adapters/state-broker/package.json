@@ -23,9 +23,6 @@
     "test": "vitest run --passWithNoTests",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/core-state-broker": "workspace:*"
-  },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
@@ -33,7 +30,9 @@
     "eslint": "^9",
     "rimraf": "^6.0.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.6",
+    "@vitest/browser": "^4.1.8"
   },
   "engines": {
     "node": ">=20.0.0",

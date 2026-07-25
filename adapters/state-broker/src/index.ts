@@ -1,8 +1,5 @@
-import {
-  createStateBroker,
-  type StateBroker,
-} from "@kb-labs/core-state-broker";
 import type { ICache } from "@kb-labs/sdk/adapters";
+import { createBroker, type Broker } from "./broker.js";
 
 export { manifest } from "./manifest.js";
 
@@ -13,13 +10,12 @@ export interface StateBrokerCacheConfig {
 }
 
 export class StateBrokerCacheAdapter implements ICache {
-  private readonly broker: StateBroker;
+  private readonly broker: Broker;
   private readonly namespace: string;
 
   constructor(config: StateBrokerCacheConfig = {}) {
     this.namespace = config.namespace ?? "kb:";
-    this.broker = createStateBroker({
-      backend: config.url ? "http" : "memory",
+    this.broker = createBroker({
       url: config.url,
     });
   }
