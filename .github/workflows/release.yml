@@ -57,7 +57,10 @@ jobs:
             EXT=""
             [ "$GOOS" = "windows" ] && EXT=".exe"
             OUT="dist/${TOOL}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}"
-            go build -ldflags "$LDFLAGS" -o "$OUT" "./tools/$TOOL"
+            (
+              cd "tools/$TOOL"
+              go build -ldflags "$LDFLAGS" -o "$GITHUB_WORKSPACE/$OUT" .
+            )
             echo "built $OUT"
           done
 
@@ -109,14 +112,6 @@ jobs:
 
       - name: Build (topological order)
         run: pnpm build
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: node-dist
-          path: |
-            **/dist/
-            !**/node_modules/**/dist/
-          retention-days: 1
 
   # ── 3. Create GitHub Release + upload all assets ─────────────────────────────
   release:
@@ -183,11 +178,6 @@ jobs:
           path: ~/.pnpm-store
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Restore Node dist
-        uses: actions/download-artifact@v4
-        with:
-          name: node-dist
 
       - uses: actions/setup-go@v5
         with:
