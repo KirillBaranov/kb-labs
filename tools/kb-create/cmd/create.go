@@ -42,6 +42,7 @@ var (
 	flagDevManifest string
 	flagRegistry    string
 	flagIntent      string
+	flagEngine      bool
 )
 
 func init() {
@@ -54,9 +55,24 @@ func init() {
 	rootCmd.Flags().StringVar(&flagDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
+	rootCmd.Flags().BoolVar(&flagEngine, "engine", false, "use the declarative flow engine for the interactive installation")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
+	if flagEngine {
+		projectRoot := ""
+		if len(args) > 0 {
+			projectRoot = args[0]
+		}
+		flowProjectRoot = projectRoot
+		flowPlatformRoot = flagPlatform
+		flowApply = true
+		intent := flagIntent
+		if intent == "" {
+			intent = "explore"
+		}
+		return flowRunCmd.RunE(cmd, []string{intent})
+	}
 	// Resolve default project directory from arg or cwd.
 	projectCWD := ""
 	if len(args) > 0 {

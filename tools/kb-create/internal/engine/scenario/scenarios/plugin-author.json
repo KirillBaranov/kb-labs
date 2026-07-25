@@ -1,0 +1,7 @@
+{
+  "schema": "kb.scenario/1",
+  "id": "plugin-author",
+  "title": "Create a plugin",
+  "install": {"components": []},
+  "pages": [{"id": "plugin", "sections": []}]
+}

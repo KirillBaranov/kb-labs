@@ -18,6 +18,10 @@ var (
 	jsonMode   bool
 	agentMode  bool
 	outputFlag string
+	// agentProtocolFailed is set after a valid machine response has already
+	// been written. Execute must preserve that single JSON envelope and only
+	// set the process exit status instead of rendering a second diagnostic.
+	agentProtocolFailed bool
 )
 
 // outputMode resolves the active render mode from the output flags.
@@ -84,6 +88,9 @@ Examples:
 func Execute() {
 	_, err := rootCmd.ExecuteC()
 	if err == nil {
+		if agentProtocolFailed {
+			os.Exit(1)
+		}
 		return
 	}
 	if outputMode() == result.ModeHuman {

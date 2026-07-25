@@ -92,6 +92,14 @@ export interface StateBroker {
    */
   clear(pattern?: string): Promise<void>;
 
+  /** Set a value only when the key does not already exist. */
+  setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean>;
+
+  /** Sorted-set operations used by cache-backed queues and schedulers. */
+  zadd(key: string, score: number, member: string): Promise<void>;
+  zrangebyscore(key: string, min: number, max: number): Promise<string[]>;
+  zrem(key: string, member: string): Promise<void>;
+
   /**
    * Get broker statistics
    */

@@ -266,6 +266,38 @@ export class StateDaemonServer {
       return null;
     });
 
+    server.put('/state/:key/if-absent', async (request, reply) => {
+      const { key } = request.params as { key: string };
+      const { value, ttl } = request.body as { value: unknown; ttl?: number };
+      const inserted = await this.observability.observeOperation('state.setIfNotExists', () => this.broker.setIfNotExists(key, value, ttl));
+      reply.code(inserted ? 204 : 409);
+      return null;
+    });
+
+    server.put('/state/:key/zset', async (request, reply) => {
+      const { key } = request.params as { key: string };
+      const { score, member } = request.body as { score: number; member: string };
+      await this.observability.observeOperation('state.zadd', () => this.broker.zadd(key, score, member));
+      reply.code(204);
+      return null;
+    });
+
+    server.delete('/state/:key/zset', async (request, reply) => {
+      const { key } = request.params as { key: string };
+      const { member } = request.body as { member: string };
+      await this.observability.observeOperation('state.zrem', () => this.broker.zrem(key, member));
+      reply.code(204);
+      return null;
+    });
+
+    server.get('/state/:key/range', async (request, reply) => {
+      const { key } = request.params as { key: string };
+      const query = request.query as { min?: string; max?: string };
+      const members = await this.observability.observeOperation('state.zrangebyscore', () => this.broker.zrangebyscore(key, Number(query.min), Number(query.max)));
+      reply.type('application/json');
+      return members;
+    });
+
     server.delete('/state/:key', async (request, reply) => {
       const { key } = request.params as { key: string };
       await this.observability.observeOperation('state.delete', () => this.broker.delete(key));

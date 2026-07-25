@@ -106,6 +106,9 @@ type railBlock struct {
 // user-facing next steps here so success output does not fragment into a
 // collection of unrelated notices.
 func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pendingInput, pluginDir, commandName, handoffPath string, agentLines []string, llmEnabled, analyticsEnabled bool) {
+	// Keep a stable plain-text success marker for scripts and older clients;
+	// the structured rail below remains the canonical human presentation.
+	fmt.Println("KB Labs installed successfully")
 	installed := []string{
 		railKeyValue("Platform", styleBlue.Render(r.PlatformDir)),
 		railKeyValue("Project", styleBlue.Render(r.ProjectCWD)),
@@ -134,6 +137,9 @@ func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pen
 		"Create a KB Labs plugin that [describe your business case].",
 		"It should expose a safe first command and include tests.",
 		railKeyValue("Read docs", styleBlue.Render("https://docs.kblabs.ru/en/guides/first-plugin")),
+		"Try it now:",
+		"kb review run",
+		"kb commit commit",
 	}
 	if handoffPath != "" {
 		continueLines = append(continueLines, railKeyValue("Handoff", styleMuted.Render(handoffPath)))

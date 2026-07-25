@@ -82,7 +82,9 @@
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
     { "name": "@kb-labs/adapters-analytics-file" },
-    { "name": "@kb-labs/adapters-service-transport-http" }
+    { "name": "@kb-labs/adapters-service-transport-http" },
+    { "name": "@kb-labs/adapters-state-broker" },
+    { "name": "@kb-labs/adapters-redis" }
   ],
   "plugins": [
     {

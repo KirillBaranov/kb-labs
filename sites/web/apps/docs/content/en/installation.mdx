@@ -1,7 +1,7 @@
 ---
 title: "Installation"
 description: "Install KB Labs via kb-create, pin versions, verify checksums, and upgrade."
-updatedAt: "2026-04-07"
+updatedAt: "2026-07-25"
 order: 2
 ---
 
@@ -21,12 +21,17 @@ curl -fsSL https://kblabs.ru/install.sh | sh
 ```
 
 The script:
+
 1. Detects your OS and architecture
 2. Downloads the correct `kb-create` binary from GitHub releases
 3. Installs it to `~/.local/bin` (or `/usr/local/bin` if you have write access)
 4. Verifies the binary works
 
 After install, `kb-create` is available in your PATH.
+
+The public `https://kblabs.ru/install.sh` URL redirects to the maintained
+launcher script in the monorepo at
+[`tools/kb-create/install.sh`](https://github.com/kb-labs-team/kb-labs/blob/main/tools/kb-create/install.sh).
 
 ## Pin a specific version
 
@@ -53,12 +58,12 @@ sha256sum ~/.local/bin/kb-create
 
 For environments where `curl | sh` is restricted, download the binary directly from [GitHub releases](https://github.com/kb-labs-team/kb-labs/releases/latest):
 
-| Platform | Binary |
-|----------|--------|
+| Platform              | Binary                   |
+| --------------------- | ------------------------ |
 | macOS (Apple Silicon) | `kb-create-darwin-arm64` |
-| macOS (Intel) | `kb-create-darwin-amd64` |
-| Linux (x86_64) | `kb-create-linux-amd64` |
-| Linux (ARM64) | `kb-create-linux-arm64` |
+| macOS (Intel)         | `kb-create-darwin-amd64` |
+| Linux (x86_64)        | `kb-create-linux-amd64`  |
+| Linux (ARM64)         | `kb-create-linux-arm64`  |
 
 After downloading:
 
@@ -76,10 +81,30 @@ kb-create my-project
 ```
 
 The interactive wizard:
+
 - Picks a package manager (pnpm recommended)
 - Sets up the platform directory (`~/.kb` by default or project-local)
-- Creates `.kb/kb.config.jsonc` with default adapter stubs
+- Generates scoped `.kb/kb.config.jsonc` platform/project configuration
 - Runs `pnpm install`
+
+The declarative flow engine is available during the migration cutover:
+
+```bash
+kb-create my-project --engine
+```
+
+It renders the same scenario pages and validation for Human mode that Agents
+receive through the JSON protocol. For CI, use the deterministic scoped
+installer; it does not run interactive scenarios:
+
+```bash
+kb-create install --plugins=release --services=workflow --platform ./ci-platform
+```
+
+Technical compatibility is resolved from package-declared `kb.manifest`
+metadata. The launcher uses the embedded catalog only for bootstrap defaults;
+requirements, adapter capabilities, and provider config defaults come from the
+exact package artifacts or versions being installed.
 
 When finished, the workspace is ready:
 
@@ -114,10 +139,12 @@ AI-powered features (Mind RAG, commit generation, AI review) require an LLM adap
 
 ```json
 {
-  "adapters": {
-    "llm": {
-      "type": "openai",
-      "options": {
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai"
+    },
+    "adapterOptions": {
+      "llm": {
         "apiKey": "${OPENAI_API_KEY}"
       }
     }

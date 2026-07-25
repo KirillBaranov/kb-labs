@@ -130,6 +130,7 @@ func TestPrintCompletionBlockUsesOneSharedRail(t *testing.T) {
 		}, false, false)
 	})
 	for _, want := range []string{
+		"KB Labs installed successfully",
 		"◆ KB Labs is ready",
 		"│ Installed",
 		"│ Agent tools",
@@ -138,6 +139,8 @@ func TestPrintCompletionBlockUsesOneSharedRail(t *testing.T) {
 		"│ Configuration",
 		"hello-world",
 		"https://docs.kblabs.ru/en/guides/first-plugin",
+		"Try it now:",
+		"kb review run",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("completion block missing %q: %q", want, got)

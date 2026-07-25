@@ -1,0 +1,27 @@
+{
+  "schema": "kb.scenario/1",
+  "id": "explore",
+  "title": "KB Labs platform",
+  "install": {
+    "components": [
+      {"id": "service:rest"},
+      {"id": "service:workflow"},
+      {"id": "service:gateway"},
+      {"id": "service:marketplace"},
+      {"id": "service:studio"},
+      {"id": "plugin:marketplace"},
+      {"id": "plugin:ai-review"},
+      {"id": "plugin:commit"},
+      {"id": "plugin:scaffold"}
+    ]
+  },
+  "pages": [{
+    "id": "confirm",
+    "title": "Install KB Labs",
+    "sections": [{
+      "id": "summary",
+      "title": "Default platform",
+      "description": "Installs the default KB Labs platform components. Press Enter to continue."
+    }]
+  }]
+}

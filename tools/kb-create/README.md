@@ -28,7 +28,7 @@
 ### Install kb-create
 
 ```bash
-curl https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh
 ```
 
 This downloads the correct binary for your OS/arch and places it in `~/.local/bin/kb-create`.
@@ -36,7 +36,7 @@ This downloads the correct binary for your OS/arch and places it in `~/.local/bi
 Install a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh -s -- --version v0.2.1
+curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh -s -- --version v0.2.1
 ```
 
 `install.sh` verifies SHA-256 checksums against the release `checksums.txt` before installing.
@@ -126,10 +126,31 @@ kb-create my-project
    ✅ Done — next steps + docs links specific to what you picked
 ```
 
-New scenarios are added as a `manifest.json` entry (see
-[Manifest](#manifest) below), not a wizard code change — see
+New declarative scenarios are described by scenario manifests and compiled by
+the flow engine, not added as imperative installer branches. The current
+launcher exposes the migration path explicitly with `--engine` while the
+legacy command remains available during cutover. See the engine plan and
 [ADR-0026](../../docs/adr/0026-scoped-plugin-install-and-adapter-role-validation.md)
-for the full rationale and the CI-facing side of this (`kb-create install`).
+for the CI-facing scoped install contract.
+
+### Declarative flow engine
+
+The engine is shared by Human and Agent modes. Human mode renders the same
+pages and validation in the terminal UI; Agent mode uses JSON, while CI uses
+deterministic direct install requests without scenarios:
+
+```bash
+kb-create my-project --engine
+kb-create agent scenarios
+kb-create agent inspect --scenario commit
+kb-create agent plan --scenario commit --project-root ./my-project --platform-root ~/.kb
+kb-create agent apply --scenario commit --project-root ./my-project --platform-root ~/.kb
+```
+
+Technical compatibility is resolved from each package's declared `kb.manifest`,
+not duplicated in the launcher. Agent plans can overlay local artifacts with
+`--package-dir`, or exact released package specs with `--package`; use
+`--manifest-cache` to persist normalized manifest metadata.
 
 ### Platform vs Project separation
 
@@ -196,7 +217,7 @@ kb-create install --plugins=release \
   --platform ./ci-platform
 ```
 
-Role names are validated against the platform's canonical capability list (`ADAPTER_REGISTRY_KEYS`) before any install action — an unknown role fails fast, listing the valid roles. Most common roles already have a default wired from the manifest catalog (`llm`, `storage`, `logger`, `logRingBuffer`, `analytics`, `serviceTransport`); `cache` has no default — only one package in the ecosystem implements it, and defaulting to it risks a runtime failure with no Redis running. If a plugin declares a required capability with nothing backing it, the install still succeeds but the reconciliation report prints a visible warning.
+Role names are validated against the platform's canonical capability list (`ADAPTER_REGISTRY_KEYS`) before any install action — an unknown role fails fast, listing the valid roles. Most common roles already have a default wired from the manifest catalog (`llm`, `storage`, `logger`, `logRingBuffer`, `analytics`, `serviceTransport`). For `cache`, the declarative scenarios offer the built-in StateBroker adapter (no Redis server required) or Redis when you need a shared external cache. If a plugin declares a required capability with nothing backing it, planning fails before package installation.
 
 | Flag | Description |
 |------|-------------|
@@ -383,7 +404,7 @@ These flags work on both `kb-create` (install) and `kb-create update`.
 ### curl | sh (recommended)
 
 ```bash
-curl https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh
 ```
 
 Installs to `~/.local/bin/kb-create`. No `sudo` needed.

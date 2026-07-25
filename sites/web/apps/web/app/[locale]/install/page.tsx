@@ -95,7 +95,7 @@ export default async function InstallPage({ params }: Props) {
       icon: FolderOpen,
       num: '02',
       title: t('install.quickInstall.steps.1.title'),
-      cmd: 'kb-create my-project', // i18n-ignore
+      cmd: 'kb-create my-project --engine', // i18n-ignore
       note: t('install.quickInstall.steps.1.note'),
       usePlatform: false,
     },
