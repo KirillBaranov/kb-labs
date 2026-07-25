@@ -7,114 +7,204 @@
     "typeNew": "New",
     "releases": [
       {
-        "version": "v1.4.0",
-        "date": "May 2026",
-        "title": "Plugin scaffolding + Studio refresh",
+        "version": "v2.22.2",
+        "date": "Jul 2026",
+        "title": "SDK patch release",
         "changes": [
           {
-            "type": "new",
-            "text": "Scaffold plugin — generate new plugins from a template with a single command via kb-create"
-          },
-          {
-            "type": "new",
-            "text": "kb.config.jsonc support — platform config files can now include comments"
-          },
-          {
-            "type": "new",
-            "text": "Studio workflow page redesign — simplified navigation and cleaner task management UI"
-          },
-          {
-            "type": "improved",
-            "text": "Platform SDK exposes platform client, runtimeContext ALS, and useEnv() hook for plugin authors"
-          },
-          {
-            "type": "improved",
-            "text": "Redis adapter now connects lazily — startup no longer fails if Redis is unavailable at boot"
-          },
-          {
-            "type": "improved",
-            "text": "Install instructions updated with prerequisites and automatic PATH setup"
+            "type": "fixed",
+            "text": "@kb-labs/sdk — manual patch bump (2.22.1 → 2.22.2)"
           }
         ]
       },
       {
-        "version": "v1.3.0",
-        "date": "Apr 2026",
-        "title": "Agent SDK + workspace agent",
+        "version": "v2.106.0",
+        "date": "Jul 2026",
+        "title": "Release pipeline hardening + gateway session identity",
         "changes": [
           {
             "type": "new",
-            "text": "Docker-based isolated execution — plugins can run in containers with automatic workspace provisioning"
+            "text": "kb-create — intent-based installation wizard lets you pick a setup scenario instead of answering raw prompts"
           },
           {
             "type": "new",
-            "text": "Execution plane fully encapsulated — workflow, REST API, and CLI daemons are now thin hosts"
+            "text": "kb-create — version-pinned plugins and services, so installs can target exact versions for compatibility"
+          },
+          {
+            "type": "new",
+            "text": "ci — reusable composite GitHub Action for the kb-create install flow"
           },
           {
             "type": "improved",
-            "text": "Gateway Docker image includes adapters and uses a slimmer Node.js base for faster cold starts"
+            "text": "gateway — falls back to a default tenant automatically when none is specified, avoiding spurious access errors"
           },
           {
             "type": "improved",
-            "text": "Marketplace routes are now action-oriented — fewer URL encoding issues in plugin navigation"
+            "text": "gateway — CLI sessions now carry a human-readable identity, making registration easier to follow"
+          },
+          {
+            "type": "improved",
+            "text": "release — clearer error classification for npm publish failures"
+          },
+          {
+            "type": "improved",
+            "text": "release — delivery is now tag-driven, simplifying plugin prep and CI handling"
+          },
+          {
+            "type": "improved",
+            "text": "release — root changelog output path is now configurable"
+          },
+          {
+            "type": "improved",
+            "text": "kb-create, plugin-runtime — adapter-role validation against a catalog-driven configuration"
+          },
+          {
+            "type": "improved",
+            "text": "plugin-contracts — platform requirements are now derived automatically from plugin services"
           },
           {
             "type": "fixed",
-            "text": "Gateway non-fatal restore when cache is unavailable — Redis URL option corrected"
+            "text": "studio — fixed a crash in the development server"
+          },
+          {
+            "type": "fixed",
+            "text": "release — root CHANGELOG.md is no longer overwritten between releases"
+          },
+          {
+            "type": "fixed",
+            "text": "qa — fixed mismatches in the fresh-install journey"
           }
         ]
       },
       {
-        "version": "v1.2.0",
-        "date": "Mar 2026",
-        "title": "Workflow engine stabilization",
+        "version": "v2.105.0",
+        "date": "Jul 2026",
+        "title": "CI installation flow + adapter validation",
         "changes": [
           {
             "type": "new",
-            "text": "Plan/Execute agent mode — agents draft a plan, user approves, execution injects the approved plan automatically"
+            "text": "ci — reusable GitHub Action for creating fresh installs, speeding up contributor setup"
           },
           {
             "type": "new",
-            "text": "Session memory — conversation history and memory facts persist across agent sessions via turns.json"
-          },
-          {
-            "type": "new",
-            "text": "Context filter middleware — sliding window and tool output truncation for large agent contexts"
+            "text": "kb-create — support for version-pinned plugins and services"
           },
           {
             "type": "improved",
-            "text": "BudgetMiddleware and ProgressMiddleware refactored — all internal state, no external state provider needed"
+            "text": "gateway — CLI sessions carry a human session identity for clearer registration"
           },
           {
             "type": "improved",
-            "text": "Agent SDK pipeline ordering stabilized: Observability → Budget → ContextFilter → FactSheet → Progress"
+            "text": "kb-create — default adapter packages are now configuration-driven instead of hardcoded"
+          },
+          {
+            "type": "improved",
+            "text": "kb-create, plugin-runtime — adapter-role validation with catalog-driven configuration"
+          },
+          {
+            "type": "improved",
+            "text": "plugin-contracts — platform requirements automatically derived from plugin services"
+          },
+          {
+            "type": "fixed",
+            "text": "release — root CHANGELOG.md no longer gets overwritten on subsequent releases"
+          },
+          {
+            "type": "fixed",
+            "text": "qa — resolved fresh-install journey documentation and workflow mismatches"
+          },
+          {
+            "type": "fixed",
+            "text": "ci — stabilized the end-to-end install flow and fixed package audit issues"
+          },
+          {
+            "type": "fixed",
+            "text": "ci — granted the missing permissions the e2e install workflow needed to run"
           }
         ]
       },
       {
-        "version": "v1.1.0",
-        "date": "Feb 2026",
-        "title": "Gateway adapters + policy layer",
+        "version": "kb-create binary",
+        "date": "Jul 2026",
+        "title": "Version-pinned installs + config-driven adapter defaults",
         "changes": [
           {
             "type": "new",
-            "text": "Single monorepo — all platform packages, plugins, adapters, and tools live in one repository"
+            "text": "kb-create install --plugins=id@version,... / --services=... now accepts version-pinned component IDs, resolving each to that exact version instead of always @latest"
           },
           {
             "type": "new",
-            "text": "kb-create — one command to scaffold a full platform workspace with starter workflows"
+            "text": "kb-create install --adapters \"role=pkg[@version]\" flag, plus a reconciliation report that cross-checks each plugin's declared platform requirements against what's actually configured"
+          },
+          {
+            "type": "improved",
+            "text": "kb-create — default adapter packages per capability role are now config-driven from manifest.json instead of hardcoded, so changing a default no longer needs a new binary release"
+          },
+          {
+            "type": "improved",
+            "text": "core/plugin-runtime — exports ADAPTER_REGISTRY_KEYS and snapshots it at build time, so kb-create validates adapter roles against the real registry instead of a hand-maintained list"
+          }
+        ]
+      },
+      {
+        "version": "kb-create binary",
+        "date": "Jul 2026",
+        "title": "Non-interactive install for CI and agents",
+        "changes": [
+          {
+            "type": "new",
+            "text": "kb-create install --plugins=... --services=... — non-interactive install that validates IDs against the manifest catalog before touching the network and prints env-var hints, for CI/agent use"
           },
           {
             "type": "new",
-            "text": "Plugin duck typing — any package with a kb.manifest.ts is a plugin, no base class required"
+            "text": "release is now a registered installable plugin target (@kb-labs/release-manager-cli)"
           },
           {
             "type": "improved",
-            "text": "Internal packages resolve via workspace:* — no DevLink, no mode switching, no symlink fragility"
+            "text": "devkit build preset now emits a static dist/manifest.json for plugin manifests too (previously service-only), so the installer can read install metadata without executing JS"
+          }
+        ]
+      },
+      {
+        "version": "v2.104.0",
+        "date": "Jul 2026",
+        "title": "Changelog readability + fresh-install fixes",
+        "changes": [
+          {
+            "type": "improved",
+            "text": "release — large package-bump tables in changelogs now collapse for easier scanning"
           },
           {
             "type": "improved",
-            "text": "kb-devkit Go binary handles build ordering, health checks, and monorepo-wide task running"
+            "text": "release — tagging is streamlined to push only new tags"
+          },
+          {
+            "type": "improved",
+            "text": "release — changelog generation timeout is now scoped per group, improving performance"
+          },
+          {
+            "type": "improved",
+            "text": "ci — automated e2e tests are now allowed to write content, so new features can be verified before release"
+          },
+          {
+            "type": "fixed",
+            "text": "release — root CHANGELOG.md is no longer accidentally overwritten"
+          },
+          {
+            "type": "fixed",
+            "text": "qa — fixed inconsistencies in the fresh-install journey"
+          },
+          {
+            "type": "fixed",
+            "text": "qa — renamed the e2e-flaky CLI path segment to follow naming conventions"
+          },
+          {
+            "type": "fixed",
+            "text": "release — a package's version is now correctly rewritten before publishing"
+          },
+          {
+            "type": "fixed",
+            "text": "release — fixed a linting error in the changelog test"
           }
         ]
       }
