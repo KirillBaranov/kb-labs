@@ -10,6 +10,32 @@
       "installBtn": "Install",
       "description": "One command. Runs on your machine. First workflow live in under an hour."
     },
+    "outcomes": {
+      "eyebrow": "Start with one result",
+      "title": "Choose the next useful command.",
+      "description": "The launcher asks only for what this outcome needs. You can add the rest later.",
+      "cta": "Open setup",
+      "items": [
+        {
+          "title": "Prepare a commit",
+          "description": "Turn the changes already in your repository into a reviewable commit plan.",
+          "command": "kb commit generate",
+          "result": "A plan to inspect before Git history changes."
+        },
+        {
+          "title": "Prepare a release",
+          "description": "Calculate what the next release contains without publishing a package.",
+          "command": "kb release plan",
+          "result": "A release plan to review before publishing."
+        },
+        {
+          "title": "Create your own command",
+          "description": "Scaffold one focused command for a workflow unique to your team or agent.",
+          "command": "kb my-command hello",
+          "result": "A discoverable plugin ready for your implementation."
+        }
+      ]
+    },
     "workflowSection": {
       "title": "Define once. Run anywhere. Trace everything.",
       "tabDiagram": "Diagram",

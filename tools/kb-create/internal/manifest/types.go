@@ -85,6 +85,19 @@ type Manifest struct {
 	// services/plugins/adapters plus an ordered list of setup steps. Adding
 	// a scenario is a manifest edit, not a wizard code change.
 	Intents []Intent `json:"intents,omitempty"`
+	// Extensions are optional capabilities offered after an outcome is chosen.
+	// They keep the CLI-only path small while making larger local tooling an
+	// explicit choice.
+	Extensions []Extension `json:"extensions,omitempty"`
+}
+
+// Extension is an optional, product-facing capability. Its bundle is merged
+// with the selected outcome only when the user checks it in the wizard.
+type Extension struct {
+	ID          string       `json:"id"`
+	Label       string       `json:"label"`
+	Description string       `json:"description"`
+	Bundle      IntentBundle `json:"bundle"`
 }
 
 // IntentBundle names the services/plugins/adapter-roles an intent installs.
@@ -120,17 +133,67 @@ type IntentStep struct {
 	SkipHint  string `json:"skipHint,omitempty"`
 }
 
+// CommandOperation describes the side-effect level of an intent's first
+// command. The onboarding flow only hands users an analyze command by
+// default; mutation commands require a later, explicit confirmation.
+type CommandOperation string
+
+const (
+	CommandOperationAnalyze CommandOperation = "analyze"
+	CommandOperationMutate  CommandOperation = "mutate"
+)
+
+// CommandRequirements declares only the capabilities needed to make the
+// first command useful. It lets the wizard ask for consent or configuration
+// only when a selected outcome actually needs it.
+type CommandRequirements struct {
+	LLM      string   `json:"llm,omitempty"` // "optional" or "required"
+	Env      []string `json:"env,omitempty"`
+	Services []string `json:"services,omitempty"`
+}
+
+// FirstCommand is the outcome contract used by the wizard, readiness checks,
+// and post-install handoff. It is intentionally product-facing: no caller
+// needs to infer the first useful command from generic next-step strings.
+type FirstCommand struct {
+	Command      string              `json:"command"`
+	Description  string              `json:"description"`
+	Operation    CommandOperation    `json:"operation"`
+	Requirements CommandRequirements `json:"requires,omitempty"`
+	DataBoundary string              `json:"dataBoundary,omitempty"`
+	Studio       bool                `json:"studio,omitempty"`
+}
+
 // Intent is a named, guided installation scenario offered by the
 // interactive wizard — "what are you here to do?" instead of "which
 // services/plugins/adapters do you want?". See docs/adr for the rationale.
 type Intent struct {
-	ID          string       `json:"id"`
-	Label       string       `json:"label"`
-	Description string       `json:"description"`
-	Bundle      IntentBundle `json:"bundle"`
-	Steps       []IntentStep `json:"steps,omitempty"`
-	Docs        []IntentDoc  `json:"docs,omitempty"`
-	NextSteps   []string     `json:"nextSteps,omitempty"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	// Hidden keeps legacy and power-user scenarios available to scripted
+	// installs without presenting them in the first-run outcome picker.
+	// Omitted remains false for compatibility with third-party manifests.
+	Hidden bool         `json:"hidden,omitempty"`
+	Bundle IntentBundle `json:"bundle"`
+	// FirstCommand is the one safe command that demonstrates the outcome
+	// immediately after installation. Older manifests may omit it while they
+	// continue using NextSteps during the migration.
+	FirstCommand *FirstCommand `json:"firstCommand,omitempty"`
+	Steps        []IntentStep  `json:"steps,omitempty"`
+	Docs         []IntentDoc   `json:"docs,omitempty"`
+	NextSteps    []string      `json:"nextSteps,omitempty"`
+}
+
+// IntentByID returns the manifest intent with id, or nil when no matching
+// guided path is defined.
+func (m *Manifest) IntentByID(id string) *Intent {
+	for i := range m.Intents {
+		if m.Intents[i].ID == id {
+			return &m.Intents[i]
+		}
+	}
+	return nil
 }
 
 // CorePackageNames returns plain package name strings from Core.

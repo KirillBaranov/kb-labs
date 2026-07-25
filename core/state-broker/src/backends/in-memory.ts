@@ -76,6 +76,33 @@ export class InMemoryStateBroker implements StateBroker {
     }
   }
 
+  async setIfNotExists<T>(key: string, value: T, ttl = 300_000): Promise<boolean> {
+    const existing = this.store.get(key);
+    if (existing && Date.now() <= existing.expiresAt) {
+      return false;
+    }
+    await this.set(key, value, ttl);
+    return true;
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    const entries = (await this.get<Array<{ score: number; member: string }>>(key)) ?? [];
+    const next = entries.filter((entry) => entry.member !== member);
+    next.push({ score, member });
+    next.sort((left, right) => left.score - right.score || left.member.localeCompare(right.member));
+    await this.set(key, next);
+  }
+
+  async zrangebyscore(key: string, min: number, max: number): Promise<string[]> {
+    const entries = (await this.get<Array<{ score: number; member: string }>>(key)) ?? [];
+    return entries.filter((entry) => entry.score >= min && entry.score <= max).map((entry) => entry.member);
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    const entries = (await this.get<Array<{ score: number; member: string }>>(key)) ?? [];
+    await this.set(key, entries.filter((entry) => entry.member !== member));
+  }
+
   async getStats(): Promise<BrokerStats> {
     const namespaces: Record<string, { entries: number; size: number; oldestEntry: number }> = {};
     const byTenant: Record<string, { entries: number; size: number; lastAccess: number }> = {};

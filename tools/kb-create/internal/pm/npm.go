@@ -153,6 +153,15 @@ func ensurePackageJSON(dir string) error {
 	pnpmBlock["overrides"] = overrides
 	pkg["pnpm"] = pnpmBlock
 
+	// npm does not read pnpm.overrides. Keep the native overrides block for
+	// launcher projects that fall back to npm; currently the shared core
+	// overrides above are pnpm-only because npm resolves their ranges directly.
+	npmOverrides, _ := pkg["overrides"].(map[string]interface{})
+	if npmOverrides == nil {
+		npmOverrides = map[string]interface{}{}
+	}
+	pkg["overrides"] = npmOverrides
+
 	data, err := json.MarshalIndent(pkg, "", "  ")
 	if err != nil {
 		return err

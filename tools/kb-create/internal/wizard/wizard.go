@@ -64,6 +64,10 @@ type WizardOptions struct {
 	Yes                bool // skip TUI, use the "explore" intent
 	Intent             string
 	DemoMode           bool
+	// ShowAgentSetup adds the optional Claude Code skills screen. It is enabled
+	// by kb-create's interactive flow; leaving it false preserves the small
+	// focused wizard used by embedding callers and unit tests.
+	ShowAgentSetup bool
 }
 
 // Run shows the interactive wizard and returns the user's selection.
@@ -123,7 +127,11 @@ const (
 	stageDirs stage = iota
 	stageIntent
 	stageCustom
+	stageCustomContract
+	stageExtensions
 	stageStep // generic runner for the chosen intent's envVar/llmProvider/studioAccess steps
+	stageAnalytics
+	stageAgents
 	stageConfirm
 )
 
@@ -141,8 +149,10 @@ type wizardModel struct {
 	plugins       []checkItem
 	adapterRoles  []checkItem
 	binaries      []checkItem
+	extensions    []checkItem
 	platformInput textinput.Model
 	cwdInput      textinput.Model
+	commandInput  textinput.Model
 
 	stage       stage
 	activeInput int // 0 = platform, 1 = project (dirs stage)
@@ -150,7 +160,7 @@ type wizardModel struct {
 	cancelled   bool
 
 	// Intent selection.
-	intentCursor   int
+	intentCursor   int // index into visibleIntentIndexes
 	selectedIntent int // index into manifest.Intents, -1 = not yet chosen
 
 	// Step runner (envVar / llmProvider / studioAccess), driven by the
@@ -174,13 +184,27 @@ type wizardModel struct {
 	localMode    bool
 	studioCursor int // 0 = Secured, 1 = Local
 
-	telemetryEnabled bool
-	demoMode         bool
+	telemetryEnabled  bool
+	analyticsCursor   int // 0 = share anonymous technical events, 1 = keep analytics off
+	demoMode          bool
+	showAgentSetup    bool
+	agentSetupEnabled bool
+	agentCursor       int // 0 = install KB Labs skills + CLAUDE.md guidance, 1 = skip
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	if len(m.Intents) == 0 {
 		return wizardModel{}, fmt.Errorf("manifest has no intents configured — cannot run the interactive wizard")
+	}
+	visible := false
+	for _, intent := range m.Intents {
+		if !intent.Hidden {
+			visible = true
+			break
+		}
+	}
+	if !visible {
+		return wizardModel{}, fmt.Errorf("manifest has no visible intents configured — cannot run the interactive wizard")
 	}
 
 	platformDir := opts.DefaultPlatformDir
@@ -213,6 +237,11 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	lki.Width = 50
 	lki.EchoMode = textinput.EchoPassword
 
+	command := textinput.New()
+	command.Placeholder = "e.g. create-branch-task"
+	command.Width = 50
+	command.CharLimit = 63
+
 	// Pre-fill services/plugins/binaries using their default flag — this is
 	// the starting point the "custom" intent's picker adjusts from; every
 	// other intent overwrites it via applyIntentBundle once chosen.
@@ -234,19 +263,27 @@ func newModel(m *manifest.Manifest, opts WizardOptions) (wizardModel, error) {
 	}
 
 	return wizardModel{
-		manifest:         m,
-		stage:            stageDirs,
-		platformInput:    pi,
-		cwdInput:         ci,
-		envInput:         ei,
-		llmKeyInput:      lki,
-		services:         services,
-		plugins:          plugins,
-		binaries:         binaries,
-		adapterRoles:     adapterRoles,
-		demoMode:         opts.DemoMode,
-		selectedIntent:   -1,
-		telemetryEnabled: true,
+		manifest:       m,
+		stage:          stageDirs,
+		platformInput:  pi,
+		cwdInput:       ci,
+		commandInput:   command,
+		envInput:       ei,
+		llmKeyInput:    lki,
+		services:       services,
+		plugins:        plugins,
+		binaries:       binaries,
+		extensions:     extensionItems(m.Extensions),
+		adapterRoles:   adapterRoles,
+		demoMode:       opts.DemoMode,
+		selectedIntent: -1,
+		// Local-first is the launch default. Cloud/team onboarding is not a
+		// launch-ready flow, so it must never be selected implicitly.
+		localMode:         true,
+		analyticsCursor:   1,
+		telemetryEnabled:  false,
+		showAgentSetup:    opts.ShowAgentSetup,
+		agentSetupEnabled: true,
 	}, nil
 }
 
@@ -279,11 +316,16 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case stageCustomContract:
+		m.commandInput, cmd = m.commandInput.Update(msg)
 	}
 	return m, cmd
 }
 
 func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == "esc" && m.stage != stageDirs && m.stage != stageStep {
+		return m.goBack()
+	}
 	switch m.stage {
 	case stageDirs:
 		return m.handleDirsKey(msg)
@@ -291,8 +333,16 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleIntentKey(msg)
 	case stageCustom:
 		return m.handleCustomKey(msg)
+	case stageCustomContract:
+		return m.handleCustomContractKey(msg)
+	case stageExtensions:
+		return m.handleExtensionsKey(msg)
 	case stageStep:
 		return m.handleStepKey(msg)
+	case stageAnalytics:
+		return m.handleAnalyticsKey(msg)
+	case stageAgents:
+		return m.handleAgentsKey(msg)
 	case stageConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -319,27 +369,93 @@ func (m wizardModel) currentStep() (manifest.IntentStep, bool) {
 	return steps[m.stepIndex], true
 }
 
-// enterSteps moves into stageStep, or straight to stageConfirm when the
-// chosen intent has no setup steps at all — the true "1 screen to confirm"
-// fast path for intents like "explore" and "plugin-author".
+// enterSteps moves into stageStep, or to the independent analytics decision
+// when the chosen intent has no setup steps.
 func (m *wizardModel) enterSteps() {
 	m.stepIndex = 0
 	if len(m.currentIntent().Steps) == 0 {
-		m.stage = stageConfirm
+		m.stage = stageAnalytics
 		return
 	}
 	m.stage = stageStep
 	m.resetCurrentStepState()
 }
 
-// advanceStep moves to the next step, or stageConfirm once the list is exhausted.
+// advanceStep moves to the next step, or the independent analytics decision
+// once the list is exhausted.
 func (m *wizardModel) advanceStep() {
 	m.stepIndex++
 	if m.stepIndex >= len(m.currentIntent().Steps) {
-		m.stage = stageConfirm
+		m.stage = stageAnalytics
 		return
 	}
 	m.resetCurrentStepState()
+}
+
+// goBack preserves every completed choice and returns to the nearest prior
+// main page. It intentionally does not use a raw history snapshot: setup
+// steps can contain sensitive key input, which should not be replayed merely
+// because the user wants to revise an earlier selection.
+func (m wizardModel) goBack() (tea.Model, tea.Cmd) {
+	switch m.stage {
+	case stageIntent:
+		m.stage = stageDirs
+		m.activeInput = 0
+		m.platformInput.Focus()
+		m.cwdInput.Blur()
+	case stageCustom:
+		m.stage = stageIntent
+	case stageCustomContract:
+		m.stage = stageIntent
+		m.commandInput.Blur()
+	case stageExtensions:
+		m.backBeforeExtensions()
+	case stageStep:
+		if m.stepIndex > 0 {
+			m.stepIndex--
+			m.resetCurrentStepState()
+		} else {
+			m.backBeforeAnalytics()
+		}
+	case stageAnalytics:
+		if len(m.currentIntent().Steps) > 0 {
+			m.stage = stageStep
+			m.stepIndex = len(m.currentIntent().Steps) - 1
+			m.resetCurrentStepState()
+		} else {
+			m.backBeforeAnalytics()
+		}
+	case stageAgents:
+		m.stage = stageAnalytics
+	case stageConfirm:
+		if m.showAgentSetup {
+			m.stage = stageAgents
+		} else {
+			m.stage = stageAnalytics
+		}
+	}
+	return m, nil
+}
+
+func (m *wizardModel) backBeforeExtensions() {
+	if m.currentIntent().ID == "plugin-author" {
+		m.stage = stageCustomContract
+		m.commandInput.Focus()
+		return
+	}
+	m.stage = stageIntent
+}
+
+func (m *wizardModel) backBeforeAnalytics() {
+	if m.currentIntent().ID == "custom" {
+		m.stage = stageCustom
+		return
+	}
+	if len(m.extensions) > 0 {
+		m.stage = stageExtensions
+		return
+	}
+	m.backBeforeExtensions()
 }
 
 // resetCurrentStepState clears sub-step UI state (e.g. "show key input")
@@ -388,21 +504,23 @@ func (m wizardModel) handleDirsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	intents := m.manifest.Intents
+	indexes := m.visibleIntentIndexes()
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.intentCursor > 0 {
 			m.intentCursor--
 		}
 	case "down", "j":
-		if m.intentCursor < len(intents)-1 {
+		if m.intentCursor < len(indexes)-1 {
 			m.intentCursor++
 		}
 	case "enter":
-		m.selectedIntent = m.intentCursor
+		m.selectedIntent = indexes[m.intentCursor]
 		intent := m.currentIntent()
 
 		if intent.ID == "custom" {
@@ -410,19 +528,50 @@ func (m wizardModel) handleIntentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			return m, nil
 		}
+		if intent.ID == "plugin-author" {
+			m.stage = stageCustomContract
+			m.commandInput.Focus()
+			return m, textinput.Blink
+		}
 
 		m.applyIntentBundle(intent.Bundle)
-		m.enterSteps()
+		m.enterExtensions()
 	}
 	return m, nil
+}
+
+func (m wizardModel) handleCustomContractKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		m.cancelled = true
+		return m, tea.Quit
+	case "enter":
+		if err := validateCustomContract(m.commandInput.Value()); err != nil {
+			m.errMsg = err.Error()
+			return m, nil
+		}
+		m.errMsg = ""
+		m.applyIntentBundle(m.currentIntent().Bundle)
+		m.enterExtensions()
+		return m, nil
+	}
+
+	// Update() routes all key messages here before the focused textinput gets
+	// a chance to see them. Forward ordinary input explicitly; otherwise this
+	// screen renders a cursor but silently drops every typed character.
+	var cmd tea.Cmd
+	m.commandInput, cmd = m.commandInput.Update(msg)
+	return m, cmd
 }
 
 func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	total := len(m.services) + len(m.plugins) + len(m.adapterRoles) + len(m.binaries)
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -434,6 +583,49 @@ func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.toggleCursor()
 	case "enter":
+		m.enterSteps()
+	}
+	return m, nil
+}
+
+func extensionItems(extensions []manifest.Extension) []checkItem {
+	items := make([]checkItem, len(extensions))
+	for i, extension := range extensions {
+		items[i] = checkItem{id: extension.ID, desc: extension.Description}
+	}
+	return items
+}
+
+func (m *wizardModel) enterExtensions() {
+	if len(m.extensions) == 0 {
+		m.enterSteps()
+		return
+	}
+	m.stage = stageExtensions
+	m.cursor = 0
+}
+
+func (m wizardModel) handleExtensionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.extensions)-1 {
+			m.cursor++
+		}
+	case " ":
+		m.extensions[m.cursor].checked = !m.extensions[m.cursor].checked
+	case "enter":
+		for i, extension := range m.manifest.Extensions {
+			if m.extensions[i].checked {
+				m.mergeIntentBundle(extension.Bundle)
+			}
+		}
 		m.enterSteps()
 	}
 	return m, nil
@@ -484,9 +676,11 @@ func (m wizardModel) handleEnvVarKey(msg tea.KeyMsg, step manifest.IntentStep) (
 	}
 
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.envCursor > 0 {
 			m.envCursor--
@@ -509,22 +703,8 @@ func (m wizardModel) handleEnvVarKey(msg tea.KeyMsg, step manifest.IntentStep) (
 	return m, nil
 }
 
-// llmProviderOptions lists provider choices shown in the llmProvider step.
-// This is not "pick an LLM from scratch" — the free KB Labs gateway is
-// already wired as the default `llm` adapter on every install regardless of
-// this choice (manifest.json's adapterConfig.adapters.llm, unconditional).
-// This step is only "bring your own key instead?"
-var llmProviderOptions = []struct {
-	id   string
-	name string
-	desc string
-}{
-	{"openai", "OpenAI", "OPENAI_API_KEY — GPT-4o, GPT-4-turbo, etc."},
-	{"anthropic", "Anthropic", "ANTHROPIC_API_KEY — Claude 3.5 Sonnet, etc."},
-	{"", "Skip — use the free KB Labs gateway", "~50 requests included · bring your own key anytime later"},
-}
-
 func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	options := llmProviderOptions()
 	if m.llmShowKeyInput {
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -537,7 +717,7 @@ func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if key == "" {
 				return m, nil
 			}
-			m.llmProvider = llmProviderOptions[m.llmProviderCursor].id
+			m.llmProvider = options[m.llmProviderCursor].id
 			m.advanceStep()
 			return m, nil
 		}
@@ -547,19 +727,21 @@ func (m wizardModel) handleLLMProviderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.llmProviderCursor > 0 {
 			m.llmProviderCursor--
 		}
 	case "down", "j":
-		if m.llmProviderCursor < len(llmProviderOptions)-1 {
+		if m.llmProviderCursor < len(options)-1 {
 			m.llmProviderCursor++
 		}
 	case "enter":
-		chosen := llmProviderOptions[m.llmProviderCursor]
+		chosen := options[m.llmProviderCursor]
 		if chosen.id == "" {
 			m.llmProvider = ""
 			m.advanceStep()
@@ -584,9 +766,11 @@ var studioAccessOptions = []struct {
 
 func (m wizardModel) handleStudioAccessKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case "ctrl+c":
 		m.cancelled = true
 		return m, tea.Quit
+	case "esc":
+		return m.goBack()
 	case "up", "k":
 		if m.studioCursor > 0 {
 			m.studioCursor--
@@ -607,11 +791,54 @@ func (m wizardModel) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "esc", "n", "N":
 		m.cancelled = true
 		return m, tea.Quit
-	case "t", "T":
-		m.telemetryEnabled = !m.telemetryEnabled
-		return m, nil
 	case "enter", "y", "Y":
 		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m wizardModel) handleAnalyticsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.analyticsCursor > 0 {
+			m.analyticsCursor--
+		}
+	case "down", "j":
+		if m.analyticsCursor < 1 {
+			m.analyticsCursor++
+		}
+	case "enter":
+		m.telemetryEnabled = m.analyticsCursor == 0
+		if m.showAgentSetup {
+			m.stage = stageAgents
+		} else {
+			m.stage = stageConfirm
+		}
+	}
+	return m, nil
+}
+
+func (m wizardModel) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		m.cancelled = true
+		return m, tea.Quit
+	case "esc":
+		return m.goBack()
+	case "up", "k":
+		if m.agentCursor > 0 {
+			m.agentCursor--
+		}
+	case "down", "j":
+		if m.agentCursor < 1 {
+			m.agentCursor++
+		}
+	case "enter":
+		m.agentSetupEnabled = m.agentCursor == 0
+		m.stage = stageConfirm
 	}
 	return m, nil
 }
@@ -619,19 +846,175 @@ func (m wizardModel) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // ── View ─────────────────────────────────────────────────────────────────────
 
 func (m wizardModel) View() string {
+	var body string
 	switch m.stage {
 	case stageDirs:
-		return m.viewDirs()
+		body = m.viewDirs()
 	case stageIntent:
-		return m.viewIntent()
+		body = m.viewIntent()
 	case stageCustom:
-		return m.viewCustom()
+		body = m.viewCustom()
+	case stageCustomContract:
+		body = m.viewCustomContract()
+	case stageExtensions:
+		body = m.viewExtensions()
 	case stageStep:
-		return m.viewStep()
+		body = m.viewStep()
+	case stageAnalytics:
+		body = m.viewAnalytics()
+	case stageAgents:
+		body = m.viewAgents()
 	case stageConfirm:
-		return m.viewConfirm()
+		body = m.viewConfirm()
 	}
-	return ""
+	if body == "" {
+		return ""
+	}
+	return m.progressLabel() + "\n\n" + body
+}
+
+// progressLabel keeps the wizard predictable without exposing an intimidating
+// checklist. The total is outcome-specific: a simple release path is short,
+// while the advanced picker honestly includes its extra decisions.
+func (m wizardModel) progressLabel() string {
+	step, total := 1, 4
+	if m.stage == stageIntent {
+		step = 2
+	}
+	if m.selectedIntent < 0 {
+		return dimStyle.Render(fmt.Sprintf("  Step %d of %d", step, total))
+	}
+
+	intent := m.currentIntent()
+	customPrefix := 0
+	if intent.ID == "custom" || intent.ID == "plugin-author" {
+		customPrefix = 1
+	}
+	extensionStep := 0
+	if intent.ID != "custom" && len(m.extensions) > 0 {
+		extensionStep = 1
+	}
+	total = 2 + customPrefix + extensionStep + len(intent.Steps) + 2 // dirs, outcome, optional custom step, extensions, setup, analytics, confirm
+	if m.showAgentSetup {
+		total++
+	}
+	switch m.stage {
+	case stageDirs:
+		step = 1
+	case stageIntent:
+		step = 2
+	case stageCustom, stageCustomContract:
+		step = 3
+	case stageExtensions:
+		step = 3 + customPrefix
+	case stageStep:
+		step = 3 + customPrefix + extensionStep + m.stepIndex
+	case stageAnalytics:
+		if m.showAgentSetup {
+			step = total - 2
+		} else {
+			step = total - 1
+		}
+	case stageAgents:
+		step = total - 1
+	case stageConfirm:
+		step = total
+	}
+	return dimStyle.Render(fmt.Sprintf("  Step %d of %d", step, total))
+}
+
+func (m wizardModel) viewExtensions() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  extensions\n\n")
+	b.WriteString("  " + sectionStyle.Render("Optional local capabilities") + "\n")
+	b.WriteString(dimStyle.Render("  CLI remains the base. Add only the local tools you want now; you can install these later.") + "\n\n")
+	for i, extension := range m.manifest.Extensions {
+		cursor := "  "
+		if i == m.cursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		check := "○"
+		style := normalStyle
+		if m.extensions[i].checked {
+			check = selectedStyle.Render("●")
+			style = selectedStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, check, style.Render(extension.Label))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(extension.Description))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter continue · esc back · ctrl+c quit"))
+	return b.String()
+}
+
+func (m wizardModel) viewCustomContract() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  name your plugin\n\n")
+	b.WriteString("  " + sectionStyle.Render("Plugin name") + "\n")
+	b.WriteString(dimStyle.Render("  KB Labs will scaffold one editable plugin. You can shape what it does afterwards.") + "\n\n")
+	b.WriteString("  " + m.commandInput.View() + "\n\n")
+	if m.errMsg != "" {
+		b.WriteString("\n  " + errorStyle.Render("✖ "+m.errMsg) + "\n")
+	}
+	b.WriteString("\n" + helpStyle.Render("  enter next · esc back · ctrl+c quit"))
+	return b.String()
+}
+
+func (m wizardModel) viewAnalytics() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  analytics\n\n")
+	b.WriteString("  " + sectionStyle.Render("Share anonymous technical usage events?") + "\n")
+	b.WriteString(dimStyle.Render("  This helps improve onboarding. It never changes what KB Labs installs or runs.") + "\n\n")
+	options := []struct{ name, desc string }{
+		{"Share analytics", "Installation outcome, selected outcome ID, package manager, and error category. No code, diff, secrets, or prompts."},
+		{"Keep analytics off", "No usage events are sent. You can enable it later without reinstalling."},
+	}
+	for i, opt := range options {
+		cursor := "  "
+		if i == m.analyticsCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.analyticsCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
+	return b.String()
+}
+
+func (m wizardModel) viewAgents() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  agent tools\n\n")
+	b.WriteString("  " + sectionStyle.Render("Give Claude Code KB Labs context?") + "\n")
+	b.WriteString(dimStyle.Render("  Adds KB Labs skills for creating plugins, working with workflows, and troubleshooting the platform.") + "\n\n")
+
+	options := []struct{ name, desc string }{
+		{"Install KB Labs skills and guidance", "Adds only .claude/skills/kb-labs-* and a separately marked KB Labs section in CLAUDE.md."},
+		{"Skip for now", "No Claude Code files are changed. You can add the agent tools later with kb-create update."},
+	}
+	if _, err := os.Stat(filepath.Join(expandHome(m.cwdInput.Value()), "CLAUDE.md")); err == nil {
+		b.WriteString(dimStyle.Render("  Existing CLAUDE.md detected: choosing install appends the managed KB Labs section only; your content stays untouched.") + "\n\n")
+	}
+	for i, opt := range options {
+		cursor := "  "
+		if i == m.agentCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.agentCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
+	return b.String()
 }
 
 func (m wizardModel) viewDirs() string {
@@ -658,14 +1041,15 @@ func (m wizardModel) viewIntent() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  what are you here to do?\n\n")
 
-	for i, intent := range m.manifest.Intents {
+	for cursorIndex, intentIndex := range m.visibleIntentIndexes() {
+		intent := m.manifest.Intents[intentIndex]
 		cursor := "  "
-		if i == m.intentCursor {
+		if cursorIndex == m.intentCursor {
 			cursor = focusStyle.Render(" ▶")
 		}
 		radio := "○"
 		nameStyle := normalStyle
-		if i == m.intentCursor {
+		if cursorIndex == m.intentCursor {
 			radio = focusStyle.Render("●")
 			nameStyle = focusStyle
 		}
@@ -717,7 +1101,7 @@ func (m wizardModel) viewCustom() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter next · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter next · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -766,16 +1150,17 @@ func (m wizardModel) viewEnvVarStep(step manifest.IntentStep) string {
 		fmt.Fprintf(&b, "\n      %s\n", dimStyle.Render(step.SkipHint))
 	}
 
-	b.WriteString("\n" + helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString("\n" + helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
 func (m wizardModel) viewLLMProviderStep() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  LLM provider\n\n")
+	options := llmProviderOptions()
 
 	if m.llmShowKeyInput {
-		provider := llmProviderOptions[m.llmProviderCursor]
+		provider := options[m.llmProviderCursor]
 		b.WriteString("  " + sectionStyle.Render(provider.name+" API key") + "\n")
 		b.WriteString(dimStyle.Render("  "+provider.desc) + "\n\n")
 		b.WriteString("  " + m.llmKeyInput.View() + "\n\n")
@@ -784,9 +1169,12 @@ func (m wizardModel) viewLLMProviderStep() string {
 		return b.String()
 	}
 
-	b.WriteString("  " + sectionStyle.Render("Bring your own key instead of the free gateway?") + "\n\n")
+	b.WriteString("  " + sectionStyle.Render("Choose your AI provider") + "\n\n")
+	if !freeGatewayFeature.Enabled {
+		b.WriteString("  " + dimStyle.Render(freeGatewayFeature.Label+" — "+freeGatewayFeature.DisabledReason) + "\n\n")
+	}
 
-	for i, opt := range llmProviderOptions {
+	for i, opt := range options {
 		cursor := "  "
 		if i == m.llmProviderCursor {
 			cursor = focusStyle.Render(" ▶")
@@ -801,7 +1189,7 @@ func (m wizardModel) viewLLMProviderStep() string {
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -826,7 +1214,7 @@ func (m wizardModel) viewStudioAccessStep() string {
 		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
 	}
 
-	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc back · ctrl+c quit"))
 	return b.String()
 }
 
@@ -841,7 +1229,17 @@ func (m wizardModel) viewConfirm() string {
 		i := m.currentIntent()
 		intent = &i
 		fmt.Fprintf(&b, "  Goal:      %s\n", focusStyle.Render(intent.Label))
+		if intent.FirstCommand != nil {
+			fmt.Fprintf(&b, "  First run: %s\n", focusStyle.Render(intent.FirstCommand.Command))
+			fmt.Fprintf(&b, "             %s\n", dimStyle.Render(intent.FirstCommand.Description))
+		}
 	}
+	if intent != nil && intent.ID == "plugin-author" {
+		fmt.Fprintf(&b, "  Command:   %s\n", focusStyle.Render(m.commandInput.Value()))
+		fmt.Fprintf(&b, "  Creates:   %s\n", dimStyle.Render(".kb/plugins/"+m.commandInput.Value()))
+		fmt.Fprintf(&b, "  First run: %s\n", focusStyle.Render("kb "+m.commandInput.Value()+" hello"))
+	}
+	fmt.Fprintf(&b, "  Mode:      %s\n", dimStyle.Render("Local on this computer — Studio stays on 127.0.0.1"))
 
 	// Show selected components. A component (e.g. "marketplace") can be both
 	// a default service and a default plugin in the manifest, so dedupe by id
@@ -877,12 +1275,18 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "  Adapters:   %s\n", dimStyle.Render(strings.Join(adapterRoleNames, ", ")))
 	}
 
-	// LLM status — always shown, since the free gateway is wired for every
-	// install regardless of which intent/steps ran.
-	llmLabel := "free KB Labs gateway (~50 requests) · bring your own key anytime in kb.config.jsonc"
+	// Only explain an LLM when the chosen first command needs one. A release
+	// plan should not look as though it sends data to an AI service.
+	llmLabel := "not needed for this outcome"
+	if intent != nil && intent.FirstCommand != nil && intent.FirstCommand.Requirements.LLM != "" {
+		llmLabel = "your own provider is required"
+		if !freeGatewayFeature.Enabled {
+			llmLabel += " · KB Labs Gateway is temporarily unavailable"
+		}
+	}
 	if m.llmProvider != "" {
 		providerName := m.llmProvider
-		for _, opt := range llmProviderOptions {
+		for _, opt := range llmProviderOptions() {
 			if opt.id == m.llmProvider {
 				providerName = opt.name
 				break
@@ -891,6 +1295,9 @@ func (m wizardModel) viewConfirm() string {
 		llmLabel = providerName + " (key saved to .env)"
 	}
 	fmt.Fprintf(&b, "\n  LLM:        %s\n", focusStyle.Render(llmLabel))
+	if intent != nil && intent.FirstCommand != nil && intent.FirstCommand.DataBoundary != "" {
+		fmt.Fprintf(&b, "  Data:       %s\n", dimStyle.Render(intent.FirstCommand.DataBoundary))
+	}
 
 	if len(m.envValues) > 0 {
 		var keys []string
@@ -905,8 +1312,15 @@ func (m wizardModel) viewConfirm() string {
 		telLabel = "on"
 	}
 	fmt.Fprintf(&b, "  Analytics:  %s\n", dimStyle.Render(telLabel))
+	if m.showAgentSetup {
+		agentLabel := "off"
+		if m.agentSetupEnabled {
+			agentLabel = "KB Labs skills + CLAUDE.md guidance"
+		}
+		fmt.Fprintf(&b, "  Agent tools: %s\n", dimStyle.Render(agentLabel))
+	}
 
-	if intent != nil && len(intent.NextSteps) > 0 {
+	if intent != nil && intent.ID != "plugin-author" && len(intent.NextSteps) > 0 {
 		b.WriteString("\n  " + sectionStyle.Render("Next steps") + "\n")
 		for _, step := range intent.NextSteps {
 			fmt.Fprintf(&b, "    %s\n", dimStyle.Render(step))
@@ -920,7 +1334,7 @@ func (m wizardModel) viewConfirm() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("  enter install · t toggle analytics · n cancel"))
+	b.WriteString(helpStyle.Render("  enter install · esc back · n cancel"))
 	return b.String()
 }
 
@@ -965,6 +1379,35 @@ func (m *wizardModel) applyIntentBundle(b manifest.IntentBundle) {
 	}
 }
 
+// mergeIntentBundle adds an explicitly selected extension without changing
+// the outcome's existing components. Extensions are opt-in additions, unlike
+// applyIntentBundle which resets the base outcome selection.
+func (m *wizardModel) mergeIntentBundle(b manifest.IntentBundle) {
+	svcSet := toSet(b.Services)
+	plSet := toSet(b.Plugins)
+	binSet := toSet(b.Binaries)
+	for i := range m.services {
+		if svcSet[m.services[i].id] {
+			m.services[i].checked = true
+		}
+	}
+	for i := range m.plugins {
+		if plSet[m.plugins[i].id] {
+			m.plugins[i].checked = true
+		}
+	}
+	for i := range m.adapterRoles {
+		if _, ok := b.Adapters[m.adapterRoles[i].id]; ok {
+			m.adapterRoles[i].checked = true
+		}
+	}
+	for i := range m.binaries {
+		if binSet[m.binaries[i].id] {
+			m.binaries[i].checked = true
+		}
+	}
+}
+
 func (m *wizardModel) toggleCursor() {
 	idx := m.cursor
 	if idx < len(m.services) {
@@ -993,6 +1436,35 @@ func (m wizardModel) validateDirs() error {
 		return fmt.Errorf("project directory is required")
 	}
 	return nil
+}
+
+func validateCustomContract(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("command name is required")
+	}
+	if len(name) > 63 || name[0] == '-' || name[len(name)-1] == '-' {
+		return fmt.Errorf("command name must be lowercase kebab-case")
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+			return fmt.Errorf("command name must be lowercase kebab-case")
+		}
+	}
+	return nil
+}
+
+// visibleIntentIndexes hides legacy/full-platform routes from the first-run
+// launcher while retaining their stable IDs for --yes --intent and existing
+// automation.
+func (m wizardModel) visibleIntentIndexes() []int {
+	indexes := make([]int, 0, len(m.manifest.Intents))
+	for i, intent := range m.manifest.Intents {
+		if !intent.Hidden {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
 }
 
 func (m wizardModel) toSelection() *installer.Selection {
@@ -1028,23 +1500,46 @@ func (m wizardModel) toSelection() *installer.Selection {
 		}
 	}
 
-	var intentID string
+	var (
+		intentID     string
+		firstCommand *manifest.FirstCommand
+	)
 	if m.selectedIntent >= 0 {
-		intentID = m.currentIntent().ID
+		intent := m.currentIntent()
+		intentID = intent.ID
+		firstCommand = intent.FirstCommand
+		if intent.ID == "plugin-author" && strings.TrimSpace(m.commandInput.Value()) != "" {
+			firstCommand = &manifest.FirstCommand{
+				Command:     "kb " + strings.TrimSpace(m.commandInput.Value()) + " hello",
+				Description: "Run the generated plugin's first safe command.",
+				Operation:   manifest.CommandOperationAnalyze,
+				Studio:      m.serviceSelected("studio"),
+			}
+		} else if firstCommand != nil {
+			// Studio is an opt-in extension, never an implication of an
+			// outcome. Keep the readiness contract truthful for its handoff.
+			copy := *firstCommand
+			copy.Studio = m.serviceSelected("studio")
+			firstCommand = &copy
+		}
 	}
 	sel := &installer.Selection{
-		PlatformDir:      expandHome(m.platformInput.Value()),
-		ProjectCWD:       expandHome(m.cwdInput.Value()),
-		Services:         services,
-		Plugins:          plugins,
-		Binaries:         binaries,
-		Adapters:         adapters,
-		DemoMode:         m.demoMode,
-		Consent:          consent,
-		TelemetryEnabled: m.telemetryEnabled,
-		LLMProvider:      m.llmProvider,
-		LocalMode:        m.localMode,
-		Intent:           intentID,
+		PlatformDir:              expandHome(m.platformInput.Value()),
+		ProjectCWD:               expandHome(m.cwdInput.Value()),
+		Services:                 services,
+		Plugins:                  plugins,
+		Binaries:                 binaries,
+		Adapters:                 adapters,
+		DemoMode:                 m.demoMode,
+		Consent:                  consent,
+		TelemetryEnabled:         m.telemetryEnabled,
+		LLMProvider:              m.llmProvider,
+		LocalMode:                m.localMode,
+		ClaudeEnabled:            m.agentSetupEnabled,
+		Intent:                   intentID,
+		FirstCommand:             firstCommand,
+		CustomCommandName:        strings.TrimSpace(m.commandInput.Value()),
+		CustomCommandDescription: defaultCustomDescription(m.commandInput.Value()),
 	}
 	if m.llmProvider != "" {
 		sel.LLMKey = m.llmKeyInput.Value()
@@ -1053,6 +1548,19 @@ func (m wizardModel) toSelection() *installer.Selection {
 		sel.EnvValues = map[string]string{"NPM_TOKEN": v}
 	}
 	return sel
+}
+
+func defaultCustomDescription(commandName string) string {
+	return "Implement the " + strings.TrimSpace(commandName) + " command."
+}
+
+func (m wizardModel) serviceSelected(id string) bool {
+	for _, service := range m.services {
+		if service.id == id {
+			return service.checked
+		}
+	}
+	return false
 }
 
 // defaultSelection returns the chosen (or "explore") intent's bundle without
@@ -1090,6 +1598,9 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 	if intent == nil {
 		return nil, fmt.Errorf("unknown --intent %q — valid intents: %s", intentID, validIntentIDs(m))
 	}
+	if intent.FirstCommand != nil && intent.FirstCommand.Requirements.LLM == "required" {
+		return nil, fmt.Errorf("--intent=%s needs an LLM provider key — run kb-create interactively to configure OpenAI or Anthropic", intentID)
+	}
 
 	home, _ := os.UserHomeDir()
 	platformDir := opts.DefaultPlatformDir
@@ -1116,7 +1627,10 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) (*installer.Sele
 		DemoMode:         opts.DemoMode,
 		Consent:          consent,
 		TelemetryEnabled: false,
-		Intent:           intent.ID,
+		// Secured mode is the non-interactive default; --local is explicit.
+		LocalMode:    false,
+		Intent:       intent.ID,
+		FirstCommand: intent.FirstCommand,
 	}, nil
 }
 

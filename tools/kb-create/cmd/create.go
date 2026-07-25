@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -13,14 +14,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/create/internal/agenthandoff"
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
-	"github.com/kb-labs/create/internal/demo"
+	"github.com/kb-labs/create/internal/customplugin"
 	"github.com/kb-labs/create/internal/detect"
+	"github.com/kb-labs/create/internal/eligibility"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/onboarding"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/preflight"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/telemetry"
 	"github.com/kb-labs/create/internal/types"
@@ -37,6 +42,7 @@ var (
 	flagDevManifest string
 	flagRegistry    string
 	flagIntent      string
+	flagEngine      bool
 )
 
 func init() {
@@ -49,9 +55,24 @@ func init() {
 	rootCmd.Flags().StringVar(&flagDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
+	rootCmd.Flags().BoolVar(&flagEngine, "engine", false, "use the declarative flow engine for the interactive installation")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
+	if flagEngine {
+		projectRoot := ""
+		if len(args) > 0 {
+			projectRoot = args[0]
+		}
+		flowProjectRoot = projectRoot
+		flowPlatformRoot = flagPlatform
+		flowApply = true
+		intent := flagIntent
+		if intent == "" {
+			intent = "explore"
+		}
+		return flowRunCmd.RunE(cmd, []string{intent})
+	}
 	// Resolve default project directory from arg or cwd.
 	projectCWD := ""
 	if len(args) > 0 {
@@ -79,12 +100,30 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:           flagDemo,
 		DefaultProjectCWD:  projectCWD,
 		DefaultPlatformDir: flagPlatform,
+		ShowAgentSetup:     !flagYes && !flagSkipClaude,
 	})
 	if err != nil {
 		return err // includes "cancelled"
 	}
 	sel.DevMode = flagDevManifest != ""
 	sel.Registry = flagRegistry
+	// Keep scripted --yes installs backward compatible: they continue to add
+	// the optional agent assets unless explicitly disabled. Interactive runs
+	// receive their own consent screen in the wizard.
+	if flagYes && !flagSkipClaude {
+		sel.ClaudeEnabled = true
+	}
+	if flagSkipClaude {
+		sel.ClaudeEnabled = false
+	}
+	sel.SkipClaudeMd = flagNoClaudeMd
+
+	// Do not create a checkpoint, platform directory, or log until the local
+	// environment can support the selected install.
+	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
+	if err := preflight.Check(sel.ProjectCWD, sel.PlatformDir, packageManager); err != nil {
+		return fmt.Errorf("preflight failed: %w", err)
+	}
 
 	// ── Telemetry ────────────────────────────────────────────────────────
 	// Build TelemetryConfig from wizard result, then init client.
@@ -103,32 +142,44 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "  project detection: %v (continuing)\n", detectErr)
 	}
 	sel.Project = profile
+	if sel.Intent == "commit" {
+		hasChanges, isGitRepo := eligibility.CommitInput(sel.ProjectCWD)
+		switch {
+		case !isGitRepo:
+			sel.PendingInput = "This folder is not a Git repository yet. Initialize Git and make a change before running this command."
+		case !hasChanges:
+			sel.PendingInput = "No changes found yet. Make or stage a change, then run this command to create your commit plan."
+		}
+	}
+	if sel.Intent == "release" && !eligibility.ReleaseEligible(sel.ProjectCWD, profile) {
+		return fmt.Errorf("release setup needs a publishable npm package (name and version, not private) — choose another outcome or run kb-create again in the package workspace")
+	}
 
 	if profile != nil {
 		out := newOutput()
-		out.Section("Detecting project")
-		fmt.Printf("  %s\n", profile.Summary())
-		fmt.Println()
+		out.Info("Detecting project")
+		if summary := profile.Summary(); summary != "" {
+			fmt.Println(summary)
+		}
 	}
-
 	// Create platform directory.
 	if err := os.MkdirAll(sel.PlatformDir, 0o750); err != nil {
 		return fmt.Errorf("create platform dir: %w", err)
 	}
 
-	// Set up logger (writes to stderr + log file).
-	log, err := logger.New(sel.PlatformDir)
+	// The wizard's spinner owns the terminal while installing. Keep raw package
+	// manager output in the install log instead of interleaving it with the UI.
+	log, err := logger.NewFileOnly(sel.PlatformDir)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = log.Close() }()
 
-	fmt.Println()
-
-	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
 	log.Printf("Using %s", packageManager.Name())
 
 	tc.Set("pm", packageManager.Name())
+	tc.Set("outcome", sel.Intent)
+	tc.Set("local_mode", fmt.Sprintf("%t", flagLocal || sel.LocalMode))
 	tc.Set("services", strings.Join(sel.Services, ","))
 	tc.Set("plugins", strings.Join(sel.Plugins, ","))
 	tc.Track("install_started", nil)
@@ -146,22 +197,34 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			sp.setDetail(line)
 		},
 	}
+	if err := onboarding.Write(onboarding.State{
+		Outcome:           sel.Intent,
+		ProjectDir:        sel.ProjectCWD,
+		PlatformDir:       sel.PlatformDir,
+		LocalMode:         flagLocal || sel.LocalMode,
+		Status:            "installing",
+		FirstCommand:      sel.FirstCommand,
+		PendingInput:      sel.PendingInput,
+		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+	}); err != nil {
+		return fmt.Errorf("save onboarding checkpoint: %w", err)
+	}
 
 	sp.start()
 	result, err := ins.Install(sel, m)
 	sp.stop(err)
 
 	if err != nil {
-		tc.Track("install_failed", map[string]string{"error": err.Error()})
-		printSupportHint()
+		if details := sp.failureDetails(); details != "" {
+			err = fmt.Errorf("%w\n\nPackage-manager output:\n%s", err, details)
+		}
+		tc.Track("install_failed", map[string]string{"error_category": telemetryFailureCategory(err)})
 		return fmt.Errorf("installation failed: %w", err)
 	}
 
 	tc.Track("install_completed", map[string]string{
 		"duration_s": fmt.Sprintf("%.0f", result.Duration.Seconds()),
 	})
-
-	printSuccess(result)
 
 	// Write project .kb/kb.config.jsonc — after install so we can include
 	// Gateway credentials (demo mode) obtained from the already-registered
@@ -233,8 +296,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		scaffoldOpts.LLMKey = sel.LLMKey
 	}
 
-	printDataConsent(sel.TelemetryEnabled, wantsLLM)
-
 	// Write full platform config to platformDir (installer-owned, always overwritten).
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold platform config: %w", err)
@@ -246,6 +307,74 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
+	customPluginDir := ""
+	agentHandoffPath := ""
+	agentLines := []string{}
+	if sel.Intent == "plugin-author" {
+		customSpinner := newSpinner()
+		customSpinner.setLabel("[5/5] Installing custom plugin")
+		customSpinner.start()
+		custom, err := customplugin.Create(context.Background(), sel.ProjectCWD, customplugin.Contract{
+			Name:        sel.CustomCommandName,
+			Description: sel.CustomCommandDescription,
+		}, customplugin.Hooks{OnStep: customSpinner.setLabel})
+		customSpinner.stop(err)
+		if err != nil {
+			_ = onboarding.Write(onboarding.State{
+				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
+				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
+				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+			})
+			return fmt.Errorf("create custom plugin: %w; run kb-create doctor", err)
+		}
+		customPluginDir = custom.PluginDir
+		if err := customplugin.CheckDiscovery(context.Background(), sel.ProjectCWD, sel.CustomCommandName); err != nil {
+			_ = onboarding.Write(onboarding.State{
+				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
+				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
+				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+				CustomPluginDir: customPluginDir,
+			})
+			return fmt.Errorf("custom command is not discoverable: %w; run kb-create doctor", err)
+		}
+		agentHandoffPath, err = agenthandoff.Write(agenthandoff.Input{
+			ProjectDir: sel.ProjectCWD, PluginDir: customPluginDir,
+			CommandName: sel.CustomCommandName, Description: sel.CustomCommandDescription,
+		})
+		if err != nil {
+			return fmt.Errorf("write custom plugin agent handoff: %w", err)
+		}
+	}
+
+	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
+		_ = onboarding.Write(onboarding.State{
+			Outcome:           sel.Intent,
+			ProjectDir:        sel.ProjectCWD,
+			PlatformDir:       sel.PlatformDir,
+			LocalMode:         flagLocal || sel.LocalMode,
+			Status:            "needs-repair",
+			FirstCommand:      sel.FirstCommand,
+			PendingInput:      sel.PendingInput,
+			CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+			CustomPluginDir: customPluginDir,
+			AgentHandoff:    agentHandoffPath,
+		})
+		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
+	}
+	if err := onboarding.Write(onboarding.State{
+		Outcome:           sel.Intent,
+		ProjectDir:        sel.ProjectCWD,
+		PlatformDir:       sel.PlatformDir,
+		LocalMode:         flagLocal || sel.LocalMode,
+		Status:            "ready",
+		FirstCommand:      sel.FirstCommand,
+		PendingInput:      sel.PendingInput,
+		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
+		CustomPluginDir: customPluginDir,
+		AgentHandoff:    agentHandoffPath,
+	}); err != nil {
+		return fmt.Errorf("save onboarding readiness: %w", err)
+	}
 
 	// Non-local installs seed a bootstrap admin (see GatewayAuthEnabled above) —
 	// print the login once so the user can actually get in and isn't relying
@@ -254,28 +383,23 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		printBootstrapAdminCredentials(scaffoldOpts.BootstrapAdminEmail, scaffoldOpts.BootstrapAdminPassword)
 	}
 
-	// Post-install: run review + offer commit on existing diff.
-	_ = demo.RunFirstDemo(sel.ProjectCWD, wantsLLM)
-
-	printNextSteps(result, wantsLLM)
-	printIntentNextSteps(m, sel.Intent)
-
 	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
 	// All failures here are non-fatal: the platform install itself is already
 	// complete and we never want to fail the run because of optional assets.
-	if !flagSkipClaude {
+	if sel.ClaudeEnabled {
 		cr, cerr := claude.Install(claude.Options{
 			ProjectDir:   result.ProjectCWD,
 			PlatformDir:  result.PlatformDir,
-			SkipClaudeMd: flagNoClaudeMd,
-			Yes:          flagYes,
-			Log:          log,
-			Prompter:     stdPrompter{},
+			SkipClaudeMd: sel.SkipClaudeMd,
+			// The interactive agent-tools screen is the explicit consent to
+			// append the isolated managed section when CLAUDE.md already exists.
+			Yes: true,
+			Log: log,
 		})
 		if cerr != nil {
 			log.Printf("claude assets: %v (continuing)", cerr)
 		} else if cr != nil {
-			printClaudeSummary(newOutput(), cr)
+			agentLines = claudeSummaryLines(result.ProjectCWD, cr)
 			tc.Track("claude_installed", map[string]string{
 				"devkit":   cr.DevkitVersion,
 				"added":    fmt.Sprintf("%d", len(cr.SkillsAdded)),
@@ -285,12 +409,28 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Commit all KB Labs-owned files added during install so they don't
-	// pollute the user's next `kb commit commit` run.
-	// Non-fatal: if the repo has no git, is bare, or commit fails — skip silently.
-	_ = demo.CommitPlatformFiles(sel.ProjectCWD)
+	// Installation only prepares the chosen command. The user decides when to
+	// run it; onboarding never reviews code, creates a git commit, or contacts
+	// an external provider on their behalf.
+	printCompletionBlock(result, sel.FirstCommand, sel.PendingInput, customPluginDir, sel.CustomCommandName, agentHandoffPath, agentLines, wantsLLM, sel.TelemetryEnabled)
 
 	return nil
+}
+
+func telemetryFailureCategory(err error) string {
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "no_matching_version") || strings.Contains(message, "no matching version"):
+		return "dependency_version"
+	case strings.Contains(message, "preflight"):
+		return "environment_preflight"
+	case strings.Contains(message, "permission denied"):
+		return "filesystem_permission"
+	case strings.Contains(message, "network") || strings.Contains(message, "econn") || strings.Contains(message, "etimedout"):
+		return "network"
+	default:
+		return "unknown"
+	}
 }
 
 // generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
@@ -340,13 +480,28 @@ func initTelemetry(version string, tcfg *config.TelemetryConfig) *telemetry.Clie
 // spinner renders a rotating indicator with a label and a detail line
 // that updates in-place while the install is running.
 type spinner struct {
-	done   chan struct{}
-	label  string
-	detail string
-	mu     sync.Mutex
+	done       chan struct{}
+	label      string
+	detail     string
+	rawDetails []string
+	mu         sync.Mutex
 }
 
 func newSpinner() *spinner { return &spinner{done: make(chan struct{})} }
+
+var loaderMessages = []string{
+	"Putting the platform together",
+	"Installing the useful bits",
+	"Checking that the bolts are tight",
+	"Saving a cookie for after the install",
+}
+
+func loaderMessage(elapsed time.Duration) string {
+	if len(loaderMessages) == 0 {
+		return ""
+	}
+	return loaderMessages[int(elapsed/(2*time.Second))%len(loaderMessages)]
+}
 
 func (s *spinner) setLabel(l string) {
 	s.mu.Lock()
@@ -356,12 +511,24 @@ func (s *spinner) setLabel(l string) {
 
 func (s *spinner) setDetail(d string) {
 	s.mu.Lock()
-	// Truncate long npm lines so they fit on one terminal line.
-	if len(d) > 72 {
-		d = d[:69] + "..."
+	// Keep a bounded, untruncated tail for the final fatal report. The live
+	// spinner stays compact, but an issue needs the package manager's real
+	// diagnostic rather than only "exit status 1".
+	s.rawDetails = append(s.rawDetails, d)
+	if len(s.rawDetails) > 80 {
+		s.rawDetails = s.rawDetails[len(s.rawDetails)-80:]
 	}
-	s.detail = d
+	// Package managers emit their own animated progress UI. Rendering it inside
+	// our spinner produces garbled terminal output, so keep it hidden during a
+	// successful install and reveal the captured tail only after a fatal error.
+	s.detail = ""
 	s.mu.Unlock()
+}
+
+func (s *spinner) failureDetails() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return strings.Join(s.rawDetails, "\n")
 }
 
 // start launches the render loop in a goroutine.
@@ -384,17 +551,24 @@ func (s *spinner) start() {
 				frame := frames[i%len(frames)]
 				i++
 
-				// \r returns to column 0; \033[K clears to end of line.
-				fmt.Printf("\r\033[K  %s %s\n\r\033[K    %s",
-					frame,
-					label,
-					dim.Render(detail),
-				)
-				// Move cursor up one line so next tick overwrites both lines.
-				fmt.Print("\033[1A")
+				// \r returns to column 0; \033[K clears to end of line. Keep
+				// the live UI to one physical line. A decorative trailing message
+				// can wrap on narrow terminals (80 columns), after which \r starts
+				// on the wrapped line and leaves apparent duplicate spinners.
+				if detail == "" {
+					fmt.Print(spinnerLine(frame, label, ""))
+					continue
+				}
+				fmt.Print(spinnerLine(frame, label, dim.Render(detail)))
 			}
 		}
 	}()
+}
+
+// spinnerLine deliberately begins at column zero after clearing the previous
+// frame. The spinner is a primary progress indicator, not nested content.
+func spinnerLine(frame, label, trailing string) string {
+	return fmt.Sprintf("\r\033[K%s %s  %s", frame, label, trailing)
 }
 
 // stop halts the spinner and prints a final status line.
@@ -406,8 +580,8 @@ func (s *spinner) stop(err error) {
 	label := s.label
 	s.mu.Unlock()
 
-	// Clear both lines used by the spinner.
-	fmt.Print("\r\033[K\033[1B\r\033[K\033[1A")
+	// Clear the single live spinner line.
+	fmt.Print("\r\033[K")
 
 	out := newOutput()
 	if err == nil {

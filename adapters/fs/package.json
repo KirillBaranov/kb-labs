@@ -52,7 +52,7 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/sdk": "workspace:^"
+    "@kb-labs/sdk": ">=2.0.0"
   },
   "sideEffects": false
 }

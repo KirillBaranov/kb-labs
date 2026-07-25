@@ -48,6 +48,12 @@ export default async function HomePage({ params }: Props) {
   const t = await getTranslations({ locale });
 
   const painItems = t.raw('home.painSection.pains') as Array<{ title: string; description: string }>;
+  const onboardingOutcomes = t.raw('home.outcomes.items') as Array<{
+    title: string;
+    description: string;
+    command: string;
+    result: string;
+  }>;
 
   const INTEGRATION_CATEGORIES = [
     {
@@ -140,6 +146,37 @@ export default async function HomePage({ params }: Props) {
             </div>
           </Container>
         </div>
+
+        {/* ── Outcome-first onboarding ─────────────────────────── */}
+        <Section className="border-b border-line bg-bg">
+          <Container>
+            <AnimateOnScroll animation="fade">
+              <SectionHeader
+                eyebrow={t('home.outcomes.eyebrow')}
+                title={t('home.outcomes.title')}
+                subtitle={t('home.outcomes.description')}
+              />
+            </AnimateOnScroll>
+            <div className="grid gap-4 md:grid-cols-3">
+              {onboardingOutcomes.map((outcome, index) => (
+                <AnimateOnScroll key={outcome.title} animation="slide-up" delay={index * 60}>
+                  <article className="flex h-full flex-col rounded-2xl border border-line bg-surface p-6">
+                    <p className="mb-3 font-mono text-xs text-accent">0{index + 1}</p>
+                    <h2 className="mb-3 text-xl font-bold tracking-tight text-kb-text">{outcome.title}</h2>
+                    <p className="mb-5 text-sm leading-relaxed text-muted">{outcome.description}</p>
+                    <p className="mb-5 rounded-lg border border-line bg-bg px-3 py-2 font-mono text-xs text-kb-text">
+                      {outcome.command}
+                    </p>
+                    <p className="mt-auto mb-5 text-sm font-medium text-kb-text">{outcome.result}</p>
+                    <Button variant="secondary" size="md" href={`/${locale}/install`} className="w-full">
+                      {t('home.outcomes.cta')}
+                    </Button>
+                  </article>
+                </AnimateOnScroll>
+              ))}
+            </div>
+          </Container>
+        </Section>
 
         {/* ── Pain points ───────────────────────────────────────── */}
         <Section>

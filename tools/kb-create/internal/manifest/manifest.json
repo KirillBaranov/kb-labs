@@ -68,6 +68,13 @@
       "description": "Web UI (port 3000)",
       "default": true,
       "port": 3000
+    },
+    {
+      "id": "mcp",
+      "pkg": "@kb-labs/mcp-app",
+      "description": "MCP server (port 7779)",
+      "default": false,
+      "port": 7779
     }
   ],
   "adapters": [
@@ -75,7 +82,9 @@
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
     { "name": "@kb-labs/adapters-analytics-file" },
-    { "name": "@kb-labs/adapters-service-transport-http" }
+    { "name": "@kb-labs/adapters-service-transport-http" },
+    { "name": "@kb-labs/adapters-state-broker" },
+    { "name": "@kb-labs/adapters-redis" }
   ],
   "plugins": [
     {
@@ -131,11 +140,32 @@
       "serviceTransport": "@kb-labs/adapters-service-transport-http"
     }
   },
+  "extensions": [
+    {
+      "id": "studio",
+      "label": "Studio",
+      "description": "A local visual workspace for observing runs after you start it.",
+      "bundle": { "services": ["studio"], "binaries": ["kb-dev"] }
+    },
+    {
+      "id": "mcp",
+      "label": "MCP",
+      "description": "Expose KB Labs tools to an MCP-compatible coding agent on your machine.",
+      "bundle": { "services": ["mcp"], "binaries": ["kb-dev"] }
+    },
+    {
+      "id": "workflows",
+      "label": "Workflows",
+      "description": "Run repeatable multi-step automation with the workflow daemon.",
+      "bundle": { "services": ["workflow"], "binaries": ["kb-dev"] }
+    }
+  ],
   "intents": [
     {
       "id": "explore",
       "label": "Just look around",
       "description": "Install the full default platform and explore.",
+      "hidden": true,
       "bundle": {
         "services": ["rest", "workflow", "gateway", "marketplace", "studio"],
         "plugins": ["marketplace", "ai-review", "commit", "scaffold"],
@@ -147,21 +177,38 @@
       "nextSteps": ["kb-dev start", "pnpm kb --help"]
     },
     {
+      "id": "commit",
+      "label": "Prepare my commits",
+      "description": "Create a reviewable commit plan from your current changes.",
+      "bundle": {
+        "plugins": ["commit"]
+      },
+      "firstCommand": {
+        "command": "kb commit generate",
+        "description": "Create a commit plan without writing git history.",
+        "operation": "analyze",
+        "requires": {
+          "llm": "required"
+        },
+        "dataBoundary": "Your current git diff is sent directly to the provider whose key you choose. KB Labs Gateway is temporarily unavailable."
+      },
+      "steps": [
+        { "type": "llmProvider" }
+      ],
+      "nextSteps": ["kb commit generate"]
+    },
+    {
       "id": "release",
-      "label": "Automate releases",
-      "description": "Plan, version, and publish releases from your workspace.",
+      "label": "Prepare a release",
+      "description": "Calculate a release plan without publishing anything.",
       "bundle": {
         "plugins": ["release"]
       },
-      "steps": [
-        {
-          "type": "envVar",
-          "key": "NPM_TOKEN",
-          "label": "npm publish token",
-          "skippable": true,
-          "skipHint": "release plan/build/changelog/version work without this — add NPM_TOKEN later when you're ready to publish."
-        }
-      ],
+      "firstCommand": {
+        "command": "kb release plan",
+        "description": "Prepare a release plan without publishing packages.",
+        "operation": "analyze"
+      },
       "docs": [
         { "label": "CI-install guide", "url": "https://kblabs.ru/docs/guides/ci-install" }
       ],
@@ -169,8 +216,8 @@
     },
     {
       "id": "plugin-author",
-      "label": "Write my own plugin",
-      "description": "Scaffold a new plugin with a working local dev loop.",
+      "label": "Create my own command",
+      "description": "Scaffold one command for a process unique to your team or agent.",
       "bundle": {
         "services": ["rest", "gateway"],
         "plugins": ["scaffold"],
@@ -185,6 +232,7 @@
       "id": "ai-review",
       "label": "Add AI review to my repo",
       "description": "Automated code review, with or without your own LLM key.",
+      "hidden": true,
       "bundle": {
         "plugins": ["review"]
       },
@@ -198,7 +246,7 @@
     },
     {
       "id": "custom",
-      "label": "Choose exactly what I need",
+      "label": "Advanced: choose components myself",
       "description": "Pick services, plugins, and adapters yourself.",
       "bundle": {},
       "steps": [

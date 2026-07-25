@@ -86,6 +86,45 @@ export class HTTPStateBroker implements StateBroker {
     }
   }
 
+  async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+    const res = await fetch(`${this.baseURL}/state/${encodeURIComponent(key)}/if-absent`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, ttl }),
+    });
+    if (!res.ok && res.status !== 409) {
+      throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    }
+    return res.status !== 409;
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    await this.zsetRequest(key, 'PUT', { score, member });
+  }
+
+  async zrangebyscore(key: string, min: number, max: number): Promise<string[]> {
+    const res = await fetch(`${this.baseURL}/state/${encodeURIComponent(key)}/range?min=${min}&max=${max}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    }
+    return (await res.json()) as string[];
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    await this.zsetRequest(key, 'DELETE', { member });
+  }
+
+  private async zsetRequest(key: string, method: 'PUT' | 'DELETE', body: unknown): Promise<void> {
+    const res = await fetch(`${this.baseURL}/state/${encodeURIComponent(key)}/zset`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    }
+  }
+
   async getStats(): Promise<BrokerStats> {
     const res = await fetch(`${this.baseURL}/stats`);
 

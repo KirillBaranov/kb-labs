@@ -58,9 +58,14 @@
 curl -fsSL https://kblabs.ru/install.sh | sh
 ```
 
+The public URL redirects to the maintained launcher script at
+[`tools/kb-create/install.sh`](tools/kb-create/install.sh), which installs
+`kb-create` into `~/.local/bin` (or `/usr/local/bin` when writable).
+
 ```bash
 kb-create --demo     # install + demo on your codebase
 kb-create --yes      # defaults, no wizard
+kb-create my-project --engine  # declarative flow engine (migration switch)
 ```
 
 Or install individual Go tools standalone — no Node.js required:

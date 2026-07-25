@@ -56,6 +56,10 @@ func sampleManifest() *manifest.Manifest {
 				Bundle: manifest.IntentBundle{
 					Plugins: []string{"mind"},
 				},
+				FirstCommand: &manifest.FirstCommand{
+					Command:   "kb release plan",
+					Operation: manifest.CommandOperationAnalyze,
+				},
 				Steps: []manifest.IntentStep{
 					{Type: stepEnvVar, Key: "NPM_TOKEN", Label: "npm publish token",
 						Skippable: true, SkipHint: "add NPM_TOKEN later"},
@@ -89,6 +93,10 @@ func sampleManifest() *manifest.Manifest {
 					{Type: stepStudioAccess},
 				},
 			},
+		},
+		Extensions: []manifest.Extension{
+			{ID: "studio", Label: "Studio", Description: "Observe local runs", Bundle: manifest.IntentBundle{Services: []string{"studio"}, Binaries: []string{"kb-dev"}}},
+			{ID: "mcp", Label: "MCP", Description: "Connect an agent", Bundle: manifest.IntentBundle{Services: []string{"mcp"}, Binaries: []string{"kb-dev"}}},
 		},
 	}
 }
@@ -209,6 +217,203 @@ func TestDefaultSelectionWithNamedIntent(t *testing.T) {
 	}
 	if sel.Intent != "release" {
 		t.Errorf("Intent = %q, want release", sel.Intent)
+	}
+	if sel.FirstCommand == nil || sel.FirstCommand.Command != "kb release plan" {
+		t.Errorf("FirstCommand = %+v, want kb release plan", sel.FirstCommand)
+	}
+}
+
+func TestExtensionsAreOptInAndMergeWithOutcome(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "release")
+	m.applyIntentBundle(m.currentIntent().Bundle)
+	m.enterExtensions()
+	if m.stage != stageExtensions {
+		t.Fatalf("stage = %v, want stageExtensions", m.stage)
+	}
+	if m.serviceSelected("studio") {
+		t.Fatal("Studio is selected before the extension page is confirmed")
+	}
+
+	next, _ := m.handleExtensionsKey(tea.KeyMsg{Type: tea.KeySpace})
+	m = next.(wizardModel)
+	next, _ = m.handleExtensionsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m = next.(wizardModel)
+	if !m.serviceSelected("studio") {
+		t.Fatal("Studio extension did not add the Studio service")
+	}
+	if !m.stageIsAfterExtensions() {
+		t.Fatalf("stage = %v, want next onboarding stage", m.stage)
+	}
+}
+
+func (m wizardModel) stageIsAfterExtensions() bool {
+	return m.stage == stageAnalytics || m.stage == stageStep
+}
+
+func TestDefaultSelectionRejectsRequiredLLMIntent(t *testing.T) {
+	m := sampleManifest()
+	for i := range m.Intents {
+		if m.Intents[i].ID == "ai-review" {
+			m.Intents[i].FirstCommand = &manifest.FirstCommand{
+				Command: "kb review run", Operation: manifest.CommandOperationAnalyze,
+				Requirements: manifest.CommandRequirements{LLM: "required"},
+			}
+		}
+	}
+	_, err := defaultSelection(m, WizardOptions{Intent: "ai-review"})
+	if err == nil || !strings.Contains(err.Error(), "LLM provider key") {
+		t.Fatalf("defaultSelection(required LLM) error = %v, want actionable provider setup error", err)
+	}
+}
+
+func TestValidateCustomContract(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		wantErr bool
+	}{
+		{"create-task", false},
+		{"Create task", true},
+		{"", true},
+	} {
+		err := validateCustomContract(tc.name)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("validateCustomContract(%q) error = %v, wantErr %v", tc.name, err, tc.wantErr)
+		}
+	}
+}
+
+func TestCustomContractAcceptsTypedInput(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.stage = stageCustomContract
+	m.commandInput.Focus()
+
+	next, _ := m.handleCustomContractKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("feedback-note")})
+	m = next.(wizardModel)
+	if got := m.commandInput.Value(); got != "feedback-note" {
+		t.Fatalf("command input = %q, want typed value", got)
+	}
+
+	if got := m.viewCustomContract(); strings.Contains(got, "Expected result") {
+		t.Fatalf("custom contract still asks for an expected result:\n%s", got)
+	}
+}
+
+func TestPluginAuthorConfirmationDescribesGeneratedPluginNotScaffoldWork(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "plugin-author")
+	m.manifest.Intents[m.selectedIntent].NextSteps = []string{"kb scaffold plugin --name my-plugin"}
+	m.commandInput.SetValue("feedback-note")
+
+	out := m.viewConfirm()
+	for _, want := range []string{".kb/plugins/feedback-note", "kb feedback-note hello"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("confirmation missing generated-plugin detail %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "scaffold plugin") {
+		t.Errorf("confirmation exposes an internal scaffold step as user work:\n%s", out)
+	}
+}
+
+func TestEscapeMovesBackThroughOnboardingPages(t *testing.T) {
+	m, err := newModel(sampleManifest(), WizardOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.selectedIntent = intentIndex(m.manifest, "release")
+	m.stage = stageConfirm
+
+	next, _ := m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageAnalytics {
+		t.Fatalf("confirm escape stage = %v, want stageAnalytics", m.stage)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageStep || m.stepIndex != 0 {
+		t.Fatalf("analytics escape = stage %v step %d, want first setup step", m.stage, m.stepIndex)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageExtensions {
+		t.Fatalf("setup escape stage = %v, want stageExtensions", m.stage)
+	}
+	next, _ = m.handleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m = next.(wizardModel)
+	if m.stage != stageIntent {
+		t.Fatalf("extensions escape stage = %v, want stageIntent", m.stage)
+	}
+}
+
+func TestProgressLabelUsesOutcomeSpecificStepCount(t *testing.T) {
+	man := sampleManifest()
+	explore := wizardModel{manifest: man, selectedIntent: intentIndex(man, "explore"), stage: stageAnalytics}
+	if got := explore.progressLabel(); !strings.Contains(got, "Step 3 of 4") {
+		t.Errorf("explore progress = %q, want Step 3 of 4", got)
+	}
+	custom := wizardModel{manifest: man, selectedIntent: intentIndex(man, "custom"), stage: stageCustom}
+	if got := custom.progressLabel(); !strings.Contains(got, "Step 3 of 7") {
+		t.Errorf("custom progress = %q, want Step 3 of 7", got)
+	}
+}
+
+func TestToSelectionPreservesCustomCommandContract(t *testing.T) {
+	m := wizardModel{
+		platformInput:  makeInput("/platform"),
+		cwdInput:       makeInput("/project"),
+		commandInput:   makeInput("create-task"),
+		selectedIntent: -1,
+	}
+	sel := m.toSelection()
+	if sel.CustomCommandName != "create-task" || sel.CustomCommandDescription != "Implement the create-task command." {
+		t.Errorf("custom contract = (%q, %q), want preserved", sel.CustomCommandName, sel.CustomCommandDescription)
+	}
+}
+
+func TestDefaultSelectionUsesSecuredMode(t *testing.T) {
+	sel, err := defaultSelection(sampleManifest(), WizardOptions{Intent: "release"})
+	if err != nil {
+		t.Fatalf("defaultSelection() error = %v", err)
+	}
+	if sel.LocalMode {
+		t.Error("LocalMode = true, want false for the secured non-interactive flow")
+	}
+}
+
+func TestIntentPickerHidesLegacyIntents(t *testing.T) {
+	m := sampleManifest()
+	m.Intents[0].Hidden = true // explore
+	m.Intents[3].Hidden = true // ai-review
+	model, err := newModel(m, WizardOptions{})
+	if err != nil {
+		t.Fatalf("newModel() error = %v", err)
+	}
+	view := model.viewIntent()
+	if strings.Contains(view, "Just look around") || strings.Contains(view, "Add AI review") {
+		t.Errorf("viewIntent() exposes hidden intents:\n%s", view)
+	}
+	if !strings.Contains(view, "Automate releases") || !strings.Contains(view, "Write my own plugin") {
+		t.Errorf("viewIntent() omitted visible intents:\n%s", view)
+	}
+}
+
+func TestNewModelRejectsManifestWithOnlyHiddenIntents(t *testing.T) {
+	m := sampleManifest()
+	for i := range m.Intents {
+		m.Intents[i].Hidden = true
+	}
+	if _, err := newModel(m, WizardOptions{}); err == nil {
+		t.Fatal("newModel() error = nil, want error for a manifest with no visible intents")
 	}
 }
 
@@ -333,14 +538,14 @@ func TestApplyIntentBundleOverwritesBinariesWhenSpecified(t *testing.T) {
 
 // ── enterSteps / advanceStep ─────────────────────────────────────────────────
 
-func TestEnterStepsSkipsToConfirmWhenIntentHasNoSteps(t *testing.T) {
+func TestEnterStepsMovesToAnalyticsWhenIntentHasNoSteps(t *testing.T) {
 	m := wizardModel{
 		manifest:       sampleManifest(),
 		selectedIntent: intentIndex(sampleManifest(), "explore"),
 	}
 	m.enterSteps()
-	if m.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm — explore has no steps, must be a 1-screen-to-confirm intent", m.stage)
+	if m.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics — every interactive path must choose analytics", m.stage)
 	}
 }
 
@@ -359,7 +564,7 @@ func TestEnterStepsEntersStepRunnerWhenIntentHasSteps(t *testing.T) {
 	}
 }
 
-func TestAdvanceStepMovesToConfirmAfterLastStep(t *testing.T) {
+func TestAdvanceStepMovesToAnalyticsAfterLastStep(t *testing.T) {
 	man := sampleManifest()
 	m := wizardModel{
 		manifest:       man,
@@ -368,8 +573,8 @@ func TestAdvanceStepMovesToConfirmAfterLastStep(t *testing.T) {
 		stage:          stageStep,
 	}
 	m.advanceStep()
-	if m.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm after the only step advances", m.stage)
+	if m.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics after the only step advances", m.stage)
 	}
 }
 
@@ -408,8 +613,8 @@ func TestHandleEnvVarKeySkipProducesNoValue(t *testing.T) {
 	if len(got.envValues) != 0 {
 		t.Errorf("envValues = %v, want empty after skip", got.envValues)
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm (release's only step just advanced)", got.stage)
+	if got.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics (release's only step just advanced)", got.stage)
 	}
 }
 
@@ -440,8 +645,8 @@ func TestHandleEnvVarKeyConfigureThenSubmitStoresValue(t *testing.T) {
 	if got2.envValues["NPM_TOKEN"] != "npm_abc123" {
 		t.Errorf("envValues[NPM_TOKEN] = %q, want npm_abc123", got2.envValues["NPM_TOKEN"])
 	}
-	if got2.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	if got2.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics", got2.stage)
 	}
 }
 
@@ -465,22 +670,28 @@ func TestHandleEnvVarKeyEmptyValueDoesNotAdvance(t *testing.T) {
 
 // ── LLM provider step ────────────────────────────────────────────────────────
 
-func TestHandleLLMProviderKeySkipAdvances(t *testing.T) {
+func TestLLMProviderStepHidesDisabledFreeGateway(t *testing.T) {
 	man := sampleManifest()
 	m := wizardModel{
-		manifest:          man,
-		selectedIntent:    intentIndex(man, "ai-review"), // single llmProvider step
-		stage:             stageStep,
-		stepIndex:         0,
-		llmProviderCursor: len(llmProviderOptions) - 1, // "Skip"
+		manifest:       man,
+		selectedIntent: intentIndex(man, "ai-review"), // single llmProvider step
+		stage:          stageStep,
+		stepIndex:      0,
 	}
-	next, _ := m.handleLLMProviderKey(tea.KeyMsg{Type: tea.KeyEnter})
-	got := next.(wizardModel)
-	if got.llmProvider != "" {
-		t.Errorf("llmProvider = %q, want empty (skip)", got.llmProvider)
+	if freeGatewayFeature.Enabled {
+		t.Fatal("test requires the free gateway feature to be disabled")
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got.stage)
+	view := m.viewLLMProviderStep()
+	if strings.Contains(view, "50 free AI calls") {
+		t.Errorf("disabled gateway must not be selectable: %s", view)
+	}
+	if !strings.Contains(strings.ToLower(view), "temporarily unavailable") {
+		t.Errorf("disabled gateway reason is missing: %s", view)
+	}
+	for _, option := range llmProviderOptions() {
+		if option.id == "" {
+			t.Errorf("disabled free gateway must not appear in provider options: %+v", option)
+		}
 	}
 }
 
@@ -509,8 +720,8 @@ func TestHandleLLMProviderKeyOpenAIRequiresKey(t *testing.T) {
 	if got2.llmProvider != "openai" {
 		t.Errorf("llmProvider = %q, want openai", got2.llmProvider)
 	}
-	if got2.stage != stageConfirm {
-		t.Errorf("stage = %v, want stageConfirm", got2.stage)
+	if got2.stage != stageAnalytics {
+		t.Errorf("stage = %v, want stageAnalytics", got2.stage)
 	}
 }
 
@@ -536,8 +747,8 @@ func TestHandleStudioAccessKeySelectsLocal(t *testing.T) {
 	if !got.localMode {
 		t.Errorf("localMode = false after selecting Local, want true")
 	}
-	if got.stage != stageConfirm {
-		t.Errorf("stage = %v after Studio selection, want stageConfirm", got.stage)
+	if got.stage != stageAnalytics {
+		t.Errorf("stage = %v after Studio selection, want stageAnalytics", got.stage)
 	}
 }
 
@@ -759,7 +970,53 @@ func TestToSelectionStudioLocal(t *testing.T) {
 	}
 }
 
-// ── Confirm stage: cancel vs confirm vs telemetry toggle ────────────────────
+// ── Analytics and confirm stages ────────────────────────────────────────────
+
+func TestHandleAnalyticsKeyRequiresExplicitChoice(t *testing.T) {
+	m := wizardModel{stage: stageAnalytics, analyticsCursor: 1}
+	next, _ := m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if got.stage != stageConfirm || got.telemetryEnabled {
+		t.Errorf("analytics off selection = stage %v, telemetry %v; want confirm and false", got.stage, got.telemetryEnabled)
+	}
+
+	m.analyticsCursor = 0
+	next, _ = m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got = next.(wizardModel)
+	if got.stage != stageConfirm || !got.telemetryEnabled {
+		t.Errorf("analytics on selection = stage %v, telemetry %v; want confirm and true", got.stage, got.telemetryEnabled)
+	}
+}
+
+func TestAgentSetupScreenRequiresExplicitChoiceAndExplainsSafeMerge(t *testing.T) {
+	project := t.TempDir()
+	if err := os.WriteFile(filepath.Join(project, "CLAUDE.md"), []byte("# My existing notes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := wizardModel{
+		stage:           stageAnalytics,
+		showAgentSetup:  true,
+		cwdInput:        makeInput(project),
+		analyticsCursor: 1,
+	}
+	next, _ := m.handleAnalyticsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got := next.(wizardModel)
+	if got.stage != stageAgents {
+		t.Fatalf("analytics completion stage = %v, want agent setup", got.stage)
+	}
+	for _, want := range []string{"creating plugins", "workflows", "troubleshooting", "Existing CLAUDE.md detected", "stays untouched"} {
+		if !strings.Contains(got.viewAgents(), want) {
+			t.Errorf("agent setup screen missing %q: %s", want, got.viewAgents())
+		}
+	}
+
+	got.agentCursor = 1
+	next, _ = got.handleAgentsKey(tea.KeyMsg{Type: tea.KeyEnter})
+	got = next.(wizardModel)
+	if got.stage != stageConfirm || got.agentSetupEnabled {
+		t.Errorf("skip agent setup = stage %v, enabled %t; want confirm and false", got.stage, got.agentSetupEnabled)
+	}
+}
 
 func TestHandleConfirmKeyCancels(t *testing.T) {
 	for _, tc := range []struct {
@@ -805,18 +1062,6 @@ func TestHandleConfirmKeyConfirms(t *testing.T) {
 				t.Errorf("handleConfirmKey(%s): expected tea.Quit cmd, got nil", tc.name)
 			}
 		})
-	}
-}
-
-func TestHandleConfirmKeyTogglesTelemetry(t *testing.T) {
-	m := wizardModel{stage: stageConfirm, selectedIntent: -1, telemetryEnabled: true}
-	next, _ := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
-	got := next.(wizardModel)
-	if got.telemetryEnabled {
-		t.Error("telemetryEnabled = true after 't', want false")
-	}
-	if got.cancelled {
-		t.Error("cancelled = true after 't', want false — toggling telemetry must not quit")
 	}
 }
 

@@ -1,7 +1,7 @@
 ---
 title: "Scoped Installs in CI"
 description: "Install exactly the plugins/services a CI job needs with kb-create install, and the reusable GitHub Action that wraps it."
-updatedAt: "2026-07-23"
+updatedAt: "2026-07-25"
 order: 8
 ---
 
@@ -37,7 +37,32 @@ kb-create install --plugins=release \
   --platform ./ci-platform
 ```
 
-Role names are validated against the platform's canonical capability list — a typo'd role fails before any package installs. Most common roles (`llm`, `storage`, `logger`, `analytics`, ...) already have a sane default wired from the manifest catalog; `cache` deliberately has none, since only one package in the ecosystem implements it today and defaulting to it would fail at runtime wherever Redis isn't running. If a plugin declares a capability as required and nothing backs it, the install still succeeds but prints a visible warning — check the output when adding a new plugin to a CI job for the first time.
+Role names are validated against the platform's canonical capability list — a typo'd role fails before any package installs. Most common roles (`llm`, `storage`, `logger`, `analytics`, ...) already have a sane default wired from the manifest catalog. Cache consumers can use the built-in StateBroker adapter without provisioning Redis, or select `@kb-labs/adapters-redis` for a shared external cache. If a plugin declares a capability as required and nothing backs it, planning fails before any package installs.
+
+### Agent protocol and package manifests
+
+Agents can discover available scenarios without knowing launcher internals:
+
+```bash
+kb-create agent scenarios
+kb-create agent inspect --scenario commit
+kb-create agent plan --scenario commit \
+  --project-root ./project --platform-root ./ci-platform
+```
+
+CI installation itself remains scenario-free and deterministic. Technical
+metadata can be resolved directly from exact package artifacts or registry
+specs instead of being copied into the installer:
+
+```bash
+kb-create agent plan --scenario commit \
+  --package-dir ./node_modules/@kb-labs/commit-entry \
+  --manifest-cache ./.kb/manifest-cache
+```
+
+Package manifests are the source of truth for requirements, adapter
+capabilities, and non-secret provider defaults. Scenario manifests describe
+user intent; they do not contain complete `kb.config.jsonc` documents.
 
 ## Reusable GitHub Action
 
@@ -50,14 +75,14 @@ For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the bina
     platform-dir: ${{ runner.temp }}/kb-platform
 ```
 
-| Input | Description |
-|---|---|
-| `plugins` | Comma-separated plugin IDs, each optionally `@version` |
-| `services` | Comma-separated service IDs, each optionally `@version` |
-| `adapters` | Comma-separated `role=pkg[@version]` pairs |
-| `platform-dir` | Where the platform installs to (default: a runner temp dir) |
-| `registry` | Override the npm registry (e.g. a local Verdaccio for testing) |
-| `version` | Pin the `kb-create` binary itself, instead of using the latest release |
+| Input          | Description                                                            |
+| -------------- | ---------------------------------------------------------------------- |
+| `plugins`      | Comma-separated plugin IDs, each optionally `@version`                 |
+| `services`     | Comma-separated service IDs, each optionally `@version`                |
+| `adapters`     | Comma-separated `role=pkg[@version]` pairs                             |
+| `platform-dir` | Where the platform installs to (default: a runner temp dir)            |
+| `registry`     | Override the npm registry (e.g. a local Verdaccio for testing)         |
+| `version`      | Pin the `kb-create` binary itself, instead of using the latest release |
 
 Outputs: `platform-dir` (resolved install path) and `config-path` (generated `kb.config.jsonc`), for chaining into later steps that need to `cd` into the platform or read its config.
 

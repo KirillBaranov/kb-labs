@@ -495,8 +495,8 @@ func generateFull(opts Options) string {
 		}
 		return fallback
 	}
-	b.WriteString("      // LLM via KB Labs Gateway — 50 free requests included.\n")
-	b.WriteString("      // Replace with @kb-labs/adapters-openai when you have your own API key.\n")
+	b.WriteString("      // KB Labs Gateway's free tier is temporarily unavailable.\n")
+	b.WriteString("      // Configure an explicit provider key before running an AI command.\n")
 	fmt.Fprintf(&b, "      \"llm\": %s,\n\n", quote(adapterPkg("llm", "@kb-labs/adapters-kblabs-gateway")))
 	b.WriteString("      // File storage backend.\n")
 	fmt.Fprintf(&b, "      \"storage\": %s,\n\n", quote(adapterPkg("storage", "@kb-labs/adapters-fs")))

@@ -85,6 +85,27 @@ func TestNewPrintfWritesToFile(t *testing.T) {
 	}
 }
 
+func TestNewFileOnlyPrintfWritesToFile(t *testing.T) {
+	dir := t.TempDir()
+
+	l, err := NewFileOnly(dir)
+	if err != nil {
+		t.Fatalf("NewFileOnly() error = %v", err)
+	}
+	l.Printf("package manager output")
+	if err := l.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	data, err := os.ReadFile(l.LogPath())
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(data), "package manager output") {
+		t.Errorf("log file content %q does not contain package-manager output", string(data))
+	}
+}
+
 // TestNewDiscardLogPathEmpty verifies that NewDiscard returns "" for LogPath.
 func TestNewDiscardLogPathEmpty(t *testing.T) {
 	l := NewDiscard()

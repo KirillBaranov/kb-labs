@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/kb-labs/create/internal/demo"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
 )
@@ -22,13 +22,6 @@ var (
 	styleWhite  = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	styleMuted  = newStyle("244")
 	styleAccent = newStyle("141") // soft purple
-
-	styleBanner = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("141")).
-			Padding(0, 2).
-			Bold(true).
-			Foreground(lipgloss.Color("15"))
 
 	styleDivider = styleDim.Render(strings.Repeat("─", 45))
 
@@ -95,17 +88,91 @@ func (o output) BulletDim(label, details string) {
 	fmt.Printf("    %s %-15s  %s\n", o.dim.Render("○"), o.dim.Render(label), o.dim.Render(details))
 }
 
-// ── install success banner ────────────────────────────────────────────────────
+// ── shared rail UI kit ───────────────────────────────────────────────────────
 
-func printSuccess(r *installer.Result) {
-	fmt.Println()
-	fmt.Println(styleBanner.Render("✦  KB Labs installed successfully"))
-	fmt.Println()
+type railSection struct {
+	Title string
+	Lines []string
+}
 
-	kw := styleKV.Render
-	fmt.Printf("  %s   %s\n", kw("Platform"), styleBlue.Render(r.PlatformDir))
-	fmt.Printf("  %s    %s\n", kw("Project"), styleBlue.Render(r.ProjectCWD))
-	fmt.Println()
+type railBlock struct {
+	Title    string
+	Sections []railSection
+	Footer   []string
+	Error    bool
+}
+
+// printCompletionBlock renders the single end-of-install handoff. Keep all
+// user-facing next steps here so success output does not fragment into a
+// collection of unrelated notices.
+func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pendingInput, pluginDir, commandName, handoffPath string, agentLines []string, llmEnabled, analyticsEnabled bool) {
+	// Keep a stable plain-text success marker for scripts and older clients;
+	// the structured rail below remains the canonical human presentation.
+	fmt.Println("KB Labs installed successfully")
+	installed := []string{
+		railKeyValue("Platform", styleBlue.Render(r.PlatformDir)),
+		railKeyValue("Project", styleBlue.Render(r.ProjectCWD)),
+	}
+	if pluginDir != "" && commandName != "" {
+		installed = append(installed,
+			railKeyValue("Plugin", commandName),
+			railKeyValue("Status", "registered and ready"),
+		)
+	}
+
+	next := []string{}
+	if first == nil {
+		next = append(next, railKeyValue("Run", "kb-create doctor"))
+	} else if first.Operation != manifest.CommandOperationAnalyze {
+		next = append(next, "Run kb-create doctor before continuing.")
+	} else {
+		next = append(next, railKeyValue("Run", styleWhite.Render("cd "+shellQuote(r.ProjectCWD)+" && "+first.Command)))
+		if pendingInput != "" {
+			next = append(next, "Before running it: "+styleMuted.Render(pendingInput))
+		}
+	}
+
+	continueLines := []string{
+		"With an agent — paste this prompt:",
+		"Create a KB Labs plugin that [describe your business case].",
+		"It should expose a safe first command and include tests.",
+		railKeyValue("Read docs", styleBlue.Render("https://docs.kblabs.ru/en/guides/first-plugin")),
+		"Try it now:",
+		"kb review run",
+		"kb commit commit",
+	}
+	if handoffPath != "" {
+		continueLines = append(continueLines, railKeyValue("Handoff", styleMuted.Render(handoffPath)))
+	}
+
+	configLines := []string{
+		railKeyValue("LLM", statusLabel(llmEnabled)),
+		railKeyValue("Analytics", statusLabel(analyticsEnabled)),
+	}
+	sections := []railSection{{Title: "Installed", Lines: installed}}
+	if len(agentLines) > 0 {
+		sections = append(sections, railSection{Title: "Agent tools", Lines: agentLines})
+	}
+	sections = append(sections,
+		railSection{Title: "Next step", Lines: next},
+		railSection{Title: "Continue", Lines: continueLines},
+		railSection{Title: "Configuration", Lines: configLines},
+	)
+	printRailBlock(railBlock{Title: "KB Labs is ready", Sections: sections})
+}
+
+func statusLabel(enabled bool) string {
+	if enabled {
+		return styleBlue.Render("on")
+	}
+	return styleMuted.Render("off")
+}
+
+func shellQuote(value string) string {
+	if value != "" && !strings.ContainsAny(value, " \t\n'\";$&()[]{}<>|*") {
+		return value
+	}
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 // printDataConsent shows a short data-use summary so the user always knows
@@ -117,7 +184,7 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // dim
 
 	llmStatus := offStyle.Render("off")
-	llmHint := styleMuted.Render("(re-run and pick a provider, or add OPENAI_API_KEY to .env)")
+	llmHint := styleMuted.Render("(set OPENAI_API_KEY in .env to enable)")
 	if llmEnabled {
 		llmStatus = onStyle.Render("on")
 		llmHint = styleMuted.Render("API key in .env")
@@ -134,40 +201,6 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	fmt.Printf("  %-11s %s  %s\n", kw("Analytics"), analyticsStatus, analyticsHint)
 	fmt.Println()
 
-	if !llmEnabled {
-		printLLMRecommendation()
-	}
-}
-
-// printLLMRecommendation prints a one-time notice explaining what LLM adds,
-// how the data flows, and how to opt in — shown only when LLM is off.
-func printLLMRecommendation() {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
-	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-
-	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
-
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Enable LLM for a better experience"))
-	line("")
-	line("  " + dim.Render("AI commit messages") + "    " + cmd.Render("kb commit commit"))
-	line("  " + dim.Render("AI code review") + "        " + cmd.Render("kb review run"))
-	line("")
-	line(dim.Render("These use an LLM. Configure your own provider key:"))
-	line("")
-	line("Re-run:  " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI / Anthropic"))
-	line("Or set:  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"))
-	line(dim.Render("Docs: https://docs.kblabs.ru/adapters/built-in#llm-illm"))
-	fmt.Printf("  %s%s\n", botLeft, rule)
-	fmt.Println()
 }
 
 // printBootstrapAdminCredentials shows the seeded admin login once, right after
@@ -177,81 +210,26 @@ func printLLMRecommendation() {
 // CLI credential to ~/.kb/credentials.json, but neither of those is a substitute
 // for showing it here: a user who loses .env has no other way to log into Studio.
 func printBootstrapAdminCredentials(email, password string) {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-	warn := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
 
-	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
-
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Studio admin login") + "  " + warn.Render("(shown once — save it now)"))
-	line("")
-	line(dim.Render("Email     ") + cmd.Render(email))
-	line(dim.Render("Password  ") + cmd.Render(password))
-	line("")
-	line(dim.Render("Also saved to .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and to"))
-	line(dim.Render("~/.kb/credentials.json (separate CLI token) — this is the only"))
-	line(dim.Render("place the password itself is printed."))
-	fmt.Printf("  %s%s\n", botLeft, rule)
+	printRailNotice("Studio admin login  "+styleMuted.Render("(shown once — save it now)"), []string{
+		railKeyValue("Email", cmd.Render(email)),
+		railKeyValue("Password", cmd.Render(password)),
+		"",
+		dim.Render("Also saved to .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD) and"),
+		dim.Render("~/.kb/credentials.json (separate CLI token). This is the only"),
+		dim.Render("place the password itself is printed."),
+	})
 	fmt.Println()
 }
 
-// ── next steps ────────────────────────────────────────────────────────────────
+// ── outcome handoff ─────────────────────────────────────────────────────────
 
-// nextStep is one line in the "What's next" section.
-type nextStep struct {
-	cmd  string
-	desc string
-}
-
-// buildNextSteps returns the ordered list of post-install commands to show.
-// Each step is only included when its prerequisites are actually satisfied,
-// so the user never sees a command that won't work.
-func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
-	reviewCmd := "kb review run"
-	if llmEnabled {
-		reviewCmd = "kb review run --mode=full"
-	}
-	steps := []nextStep{
-		{"cd " + r.ProjectCWD, ""},
-	}
-	// `kb review run` / `kb commit commit` both require a git repo with a
-	// diff to look at — pointless (and confusing) to suggest them first on
-	// a brand-new project that has neither yet.
-	if demo.IsGitRepo(r.ProjectCWD) {
-		steps = append(steps,
-			nextStep{reviewCmd, "review your last diff"},
-			nextStep{"kb commit commit", "generate a commit message"},
-		)
-	} else {
-		steps = append(steps, nextStep{"git init", "start tracking your code — unlocks review/commit"})
-	}
-
-	// Suggest service startup after the user has seen the first results.
-	kbDevInstalled := false
-	for _, name := range r.InstalledBinaries {
-		if name == "kb-dev" {
-			kbDevInstalled = true
-			break
-		}
-	}
-	if kbDevInstalled && r.HasServices {
-		steps = append(steps, nextStep{"kb-dev start", "start background services (gateway, workflow, studio)"})
-	}
-
-	steps = append(steps, nextStep{"kb --help", "explore all commands"})
-	return steps
-}
-
-func printNextSteps(r *installer.Result, llmEnabled bool) {
+// printOutcomeHandoff ends onboarding with one safe, runnable next step. The
+// selected outcome is the sole source of this action: it never infers review,
+// commit, or service commands from the project.
+func printOutcomeHandoff(r *installer.Result, first *manifest.FirstCommand, pendingInput string) {
 	if r.ServicesWarning != "" {
 		newOutput().Warn(r.ServicesWarning)
 		fmt.Println()
@@ -259,70 +237,132 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 
 	fmt.Println(styleDivider)
 	fmt.Println()
-	fmt.Println("  " + styleBold.Render("What's next"))
-	fmt.Println()
+	if first == nil {
+		fmt.Println("  " + styleBold.Render("Installation is ready"))
+		fmt.Println()
+		fmt.Println("  Run " + styleWhite.Render("kb-create doctor") + " to verify this installation.")
+		fmt.Println()
+		return
+	}
+	if first.Operation != manifest.CommandOperationAnalyze {
+		newOutput().Warn("The selected first command is not safe to run automatically.")
+		fmt.Println("  Run " + styleWhite.Render("kb-create doctor") + " to inspect the installation before continuing.")
+		fmt.Println()
+		return
+	}
 
-	arrow := styleAccent.Render("→")
-	for _, s := range buildNextSteps(r, llmEnabled) {
-		padded := fmt.Sprintf("%-32s", s.cmd)
-		fmt.Printf("  %s  %s%s\n", arrow, styleWhite.Render(padded), styleMuted.Render(s.desc))
+	fmt.Println("  " + styleBold.Render("Ready"))
+	fmt.Println()
+	fmt.Println("  " + styleMuted.Render(first.Description))
+	fmt.Println()
+	fmt.Println("  Run this next:")
+	fmt.Println("    " + styleWhite.Render(first.Command))
+	if pendingInput != "" {
+		fmt.Println()
+		fmt.Println("  Before you run it: " + styleMuted.Render(pendingInput))
+	}
+	if first.Studio {
+		fmt.Println()
+		fmt.Println("  Observe in Studio: " + styleMuted.Render("kb-dev start  →  http://127.0.0.1:3000"))
+		fmt.Println("  " + styleMuted.Render("Use it when the command needs attention: inspect its status and logs, then choose the next available action."))
 	}
 	fmt.Println()
 }
 
-// printIntentNextSteps prints the chosen intent's own docs/next-steps
-// (e.g. "release" → `pnpm kb release plan` + the CI-install guide link),
-// alongside the generic ones from printNextSteps. No-op when intentID is
-// empty (not chosen via the intent wizard) or the intent declares none.
-func printIntentNextSteps(m *manifest.Manifest, intentID string) {
-	if intentID == "" {
+func printCustomPluginSummary(pluginDir, commandName string) {
+	if pluginDir == "" || commandName == "" {
 		return
 	}
-	var intent *manifest.Intent
-	for i := range m.Intents {
-		if m.Intents[i].ID == intentID {
-			intent = &m.Intents[i]
-			break
-		}
-	}
-	if intent == nil || (len(intent.NextSteps) == 0 && len(intent.Docs) == 0) {
-		return
-	}
-
-	arrow := styleAccent.Render("→")
-	for _, s := range intent.NextSteps {
-		fmt.Printf("  %s  %s\n", arrow, styleWhite.Render(s))
-	}
-	for _, d := range intent.Docs {
-		fmt.Printf("  %s  %s: %s\n", arrow, styleWhite.Render(d.Label), styleMuted.Render(d.URL))
-	}
+	fmt.Println("  " + styleBold.Render("Your plugin"))
+	fmt.Println("  " + styleMuted.Render(pluginDir))
+	fmt.Println("  Manifest: " + styleMuted.Render(pluginDir+"/packages/"+commandName+"-entry/src/manifest.ts"))
+	fmt.Println("  Handler:  " + styleMuted.Render(pluginDir+"/packages/"+commandName+"-entry/src"))
 	fmt.Println()
 }
 
-// printSupportHint shows a compact support block with GitHub Issues and
-// Telegram contact — called whenever an install or doctor run fails.
+func printAgentHandoff(path string) {
+	if path == "" {
+		return
+	}
+	fmt.Println("  Agent handoff: " + styleMuted.Render(path))
+	fmt.Println()
+}
+
+// printSupportHint gives a compact recovery route after an install or doctor
+// failure. It intentionally uses one left rail instead of a closed box: the
+// error above remains the primary information, while support is a next step.
 func printSupportHint() {
-	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 
-	border := accent.Render("│")
-	topLeft := accent.Render("╭")
-	botLeft := accent.Render("╰")
-	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
-
-	width := 58
-	rule := accent.Render(strings.Repeat("─", width))
-
 	fmt.Println()
-	fmt.Printf("  %s%s\n", topLeft, rule)
-	line(white.Render("Need help?"))
-	line("")
-	line("  " + dim.Render("Open an issue   ") + url.Render("github.com/kb-labs-team/kb-labs/issues"))
-	line("  " + dim.Render("Telegram        ") + url.Render("@kirill_baranov"))
-	fmt.Printf("  %s%s\n", botLeft, rule)
+	printRailNotice("Thanks for taking the time to report this.", []string{
+		dim.Render("Your report helps us make KB Labs more reliable."),
+		"",
+		dim.Render("Please include the failure details above."),
+		"",
+		railKeyValue("Troubleshooting", url.Render("https://docs.kblabs.ru/en/guides/troubleshooting")),
+		railKeyValue("GitHub issues", url.Render("https://github.com/kb-labs-team/kb-labs/issues")),
+		railKeyValue("Telegram", url.Render("@kirill_baranov")),
+	})
 	fmt.Println()
+}
+
+// printRailBlock is the shared terminal UI primitive for onboarding notices.
+// It deliberately starts at column zero: a single left rail groups related
+// information without a boxed frame, inherited indentation, or competing
+// visual language.
+func printRailBlock(block railBlock) {
+	rail := styleAccent.Render("│")
+	icon := styleAccent.Render("◆")
+	if block.Error {
+		icon = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("✗")
+	}
+	fmt.Println(icon + " " + styleBold.Render(block.Title))
+	for _, section := range block.Sections {
+		if section.Title != "" {
+			fmt.Println(rail)
+			fmt.Println(rail + " " + styleBold.Render(section.Title))
+		}
+		for _, line := range section.Lines {
+			printRailLine(rail, line)
+		}
+	}
+	for _, line := range block.Footer {
+		printRailLine(rail, line)
+	}
+}
+
+func printRailNotice(title string, lines []string) {
+	printRailBlock(railBlock{Title: title, Sections: []railSection{{Lines: lines}}})
+}
+
+func printRailErrorBlock(title string, lines []string) {
+	printRailBlock(railBlock{Title: title, Error: true, Sections: []railSection{{Lines: lines}}})
+}
+
+func printRailLine(rail, line string) {
+	if line == "" {
+		fmt.Println(rail)
+		return
+	}
+	fmt.Println(rail + " " + line)
+}
+
+func railKeyValue(label, value string) string {
+	return styleMuted.Render(fmt.Sprintf("%-18s", label)) + " " + value
+}
+
+// printFatalError preserves the complete fatal error in the terminal so it can
+// be pasted into an issue. It intentionally includes only runtime facts, never
+// project paths, source code, API keys, or user configuration values.
+func printFatalError(err error, version string) {
+	lines := []string{"Failure details — copy this when reporting the issue:"}
+	for _, line := range strings.Split(strings.TrimSpace(err.Error()), "\n") {
+		lines = append(lines, line)
+	}
+	lines = append(lines, "", "Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version)
+	printRailErrorBlock("Installation failed", lines)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

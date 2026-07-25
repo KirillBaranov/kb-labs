@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/kb-labs/create/internal/claude"
@@ -46,20 +47,18 @@ func (stdPrompter) ConfirmAddClaudeMd(snippet string) claude.PromptResponse {
 	}
 }
 
-// printClaudeSummary renders a compact summary of what claude.Install/Update did.
-// It is intentionally minimal: a one-line section header plus up to two bullets.
-func printClaudeSummary(out output, r *claude.Result) {
+// printClaudeSummary shows the exact additive changes after setup completes.
+func printClaudeSummary(projectDir string, r *claude.Result) {
 	if r == nil {
 		return
 	}
+	printRailNotice("Agent tools installed", claudeSummaryLines(projectDir, r))
+	fmt.Println()
+}
+
+func claudeSummaryLines(projectDir string, r *claude.Result) []string {
 	added, updated, removed := len(r.SkillsAdded), len(r.SkillsUpdated), len(r.SkillsRemoved)
-	if added+updated+removed == 0 && (r.ClaudeMdAction == "" || r.ClaudeMdAction == "skipped" || r.ClaudeMdAction == "unchanged") {
-		// Nothing interesting happened — stay silent to keep install output tidy.
-		return
-	}
-
-	out.Section("Claude Code assets")
-
+	lines := make([]string, 0, 4)
 	if added+updated+removed > 0 {
 		parts := make([]string, 0, 3)
 		if added > 0 {
@@ -71,13 +70,21 @@ func printClaudeSummary(out output, r *claude.Result) {
 		if removed > 0 {
 			parts = append(parts, fmt.Sprintf("-%d removed", removed))
 		}
-		out.KeyValue("Skills", strings.Join(parts, ", "))
+		lines = append(lines, railKeyValue("Skills", strings.Join(parts, ", ")))
+		lines = append(lines, "Location  "+filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"))
+	} else {
+		lines = append(lines, "Skills are already up to date in "+filepath.Join(projectDir, ".claude", "skills", "kb-labs-*"))
 	}
 
 	if r.ClaudeMdAction != "" && r.ClaudeMdAction != "skipped" && r.ClaudeMdAction != "unchanged" {
 		label := claudeMdActionLabel(r.ClaudeMdAction, r.DevkitVersion)
-		out.KeyValue("CLAUDE.md", label)
+		lines = append(lines, railKeyValue("CLAUDE.md", label))
+		lines = append(lines, "Location  "+filepath.Join(projectDir, "CLAUDE.md"))
+	} else if r.ClaudeMdAction == "skipped" {
+		lines = append(lines, "CLAUDE.md was left unchanged.")
 	}
+	lines = append(lines, "Existing content and non-KB Labs skills were preserved.")
+	return lines
 }
 
 func claudeMdActionLabel(action, version string) string {

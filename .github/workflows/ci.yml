@@ -295,7 +295,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          # Bump this namespace whenever packed workspace dependency metadata
+          # changes. pnpm pack materializes workspace:* ranges into exact
+          # versions, so reusing an older tarball can make the Verdaccio e2e
+          # job test a package graph that is not present in this checkout.
+          key: e2e-tgz-v3-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
 
       - name: Pack @kb-labs/* packages
         if: steps.tgz-cache.outputs.cache-hit != 'true'
@@ -335,7 +339,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
 
       - name: Prepare Verdaccio storage permissions
         run: |
@@ -375,6 +379,9 @@ jobs:
             2>&1 | tee /tmp/kb-create-e2e-devkit.log; exit "${PIPESTATUS[0]}"
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          # setup-node may expose NPM_CONFIG_REGISTRY globally; keep the
+          # launcher e2e install on the local testbed registry explicitly.
+          NPM_CONFIG_REGISTRY: http://localhost:4873
           KB_DEVKIT_FAIL_LINES: 0
 
       - name: Upload kb-create e2e log on failure

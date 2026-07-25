@@ -90,7 +90,8 @@ func RunFirstDemo(projectDir string, llmEnabled bool) error {
 		if strings.Contains(out, "Found 0 issue") || strings.Contains(out, "Engines:\n") {
 			fmt.Println("  💡 Heuristic review needs ESLint/Ruff in your project.")
 			fmt.Println("     Enable AI review for deeper analysis (security, logic, style):")
-			fmt.Println("     kb-create . --llm   — 50 free requests, no API key needed")
+			fmt.Println("     Re-run kb-create and configure your own OpenAI or Anthropic key")
+			fmt.Println("     (KB Labs Gateway is temporarily unavailable while infrastructure is repaired)")
 			fmt.Println()
 		}
 	}

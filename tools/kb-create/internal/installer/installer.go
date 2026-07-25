@@ -46,6 +46,13 @@ type Selection struct {
 	LLMProvider      string // "openai" | "anthropic" | "" (skip)
 	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
 	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	// ClaudeEnabled controls the optional KB Labs agent setup: managed skills
+	// under .claude/skills/kb-labs-* plus a separately marked CLAUDE.md section.
+	// It never authorizes replacing user-authored files.
+	ClaudeEnabled bool
+	// SkipClaudeMd keeps the skills-only option available to the CLI flag while
+	// preserving user-owned CLAUDE.md content.
+	SkipClaudeMd bool
 	// Adapters overrides which package backs a given capability role (e.g.
 	// "cache" -> "@kb-labs/adapters-redis@0.2.0"), from the chosen intent's
 	// bundle or the custom picker's adapter-role opt-ins.
@@ -59,6 +66,19 @@ type Selection struct {
 	// the selection didn't come from the intent-driven wizard (e.g. a future
 	// direct API caller).
 	Intent string
+	// FirstCommand is copied from the selected intent's outcome contract. It
+	// gives post-install code one stable, safe command to hand back to the
+	// user instead of deriving it from generic help text.
+	FirstCommand *manifest.FirstCommand
+	// PendingInput describes a valid install whose first command needs user
+	// input (for example, a commit plan on a clean repository). It is not an
+	// installation error and is persisted for `kb-create continue`.
+	PendingInput string
+	// CustomCommandName and CustomCommandDescription form the user-approved
+	// contract for the custom-plugin path. They are plain product intent, not
+	// credentials or prompt content.
+	CustomCommandName        string
+	CustomCommandDescription string
 	// PluginVersions/ServiceVersions override the installed version for a
 	// specific component ID (e.g. `--plugins=release@0.2.0`), keyed by that
 	// ID. Separate maps because a service and a plugin can share the same
@@ -494,6 +514,13 @@ func (ins *Installer) symlinkCLI(platformDir string) {
 		// nothing to report
 	case result.NeedRestart && result.HintCmd != "":
 		ins.Log.Printf("  [PATH] Run to activate: %s", result.HintCmd)
+	}
+	if repaired, repairErr := platform.RepairLegacyKBAliases(); repairErr != nil {
+		ins.Log.Printf("  [WARN] repair legacy kb shell aliases: %v", repairErr)
+	} else {
+		for _, path := range repaired {
+			ins.Log.Printf("  [SHELL] removed legacy kb alias from %s", path)
+		}
 	}
 }
 

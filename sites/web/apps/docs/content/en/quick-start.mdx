@@ -1,7 +1,7 @@
 ---
 title: "Quick Start"
 description: "Install KB Labs and run your first command in under 5 minutes."
-updatedAt: "2026-04-15"
+updatedAt: "2026-07-25"
 order: 1
 ---
 
@@ -22,6 +22,20 @@ kb-create my-project
 ```
 
 Runs the interactive wizard: picks a package manager, configures the platform directory, and sets up `.kb/kb.config.jsonc` with sane defaults. When it finishes you have a ready workspace.
+
+To use the declarative scenario engine during the migration cutover:
+
+```bash
+kb-create my-project --engine
+```
+
+The Human terminal flow and Agent JSON flow share the same scenario state,
+validation, compatibility resolution, and installation plan. CI should use
+the deterministic direct path instead of a scenario:
+
+```bash
+kb-create install --plugins=release --platform ./ci-platform
+```
 
 ## 3. Start services
 
@@ -51,13 +65,13 @@ kb marketplace plugins list
 
 ## What's next
 
-| Goal | Start here |
-|------|-----------|
-| Build a plugin | [Guides → First Plugin](/guides/first-plugin) |
-| Set up a workflow | [Guides → First Workflow](/guides/first-workflow) |
-| Configure adapters (LLM, DB, storage) | [Adapters → Overview](/adapters) |
-| Understand the architecture | [Concepts → Overview](/concepts/overview) |
-| Run in production | [Guides → Production Readiness](/guides/production-readiness) |
+| Goal                                  | Start here                                                    |
+| ------------------------------------- | ------------------------------------------------------------- |
+| Build a plugin                        | [Guides → First Plugin](/guides/first-plugin)                 |
+| Set up a workflow                     | [Guides → First Workflow](/guides/first-workflow)             |
+| Configure adapters (LLM, DB, storage) | [Adapters → Overview](/adapters)                              |
+| Understand the architecture           | [Concepts → Overview](/concepts/overview)                     |
+| Run in production                     | [Guides → Production Readiness](/guides/production-readiness) |
 
 ## Troubleshooting
 

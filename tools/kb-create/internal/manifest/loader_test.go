@@ -48,6 +48,35 @@ func TestCorePackageNames(t *testing.T) {
 	}
 }
 
+func TestLaunchIntentsDeclareSafeFirstCommands(t *testing.T) {
+	m, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault() error = %v", err)
+	}
+
+	for _, id := range []string{"commit", "release"} {
+		intent := m.IntentByID(id)
+		if intent == nil {
+			t.Errorf("IntentByID(%q) = nil", id)
+			continue
+		}
+		if intent.FirstCommand == nil {
+			t.Errorf("intent %q has no firstCommand", id)
+			continue
+		}
+		if intent.FirstCommand.Command == "" {
+			t.Errorf("intent %q firstCommand.command is empty", id)
+		}
+		if intent.FirstCommand.Operation != CommandOperationAnalyze {
+			t.Errorf("intent %q firstCommand.operation = %q, want %q", id, intent.FirstCommand.Operation, CommandOperationAnalyze)
+		}
+	}
+
+	if got := m.IntentByID("not-an-intent"); got != nil {
+		t.Errorf("IntentByID(not-an-intent) = %+v, want nil", got)
+	}
+}
+
 // TestLoadLocalOverride verifies that a local JSON file is used when provided.
 func TestLoadLocalOverride(t *testing.T) {
 	custom := Manifest{
