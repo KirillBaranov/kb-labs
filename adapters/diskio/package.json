@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/adapters-fs-temp",
-  "description": "Temporary publish alias for @kb-labs/adapters-fs while npm 403 is unresolved",
+  "name": "@kb-labs/adapters-diskio",
+  "description": "Filesystem-backed blob storage adapter implementing IStorage, using only node:fs/promises",
   "version": "2.107.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,14 +29,9 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "fast-glob": "^3.3.2",
-    "fs-extra": "^11.0.0"
-  },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "@types/fs-extra": "^11.0.0",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",

@@ -27,7 +27,7 @@
     "@fastify/websocket": "^11.0.1",
     "@kb-labs/adapters-analytics-file": "workspace:*",
     "@kb-labs/adapters-eventbus-cache": "workspace:*",
-    "@kb-labs/adapters-fs-temp": "workspace:*",
+    "@kb-labs/adapters-diskio": "workspace:*",
     "@kb-labs/adapters-log-document": "workspace:*",
     "@kb-labs/adapters-log-ringbuffer": "workspace:*",
     "@kb-labs/adapters-openai": "workspace:*",

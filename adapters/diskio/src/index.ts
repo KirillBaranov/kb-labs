@@ -1,10 +1,10 @@
 /**
- * @module @kb-labs/adapters-fs
- * Filesystem adapter implementing IStorage interface.
+ * @module @kb-labs/adapters-blob-storage
+ * Filesystem-backed blob storage adapter implementing IStorage interface.
  *
  * @example
  * ```typescript
- * import { createAdapter } from '@kb-labs/adapters-fs';
+ * import { createAdapter } from '@kb-labs/adapters-blob-storage';
  *
  * const storage = createAdapter({
  *   baseDir: '/var/data',
@@ -17,9 +17,8 @@
  * ```
  */
 
-import fs from "fs-extra";
+import fs from "node:fs/promises";
 import path from "node:path";
-import fg from "fast-glob";
 import type {
   IStorage,
   StorageMetadata,
@@ -64,6 +63,34 @@ export class FilesystemStorageAdapter implements IStorage {
     return absolute;
   }
 
+  private async ensureDir(dirPath: string): Promise<void> {
+    await fs.mkdir(dirPath, { recursive: true });
+  }
+
+  /**
+   * Recursively walk a directory, yielding absolute file paths.
+   */
+  private async *walk(dirPath: string): AsyncGenerator<string> {
+    let entries;
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        yield* this.walk(entryPath);
+      } else if (entry.isFile()) {
+        yield entryPath;
+      }
+    }
+  }
+
   async read(filepath: string): Promise<Buffer | null> {
     const absolutePath = this.resolvePath(filepath);
 
@@ -81,7 +108,7 @@ export class FilesystemStorageAdapter implements IStorage {
     const absolutePath = this.resolvePath(filepath);
 
     // Ensure directory exists
-    await fs.ensureDir(path.dirname(absolutePath));
+    await this.ensureDir(path.dirname(absolutePath));
 
     await fs.writeFile(absolutePath, data);
   }
@@ -101,12 +128,14 @@ export class FilesystemStorageAdapter implements IStorage {
   }
 
   async list(prefix: string): Promise<string[]> {
-    const pattern = `${prefix}**`;
-    return fg(pattern, {
-      onlyFiles: true,
-      absolute: false,
-      cwd: this.baseDir,
-    });
+    const absolutePrefix = this.resolvePath(prefix);
+    const results: string[] = [];
+
+    for await (const filePath of this.walk(absolutePrefix)) {
+      results.push(path.relative(this.baseDir, filePath));
+    }
+
+    return results;
   }
 
   async exists(filepath: string): Promise<boolean> {
@@ -157,7 +186,7 @@ export class FilesystemStorageAdapter implements IStorage {
     const absoluteDest = this.resolvePath(destPath);
 
     // Ensure destination directory exists
-    await fs.ensureDir(path.dirname(absoluteDest));
+    await this.ensureDir(path.dirname(absoluteDest));
 
     await fs.copyFile(absoluteSource, absoluteDest);
   }
@@ -171,9 +200,9 @@ export class FilesystemStorageAdapter implements IStorage {
     const absoluteDest = this.resolvePath(destPath);
 
     // Ensure destination directory exists
-    await fs.ensureDir(path.dirname(absoluteDest));
+    await this.ensureDir(path.dirname(absoluteDest));
 
-    await fs.move(absoluteSource, absoluteDest, { overwrite: true });
+    await fs.rename(absoluteSource, absoluteDest);
   }
 
   /**
@@ -181,29 +210,12 @@ export class FilesystemStorageAdapter implements IStorage {
    * Optional method - implements IStorage.listWithMetadata().
    */
   async listWithMetadata(prefix: string): Promise<StorageMetadata[]> {
-    // List files with a given prefix in their name
-    const pattern = `${prefix}*`;
-    const files = await fg(pattern, {
-      onlyFiles: true,
-      absolute: true,
-      cwd: this.baseDir,
-      stats: true,
-    });
-
+    const absolutePrefix = this.resolvePath(prefix);
     const results: StorageMetadata[] = [];
 
-    for (const entry of files) {
-      if (typeof entry === "string") {
-        continue;
-      } // Skip if no stats
-
-      const stats = entry.stats;
-      if (!stats) {
-        continue;
-      }
-
-      // Convert absolute path back to relative
-      const relativePath = path.relative(this.baseDir, entry.path);
+    for await (const filePath of this.walk(absolutePrefix)) {
+      const stats = await fs.stat(filePath);
+      const relativePath = path.relative(this.baseDir, filePath);
 
       results.push({
         path: relativePath,
