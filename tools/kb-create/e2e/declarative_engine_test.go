@@ -10,6 +10,7 @@ import (
 
 func TestDeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply(t *testing.T) {
 	bin := binary(t)
+	fixture := filepath.Join("..", "internal", "engine", "catalog", "testdata", "commit-package")
 	out, code := run(t, bin, "agent", "scenarios")
 	if code != 0 {
 		t.Fatalf("agent scenarios exited %d:\n%s", code, out)
@@ -27,7 +28,7 @@ func TestDeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply(t *testin
 		t.Fatalf("scenario catalog = %#v", catalog)
 	}
 
-	out, code = run(t, bin, "agent", "inspect", "--scenario", "commit")
+	out, code = run(t, bin, "agent", "inspect", "--scenario", "commit", "--package-dir", fixture)
 	if code != 0 {
 		t.Fatalf("agent inspect exited %d:\n%s", code, out)
 	}
@@ -46,7 +47,7 @@ func TestDeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply(t *testin
 	}
 
 	platform, project := t.TempDir(), t.TempDir()
-	out, code = run(t, bin, "agent", "plan", "--scenario", "commit", "--project-root", project, "--platform-root", platform)
+	out, code = run(t, bin, "agent", "plan", "--scenario", "commit", "--project-root", project, "--platform-root", platform, "--package-dir", fixture)
 	if code != 0 {
 		t.Fatalf("agent plan exited %d:\n%s", code, out)
 	}
@@ -64,7 +65,7 @@ func TestDeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply(t *testin
 		t.Fatalf("plan = %#v", planResponse)
 	}
 
-	out, code = run(t, bin, "agent", "apply", "--scenario", "commit", "--project-root", project, "--platform-root", platform, "--plan-only")
+	out, code = run(t, bin, "agent", "apply", "--scenario", "commit", "--project-root", project, "--platform-root", platform, "--plan-only", "--package-dir", fixture)
 	if code != 0 {
 		t.Fatalf("agent plan-only apply exited %d:\n%s", code, out)
 	}
