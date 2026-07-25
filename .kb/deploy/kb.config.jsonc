@@ -20,7 +20,7 @@
       // LLM via OpenAI-compatible endpoint (proxy URL set in adapterOptions).
       "llm": "@kb-labs/adapters-openai",
       // File storage backend.
-      "storage": "@kb-labs/adapters-fs",
+      "storage": "@kb-labs/adapters-fs-temp",
       // Structured logger.
       "logger": "@kb-labs/adapters-pino",
       // In-memory log ring buffer for recent log access.

@@ -1,0 +1,58 @@
+{
+  "name": "@kb-labs/adapters-fs-temp",
+  "description": "Temporary publish alias for @kb-labs/adapters-fs while npm 403 is unresolved",
+  "version": "2.106.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./secure-storage": {
+      "types": "./dist/secure-storage.d.ts",
+      "import": "./dist/secure-storage.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@types/fs-extra": "^11.0.0",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.6"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "peerDependencies": {
+    "@kb-labs/sdk": ">=2.0.0"
+  },
+  "sideEffects": false
+}
