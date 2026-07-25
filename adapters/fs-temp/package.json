@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-fs-temp",
   "description": "Temporary publish alias for @kb-labs/adapters-fs while npm 403 is unresolved",
-  "version": "2.106.0",
+  "version": "2.107.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
