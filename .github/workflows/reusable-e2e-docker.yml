@@ -127,7 +127,7 @@ jobs:
       - name: Verify packed .tgz cache contents
         if: steps.tgz-cache.outputs.cache-hit == 'true'
         run: |
-          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
+          count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l)
           echo "Restored $count packed tarballs from cache"
           if [ "$count" -lt 100 ]; then
             echo "::warning::Cached tgz set looks incomplete (<100 files), repacking"
@@ -135,7 +135,7 @@ jobs:
           fi
 
       - name: List packed packages
-        run: ls -lh e2e/packages/*.tgz | wc -l && echo "tarballs packed"
+        run: find e2e/packages -maxdepth 1 -type f -name '*.tgz' -print | wc -l && echo "tarballs packed"
 
       # ── Docker layer caching ─────────────────────────────────────────────
 
@@ -225,7 +225,7 @@ jobs:
       - name: Confirm Verdaccio has expected package count (warm cache)
         if: steps.verdaccio-cache.outputs.cache-hit == 'true'
         run: |
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
           echo "Tarballs packed: $tgz_count   Verdaccio pkg dirs: $pkg_dirs"
           if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
@@ -240,11 +240,11 @@ jobs:
         run: |
           echo "Waiting for platform (up to ${{ inputs.health-steps }} × 5s)..."
           for i in $(seq 1 ${{ inputs.health-steps }}); do
-            if curl -sf ${{ inputs.health-url }} > /dev/null 2>&1; then
+            if curl -sf "${{ inputs.health-url }}" > /dev/null 2>&1; then
               echo "Platform ready after $((i * 5))s"
               break
             fi
-            if [ "$i" -eq "${{ inputs.health-steps }}" ]; then
+            if [ "$i" = "${{ inputs.health-steps }}" ]; then
               echo "Platform failed to start — dumping logs"
               docker compose logs platform | tail -100
               exit 1
@@ -326,9 +326,11 @@ jobs:
         run: |
           checklist="e2e/${{ inputs.suite }}/report/CHECKLIST.md"
           if [ -f "$checklist" ]; then
-            echo "### E2E: ${{ inputs.suite }}" >> $GITHUB_STEP_SUMMARY
-            cat "$checklist" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "### E2E: ${{ inputs.suite }}"
+              cat "$checklist"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Cleanup
