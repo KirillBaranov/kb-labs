@@ -1,10 +1,10 @@
 /**
- * @module @kb-labs/adapters-blob-storage
+ * @module @kb-labs/adapters-diskio
  * Filesystem-backed blob storage adapter implementing IStorage interface.
  *
  * @example
  * ```typescript
- * import { createAdapter } from '@kb-labs/adapters-blob-storage';
+ * import { createAdapter } from '@kb-labs/adapters-diskio';
  *
  * const storage = createAdapter({
  *   baseDir: '/var/data',
