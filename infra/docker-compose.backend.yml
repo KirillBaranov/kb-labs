@@ -22,7 +22,7 @@ services:
       - kb-backend
 
   kb-marketplace-registry:
-    image: ghcr.io/kirillbaranov/kb-marketplace-registry:${IMAGE_TAG:-latest}
+    image: ghcr.io/kb-labs-team/kb-marketplace-registry:${IMAGE_TAG:-latest}
     container_name: kb-marketplace-registry
     ports:
       - "5071:5071"
@@ -42,7 +42,7 @@ services:
       - kb-backend
 
   kb-gateway:
-    image: ghcr.io/kirillbaranov/kb-gateway:${IMAGE_TAG:-latest}
+    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG:-latest}
     container_name: kb-gateway
     ports:
       - "4000:4000"

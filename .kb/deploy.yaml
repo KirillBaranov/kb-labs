@@ -1,5 +1,5 @@
 # deploy targets — managed by kb-deploy
-registry: ghcr.io/kirillbaranov
+registry: ghcr.io/kb-labs-team
 
 infrastructure:
   qdrant:

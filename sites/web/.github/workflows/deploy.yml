@@ -32,7 +32,7 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: true
-          tags: ghcr.io/kirillbaranov/kb-labs-web:latest
+          tags: ghcr.io/kb-labs-team/kb-labs-web:latest
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
@@ -42,7 +42,7 @@ jobs:
           context: .
           file: apps/docs/Dockerfile
           push: true
-          tags: ghcr.io/kirillbaranov/kb-labs-docs:latest
+          tags: ghcr.io/kb-labs-team/kb-labs-docs:latest
           cache-from: type=gha,scope=docs
           cache-to: type=gha,mode=max,scope=docs
 
@@ -54,10 +54,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ghcr.io/kirillbaranov/kb-labs-web:latest
-            docker pull ghcr.io/kirillbaranov/kb-labs-docs:latest
+            docker pull ghcr.io/kb-labs-team/kb-labs-web:latest
+            docker pull ghcr.io/kb-labs-team/kb-labs-docs:latest
             docker stop kb-labs-web kb-labs-docs 2>/dev/null || true
             docker rm kb-labs-web kb-labs-docs 2>/dev/null || true
-            docker run -d --name kb-labs-web --restart unless-stopped -p 3000:3000 ghcr.io/kirillbaranov/kb-labs-web:latest
-            docker run -d --name kb-labs-docs --restart unless-stopped -p 3001:3001 ghcr.io/kirillbaranov/kb-labs-docs:latest
+            docker run -d --name kb-labs-web --restart unless-stopped -p 3000:3000 ghcr.io/kb-labs-team/kb-labs-web:latest
+            docker run -d --name kb-labs-docs --restart unless-stopped -p 3001:3001 ghcr.io/kb-labs-team/kb-labs-docs:latest
             docker image prune -f

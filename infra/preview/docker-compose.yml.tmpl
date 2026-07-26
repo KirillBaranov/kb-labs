@@ -13,7 +13,7 @@
 
 services:
   gateway:
-    image: ghcr.io/kirillbaranov/kb-gateway:${IMAGE_TAG}
+    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG}
     container_name: kb-preview-pr-${PR_NUMBER}-gateway
     restart: unless-stopped
     ports:
@@ -24,7 +24,7 @@ services:
     networks: [preview]
 
   web:
-    image: ghcr.io/kirillbaranov/kb-site-web:${IMAGE_TAG}
+    image: ghcr.io/kb-labs-team/kb-site-web:${IMAGE_TAG}
     container_name: kb-preview-pr-${PR_NUMBER}-web
     restart: unless-stopped
     ports:
@@ -37,7 +37,7 @@ services:
     networks: [preview]
 
   docs:
-    image: ghcr.io/kirillbaranov/kb-site-docs:${IMAGE_TAG}
+    image: ghcr.io/kb-labs-team/kb-site-docs:${IMAGE_TAG}
     container_name: kb-preview-pr-${PR_NUMBER}-docs
     restart: unless-stopped
     ports:
