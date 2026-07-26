@@ -1,7 +1,7 @@
 ---
 title: "kb-devkit"
 description: "Workspace orchestrator for large monorepos — content-addressable task caching, category-aware task variants, affected-package detection, quality checks, and Docker build context pruning via devkit.yaml."
-updatedAt: "2026-05-31"
+updatedAt: "2026-07-26"
 order: 9
 ---
 
@@ -78,6 +78,10 @@ Supported references:
 - `package:<pkg>#<path>` — pack loaded from `node_modules/<pkg>/<path>`
 
 Packs can contribute presets, tasks, sync targets, check configuration, and external command-based checks/fixers.
+
+### Dependency boundary checks
+
+When a pack defines dependency boundaries, `kb-devkit check` validates static TypeScript and JavaScript `from` imports against the package's allow/forbid rules. Imports shown only in comments, string examples, or template literals are ignored, so documentation and diagnostic snippets do not produce false violations.
 
 ### Categories
 
