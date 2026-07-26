@@ -1,6 +1,7 @@
 import { mkdir, writeFile, readdir } from 'node:fs/promises'
 import { createWriteStream } from 'node:fs'
 import { spawn } from 'node:child_process'
+import { finished } from 'node:stream/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -91,14 +92,15 @@ export function createDiagnosticCollector(options = {}) {
     let stdoutText = ''
     let stderrText = ''
 
-    process.stdout.write(`\n[e2e-runner] ${label}\n[e2e-runner] $ ${command} ${args.join(' ')}\n`)
+    process.stdout.write(redact(`\n[e2e-runner] ${label}\n[e2e-runner] $ ${command} ${args.join(' ')}\n`))
     return await new Promise(resolve => {
       let settled = false
-      const finish = result => {
+      const finish = async result => {
         if (settled) return
         settled = true
         stdout.end()
         stderr.end()
+        await Promise.allSettled([finished(stdout), finished(stderr)])
         resolve({ ...result, stdoutPath, stderrPath })
       }
       let child
@@ -115,16 +117,16 @@ export function createDiagnosticCollector(options = {}) {
         const text = chunk.toString()
         stdoutText += text
         stdout.write(redact(text))
-        process.stdout.write(text)
+        process.stdout.write(redact(text))
       })
       child.stderr?.on('data', chunk => {
         const text = chunk.toString()
         stderrText += text
         stderr.write(redact(text))
-        process.stderr.write(text)
+        process.stderr.write(redact(text))
       })
-      child.on('error', error => finish(commandResult(127, null, stdoutText, `${stderrText}${error?.stack ?? error}\n`)))
-      child.on('close', (code, signal) => finish(commandResult(code, signal, stdoutText, stderrText)))
+      child.on('error', error => { void finish(commandResult(127, null, stdoutText, `${stderrText}${error?.stack ?? error}\n`)) })
+      child.on('close', (code, signal) => { void finish(commandResult(code, signal, stdoutText, stderrText)) })
     })
   }
 
