@@ -45,23 +45,15 @@ jobs:
         with:
           go-version: '1.25'
           cache-dependency-path: tools/kb-devkit/go.sum
-      - uses: pnpm/action-setup@v4
-        with: { run_install: false }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
       - name: Build kb-devkit
         run: make build
         working-directory: tools/kb-devkit
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
       - name: Compute affected plugin-e2e matrix
         id: set
         run: |
           # kb-devkit owns transitivity; the script maps affected packages → suites.
           .devkit/affected.sh > /tmp/changed-files
-          ./tools/kb-devkit/kb-devkit run build --affected --diff-only --json > /tmp/affected.json
+          ./tools/kb-devkit/kb-devkit affected --json > /tmp/affected.json
           OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
           echo "computed matrix: $OUT"
           echo "include=$(echo "$OUT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
