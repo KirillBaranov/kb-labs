@@ -14,6 +14,7 @@ export const QA_ROUTES = {
   BASELINE_DIFF:    '/baseline/diff',
   PACKAGE_TIMELINE: '/packages/:name/timeline',
   TASKS:            '/tasks',
+  CI_OVERVIEW:      '/ci/overview',
 } as const;
 
 export type QARoute = typeof QA_ROUTES[keyof typeof QA_ROUTES];

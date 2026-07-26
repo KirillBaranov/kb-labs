@@ -24,11 +24,7 @@ vi.mock('@kb-labs/sdk', async (importOriginal) => {
 import { DevkitAdapter, SnapshotStore, resolveDevkitBin, captureGit, buildBaselineReport } from '@kb-labs/qa-core';
 import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
 import baselineUpdateCommand from '../../cli/commands/baseline-update.js';
-
-interface BaselineUpdateFlags {
-  json?: boolean;
-  'dry-run'?: boolean;
-}
+import type { BaselineUpdateFlags } from '../../cli/commands/flags.js';
 
 beforeEach(() => {
   vi.resetAllMocks();

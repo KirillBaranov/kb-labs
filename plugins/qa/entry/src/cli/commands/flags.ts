@@ -120,6 +120,74 @@ export const qaE2eFlakyFlags = defineFlags({
 });
 export type QaE2eFlakyFlags = typeof qaE2eFlakyFlags.infer;
 
+export const qaCiEvidenceCaptureFlags = defineFlags({
+  runId: {
+    type: 'string',
+    description: 'GitHub Actions run ID (defaults to GITHUB_RUN_ID)',
+  },
+  repository: {
+    type: 'string',
+    description: 'GitHub repository in owner/name form (defaults to GITHUB_REPOSITORY)',
+  },
+  output: {
+    type: 'string',
+    description: 'Path for the immutable dossier JSON',
+    default: '.kb/qa/ci/dossier.json',
+  },
+  json: {
+    type: 'boolean',
+    description: 'Output the captured dossier as JSON',
+    default: false,
+  },
+});
+export type QaCiEvidenceCaptureFlags = typeof qaCiEvidenceCaptureFlags.infer;
+
+export const qaCiEvidenceSyncFlags = defineFlags({
+  repository: {
+    type: 'string',
+    description: 'GitHub repository in owner/name form (defaults to config or GITHUB_REPOSITORY)',
+  },
+  workflow: {
+    type: 'string',
+    description: 'GitHub Actions workflow file or name',
+    default: 'e2e-platform.yml',
+  },
+  limit: {
+    type: 'number',
+    description: 'Recent workflow runs to inspect for evidence artifacts',
+    default: 50,
+  },
+  output: {
+    type: 'string',
+    description: 'Local evidence cache directory',
+    default: '.kb/qa/ci/evidence',
+  },
+  json: {
+    type: 'boolean',
+    description: 'Output sync details as JSON',
+    default: false,
+  },
+});
+export type QaCiEvidenceSyncFlags = typeof qaCiEvidenceSyncFlags.infer;
+
+export const qaCiOverviewFlags = defineFlags({
+  input: {
+    type: 'string',
+    description: 'Dossier JSON file or directory containing dossier.json files',
+    default: '.kb/qa/ci',
+  },
+  output: {
+    type: 'string',
+    description: 'Optional file to receive the compact agent-ready JSON overview',
+  },
+  json: {
+    type: 'boolean',
+    description: 'Output the agent-ready reliability overview as JSON',
+    default: false,
+  },
+});
+export type QaCiOverviewFlags = typeof qaCiOverviewFlags.infer;
+
 export const qaRegressionsFlags = defineFlags({
   json: {
     type: 'boolean',

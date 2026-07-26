@@ -67,7 +67,7 @@ function TaskRunnerCard({ availableTasks, defaultTasks }: { availableTasks: stri
       title={<UISpace><UIIcon name="PlayCircleOutlined" /><span>Run Tasks</span></UISpace>}
       extra={
         <UIButton
-          type="primary"
+          variant="primary"
           loading={run.isLoading}
           disabled={selected.size === 0}
           onClick={handleRun}
