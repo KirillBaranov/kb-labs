@@ -60,6 +60,7 @@ export function createDiagnosticCollector(options = {}) {
   let timer
   let startedAt
   let finalized = false
+  let gatewayTokenPromise
 
   async function init() {
     startedAt = new Date().toISOString()
@@ -176,12 +177,21 @@ export function createDiagnosticCollector(options = {}) {
     const capturedAt = new Date().toISOString()
     const values = {}
     await mkdir(path.join(rootDir, 'metrics'), { recursive: true })
-    await Promise.all(Object.entries(metricTargets(latestStatus, latestDiagnose)).map(async ([service, baseUrl]) => {
-      const url = baseUrl.endsWith('/metrics') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/metrics`
+    await Promise.all(Object.entries(metricTargets(latestStatus, latestDiagnose)).map(async ([service, target]) => {
+      const baseUrl = target.url
       try {
+        const headers = {}
+        if (target.gateway) {
+          const token = await getGatewayToken(target.gateway, () => {
+            gatewayTokenPromise ??= issueGatewayToken(target.gateway)
+            return gatewayTokenPromise
+          })
+          if (token) headers.Authorization = `Bearer ${token}`
+        }
+        const url = await resolveMetricsUrl(baseUrl, headers)
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 3000)
-        const response = await fetch(url, { signal: controller.signal })
+        const response = await fetch(url, { signal: controller.signal, headers })
         clearTimeout(timeout)
         const body = await response.text()
         const redacted = redact(body)
@@ -268,18 +278,97 @@ function configuredServiceNames(status, diagnose) {
 
 function metricTargets(status, diagnose) {
   const targets = {}
+  const gatewayUrl = process.env.GATEWAY_URL ?? status?.services?.gateway?.url
+  if (typeof gatewayUrl === 'string' && /^https?:\/\//i.test(gatewayUrl)) {
+    targets.gateway = { url: gatewayUrl, gateway: gatewayUrl }
+  }
+
   for (const [service, snapshot] of Object.entries(status?.services ?? {})) {
-    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = snapshot.url
+    if (service === 'gateway' || service === 'studio') continue
+    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = { url: snapshot.url }
   }
   for (const [service, snapshot] of Object.entries(diagnose?.config?.resolved?.services ?? {})) {
     if (targets[service]) continue
-    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = snapshot.url
+    if (service === 'studio') continue
+    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = { url: snapshot.url }
   }
   for (const entry of String(process.env.E2E_DIAGNOSTICS_METRIC_URLS ?? '').split(',')) {
     const separator = entry.indexOf('=')
-    if (separator > 0) targets[entry.slice(0, separator).trim()] = entry.slice(separator + 1).trim()
+    if (separator > 0) {
+      targets[entry.slice(0, separator).trim()] = { url: entry.slice(separator + 1).trim() }
+    }
   }
   return Object.fromEntries(Object.entries(targets).filter(([, url]) => url))
+}
+
+async function getGatewayToken(gatewayUrl, issueToken) {
+  try {
+    const probe = await fetch(`${gatewayUrl.replace(/\/$/, '')}/metrics`)
+    if (probe.status !== 401) return null
+    return await issueToken()
+  } catch {
+    return await issueToken()
+  }
+}
+
+async function resolveMetricsUrl(baseUrl, headers) {
+  if (baseUrl.endsWith('/metrics')) return baseUrl
+  const normalized = baseUrl.replace(/\/$/, '')
+  for (const descriptorPath of ['/observability/describe', '/api/v1/observability/describe']) {
+    try {
+      const response = await fetch(`${normalized}${descriptorPath}`, { headers })
+      if (response.ok) {
+        const describe = await response.json()
+        if (typeof describe.metricsEndpoint === 'string' && describe.metricsEndpoint.length > 0) {
+          return new URL(describe.metricsEndpoint, `${normalized}/`).toString()
+        }
+      }
+    } catch {
+      // Try the next conventional descriptor path.
+    }
+  }
+  // Fall back to the conventional endpoint. The metrics request below records
+  // the actual failure and keeps the dossier useful for legacy services
+  // without the observability descriptor.
+  return `${normalized}/metrics`
+}
+
+async function issueGatewayToken(gatewayUrl) {
+  const baseUrl = gatewayUrl.replace(/\/$/, '')
+  const email = process.env.GATEWAY_BOOTSTRAP_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL ?? 'admin@e2e.test'
+  const password = process.env.GATEWAY_BOOTSTRAP_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD ?? 'E2eBootstrapPass1!'
+  const tenantId = process.env.GATEWAY_BOOTSTRAP_TENANT_ID ?? process.env.TENANT_ID ?? 'kblabs-cloud'
+
+  const login = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password, tenantId }),
+  })
+  if (!login.ok) throw new Error(`gateway auth login failed: HTTP ${login.status}`)
+
+  const cookie = getSetCookie(login)
+  const register = await fetch(`${baseUrl}/auth/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+    body: JSON.stringify({ name: `e2e-diagnostics-${process.pid}`, namespaceId: 'e2e', capabilities: [] }),
+  })
+  if (!register.ok) throw new Error(`gateway auth register failed: HTTP ${register.status}`)
+  const credentials = await register.json()
+
+  const token = await fetch(`${baseUrl}/auth/token`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ clientId: credentials.clientId, clientSecret: credentials.clientSecret }),
+  })
+  if (!token.ok) throw new Error(`gateway auth token failed: HTTP ${token.status}`)
+  return (await token.json()).accessToken
+}
+
+function getSetCookie(response) {
+  const cookies = response.headers.getSetCookie?.() ?? []
+  if (cookies.length > 0) return cookies.map(cookie => cookie.split(';', 1)[0]).join('; ')
+  const cookie = response.headers.get('set-cookie')
+  return cookie ? cookie.split(';', 1)[0] : ''
 }
 
 async function listEvidence(rootDir) {
@@ -315,4 +404,4 @@ function dedupeErrors(errors) {
   })
 }
 
-export { redact }
+export { redact, resolveMetricsUrl }
