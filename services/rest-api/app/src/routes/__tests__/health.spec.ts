@@ -373,7 +373,7 @@ describe('registerHealthRoutes', () => {
     expect(describe.json()).toMatchObject({
       serviceId: 'rest',
       contractVersion: '1.0',
-      metricsEndpoint: '/api/v1/metrics',
+      metricsEndpoint: '/metrics',
       healthEndpoint: '/api/v1/observability/health',
     });
 
@@ -403,6 +403,9 @@ describe('registerHealthRoutes', () => {
 
     const metrics = await app.inject({ method: 'GET', url: '/api/v1/metrics' });
     expect(metrics.statusCode).toBe(200);
+
+    const canonicalMetrics = await app.inject({ method: 'GET', url: '/metrics' });
+    expect(canonicalMetrics.statusCode).toBe(200);
     const compliance = checkCanonicalObservabilityMetrics(metrics.body);
     expect(compliance.missing).toEqual([]);
 

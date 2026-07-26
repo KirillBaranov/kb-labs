@@ -188,7 +188,7 @@ export function createDiagnosticCollector(options = {}) {
           })
           if (token) headers.Authorization = `Bearer ${token}`
         }
-        const url = await resolveMetricsUrl(baseUrl, headers)
+        const url = baseUrl.endsWith('/metrics') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/metrics`
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 3000)
         const response = await fetch(url, { signal: controller.signal, headers })
@@ -311,28 +311,6 @@ async function getGatewayToken(gatewayUrl, issueToken) {
   }
 }
 
-async function resolveMetricsUrl(baseUrl, headers) {
-  if (baseUrl.endsWith('/metrics')) return baseUrl
-  const normalized = baseUrl.replace(/\/$/, '')
-  for (const descriptorPath of ['/observability/describe', '/api/v1/observability/describe']) {
-    try {
-      const response = await fetch(`${normalized}${descriptorPath}`, { headers })
-      if (response.ok) {
-        const describe = await response.json()
-        if (typeof describe.metricsEndpoint === 'string' && describe.metricsEndpoint.length > 0) {
-          return new URL(describe.metricsEndpoint, `${normalized}/`).toString()
-        }
-      }
-    } catch {
-      // Try the next conventional descriptor path.
-    }
-  }
-  // Fall back to the conventional endpoint. The metrics request below records
-  // the actual failure and keeps the dossier useful for legacy services
-  // without the observability descriptor.
-  return `${normalized}/metrics`
-}
-
 async function issueGatewayToken(gatewayUrl) {
   const baseUrl = gatewayUrl.replace(/\/$/, '')
   const email = process.env.GATEWAY_BOOTSTRAP_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL ?? 'admin@e2e.test'
@@ -404,4 +382,4 @@ function dedupeErrors(errors) {
   })
 }
 
-export { redact, resolveMetricsUrl }
+export { redact }
