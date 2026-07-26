@@ -14,13 +14,13 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
-interface LogSearchResult extends CommandResult {
+type LogSearchResult = CommandResult & {
   _raw?: LogRecord[];
   query?: string;
   logs?: object[];
   total?: number;
   hasMore?: boolean;
-}
+};
 
 export const logsSearch = defineSystemCommand<Flags, LogSearchResult>({
   name: 'search',
@@ -73,7 +73,8 @@ export const logsSearch = defineSystemCommand<Flags, LogSearchResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Search', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Search', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

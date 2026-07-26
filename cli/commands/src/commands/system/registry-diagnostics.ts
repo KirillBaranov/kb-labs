@@ -49,7 +49,11 @@ export const registryDiagnostics = defineSystemCommand<DiagnosticsFlags, Diagnos
 
     await registry.dispose();
 
-    return { ok: report.summary.errors === 0, report };
+    if (report.summary.errors === 0) {
+      return { ok: true, report };
+    }
+
+    return { ok: false, error: `${report.summary.errors} diagnostic error(s) found`, report };
   },
   formatter(result, ctx, flags) {
     if (flags.json) {

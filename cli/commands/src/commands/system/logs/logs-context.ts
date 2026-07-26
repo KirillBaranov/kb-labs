@@ -110,7 +110,8 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Context', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Context', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 
