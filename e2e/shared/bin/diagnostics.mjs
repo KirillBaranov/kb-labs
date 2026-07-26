@@ -199,8 +199,8 @@ export function createDiagnosticCollector(options = {}) {
         collectionErrors.push({ source: `metrics:${service}`, message: error?.message ?? String(error) })
       }
     }))
-    if (kind === 'timeline') {
-      metricSamples.push({ timestamp: capturedAt, services: values })
+    if (kind === 'timeline' || kind === 'initial' || kind === 'final' || kind === 'failure') {
+      metricSamples.push({ timestamp: capturedAt, phase: kind, services: values })
       while (metricSamples.length > 180) metricSamples.shift()
       await writeText(path.join(rootDir, 'metrics', 'timeline.jsonl'), metricSamples.map(sample => JSON.stringify(sample)).join('\n') + '\n')
     }
