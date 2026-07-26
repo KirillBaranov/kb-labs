@@ -30,6 +30,16 @@ env:
     ${{ format('origin/{0}...HEAD', github.event.pull_request.base.ref) }}
 
 jobs:
+  prepare:
+    name: Prepare fast E2E files
+    needs: discover
+    if: ${{ needs.discover.outputs.has-suites == 'true' }}
+    uses: ./.github/workflows/reusable-e2e-fast-files.yml
+    with:
+      artifact-name: fast-e2e-files-${{ github.run_id }}
+    permissions:
+      contents: read
+
   # ── Discover affected plugin suites ────────────────────────────────────────
   discover:
     name: Discover affected suites
@@ -61,7 +71,7 @@ jobs:
 
   # ── Affected shards — one Docker stack per affected plugin suite ───────────
   e2e:
-    needs: discover
+    needs: [discover, prepare]
     if: ${{ needs.discover.outputs.has-suites == 'true' }}
     strategy:
       fail-fast: false
@@ -76,6 +86,7 @@ jobs:
       playwright-dir: e2e/${{ matrix.suite }}
       compose-project: kb-e2e-plugins-${{ matrix.suite }}
       fast-build: true
+      prebuilt-files-artifact: fast-e2e-files-${{ github.run_id }}
     permissions:
       contents: read
 

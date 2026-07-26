@@ -45,6 +45,10 @@ on:
         description: 'Build Docker images directly without shared Buildx layer caches'
         type: boolean
         default: false
+      prebuilt-files-artifact:
+        description: 'Optional bundle containing built dist, tools, and E2E tarballs (images are built in each shard)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -66,7 +70,7 @@ jobs:
       # ── Build toolchain ──────────────────────────────────────────────────
 
       - name: Set up Go
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
         uses: actions/setup-go@v5
         with:
           go-version-file: tools/kb-create/go.mod
@@ -87,7 +91,7 @@ jobs:
       # The committed binaries in tools/ are macOS builds.
 
       - name: Build Go tools (kb-devkit, kb-dev)
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
         run: |
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
@@ -95,17 +99,19 @@ jobs:
       # ── Install + build monorepo ─────────────────────────────────────────
 
       - name: Restore immutable prebuilt E2E bundle
-        if: inputs.prebuilt-artifact != ''
+        if: inputs.prebuilt-artifact != '' || inputs.prebuilt-files-artifact != ''
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.prebuilt-artifact }}
+          name: ${{ inputs.prebuilt-artifact != '' && inputs.prebuilt-artifact || inputs.prebuilt-files-artifact }}
           path: /tmp/e2e-prebuilt
 
       - name: Extract immutable prebuilt E2E bundle
-        if: inputs.prebuilt-artifact != ''
+        if: inputs.prebuilt-artifact != '' || inputs.prebuilt-files-artifact != ''
         run: |
           tar xzf /tmp/e2e-prebuilt/e2e-files.tar.gz
-          docker load --input /tmp/e2e-prebuilt/e2e-images.tar
+          if [ -f /tmp/e2e-prebuilt/e2e-images.tar ]; then
+            docker load --input /tmp/e2e-prebuilt/e2e-images.tar
+          fi
           chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
 
       - name: Install dependencies
@@ -114,7 +120,7 @@ jobs:
       # ── Phase 1 of ADR-0017: persist kb-devkit CAS across runs ──────────
 
       - name: Restore kb-devkit build cache
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         uses: actions/cache@v4
         with:
           path: .kb/devkit/
@@ -124,7 +130,7 @@ jobs:
             devkit-build-${{ runner.os }}-
 
       - name: Build all packages (topological order)
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
         run: pnpm build
 
       # ── Install Playwright browsers (optional) ───────────────────────────
@@ -136,7 +142,7 @@ jobs:
       # ── Phase 2 of ADR-0017: cache packed .tgz between runs ─────────────
 
       - name: Restore packed .tgz cache
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         id: tgz-cache
         uses: actions/cache@v4
         with:
@@ -148,11 +154,11 @@ jobs:
           # mapping wrong content to the new dist hash (cache poisoning).
 
       - name: Pack @kb-labs/* packages
-        if: inputs.prebuilt-artifact == '' && (inputs.fast-build || steps.tgz-cache.outputs.cache-hit != 'true')
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && (inputs.fast-build || steps.tgz-cache.outputs.cache-hit != 'true')
         run: bash e2e/scripts/pack-all.sh
 
       - name: Verify packed .tgz cache contents
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build && steps.tgz-cache.outputs.cache-hit == 'true'
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build && steps.tgz-cache.outputs.cache-hit == 'true'
         run: |
           count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l)
           echo "Restored $count packed tarballs from cache"
@@ -162,7 +168,7 @@ jobs:
           fi
 
       - name: List packed packages
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         run: find e2e/packages -maxdepth 1 -type f -name '*.tgz' -print | wc -l && echo "tarballs packed"
 
       # ── Docker layer caching ─────────────────────────────────────────────
@@ -171,7 +177,7 @@ jobs:
       # setup-buildx-action (~20% flake rate on shared GitHub runners).
       # Retries 3× so a transient 429/503 from Docker Hub doesn't fail the job.
       - name: Pre-pull BuildKit image
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         run: |
           for i in 1 2 3; do
             docker pull moby/buildkit:buildx-stable-1 && break
@@ -180,12 +186,12 @@ jobs:
           done
 
       - name: Set up Docker Buildx
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         uses: docker/setup-buildx-action@v3
         timeout-minutes: 5
 
       - name: Cache Docker layers (platform)
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache-platform
@@ -193,7 +199,7 @@ jobs:
           restore-keys: buildx-platform-
 
       - name: Cache Docker layers (publisher)
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache-publisher
@@ -232,7 +238,7 @@ jobs:
       # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
 
       - name: Restore Verdaccio storage cache
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
         id: verdaccio-cache
         uses: actions/cache@v4
         with:
@@ -262,11 +268,11 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: inputs.prebuilt-artifact == '' && (inputs.fast-build || steps.verdaccio-cache.outputs.cache-hit != 'true')
+        if: inputs.prebuilt-artifact == '' && (inputs.fast-build || inputs.prebuilt-files-artifact != '' || steps.verdaccio-cache.outputs.cache-hit != 'true')
         run: docker compose run --rm publisher
 
       - name: Confirm Verdaccio has expected package count (warm cache)
-        if: inputs.prebuilt-artifact == '' && !inputs.fast-build && steps.verdaccio-cache.outputs.cache-hit == 'true'
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build && steps.verdaccio-cache.outputs.cache-hit == 'true'
         run: |
           tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
