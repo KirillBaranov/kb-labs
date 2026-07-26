@@ -96,7 +96,7 @@ export default class FlakyReporter implements Reporter {
       title,
       outcome,
       attempts,
-      ...(evidenceRoot && runId
+      ...(evidenceRoot && evidenceRef && runId
         ? {
             evidence: {
               runId,
