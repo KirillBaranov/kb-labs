@@ -158,23 +158,11 @@ Pino for another logger without rewriting plugin business logic.
 
 → [Adapter system](https://docs.kblabs.ru/concepts/adapter-system)
 
-## Security by design
+## Security
 
-Security is enforced by the runtime rather than left to plugin authors or agent
-prompts:
-
-| Layer | What is enforced |
-|---|---|
-| **On-prem by default** | Source code, workflow state, logs, and credentials stay on your infrastructure. External calls go only to providers you configure. |
-| **Declared capabilities** | Every plugin declares its environment, network, shell, platform, and resource access. Undeclared operations are rejected at runtime. |
-| **Execution isolation** | Trusted code can run in-process; stronger boundaries are available through worker processes and OCI containers with filesystem and network isolation. |
-| **Authentication and audit** | The Gateway authenticates requests with device-scoped JWTs, internal services stay private, and tool execution is traceable. |
-
-The repository is scanned daily with `pnpm audit`, `govulncheck`, Gitleaks, and
-Semgrep security and OWASP rules. Findings are uploaded as SARIF where supported.
-
-→ [Security overview](https://kblabs.ru/en/security) ·
-[Security workflow](.github/workflows/security.yml)
+If you believe you have found a vulnerability, please **do not open a public
+issue**. Read our [Security Policy](SECURITY.md) for scope, reporting instructions,
+response timelines, and the responsible disclosure process.
 
 ## See it in action
 
