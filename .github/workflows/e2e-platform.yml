@@ -28,10 +28,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Shared immutable build ────────────────────────────────────────────────
+  # The matrix shards must not each rebuild the same TS graph, Docker images,
+  # or Verdaccio registry. One owner also avoids concurrent cache-save races.
+  prepare:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-platform-build.yml
+    with:
+      artifact-name: e2e-platform-prebuilt-${{ github.run_id }}
+    permissions:
+      contents: read
+
   # ── Matrix shards ──────────────────────────────────────────────────────────
-  # Each shard runs the FULL setup but filters e2e to a single suite package.
-  # Shards run concurrently; fail-fast: false shows the full picture on failure.
+  # Each shard restores the immutable bundle and only owns its isolated stack
+  # and real test process. Shards run concurrently; fail-fast: false shows the
+  # full picture on failure.
   e2e:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
@@ -53,6 +66,7 @@ jobs:
       health-steps: 60
       playwright-dir: e2e/plugins
       compose-project: kb-e2e-ci-${{ matrix.suite }}
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
     permissions:
       contents: read
 
@@ -61,6 +75,7 @@ jobs:
   # mcp-daemon is in the e2e-gateway group so it starts alongside the backend.
   # Using /api/v1/mcp health would require 7.5 min and risks studio timeout.
   e2e-mcp:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:
@@ -70,6 +85,7 @@ jobs:
       health-steps: 60
       playwright-dir: ''
       compose-project: kb-e2e-ci-mcp
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
     permissions:
       contents: read
 
