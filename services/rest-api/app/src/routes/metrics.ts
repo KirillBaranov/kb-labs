@@ -3,11 +3,12 @@
  * Metrics endpoint
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import { metricsCollector, restDomainOperationMetrics } from '../middleware/metrics.js';
 import { getHeaderDebugEntries } from '../diagnostics/header-debug';
 import { getPrometheusMetrics, updateProcessUptime } from '../observability/prometheus-registry';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 
 function formatNumber(value: number, fractionDigits = 2): string {
   return Number.isFinite(value) ? value.toFixed(fractionDigits) : '0';
@@ -20,10 +21,11 @@ export function registerMetricsRoutes(
   server: FastifyInstance,
   config: RestApiConfig
 ): void {
-  const basePath = config.basePath;
+  const basePath = normalizeBasePath(config.basePath);
+  const metricsPaths = resolvePaths(basePath, '/metrics');
 
   // GET /metrics (Prometheus format with real p50/p95/p99)
-  server.get(`${basePath}/metrics`, async (_request, reply) => {
+  const handler = async (_request: FastifyRequest, reply: FastifyReply) => {
     const metrics = metricsCollector.getMetrics();
 
     // Update process uptime before generating metrics
@@ -91,7 +93,8 @@ export function registerMetricsRoutes(
     // Combine prom-client metrics with custom metrics
     reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
     return promMetrics + '\n' + customLines.join('\n');
-  });
+  };
+  for (const path of metricsPaths) server.get(path, handler);
 
   server.get(`${basePath}/metrics/headers/debug`, {
     schema: {

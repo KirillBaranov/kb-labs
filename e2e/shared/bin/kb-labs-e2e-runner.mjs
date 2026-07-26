@@ -27,8 +27,8 @@
  */
 
 import { readdir, access, writeFile, mkdir } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { createDiagnosticCollector } from './diagnostics.mjs';
 
 const CWD = process.cwd();
 const SCENARIOS_DIR = path.join(CWD, 'scenarios');
@@ -38,6 +38,8 @@ const FILTER = (process.env.KB_LABS_E2E_FILTER || '')
   .map((s) => s.trim())
   .filter(Boolean);
 const SKIP_RESET = process.env.KB_LABS_E2E_NO_RESET === '1';
+const E2E_RUN_ID = process.env.E2E_RUN_ID || `e2e-${Date.now()}`;
+const DIAGNOSTICS_ROOT = process.env.E2E_DIAGNOSTICS_DIR || path.join(CWD, 'report', 'diagnostics');
 
 async function pathExists(p) {
   try {
@@ -73,19 +75,6 @@ async function listScenarios() {
   return dirs;
 }
 
-function run(cmd, args, label) {
-  return new Promise((resolve) => {
-    process.stdout.write(`\n[e2e-runner] ${label}\n[e2e-runner] $ ${cmd} ${args.join(' ')}\n`);
-    const proc = spawn(cmd, args, { stdio: 'inherit', cwd: CWD });
-    proc.on('error', (err) => {
-      process.stderr.write(`[e2e-runner] failed to spawn ${cmd}: ${err.message}\n`);
-      resolve(127);
-    });
-    proc.on('close', (code) => resolve(code ?? 0));
-  });
-}
-
-
 async function main() {
   const scenarios = await listScenarios();
   process.stdout.write(
@@ -107,20 +96,48 @@ async function main() {
       continue;
     }
 
-    const applyCode = await run(KB_DEV, ['ensure', '--scenario', yamlPath], `apply scenario "${name}"`);
+    const collector = createDiagnosticCollector({
+      runId: `${E2E_RUN_ID}-${name}`,
+      rootDir: path.join(DIAGNOSTICS_ROOT, name),
+      suite: path.basename(CWD),
+      scenario: name,
+      cwd: CWD,
+    });
+    await collector.init();
+
+    const diagnosticEnv = {
+      E2E_DIAGNOSTICS_RUN_ID: collector.runId,
+      E2E_DIAGNOSTICS_PATH: collector.rootDir,
+      E2E_DIAGNOSTICS_REF: path.relative(CWD, collector.rootDir),
+    };
+
+    const apply = await collector.runCommand(KB_DEV, ['ensure', '--scenario', yamlPath], `apply scenario "${name}"`);
+    const applyCode = apply.code;
     if (applyCode !== 0) {
       results.push({ name, status: 'apply-failed', exit: applyCode });
+      await collector.finalize({ status: 'failed', failurePhase: 'setup', failureKind: 'scenario-apply' });
       continue;
     }
 
     // Pass the cases dir as a positional filter to playwright. The domain's
     // playwright.config.ts has testDir: './scenarios' so the dir is covered.
-    const testCode = await run('npx', ['playwright', 'test', casesDir], `run cases for "${name}"`);
+    const test = await collector.runCommand('npx', ['playwright', 'test', casesDir], `run cases for "${name}"`, CWD, diagnosticEnv);
+    const testCode = test.code;
     results.push({ name, status: testCode === 0 ? 'pass' : 'fail', exit: testCode });
+    await collector.finalize({ status: testCode === 0 ? 'passed' : 'failed', failurePhase: testCode === 0 ? undefined : 'test', failureKind: testCode === 0 ? undefined : 'test-failure' });
   }
 
   if (!SKIP_RESET) {
-    await run(KB_DEV, ['ensure', '--scenario', 'default'], 'restore default state');
+    const reset = createDiagnosticCollector({
+      runId: `${E2E_RUN_ID}-reset`,
+      rootDir: path.join(DIAGNOSTICS_ROOT, 'reset'),
+      suite: path.basename(CWD),
+      scenario: 'reset',
+      cwd: CWD,
+    });
+    await reset.init();
+    const result = await reset.runCommand(KB_DEV, ['ensure', '--scenario', 'default'], 'restore default state');
+    await reset.finalize({ status: result.code === 0 ? 'passed' : 'failed', failurePhase: result.code === 0 ? undefined : 'teardown', failureKind: result.code === 0 ? undefined : 'scenario-reset' });
   }
 
   process.stdout.write('\n[e2e-runner] === summary ===\n');

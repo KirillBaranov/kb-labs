@@ -23,6 +23,12 @@ interface FlakyCaseResult {
   title: string
   outcome: 'passed' | 'flaky' | 'failed' | 'skipped'
   attempts: FlakyAttempt[]
+  evidence?: {
+    runId: string
+    path: string
+    summaryPath?: string
+    manifestPath?: string
+  }
 }
 
 // v1 heuristic — refine as real error signatures show up in flaky-history.json.
@@ -80,7 +86,27 @@ export default class FlakyReporter implements Reporter {
       }
     })
 
-    this.cases.push({ suite: this.suite, spec: specFile, testId, title, outcome, attempts })
+    const evidenceRoot = process.env.E2E_DIAGNOSTICS_PATH
+    const evidenceRef = process.env.E2E_DIAGNOSTICS_REF ?? evidenceRoot
+    const runId = process.env.E2E_DIAGNOSTICS_RUN_ID
+    this.cases.push({
+      suite: this.suite,
+      spec: specFile,
+      testId,
+      title,
+      outcome,
+      attempts,
+      ...(evidenceRoot && evidenceRef && runId
+        ? {
+            evidence: {
+              runId,
+              path: evidenceRef,
+              summaryPath: path.join(evidenceRef, 'summary.json'),
+              manifestPath: path.join(evidenceRef, 'manifest.json'),
+            },
+          }
+        : {}),
+    })
   }
 
   onEnd(): void {

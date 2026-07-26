@@ -57,6 +57,7 @@ type ServiceStatus struct {
 	Deps         []string          `json:"deps,omitempty"`
 	DepsState    map[string]string `json:"depsState,omitempty"`
 	Detail       string            `json:"detail,omitempty"`
+	LogFile      string            `json:"logFile,omitempty"`
 	PortOccupant *PortOccupant     `json:"portOccupant,omitempty"`
 	LogsTail     []string          `json:"logsTail,omitempty"`
 }

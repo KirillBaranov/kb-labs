@@ -19,6 +19,7 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	logsCmd.Flags().IntP("lines", "n", 50, "number of lines to show")
+	logsCmd.Flags().Bool("all", false, "show the complete log")
 	logsCmd.Flags().BoolP("follow", "f", false, "follow log output in real-time")
 	rootCmd.AddCommand(logsCmd)
 }
@@ -50,6 +51,10 @@ func runLogs(cmd *cobra.Command, args []string) error {
 	}
 
 	lines, _ := cmd.Flags().GetInt("lines")
+	all, _ := cmd.Flags().GetBool("all")
+	if all {
+		lines = 0
+	}
 	tail, err := logger.Tail(logsDir, svcID, lines)
 	if err != nil {
 		return err

@@ -645,7 +645,7 @@ function shouldSampleRequest(route: string): boolean {
   requestCounter = (requestCounter + 1) % 100;
 
   // High-frequency metrics endpoints (Prometheus scraping) - sample 1:100
-  if (route === '/api/v1/metrics') {
+  if (route === '/metrics' || route === '/api/v1/metrics') {
     return requestCounter === 0; // Only track every 100th request
   }
 

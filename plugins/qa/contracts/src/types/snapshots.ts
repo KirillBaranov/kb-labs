@@ -50,6 +50,14 @@ export interface E2eCaseAttempt {
   errorMessage?: string;
 }
 
+/** A pointer to the per-run CI dossier; raw evidence stays in CI artifacts. */
+export interface E2eEvidenceRef {
+  runId: string;
+  path: string;
+  summaryPath?: string;
+  manifestPath?: string;
+}
+
 export interface E2eCaseResult {
   suite: string;
   spec: string;
@@ -57,6 +65,7 @@ export interface E2eCaseResult {
   title: string;
   outcome: 'passed' | 'flaky' | 'failed' | 'skipped';
   attempts: E2eCaseAttempt[];
+  evidence?: E2eEvidenceRef;
 }
 
 export interface E2eFlakySnapshot extends SnapshotMeta {

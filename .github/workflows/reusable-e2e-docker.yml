@@ -279,6 +279,20 @@ jobs:
           docker compose logs --no-color platform  > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
           docker compose logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log           2>&1 || true
           docker compose ps > /tmp/e2e-logs/ps.txt 2>&1 || true
+          docker compose ps -a --format json > /tmp/e2e-logs/compose-ps.json 2>&1 || true
+          docker compose ps -a -q | xargs -r docker inspect > /tmp/e2e-logs/compose-inspect.json 2>&1 || true
+          docker stats --no-stream --all --format '{{json .}}' > /tmp/e2e-logs/docker-stats.jsonl 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev status --json' > /tmp/e2e-logs/kb-dev-status.json 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev diagnose --json' > /tmp/e2e-logs/kb-dev-diagnose.json 2>&1 || true
+          for service in $(jq -r '.services // {} | keys[]' /tmp/e2e-logs/kb-dev-status.json 2>/dev/null || true); do
+            docker compose exec -T platform sh -c "kb-dev logs $service --all" \
+              > "/tmp/e2e-logs/$service.log" 2>&1 || true
+          done
+          while IFS=$'\t' read -r name url; do
+            [ -n "$name" ] || continue
+            curl -sS --max-time 5 "$url/metrics" > "/tmp/e2e-logs/$name.prom" 2>&1 || true
+          done < <(jq -r '.services // {} | to_entries[] | select((.value.url // "") | startswith("http")) | [.key, .value.url] | @tsv' /tmp/e2e-logs/kb-dev-status.json 2>/dev/null || true)
+          find e2e -path '*/report/diagnostics/*' -type f -print > /tmp/e2e-logs/diagnostic-files.txt 2>&1 || true
           docker compose exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' \
             > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
           docker compose cp platform:/workspace/kb-e2e/.kb          /tmp/e2e-logs/kb-dir          2>&1 || true
@@ -295,6 +309,29 @@ jobs:
           path: /tmp/e2e-logs/
           retention-days: 14
 
+      - name: Publish diagnostic summary
+        if: always()
+        run: |
+          {
+            echo "### E2E diagnostics: ${{ inputs.suite }}"
+            echo
+            echo '```text'
+            if [ -f /tmp/e2e-logs/kb-dev-status.json ]; then
+              cat /tmp/e2e-logs/kb-dev-status.json
+            else
+              cat /tmp/e2e-logs/ps.txt
+            fi
+            echo '```'
+            echo
+            for summary in e2e/${{ inputs.suite }}/report/diagnostics/*/summary.json; do
+              [ -f "$summary" ] || continue
+              echo "#### $(basename "$(dirname "$summary")")"
+              jq -r '"status: \(.status) | failed services: \((.failedServices // []) | join(", ")) | collection: \(.collectionStatus)"' "$summary" || true
+            done
+            echo
+            echo "Full logs and metrics are in the uploaded platform-logs artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload KB_DEBUG diagnostic snapshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -310,6 +347,15 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}-${{ inputs.suite }}
           path: e2e/${{ inputs.suite }}/report/
+          retention-days: 14
+
+      - name: Upload E2E diagnostic dossiers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics-${{ inputs.suite }}-${{ github.run_id }}
+          path: e2e/${{ inputs.suite }}/report/diagnostics/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Upload flaky report

@@ -678,11 +678,12 @@ func (m *Manager) Status() *StatusResult {
 	for id, svc := range m.services {
 		state := svc.GetState()
 		ss := ServiceStatus{
-			State:  state.String(),
-			Port:   svc.Config.Port,
-			URL:    serviceAddress(svc.Config),
-			Deps:   svc.Config.DependsOn,
-			Detail: svc.GetDetail(),
+			State:   state.String(),
+			Port:    svc.Config.Port,
+			URL:     serviceAddress(svc.Config),
+			Deps:    svc.Config.DependsOn,
+			Detail:  svc.GetDetail(),
+			LogFile: logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), id),
 		}
 
 		// Resolved dependency states.
@@ -794,6 +795,11 @@ func (m *Manager) Config() *config.Config {
 // RootDir returns the workspace root directory.
 func (m *Manager) RootDir() string {
 	return m.rootDir
+}
+
+// ProjectDir returns the project root whose runtime config is used by services.
+func (m *Manager) ProjectDir() string {
+	return m.projectDir
 }
 
 func contains(slice []string, item string) bool {
