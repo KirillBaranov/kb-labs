@@ -21,12 +21,12 @@ export default defineCommand({
       const [taskId] = input.argv;
       if (!taskId) {
         validationError(ctx, 'Task ID is required', 'Usage: kb clickup task delete <taskId> --yes', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       if (!input.flags.yes) {
         validationError(ctx, `--yes is required to delete task ${taskId}`, 'Add --yes to confirm deletion', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -38,10 +38,10 @@ export default defineCommand({
           ctx.ui?.success?.(`Deleted task ${taskId}`);
         }
 
-        return { exitCode: 0, result: { deleted: true, taskId } };
+        return { ok: true, result: { deleted: true, taskId } };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

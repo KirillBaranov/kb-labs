@@ -12,6 +12,8 @@
  *   - HTTP 502 / 504 – upstream gateway errors (common behind a proxy)
  */
 
+import { classifyFailure } from '@kb-labs/core-retry';
+
 /** Options for {@link withRetry}. */
 export interface RetryOptions {
   /**
@@ -46,19 +48,6 @@ export interface RetryOptions {
   onRetry?: (error: unknown, attempt: number, delayMs: number) => void;
 }
 
-/** @internal The set of retryable Node.js `syscall` / `code` strings. */
-const RETRYABLE_CODES = new Set([
-  "ECONNREFUSED",
-  "ETIMEDOUT",
-  "ECONNRESET",
-  "ENOTFOUND",
-  "EPIPE",
-  "ECONNABORTED",
-]);
-
-/** @internal HTTP status codes that are safe to retry. */
-const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
-
 /**
  * Determine whether `error` represents a transient, retryable failure.
  *
@@ -69,47 +58,7 @@ const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
  *  3. Error message substrings as a last resort
  */
 export function isTransientError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  // 1. Node.js network error codes
-  const code = (error as NodeJS.ErrnoException).code;
-  if (code && RETRYABLE_CODES.has(code)) {
-    return true;
-  }
-
-  // 2. HTTP status codes  (Qdrant JS client surfaces these in different ways)
-  const anyErr = error as unknown as Record<string, unknown>;
-
-  const status =
-    (typeof anyErr["status"] === "number" ? anyErr["status"] : undefined) ??
-    (typeof anyErr["statusCode"] === "number"
-      ? anyErr["statusCode"]
-      : undefined) ??
-    (typeof (anyErr["response"] as Record<string, unknown> | undefined)?.[
-      "status"
-    ] === "number"
-      ? ((anyErr["response"] as Record<string, unknown>)["status"] as number)
-      : undefined);
-
-  if (typeof status === "number" && RETRYABLE_HTTP_STATUSES.has(status)) {
-    return true;
-  }
-
-  // 3. Message substrings (fallback for environments that don't expose codes)
-  const msg = error.message.toLowerCase();
-  if (
-    msg.includes("econnrefused") ||
-    msg.includes("etimedout") ||
-    msg.includes("econnreset") ||
-    msg.includes("service unavailable") ||
-    msg.includes("503")
-  ) {
-    return true;
-  }
-
-  return false;
+  return classifyFailure(error, { source: 'transport', phase: 'dispatch' }).transient;
 }
 
 /**

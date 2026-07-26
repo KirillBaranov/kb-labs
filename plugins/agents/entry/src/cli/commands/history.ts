@@ -3,6 +3,7 @@
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { SessionManager } from '@kb-labs/agent-core';
 import type { FileChangeSummary, Turn } from '@kb-labs/agent-contracts';
 
@@ -15,7 +16,7 @@ type HistoryInput = {
   json?: boolean;
 };
 
-type HistoryResult = { exitCode: number; response?: unknown };
+type HistoryResult = CommandResult<unknown>;
 
 type ChangeRow = FileChangeSummary & {
   sessionId: string;
@@ -54,7 +55,7 @@ export default defineCommand({
           error: error instanceof Error ? error.message : String(error),
         };
         ctx.ui?.json?.(response);
-        return { exitCode: 1, response };
+        return { ok: false, error: 'Command failed', result: response };
       }
     },
   },
@@ -70,7 +71,7 @@ async function showSessionHistory(
   if (!info) {
     const err = { success: false, error: `Session not found: ${sessionId}` };
     ctx.ui?.json?.(err);
-    return { exitCode: 1, response: err };
+    return { ok: false, error: 'Command failed', result: err };
   }
 
   const turns = await manager.getTurns(sessionId);
@@ -98,7 +99,7 @@ async function showSessionHistory(
     }
   }
 
-  return { exitCode: 0, response };
+  return { ok: true, result: response };
 }
 
 async function showFileHistory(
@@ -136,7 +137,7 @@ async function showFileHistory(
     }
   }
 
-  return { exitCode: 0, response };
+  return { ok: true, result: response };
 }
 
 async function showAgentHistory(
@@ -174,7 +175,7 @@ async function showAgentHistory(
     ctx.ui.write('\n');
   }
 
-  return { exitCode: 0, response };
+  return { ok: true, result: response };
 }
 
 async function listAllSessions(
@@ -214,7 +215,7 @@ async function listAllSessions(
     }
   }
 
-  return { exitCode: 0, response };
+  return { ok: true, result: response };
 }
 
 function dedupeSessionsById<T extends { id: string; status?: string; runCount: number; lastActivityAt: string }>(sessions: T[]): T[] {

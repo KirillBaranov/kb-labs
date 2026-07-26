@@ -1,20 +1,20 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { defineCommand, useConfig, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useConfig, type CLIInput, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { GithubActionsProvider } from '@kb-labs/qa-core';
 import type { QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { QaCiEvidenceSyncFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaCiEvidenceSyncFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaCiEvidenceSyncFlags>, unknown>({
   id: 'qa:ci-evidence-sync',
   description: 'Download new CI evidence artifacts into the local QA cache',
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaCiEvidenceSyncFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaCiEvidenceSyncFlags>): Promise<CommandResult> {
       const config = await useConfig<QAPluginConfig>();
       const repository = input.flags.repository ?? config?.ci?.repository ?? process.env.GITHUB_REPOSITORY;
       if (!repository) {
         ctx.ui?.error?.('GitHub repository is required. Pass --repository or configure qa.ci.repository.');
-        return { exitCode: 2 };
+        return { ok: false, error: 'GitHub repository and run ID are required' };
       }
       const cwd = ctx.cwd ?? process.cwd();
       const output = resolve(cwd, input.flags.output);
@@ -35,10 +35,10 @@ export default defineCommand<unknown, CLIInput<QaCiEvidenceSyncFlags>, { exitCod
             ] }],
           });
         }
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         ctx.ui?.error?.(`Unable to sync CI evidence: ${error instanceof Error ? error.message : String(error)}`);
-        return { exitCode: 1 };
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
       }
     },
   },

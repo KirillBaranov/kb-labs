@@ -84,7 +84,7 @@ export default defineCommand<unknown, CLIInput<SwitchFlags>, SwitchResult>({
       } catch (err) {
         discoverLoader.fail('Discovery failed');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Switch operation failed' };
       }
       discoverLoader.succeed(`Found ${monorepos.length} monorepos, ${Object.keys(packageMap).length} packages`);
       tracker.checkpoint('discovery');
@@ -101,7 +101,7 @@ export default defineCommand<unknown, CLIInput<SwitchFlags>, SwitchResult>({
 
       if (plan.items.length === 0 && !flags.install) {
         ctx.ui?.info?.('No changes needed — dependencies are already in the requested mode.');
-        return { exitCode: 0, result: { mode, changed: 0 }, meta: { timing: tracker.total() } };
+        return { ok: true, result: { mode, changed: 0 }, meta: { timing: tracker.total() } };
       }
 
       // 4. Always create backup (even if no deps change — install cleans node_modules)
@@ -253,7 +253,7 @@ export default defineCommand<unknown, CLIInput<SwitchFlags>, SwitchResult>({
         });
       }
 
-      return { exitCode: 0, result, meta: { timing: tracker.total() } };
+      return { ok: true, result, meta: { timing: tracker.total() } };
     },
   },
 });

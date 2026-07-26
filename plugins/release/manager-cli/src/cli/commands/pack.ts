@@ -17,11 +17,7 @@ interface PackFlags {
   json?: boolean;
 }
 
-type ReleasePackResult = CommandResult & {
-  ok?: boolean;
-  issues?: string[];
-  results?: VerifyResult[];
-};
+type ReleasePackResult = CommandResult<unknown>;
 
 function buildPackSections(
   results: VerifyResult[],
@@ -74,7 +70,7 @@ export default defineCommand({
         if (flags.json) { ctx.ui?.json?.({ ok: true, issues: [], results: [], message: msg }); }
         else { ctx.ui?.write?.(msg); }
         console.log('::kb-output::' + JSON.stringify({ ok: true, issues: [] }));
-        return { exitCode: 0, ok: true, issues: [], results: [] };
+        return { ok: true, result: { ok: true, issues: [], results: [] } };
       }
 
       const verifyLoader = useLoader(`Verifying ${plan.packages.length} package(s)...`);
@@ -100,7 +96,7 @@ export default defineCommand({
 
       if (flags.json) {
         ctx.ui?.json?.({ ok, issues, results });
-        return { exitCode: ok ? 0 : 1, ok, issues, results };
+        return ok ? { ok: true, result: { ok, issues, results } } : { ok: false, error: 'Command failed', result: { ok, issues, results } };
       }
 
       ctx.ui?.sideBox?.({
@@ -109,7 +105,7 @@ export default defineCommand({
         status: ok ? 'success' : 'error',
       });
 
-      return { exitCode: ok ? 0 : 1, ok, issues, results };
+      return ok ? { ok: true, result: { ok, issues, results } } : { ok: false, error: 'Command failed', result: { ok, issues, results } };
     },
   },
 });

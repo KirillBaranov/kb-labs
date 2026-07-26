@@ -1,4 +1,4 @@
-import { defineCommand, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, findRepoRoot, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { updateSnapshots } from '../../checks/api-compat-check.js';
 
 type SnapshotInput = {
@@ -21,12 +21,12 @@ export default defineCommand({
       };
     },
 
-    async execute(ctx: PluginContextV3, input: SnapshotInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: SnapshotInput): Promise<CommandResult> {
       const flags = (input as { flags?: SnapshotInput }).flags ?? input;
 
       if (!flags.path) {
         ctx.ui.error('--path is required. Example: pnpm kb policy snapshot --path="platform/kb-labs-sdk"');
-        return { exitCode: 1 };
+        return { ok: false, error: '--path is required' };
       }
 
       const workspaceRoot = (await findRepoRoot(ctx.cwd)) ?? ctx.cwd;
@@ -45,7 +45,7 @@ export default defineCommand({
         ],
       });
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

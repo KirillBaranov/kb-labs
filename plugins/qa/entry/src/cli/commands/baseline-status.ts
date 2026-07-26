@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   SnapshotStore,
@@ -11,12 +12,12 @@ import {
 import { type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { BaselineStatusFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<BaselineStatusFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<BaselineStatusFlags>, unknown>({
   id: 'qa:baseline:status',
   description: 'Show current baseline',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<BaselineStatusFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<BaselineStatusFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -32,7 +33,7 @@ export default defineCommand<unknown, CLIInput<BaselineStatusFlags>, { exitCode:
         }
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

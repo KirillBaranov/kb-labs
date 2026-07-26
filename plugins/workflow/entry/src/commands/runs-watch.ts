@@ -4,7 +4,7 @@
  * Streams run events in real-time via SSE endpoint.
  */
 
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsWatchFlags {
@@ -22,12 +22,12 @@ const STATUS_ICON: Record<string, string> = {
   waiting_approval: '⏳',
 };
 
-export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsWatchFlags>, unknown>({
   id: 'workflow:runs-watch',
   description: 'Stream workflow run events in real-time',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsWatchFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsWatchFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const logsOnly = flags?.logs ?? false;
@@ -41,7 +41,7 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
           const latest = await client.listRuns({ limit: 1 });
           if (!latest.length) {
             ctx.ui?.info?.('No runs found');
-            return { exitCode: 0 };
+            return { ok: true };
           }
           runId = latest[0]!.id!;
           ctx.ui?.info?.(`Watching latest run: ${runId}`);
@@ -113,7 +113,9 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
               if (event.type === 'run.finished' || event.type === 'run.failed' || event.type === 'run.cancelled') {
                 const finalStatus = event.payload?.['status'] as string ?? event.type.split('.')[1];
                 ctx.ui?.write?.(`Run ${finalStatus.toUpperCase()}. Use 'kb workflow runs-view ${runId}' for details.`);
-                return { exitCode: finalStatus === 'failed' ? 1 : 0 };
+                return finalStatus === 'failed'
+                  ? { ok: false, error: 'Workflow run failed' }
+                  : { ok: true };
               }
             } catch {
               // Ignore malformed events
@@ -121,10 +123,10 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
           }
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

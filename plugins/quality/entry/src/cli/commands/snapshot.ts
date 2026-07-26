@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   analyzeLayering,
@@ -30,7 +31,7 @@ async function captureGit(shell: ShellAPI, cwd: string) {
   }
 }
 
-export default defineCommand<unknown, CLIInput<SnapshotFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<SnapshotFlags>, unknown>({
   id: 'quality:snapshot',
   description: 'Collect all quality metrics and save a snapshot for trend tracking',
 
@@ -44,7 +45,7 @@ export default defineCommand<unknown, CLIInput<SnapshotFlags>, { exitCode: numbe
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<SnapshotFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<SnapshotFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -104,7 +105,7 @@ export default defineCommand<unknown, CLIInput<SnapshotFlags>, { exitCode: numbe
         });
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

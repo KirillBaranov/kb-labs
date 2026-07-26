@@ -34,12 +34,21 @@ export const TenantIdSchema = z
   .optional()
 
 export const RetryModeSchema = z.enum(['exp', 'lin'])
+export const RetryFailureKindSchema = z.enum([
+  'command',
+  'network',
+  'timeout',
+  'rate_limit',
+  'server',
+  'infrastructure',
+])
 
 export const RetryPolicySchema = z.object({
   max: z.number().int().nonnegative(),
   backoff: RetryModeSchema.default('exp'),
   initialIntervalMs: z.number().int().positive().default(1000),
   maxIntervalMs: z.number().int().positive().optional(),
+  on: z.array(RetryFailureKindSchema).min(1).optional(),
 })
 
 export const TimeoutSchema = z.number().int().positive().max(1000 * 60 * 60 * 24) // <= 24h
@@ -110,6 +119,7 @@ export const StepSpecSchema = z
     env: z.record(z.string(), z.string()).optional(),
     secrets: z.array(z.string().min(1)).optional(),
     timeoutMs: TimeoutSchema.optional(),
+    retry: z.union([z.literal(false), RetryPolicySchema]).optional(),
     continueOnError: z.boolean().optional(),
     // Presentation layer
     summary: z.string().optional(),
@@ -385,5 +395,4 @@ export const RunSchema = z.object({
   metadata: RunMetadataSchema.optional(),
   result: ExecutionResultSchema.optional(),
 })
-
 

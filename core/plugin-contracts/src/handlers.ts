@@ -5,6 +5,7 @@
  */
 
 import type { PluginContextV3 } from './context.js';
+import type { FailureInfo, FailureKind } from '@kb-labs/core-contracts';
 
 /**
  * Standard metadata automatically injected by runtime
@@ -61,34 +62,25 @@ export interface StandardMeta {
  *
  * @template T Result data type
  */
-export interface CommandResult<T = unknown> {
-  /**
-   * Exit code (0 = success, non-zero = error)
-   *
-   * Defaults to 0 if not specified.
-   */
-  exitCode: number;
+export interface CommandError extends Omit<FailureInfo, 'kind'> {
+  kind?: FailureKind;
+}
 
-  /**
-   * Structured result data (optional)
-   *
-   * This is the "return value" of the command, accessible to:
-   * - Other plugins via ctx.api.invoke.call()
-   * - Workflows as job result
-   * - REST API as response body
-   */
+export interface CommandSuccess<T = unknown> {
+  ok: true;
   result?: T;
-
-  /**
-   * Custom metadata (optional)
-   *
-   * Standard metadata (executedAt, duration, pluginId, etc.) is automatically
-   * injected by runtime. Your custom keys will be merged with standard metadata.
-   *
-   * Examples: timing breakdown, cache hits, custom version info
-   */
   meta?: Record<string, unknown>;
 }
+
+export interface CommandFailure {
+  ok: false;
+  error: string | CommandError;
+  result?: unknown;
+  meta?: Record<string, unknown>;
+}
+
+/** Canonical command result returned by plugin commands. */
+export type CommandResult<T = unknown> = CommandSuccess<T> | CommandFailure;
 
 /**
  * Final command result with injected standard metadata
@@ -102,6 +94,9 @@ export interface CommandResultWithMeta<T = unknown> {
    * Exit code (0 = success, non-zero = error)
    */
   exitCode: number;
+
+  /** Normalized command status. */
+  ok: boolean;
 
   /**
    * Structured result data (optional)

@@ -42,7 +42,7 @@ export default defineCommand<unknown, LinkInput, { id: string; scope: string }>(
 
       if (!pluginPath) {
         validationError(ctx, 'Specify a plugin path to link', 'Usage: kb marketplace plugins link <path>', flags.json);
-        return { exitCode: 1, result: { id: '', scope: '' } };
+        return { ok: false, error: 'A plugin path is required', result: { id: '', scope: '' } };
       }
 
       let scopeCtx;
@@ -54,7 +54,7 @@ export default defineCommand<unknown, LinkInput, { id: string; scope: string }>(
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { id: '', scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { id: '', scope: '' } };
       }
 
       try {
@@ -68,10 +68,10 @@ export default defineCommand<unknown, LinkInput, { id: string; scope: string }>(
         } else {
           ctx.ui?.success?.(`Linked ${result.id} (${result.scope})`);
         }
-        return { exitCode: 0, result: { id: result.id, scope: result.scope } };
+        return { ok: true, result: { id: result.id, scope: result.scope } };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { id: '', scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { id: '', scope: '' } };
       }
     },
   },

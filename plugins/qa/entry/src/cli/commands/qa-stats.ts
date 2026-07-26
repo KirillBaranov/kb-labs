@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   DevkitAdapter,
@@ -15,12 +16,12 @@ import {
 import { type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { QaStatsFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaStatsFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaStatsFlags>, unknown>({
   id: 'qa:stats',
   description: 'Show devkit health score and category breakdown',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaStatsFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaStatsFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -49,7 +50,7 @@ export default defineCommand<unknown, CLIInput<QaStatsFlags>, { exitCode: number
         }
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

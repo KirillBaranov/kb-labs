@@ -41,7 +41,7 @@ describe('E2E Context Tests', () => {
       export default {
         async execute(ctx, input) {
           return {
-            exitCode: 0,
+            ok: true,
             result: {
               hasHost: typeof ctx.host === 'string',
               hasRequestId: typeof ctx.requestId === 'string',
@@ -108,7 +108,7 @@ describe('E2E Context Tests', () => {
           // Check if fs.exists is a function
           const hasExistsMethod = typeof ctx.runtime.fs.exists === 'function';
           return {
-            exitCode: 0,
+            ok: true,
             result: {
               hasExistsMethod,
               hasFsAPI: ctx.runtime.fs !== undefined,
@@ -152,7 +152,7 @@ describe('E2E Context Tests', () => {
       export default {
         async execute(ctx, input) {
           return {
-            exitCode: 0,
+            ok: true,
             result: {
               hasTraceId: typeof ctx.trace.traceId === 'string',
               hasSpanId: typeof ctx.trace.spanId === 'string',
@@ -200,7 +200,8 @@ describe('E2E Context Tests', () => {
       export default {
         async execute(ctx, input) {
           return {
-            exitCode: 42,
+            ok: false,
+            error: 'command failed',
             result: { custom: 'data' },
           };
         }
@@ -228,7 +229,7 @@ describe('E2E Context Tests', () => {
 
     const result = wrapCliResult(runResult, descriptor);
 
-    expect(result.exitCode).toBe(42);
+    expect(result.exitCode).toBe(1);
     expect(result.result).toEqual({ custom: 'data' });
     expect(result.meta).toBeDefined();
   });
@@ -239,7 +240,7 @@ describe('E2E Context Tests', () => {
       export default {
         async execute(ctx, input) {
           return {
-            exitCode: 0,
+            ok: true,
             result: {
               hasLLM: ctx.platform.llm !== undefined,
               hasLogger: ctx.platform.logger !== undefined,
@@ -308,7 +309,7 @@ describe('E2E Context Tests', () => {
           const colorsWork = typeof coloredText === 'string';
 
           return {
-            exitCode: 0,
+            ok: true,
             result: {
               hasColors,
               hasSuccessColor,

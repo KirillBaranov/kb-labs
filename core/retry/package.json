@@ -1,0 +1,36 @@
+{
+  "name": "@kb-labs/core-retry",
+  "version": "2.109.0",
+  "description": "Canonical failure classification and retry policy primitives",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "pnpm clean && tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kb-labs/core-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.6"
+  }
+}

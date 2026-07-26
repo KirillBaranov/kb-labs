@@ -9,7 +9,7 @@
  * Supports --dry-run via intent() for previewing changes without applying
  */
 
-import { defineCommand, validationError, type PluginContextV3, useLoader, type CLIInput } from '@kb-labs/sdk';
+import { defineCommand, validationError, type PluginContextV3, useLoader, type CLIInput, type CommandResult } from '@kb-labs/sdk';
 import type { UIFacade } from '@kb-labs/sdk';
 import type { FixDepsFlags } from './flags.js';
 import fs from 'node:fs';
@@ -35,12 +35,6 @@ interface FixResult {
   addedDeps: Array<{ package: string; dep: string; version: string }>;
   alignedDeps: Array<{ dep: string; from: string; to: string; packages: string[] }>;
 }
-
-type FixDepsCommandResult = {
-  exitCode: number;
-  result?: FixResult;
-  meta?: Record<string, unknown>;
-};
 
 export default defineCommand({
   id: 'quality:fix-deps',
@@ -83,7 +77,7 @@ export default defineCommand({
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<FixDepsFlags>): Promise<FixDepsCommandResult> {
+    async execute(ctx: PluginContextV3, input: CLIInput<FixDepsFlags>): Promise<CommandResult<FixResult>> {
       const { ui, platform } = ctx;
       const flags = input.flags;
       const removeUnused = flags['remove-unused'] || flags.all;
@@ -94,12 +88,12 @@ export default defineCommand({
       if (showStats) {
         const stats = await getDependencyStats(ctx.cwd);
         outputStats(stats, flags, ui);
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       if (!removeUnused && !addMissing && !alignVersions) {
         validationError(ctx, 'No fix options specified', 'Use --remove-unused, --add-missing, --align-versions, or --all', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const loader = useLoader('Scanning packages...');
@@ -122,7 +116,7 @@ export default defineCommand({
 
       outputResults({ ...result, dryRun: false }, flags, ui);
 
-      return { exitCode: 0, result };
+      return { ok: true, result };
     },
   },
 });

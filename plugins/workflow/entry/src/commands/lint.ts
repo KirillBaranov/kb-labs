@@ -6,7 +6,7 @@
  * wrapper — all logic lives in the core (`@kb-labs/workflow-runtime`).
  */
 
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { lintWorkflowFiles } from '@kb-labs/workflow-runtime';
 
 interface LintFlags {
@@ -15,12 +15,12 @@ interface LintFlags {
   strict?: boolean;
 }
 
-export default defineCommand<unknown, CLIInput<LintFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<LintFlags>, unknown>({
   id: 'workflow:lint',
   description: 'Validate workflow files against the schema',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<LintFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<LintFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const strict = flags?.strict ?? false;
@@ -35,12 +35,14 @@ export default defineCommand<unknown, CLIInput<LintFlags>, { exitCode: number }>
 
         if (outputJson) {
           ctx.ui?.json?.({ ok: failed.length === 0, files: results });
-          return { exitCode: failed.length === 0 ? 0 : 1 };
+          return failed.length === 0
+            ? { ok: true, result: { ok: true, files: results } }
+            : { ok: false, error: 'Workflow validation failed', result: { ok: false, files: results } };
         }
 
         if (results.length === 0) {
           ctx.ui?.warn?.('No workflow files found');
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         for (const r of results) {
@@ -61,14 +63,14 @@ export default defineCommand<unknown, CLIInput<LintFlags>, { exitCode: number }>
 
         if (failed.length === 0) {
           ctx.ui?.success?.(`${results.length} workflow file(s) valid`);
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         ctx.ui?.warn?.(`${failed.length}/${results.length} file(s) failed validation`);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

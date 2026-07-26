@@ -276,6 +276,8 @@ export async function createWorkflowWorker(
         // - Steps may have side effects that depend on order
         // - Workflow semantics require sequential execution
         let wasCancelled = false;
+        let failedStepFailure: import('@kb-labs/core-contracts').ClassifiedFailure | undefined;
+        let failedStepRetry: typeof job.steps[number]['spec']['retry'] | undefined;
         for (const step of job.steps) {
           if (step.status === 'success') {
             continue; // Skip already completed steps
@@ -638,6 +640,8 @@ export async function createWorkflowWorker(
 
             // Mark step as failed (sets finishedAt timestamp + error)
             await engine.markStepFailed(run.id, job.id, step.id, error);
+            failedStepFailure = result.failure;
+            failedStepRetry = step.spec.retry;
 
             stepLogger.error('Step failed', error, {
               runId: run.id,
@@ -727,7 +731,12 @@ export async function createWorkflowWorker(
         const err = error instanceof Error ? error : new Error(String(error));
         const jobDuration = Date.now() - jobStartTime;
 
-        await engine.markJobFailed(run.id, job.id, err);
+        const retryPolicy = failedStepRetry && failedStepRetry !== false
+          ? failedStepRetry
+          : failedStepRetry === false
+            ? false
+            : job.retries;
+        await engine.markJobFailed(run.id, job.id, err, failedStepFailure, retryPolicy);
 
         // Track job processing failed
         analytics?.track('workflow.worker.job.failed', {

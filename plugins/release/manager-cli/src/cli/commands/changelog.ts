@@ -4,7 +4,7 @@
 
 import { join } from 'node:path';
 import { stat, writeFile, mkdir, readFile } from 'node:fs/promises';
-import { defineCommand, type CLIInput, type PluginContextV3, useLLM, useLoader, displayArtifacts, type ArtifactInfo, useConfig } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLLM, useLoader, displayArtifacts, type ArtifactInfo, useConfig, type CommandResult } from '@kb-labs/sdk';
 import { planRelease, type ReleaseConfig } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
 import { createChangelogGenerator } from '../../shared/changelog-factory';
@@ -22,8 +22,7 @@ interface ChangelogFlags {
   json?: boolean;
 }
 
-interface ReleaseChangelogResult {
-  exitCode: number;
+interface ChangelogPayload {
   artifacts?: Array<{ name: string; path: string; size: number }>;
 }
 
@@ -99,7 +98,7 @@ export default defineCommand({
   description: 'Generate changelog from conventional commits',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<ChangelogFlags>): Promise<ReleaseChangelogResult> {
+    async execute(ctx: PluginContextV3, input: CLIInput<ChangelogFlags>): Promise<CommandResult<ChangelogPayload>> {
       const { flags } = input;
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
@@ -115,7 +114,7 @@ export default defineCommand({
 
       if (plan.packages.length === 0) {
         loader.fail(`No packages found matching scope: ${flags.scope || 'all'}`);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const gitCwd = await resolveGitCwd(flags.scope, plan.packages, repoRoot);
@@ -164,10 +163,9 @@ export default defineCommand({
         });
       }
 
-      return {
-        exitCode: 0,
+      return { ok: true, result: {
         artifacts: artifacts.map(a => ({ name: a.name, path: a.path, size: a.size ?? 0 })),
-      };
+      } };
     },
   },
 });

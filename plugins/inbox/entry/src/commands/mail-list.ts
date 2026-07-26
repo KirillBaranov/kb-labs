@@ -32,12 +32,12 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: messages });
-          return { exitCode: 0, result: messages };
+          return { ok: true, result: messages };
         }
 
         if (!messages.length) {
           ctx.ui?.info?.('No messages found.');
-          return { exitCode: 0, result: messages };
+          return { ok: true, result: messages };
         }
 
         ctx.ui?.chain?.(messages.map(msg => ({
@@ -50,10 +50,10 @@ export default defineCommand({
           }],
         })));
 
-        return { exitCode: 0, result: messages };
+        return { ok: true, result: messages };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

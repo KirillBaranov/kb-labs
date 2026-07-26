@@ -8,6 +8,7 @@ import {
   JobRunSchema,
   StepRunSchema,
   RetryPolicySchema,
+  RetryFailureKindSchema,
   RunTriggerSchema,
   RunMetadataSchema,
   IdempotencyKeySchema,
@@ -42,6 +43,7 @@ export type ExecutionTarget = z.infer<typeof ExecutionTargetSchema>
 export type IsolationProfile = z.infer<typeof IsolationProfileSchema>
 
 export type RetryPolicy = z.infer<typeof RetryPolicySchema>
+export type RetryFailureKind = z.infer<typeof RetryFailureKindSchema>
 export type WorkflowRun = z.infer<typeof RunSchema>
 export type JobRun = z.infer<typeof JobRunSchema>
 export type StepRun = z.infer<typeof StepRunSchema>

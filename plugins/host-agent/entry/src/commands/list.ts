@@ -3,7 +3,7 @@
  * List all connected Workspace Agents via Gateway REST API.
  */
 
-import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -24,17 +24,14 @@ interface HostEntry {
   connections: string[];
 }
 
-type ListResult = {
-  exitCode: number;
-  hosts: HostEntry[];
-};
+type ListResult = { hosts: HostEntry[] };
 
 export default defineCommand({
   id: 'workspace:list',
   description: 'List all connected Workspace Agents',
 
   handler: {
-    async execute(ctx: PluginContextV3, rawInput: ListInput): Promise<ListResult> {
+    async execute(ctx: PluginContextV3, rawInput: ListInput): Promise<CommandResult<ListResult>> {
       const input: ListInput = rawInput.flags ?? rawInput;
 
       // Resolve Gateway URL: flag > agent config > env > default
@@ -84,21 +81,21 @@ export default defineCommand({
           hosts = body.hosts;
         } else {
           handleError(ctx, new Error(`Failed to list hosts: HTTP ${res.status}`), input.json);
-          return { exitCode: 1, hosts: [] };
+          return { ok: false, error: `Failed to list hosts: HTTP ${res.status}`, result: { hosts: [] } };
         }
       } catch (err) {
         handleError(ctx, new Error(`Cannot reach Gateway at ${gatewayUrl}: ${err instanceof Error ? err.message : String(err)}`), input.json);
-        return { exitCode: 1, hosts: [] };
+        return { ok: false, error: `Cannot reach Gateway at ${gatewayUrl}`, result: { hosts: [] } };
       }
 
       if (input.json) {
         ctx.ui?.json?.({ hosts });
-        return { exitCode: 0, hosts };
+        return { ok: true, result: { hosts } };
       }
 
       if (hosts.length === 0) {
         ctx.ui?.info?.('No Workspace Agents connected.');
-        return { exitCode: 0, hosts: [] };
+        return { ok: true, result: { hosts: [] } };
       }
 
       const ago = (ts: number) => {
@@ -121,7 +118,7 @@ export default defineCommand({
         }],
       });
 
-      return { exitCode: 0, hosts };
+      return { ok: true, result: { hosts } };
     },
   },
 });

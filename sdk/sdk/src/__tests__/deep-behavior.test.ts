@@ -14,7 +14,7 @@ describe('SDK Deep Behavior', () => {
     const command = defineCommand({
       id: 'sdk:test',
       handler: {
-        execute: async () => ({ exitCode: 0 }),
+        execute: async () => ({ ok: true }),
       },
     });
 
@@ -54,7 +54,7 @@ describe('SDK Deep Behavior', () => {
     const webhook = defineWebhook({
       event: 'github:push',
       handler: {
-        execute: async () => ({ exitCode: 0 }),
+        execute: async () => ({ ok: true }),
       },
     });
 

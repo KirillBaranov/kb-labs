@@ -7,7 +7,7 @@
  * - Build duration tracking
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import type { BuildCheckResult } from '@kb-labs/quality-contracts';
 import { CACHE_KEYS } from '@kb-labs/quality-contracts';
 import { checkBuilds } from '@kb-labs/quality-core/builds';
@@ -15,12 +15,6 @@ import type { CheckBuildsFlags } from './flags.js';
 
 // Input type with backward compatibility
 type CheckBuildsInput = CheckBuildsFlags & { argv?: string[] };
-
-type CheckBuildsCommandResult = {
-  exitCode: number;
-  result?: BuildCheckResult;
-  meta?: Record<string, unknown>;
-};
 
 export default defineCommand({
   id: 'quality:check-builds',
@@ -30,7 +24,7 @@ export default defineCommand({
     async execute(
       ctx: PluginContextV3,
       input: CheckBuildsInput
-    ): Promise<CheckBuildsCommandResult> {
+    ): Promise<CommandResult<BuildCheckResult>> {
       const { ui, platform } = ctx;
 
       // V3: Flags may come wrapped in input.flags or passed directly
@@ -45,7 +39,9 @@ export default defineCommand({
         const cached = await platform.cache.get<BuildCheckResult>(cacheKey);
         if (cached) {
           outputBuildCheck({ ...cached, cached: true }, flags, ui);
-          return { exitCode: cached.failing > 0 ? 1 : 0, result: cached };
+          return cached.failing > 0
+            ? { ok: false, error: 'Build failures found', result: cached }
+            : { ok: true, result: cached };
         }
       }
 
@@ -71,10 +67,9 @@ export default defineCommand({
       // Output results
       outputBuildCheck({ ...result, cached: false }, flags, ui);
 
-      return {
-        exitCode: result.failing > 0 ? 1 : 0,
-        result,
-      };
+      return result.failing > 0
+        ? { ok: false, error: 'Build failures found', result }
+        : { ok: true, result };
     },
   },
 });

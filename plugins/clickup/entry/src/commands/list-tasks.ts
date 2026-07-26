@@ -22,7 +22,7 @@ export default defineCommand({
       const [listId] = input.argv;
       if (!listId) {
         validationError(ctx, 'List ID is required', 'Usage: kb clickup list tasks <listId>  (get IDs via `kb clickup workspace`)', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -36,12 +36,12 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? tasks : tasks.map(slimTask));
-          return { exitCode: 0, result: tasks };
+          return { ok: true, result: tasks };
         }
 
         if (!tasks.length) {
           ctx.ui?.info?.('No tasks found.');
-          return { exitCode: 0, result: tasks };
+          return { ok: true, result: tasks };
         }
 
         ctx.ui?.table?.(
@@ -61,10 +61,10 @@ export default defineCommand({
           ],
         );
 
-        return { exitCode: 0, result: tasks };
+        return { ok: true, result: tasks };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

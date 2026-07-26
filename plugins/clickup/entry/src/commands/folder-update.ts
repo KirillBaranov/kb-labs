@@ -26,11 +26,11 @@ export default defineCommand({
       const folderId = input.argv[0] as string | undefined;
       if (!folderId) {
         validationError(ctx, 'folderId is required', 'Usage: kb clickup folder update <folderId> --name "new name"', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
       if (!input.flags.name) {
         validationError(ctx, '--name is required', undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -44,10 +44,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: folder };
+        return { ok: true, result: folder };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

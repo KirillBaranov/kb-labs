@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   SnapshotStore,
@@ -12,12 +13,12 @@ import {
 import { TRENDS_WINDOW, type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { QaTrendsFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaTrendsFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaTrendsFlags>, unknown>({
   id: 'qa:trends',
   description: 'Show QA quality trends over time',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaTrendsFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaTrendsFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -35,7 +36,7 @@ export default defineCommand<unknown, CLIInput<QaTrendsFlags>, { exitCode: numbe
         }
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

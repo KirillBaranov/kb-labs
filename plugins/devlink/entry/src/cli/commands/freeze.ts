@@ -47,7 +47,7 @@ export default defineCommand<unknown, FreezeInput, LockFile>({
       } catch (err) {
         loader.fail('Failed to freeze state');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Freeze operation failed' };
       }
       loader.succeed('State frozen');
       tracker.checkpoint('freeze');
@@ -71,7 +71,7 @@ export default defineCommand<unknown, FreezeInput, LockFile>({
         });
       }
 
-      return { exitCode: 0, result: lock, meta: { timing: tracker.total() } };
+      return { ok: true, result: lock, meta: { timing: tracker.total() } };
     },
   },
 });

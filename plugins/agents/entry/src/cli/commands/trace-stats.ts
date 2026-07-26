@@ -7,6 +7,7 @@
  */
 
 import { defineCommand, useLogger } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import type { PluginContextV3 } from '@kb-labs/sdk';
 import type {
   TraceCommandResponse,
@@ -35,7 +36,7 @@ type TraceStatsInput = {
   json?: boolean;
 };
 
-type TraceStatsResult = { exitCode: number; response?: TraceCommandResponse };
+type TraceStatsResult = CommandResult<TraceCommandResponse>;
 
 export default defineCommand({
   id: 'trace:stats',
@@ -60,7 +61,7 @@ export default defineCommand({
           'CORRUPTED_TRACE';
         const err = error(code, formatTraceLoadError(loaded.error));
         ctx.ui?.json?.(err);
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       const { events } = loaded;
@@ -88,12 +89,12 @@ export default defineCommand({
         printHumanReadable(ctx, stats);
       }
 
-      return { exitCode: 0, response };
+      return { ok: true, result: response };
     } catch (err) {
       logger.error('trace:stats error:', err instanceof Error ? err : undefined);
       const errResponse = error('IO_ERROR', err instanceof Error ? err.message : String(err));
       ctx.ui?.json?.(errResponse);
-      return { exitCode: 1, response: errResponse };
+      return { ok: false, error: 'Command failed', result: errResponse };
     }
     },
   },

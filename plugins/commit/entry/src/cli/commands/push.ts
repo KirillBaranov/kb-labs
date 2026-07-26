@@ -4,6 +4,7 @@
  */
 
 import { defineCommand, useLoader, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { pushCommits } from '@kb-labs/commit-core';
 import type { PushOutput } from '@kb-labs/commit-contracts';
 
@@ -12,11 +13,7 @@ type PushInput = {
   json?: boolean;
 };
 
-type PushResult = {
-  exitCode: number;
-  result?: PushOutput;
-  meta?: Record<string, unknown>;
-};
+type PushResult = CommandResult<PushOutput>;
 
 export default defineCommand({
   id: 'commit:push',
@@ -36,7 +33,7 @@ export default defineCommand({
       } catch (err) {
         pushLoader.fail('Push failed');
         handleError(ctx, err, input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       // Output
@@ -86,13 +83,13 @@ export default defineCommand({
         });
       }
 
-      return {
-        exitCode: result.success ? 0 : 1,
+      return result.success ? {
+        ok: true,
         result: output,
         meta: {
           timing: Date.now() - startTime,
         },
-      };
+      } : { ok: false, error: 'Commit push failed', result: output };
     },
   },
 });

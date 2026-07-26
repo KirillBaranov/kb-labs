@@ -12,7 +12,7 @@
  * deps); only the target registry/tag differ.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv, type CommandResult } from '@kb-labs/sdk';
 import {
   discoverCurrentPackages,
   resolvePublishTag,
@@ -37,20 +37,15 @@ interface PromoteFlags {
   json?: boolean;
 }
 
-interface PromoteResult {
-  exitCode: number;
-  published?: Array<{ name: string; version: string }>;
-  failed?: Array<{ name: string; version: string; error: string }>;
-  summary?: {
-    total: number;
-    successful: number;
-    failed: number;
-    tag: string;
-    registry: string;
-  };
-}
+type PromoteResult = CommandResult<unknown>;
 
 type PromoteResultItem = { success: boolean; name: string; version: string; error?: string };
+type PromoteSummary = {
+  success: boolean;
+  published?: Array<{ name: string; version: string }>;
+  failed?: Array<{ name: string; version: string; error: string }>;
+  summary?: { total: number; successful: number; failed: number; tag: string; registry: string };
+};
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -83,11 +78,11 @@ function buildPromoteSections(
   return sections;
 }
 
-function toPromoteResult(results: PromoteResultItem[], tag: string, registry: string): PromoteResult {
+function toPromoteResult(results: PromoteResultItem[], tag: string, registry: string): PromoteSummary {
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   return {
-    exitCode: failed === 0 ? 0 : 1,
+    success: failed === 0,
     published: results.filter(r => r.success).map(r => ({ name: r.name, version: r.version })),
     failed: results.filter(r => !r.success).map(r => ({
       name: r.name,
@@ -139,7 +134,7 @@ export default defineCommand({
         } else {
           ctx.ui?.write?.(msg);
         }
-        return { exitCode: 1, summary: { total: 0, successful: 0, failed: 0, tag, registry } };
+        return { ok: false, error: 'Command failed', result: { summary: { total: 0, successful: 0, failed: 0, tag, registry } } };
       }
 
       let rawResult: ProgrammaticPublishResult | PublishWithOTPResult;
@@ -175,18 +170,22 @@ export default defineCommand({
         registry,
       }));
 
+      const response = promoteResult.success
+        ? { ok: true as const, result: promoteResult }
+        : { ok: false as const, error: 'Promotion failed', result: promoteResult };
+
       if (json) {
-        ctx.ui?.json?.(promoteResult);
-        return promoteResult;
+        ctx.ui?.json?.(response);
+        return response;
       }
 
       ctx.ui?.sideBox?.({
         title: dryRun ? 'Promote Dry-Run' : 'Promote Summary',
         sections: buildPromoteSections(rawResult.results, tag, registry, ctx.ui.symbols),
-        status: promoteResult.exitCode === 0 ? 'success' : 'error',
+        status: promoteResult.success ? 'success' : 'error',
       });
 
-      return promoteResult;
+      return response;
     },
   },
 });

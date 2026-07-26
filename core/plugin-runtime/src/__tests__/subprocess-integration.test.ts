@@ -39,7 +39,7 @@ describe('Subprocess Integration Tests', () => {
         export default {
           async execute(ctx, input) {
             return {
-              exitCode: 0,
+              ok: true,
               result: {
                 message: 'Hello from subprocess',
                 pid: process.pid,
@@ -192,7 +192,7 @@ describe('Subprocess Integration Tests', () => {
           async execute(ctx, input) {
             // Wait for 5 seconds (will be aborted)
             await new Promise(resolve => setTimeout(resolve, 5000));
-            return { exitCode: 0, result: { completed: true } };
+            return { ok: true, result: { completed: true } };
           }
         };
       `;

@@ -1,4 +1,4 @@
-import { defineCommand, useConfig, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useConfig, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import type { PolicyConfig } from '@kb-labs/policy-contracts';
 
 type RulesInput = {
@@ -10,13 +10,13 @@ export default defineCommand({
   description: 'Show all policy rules and which categories they apply to',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: RulesInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: RulesInput): Promise<CommandResult> {
       const flags = (input as { flags?: RulesInput }).flags ?? input;
       const policyConfig = await useConfig<PolicyConfig>();
 
       if (!policyConfig?.categories || !policyConfig?.rules) {
         ctx.ui.error('No policies config found in .kb/kb.config.json (expected "policies" key)');
-        return { exitCode: 1 };
+        return { ok: false, error: 'No policies config found' };
       }
 
       // Build reverse map: rule → categories that use it
@@ -46,7 +46,7 @@ export default defineCommand({
         ctx.ui.success?.('Policy Rules', { sections: [{ header: 'Rules', items }] });
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

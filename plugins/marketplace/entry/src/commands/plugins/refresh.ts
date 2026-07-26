@@ -1,13 +1,13 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 
 interface RefreshFlags {
   json?: boolean;
   'dry-run'?: boolean;
 }
 
-export default defineCommand<unknown, CLIInput<RefreshFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RefreshFlags>, unknown>({
   id: 'marketplace:plugins:refresh',
   description: 'Clear CLI discovery cache',
 
@@ -21,7 +21,7 @@ export default defineCommand<unknown, CLIInput<RefreshFlags>, { exitCode: number
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RefreshFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RefreshFlags>): Promise<CommandResult> {
       const { flags = {} } = input;
 
       try {
@@ -43,10 +43,10 @@ export default defineCommand<unknown, CLIInput<RefreshFlags>, { exitCode: number
               : 'CLI discovery cache was already empty.',
           );
         }
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
   },

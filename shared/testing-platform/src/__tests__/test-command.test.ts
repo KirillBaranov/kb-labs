@@ -16,7 +16,7 @@ const greetHandler = {
   ): Promise<CommandResult<{ message: string }>> {
     const name = input.flags.name || 'World';
     ctx.ui.success(`Hello, ${name}!`);
-    return { exitCode: 0, result: { message: `Hello, ${name}!` } };
+    return { ok: true, result: { message: `Hello, ${name}!` } };
   },
 };
 
@@ -27,7 +27,7 @@ const failingHandler = {
     _input: { flags: Record<string, unknown>; argv: string[] }
   ): Promise<CommandResult> {
     ctx.ui.error('Something went wrong');
-    return { exitCode: 1, meta: { reason: 'test-failure' } };
+    return { ok: false, error: 'test-failure', meta: { reason: 'test-failure' } };
   },
 };
 
@@ -41,7 +41,7 @@ const analyzeHandler = {
     const response = await ctx.platform.llm.complete(`Analyze ${file}`);
     const analysis = response.content;
     ctx.ui.info(`Analysis for ${file}: ${analysis}`);
-    return { exitCode: 0, result: { analysis } };
+    return { ok: true, result: { analysis } };
   },
 };
 
@@ -54,10 +54,10 @@ const cachedHandler = {
     const key = input.flags.key || 'default';
     const cached = await ctx.platform.cache.get(key);
     if (cached) {
-      return { exitCode: 0, result: { cached: true, value: cached } };
+      return { ok: true, result: { cached: true, value: cached } };
     }
     await ctx.platform.cache.set(key, 'computed-value', 60000);
-    return { exitCode: 0, result: { cached: false, value: 'computed-value' } };
+    return { ok: true, result: { cached: false, value: 'computed-value' } };
   },
 };
 
@@ -82,9 +82,9 @@ const routeHandler = {
   ): Promise<CommandResult<{ found: boolean }>> {
     const id = input.query?.id;
     if (!id) {
-      return { exitCode: 1, result: { found: false } };
+      return { ok: false, error: 'not found', result: { found: false } };
     }
-    return { exitCode: 0, result: { found: true } };
+    return { ok: true, result: { found: true } };
   },
 };
 
@@ -105,7 +105,7 @@ const handlerWithCleanup = {
     _ctx: PluginContextV3,
     _input: { flags: Record<string, unknown>; argv: string[] }
   ): Promise<CommandResult> {
-    return { exitCode: 0 };
+    return { ok: true };
   },
   async cleanup() {
     cleanupCalled = true;
@@ -118,7 +118,7 @@ const configHandler = {
     ctx: PluginContextV3<{ apiKey: string; verbose: boolean }>,
     _input: { flags: Record<string, unknown>; argv: string[] }
   ): Promise<CommandResult<{ key: string }>> {
-    return { exitCode: 0, result: { key: ctx.config!.apiKey } };
+    return { ok: true, result: { key: ctx.config!.apiKey } };
   },
 };
 
@@ -136,7 +136,7 @@ const metaHandler = {
     _input: { flags: Record<string, unknown>; argv: string[] }
   ): Promise<CommandResult<string>> {
     return {
-      exitCode: 0,
+      ok: true,
       result: 'ok',
       meta: { tokens: 150, model: 'gpt-4' },
     };
@@ -183,7 +183,7 @@ describe('testCommand', () => {
           input: { flags: Record<string, unknown>; argv: string[] }
         ): Promise<CommandResult<string[]>> {
           argvCapture.push(...input.argv);
-          return { exitCode: 0, result: input.argv };
+          return { ok: true, result: input.argv };
         },
       };
 
@@ -304,7 +304,7 @@ describe('testCommand', () => {
           _ctx: PluginContextV3,
           input: { params?: { id?: string } }
         ): Promise<CommandResult<string>> {
-          return { exitCode: 0, result: input.params?.id || 'none' };
+          return { ok: true, result: input.params?.id || 'none' };
         },
       };
 
@@ -327,7 +327,7 @@ describe('testCommand', () => {
           _ctx: PluginContextV3,
           input: { custom: string; data: number[] }
         ): Promise<CommandResult<string>> {
-          return { exitCode: 0, result: `${input.custom}:${input.data.length}` };
+          return { ok: true, result: `${input.custom}:${input.data.length}` };
         },
       };
 
@@ -345,7 +345,7 @@ describe('testCommand', () => {
           _ctx: PluginContextV3,
           input: unknown
         ): Promise<CommandResult<unknown>> {
-          return { exitCode: 0, result: input };
+          return { ok: true, result: input };
         },
       };
 
@@ -435,7 +435,7 @@ describe('testCommand', () => {
       const handler = {
         async execute(ctx: PluginContextV3): Promise<CommandResult> {
           capturedHost.push(ctx.host);
-          return { exitCode: 0 };
+          return { ok: true };
         },
       };
 
@@ -463,7 +463,7 @@ describe('testCommand', () => {
     it('should pass tenantId to context', async () => {
       const handler = {
         async execute(ctx: PluginContextV3): Promise<CommandResult<string | undefined>> {
-          return { exitCode: 0, result: ctx.tenantId };
+          return { ok: true, result: ctx.tenantId };
         },
       };
 
@@ -476,7 +476,7 @@ describe('testCommand', () => {
     it('should pass cwd to context', async () => {
       const handler = {
         async execute(ctx: PluginContextV3): Promise<CommandResult<string>> {
-          return { exitCode: 0, result: ctx.cwd };
+          return { ok: true, result: ctx.cwd };
         },
       };
 
@@ -497,7 +497,7 @@ describe('testCommand', () => {
           ctx.ui.warn('caution');
           ctx.ui.success('done');
           ctx.ui.debug('internal');
-          return { exitCode: 0 };
+          return { ok: true };
         },
       };
 
@@ -530,7 +530,7 @@ describe('testCommand', () => {
       result.cleanup();
 
       expect(result.raw).toEqual({
-        exitCode: 0,
+        ok: true,
         result: 'ok',
         meta: { tokens: 150, model: 'gpt-4' },
       });

@@ -118,10 +118,10 @@ describe('IPC Protocol', () => {
     it('should carry CommandResult as data when handler returns it', () => {
       const msg: ResultMessage = {
         type: 'result',
-        data: { exitCode: 0, result: { foo: 'bar' }, meta: { custom: true } },
+        data: { ok: true, result: { foo: 'bar' }, meta: { custom: true } },
       };
 
-      expect(msg.data).toEqual({ exitCode: 0, result: { foo: 'bar' }, meta: { custom: true } });
+      expect(msg.data).toEqual({ ok: true, result: { foo: 'bar' }, meta: { custom: true } });
     });
 
     it('should allow undefined data (void handler)', () => {

@@ -18,17 +18,17 @@ export default defineCommand({
       const [rawUid] = input.argv;
       if (!rawUid) {
         validationError(ctx, 'uid is required', 'Usage: kb inbox move <uid> --folder Work', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
       if (!input.flags.folder) {
         validationError(ctx, '--folder is required', undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const uid = parseInt(rawUid, 10);
       if (isNaN(uid)) {
         validationError(ctx, `Invalid uid: "${rawUid}" — must be a number`, undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -37,14 +37,14 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: { uid, folder: input.flags.folder } });
-          return { exitCode: 0, result: { uid, folder: input.flags.folder } };
+          return { ok: true, result: { uid, folder: input.flags.folder } };
         }
 
         ctx.ui?.success?.(`Moved uid=${uid} → ${input.flags.folder}`);
-        return { exitCode: 0, result: null };
+        return { ok: true, result: null };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

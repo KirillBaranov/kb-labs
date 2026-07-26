@@ -5,17 +5,17 @@
  * Shows build layers where each layer can build in parallel.
  */
 
-import { defineCommand, useConfig, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useConfig, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { analyzeBuildOrder } from '@kb-labs/quality-core';
 import { defaultQualityConfig, type QualityPluginConfig } from '@kb-labs/quality-contracts';
 import type { BuildOrderFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<BuildOrderFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<BuildOrderFlags>, unknown>({
   id: 'quality:build-order',
   description: 'Calculate build order using topological sort',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<BuildOrderFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<BuildOrderFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cfg = config ?? defaultQualityConfig;
@@ -38,12 +38,12 @@ export default defineCommand<unknown, CLIInput<BuildOrderFlags>, { exitCode: num
             })),
           });
         }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       if (flags.json) {
         ctx.ui?.json?.(result);
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       if (flags.script) {
@@ -52,7 +52,7 @@ export default defineCommand<unknown, CLIInput<BuildOrderFlags>, { exitCode: num
           if (!layer) continue;
           ctx.ui?.success?.(`# Layer ${i + 1}`, { sections: [{ header: '', items: layer.map(p => `pnpm --filter "${p}" run build`) }] });
         }
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       const sections = flags.layers
@@ -68,8 +68,7 @@ export default defineCommand<unknown, CLIInput<BuildOrderFlags>, { exitCode: num
       });
 
       ctx.ui?.success?.(flags.package ? `Build order for ${flags.package}` : 'Monorepo build order', { sections });
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });
-

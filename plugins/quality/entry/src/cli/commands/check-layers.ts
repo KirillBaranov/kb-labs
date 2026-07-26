@@ -3,17 +3,18 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import { analyzeLayering } from '@kb-labs/quality-core';
 import { type QualityPluginConfig, type LayeringViolation } from '@kb-labs/quality-contracts';
 import type { CheckLayersFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<CheckLayersFlags>, unknown>({
   id: 'quality:check-layers',
   description: 'Detect layering violations (lower layer importing higher layer)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<CheckLayersFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<CheckLayersFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -33,12 +34,14 @@ export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: nu
 
       if (flags.json) {
         ctx.ui?.json?.(filtered);
-        return { exitCode: filtered.totalViolations > 0 ? 1 : 0 };
+        return filtered.totalViolations > 0
+          ? { ok: false, error: 'Layer violations found', result: filtered }
+          : { ok: true, result: filtered };
       }
 
       if (filtered.totalViolations === 0) {
         ctx.ui?.success?.('No layering violations found');
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       const byPackage = new Map<string, typeof filtered.violations>();
@@ -54,7 +57,7 @@ export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: nu
       }));
 
       ctx.ui?.error?.(`${filtered.totalViolations} layering violation(s) in ${filtered.affectedPackages.length} package(s)`, { sections });
-      return { exitCode: 1 };
+      return { ok: false, error: 'Command failed' };
     },
   },
 });

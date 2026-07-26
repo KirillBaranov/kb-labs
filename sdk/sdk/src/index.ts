@@ -34,6 +34,21 @@ export {
   MessageRouter,
 } from './command/index.js';
 
+// Canonical command result and retry contracts for plugin authors.
+export type {
+  CommandSuccess,
+  CommandFailure,
+  CommandError,
+  ClassifiedFailure,
+  FailureClassificationContext,
+  FailureInfo,
+  FailureKind,
+  RetrySafety,
+  FailureSource,
+  RetryDecision,
+  RetryPolicyConfig,
+} from './contracts/index.js';
+
 // Test utilities (legacy — prefer `@kb-labs/sdk/testing` for full mock builders)
 export {
   createTestContext,

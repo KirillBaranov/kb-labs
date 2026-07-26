@@ -3,7 +3,7 @@
  * Register this machine with a Platform Gateway and save credentials to ~/.kb/agent.json.
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3, type CLIInput } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3, type CLIInput, type CommandResult } from '@kb-labs/sdk';
 import { writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, resolve, normalize } from 'node:path';
 import { homedir, hostname } from 'node:os';
@@ -18,7 +18,6 @@ interface RegisterFlags {
 }
 
 type RegisterResult = {
-  exitCode: number;
   configPath?: string;
 };
 
@@ -40,7 +39,7 @@ export default defineCommand({
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RegisterFlags>): Promise<RegisterResult> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RegisterFlags>): Promise<CommandResult<RegisterResult>> {
       const flags = input.flags;
       const gatewayUrl = (flags.gateway ?? '').replace(/\/$/, '');
       const name = flags.name ?? hostname();
@@ -58,20 +57,20 @@ export default defineCommand({
         try { pathStat = await stat(resolved); } catch { /* will error below */ }
         if (!pathStat?.isDirectory()) {
           validationError(ctx, `Workspace path does not exist or is not a directory: ${resolved}`, undefined, flags.json);
-          return { exitCode: 1 };
+          return { ok: false, error: `Workspace path does not exist or is not a directory: ${resolved}` };
         }
         workspacePaths.push(resolved);
       }
 
       if (!gatewayUrl) {
         validationError(ctx, '--gateway is required', 'Usage: kb workspace:register --gateway http://localhost:4000', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: '--gateway is required' };
       }
 
       // Validate URL
       if (!gatewayUrl.startsWith('http://') && !gatewayUrl.startsWith('https://')) {
         validationError(ctx, 'Invalid gateway URL — must start with http:// or https://', undefined, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Invalid gateway URL' };
       }
 
       ctx.ui?.info?.(`Registering with Gateway: ${gatewayUrl}`);
@@ -86,14 +85,14 @@ export default defineCommand({
         });
       } catch (err) {
         handleError(ctx, err instanceof Error ? new Error(`Failed to reach Gateway: ${err.message}`) : err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? `Failed to reach Gateway: ${err.message}` : String(err) };
       }
 
       if (!res.ok) {
         const rawBody = await res.text().catch(() => '');
         const body = rawBody.slice(0, 200).replace(/[\r\n]/g, ' ');
         handleError(ctx, new Error(`Gateway returned ${res.status}: ${body}`), flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: `Gateway returned ${res.status}: ${body}` };
       }
 
       let data: { clientId?: string; clientSecret?: string; hostId?: string };
@@ -101,19 +100,19 @@ export default defineCommand({
         data = await res.json() as typeof data;
       } catch {
         handleError(ctx, new Error('Gateway response is not valid JSON'), flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Gateway response is not valid JSON' };
       }
 
       if (!data.clientId || !data.clientSecret || !data.hostId) {
         handleError(ctx, new Error('Gateway response is missing required fields (clientId, clientSecret, hostId)'), flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Gateway response is missing required fields' };
       }
 
       // Format validation — secrets must be non-empty strings with safe characters only
       const SECRET_PATTERN = /^[A-Za-z0-9_\-+/=]{16,}$/;
       if (typeof data.clientSecret !== 'string' || !SECRET_PATTERN.test(data.clientSecret)) {
         handleError(ctx, new Error('Gateway returned an invalid client secret (unexpected format)'), flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Gateway returned an invalid client secret' };
       }
 
       // Write ~/.kb/agent.json
@@ -155,7 +154,7 @@ export default defineCommand({
         });
       }
 
-      return { exitCode: 0, configPath };
+      return { ok: true, result: { configPath } };
     },
   },
 });

@@ -8,6 +8,7 @@
  */
 
 import { defineCommand, useLogger, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import type {
   TraceCommandResponse,
   FilterResponse,
@@ -51,7 +52,7 @@ type TraceFilterInput = {
   json?: boolean;
 };
 
-type TraceFilterResult = { exitCode: number; response?: TraceCommandResponse };
+type TraceFilterResult = CommandResult<TraceCommandResponse>;
 
 export default defineCommand({
   id: 'trace:filter',
@@ -70,7 +71,7 @@ export default defineCommand({
     if (!eventType) {
       const err = error('INVALID_EVENT_TYPE', 'Missing required --type flag');
       ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-      return { exitCode: 1, response: err };
+      return { ok: false, error: 'Command failed', result: err };
     }
 
     if (!VALID_EVENT_TYPES.includes(eventType)) {
@@ -79,7 +80,7 @@ export default defineCommand({
         `Invalid event type: ${eventType}. Valid types: ${VALID_EVENT_TYPES.join(', ')}`
       );
       ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-      return { exitCode: 1, response: err };
+      return { ok: false, error: 'Command failed', result: err };
     }
 
     try {
@@ -92,7 +93,7 @@ export default defineCommand({
           'CORRUPTED_TRACE';
         const err = error(code, formatTraceLoadError(loaded.error));
         ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       const { events } = loaded;
@@ -125,12 +126,12 @@ export default defineCommand({
         printHumanReadable(ctx, eventType, filtered);
       }
 
-      return { exitCode: 0, response };
+      return { ok: true, result: response };
     } catch (err) {
       logger.error('trace:filter error:', err instanceof Error ? err : undefined);
       const errResponse = error('IO_ERROR', err instanceof Error ? err.message : String(err));
       ctx.ui.write(JSON.stringify(errResponse, null, 2) + '\n');
-      return { exitCode: 1, response: errResponse };
+      return { ok: false, error: 'Command failed', result: errResponse };
     }
     },
   },

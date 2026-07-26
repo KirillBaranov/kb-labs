@@ -3,7 +3,7 @@
  * Show Workspace Agent daemon status via IPC socket.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { HostAgentClient } from '@kb-labs/host-agent-client';
 import { createTransport } from '@kb-labs/host-agent-transport';
 
@@ -13,7 +13,6 @@ type StatusInput = {
 };
 
 type StatusResult = {
-  exitCode: number;
   running: boolean;
   connected?: boolean;
   hostId?: string;
@@ -25,7 +24,7 @@ export default defineCommand({
   description: 'Show Workspace Agent daemon status',
 
   handler: {
-    async execute(ctx: PluginContextV3, rawInput: StatusInput): Promise<StatusResult> {
+    async execute(ctx: PluginContextV3, rawInput: StatusInput): Promise<CommandResult<StatusResult>> {
       const input: StatusInput = rawInput.flags ?? rawInput;
 
       let ipcStatus: { connected: boolean; hostId?: string; gatewayUrl?: string; reconnecting?: boolean } | null = null;
@@ -46,7 +45,7 @@ export default defineCommand({
         } else {
           ctx.ui?.info?.('Workspace Agent is not running. Start with: kb-dev start host-agent');
         }
-        return { exitCode: 0, running: false };
+        return { ok: true, result: { running: false } };
       }
 
       const statusLabel = ipcStatus.connected
@@ -56,7 +55,6 @@ export default defineCommand({
           : 'disconnected';
 
       const result: StatusResult = {
-        exitCode: 0,
         running: true,
         connected: ipcStatus.connected,
         hostId: ipcStatus.hostId,
@@ -77,7 +75,7 @@ export default defineCommand({
         });
       }
 
-      return result;
+      return { ok: true, result };
     },
   },
 });

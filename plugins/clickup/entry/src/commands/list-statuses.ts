@@ -13,7 +13,7 @@ export default defineCommand({
       const [listId] = input.argv;
       if (!listId) {
         validationError(ctx, 'List ID is required', 'Usage: kb clickup list statuses <listId>  (get IDs via `kb clickup workspace`)', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -21,7 +21,7 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? statuses : statuses.map(s => ({ status: s.status, type: s.type, color: s.color })));
-          return { exitCode: 0, result: statuses };
+          return { ok: true, result: statuses };
         }
 
         ctx.ui?.table?.(
@@ -33,10 +33,10 @@ export default defineCommand({
           ],
         );
 
-        return { exitCode: 0, result: statuses };
+        return { ok: true, result: statuses };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

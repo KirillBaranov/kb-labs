@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, type CommandResult } from '@kb-labs/sdk';
 import {
   discoverCurrentPackages,
   mergeConfigWithFlow,
@@ -42,8 +42,7 @@ export interface StagedArtifact {
   sha256: string;
 }
 
-interface StageResult {
-  exitCode: number;
+interface StagePayload {
   outDir?: string;
   artifacts?: StagedArtifact[];
 }
@@ -53,7 +52,7 @@ export default defineCommand({
   description: 'Pack the currently-committed package versions for a flow into real npm tarballs, once, for `release deliver` to ship',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<StageFlags>): Promise<StageResult> {
+    async execute(ctx: PluginContextV3, input: CLIInput<StageFlags>): Promise<CommandResult<StagePayload>> {
       const { flags } = input;
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
@@ -65,7 +64,7 @@ export default defineCommand({
       if (typeof flowResult !== 'string') {
         const msg = `release:stage ${flowResult.error}`;
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const flowName = flowResult;
 
@@ -81,7 +80,7 @@ export default defineCommand({
       if (discovered.length === 0) {
         const msg = `No packages found for flow "${flowName}"`;
         if (flags.json) { ctx.ui?.json?.({ outDir, artifacts: [] }); } else { ctx.ui?.write?.(msg); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const versionMap = new Map(discovered.map(pkg => [pkg.name, pkg.currentVersion]));
@@ -115,10 +114,11 @@ export default defineCommand({
 
       writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(artifacts, null, 2) + '\n', 'utf-8');
 
-      const result: StageResult = { exitCode: 0, outDir, artifacts };
+      const result: StagePayload = { outDir, artifacts };
       if (flags.json) {
-        ctx.ui?.json?.(result);
-        return result;
+        const response = { ok: true as const, result };
+        ctx.ui?.json?.(response);
+        return response;
       }
 
       ctx.ui?.sideBox?.({
@@ -130,7 +130,7 @@ export default defineCommand({
         status: 'success',
       });
 
-      return result;
+      return { ok: true, result };
     },
   },
 });

@@ -5,19 +5,13 @@
  * Uses TypeScript Compiler API for semantic analysis.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { analyzeTypes } from '@kb-labs/quality-core/types';
 import { CACHE_KEYS, type TypeAnalysisResult } from '@kb-labs/quality-contracts';
 import { type CheckTypesFlags } from './flags.js';
 
 // Input type with backward compatibility
 type CheckTypesInput = CheckTypesFlags & { argv?: string[] };
-
-type CheckTypesCommandResult = {
-  exitCode: number;
-  result?: TypeAnalysisResult;
-  meta?: Record<string, unknown>;
-};
 
 export default defineCommand({
   id: 'quality:check-types',
@@ -27,7 +21,7 @@ export default defineCommand({
     async execute(
       ctx: PluginContextV3,
       input: CheckTypesInput
-    ): Promise<CheckTypesCommandResult> {
+    ): Promise<CommandResult<TypeAnalysisResult>> {
       const { ui, platform } = ctx;
 
       // V3: Flags may come wrapped in input.flags or passed directly
@@ -42,7 +36,9 @@ export default defineCommand({
         const cached = await platform.cache.get<TypeAnalysisResult>(cacheKey);
         if (cached) {
           outputTypeAnalysis({ ...cached, cached: true }, flags, ui);
-          return { exitCode: cached.totalErrors > 0 ? 1 : 0, result: cached };
+          return cached.totalErrors > 0
+            ? { ok: false, error: 'Type errors found', result: cached }
+            : { ok: true, result: cached };
         }
       }
 
@@ -67,11 +63,9 @@ export default defineCommand({
       // Output results
       outputTypeAnalysis({ ...result, cached: false }, flags, ui);
 
-      return {
-        exitCode: result.totalErrors > 0 ? 1 : 0,
-        result,
-        meta: { cached: false },
-      };
+      return result.totalErrors > 0
+        ? { ok: false, error: 'Type errors found', result, meta: { cached: false } }
+        : { ok: true, result, meta: { cached: false } };
     },
   },
 });

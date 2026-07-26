@@ -1,8 +1,9 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { QueryRequestSchema, type AskFlags, type AgentResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-type AskResult = { exitCode: number; result?: AgentResponse };
+type AskResult = CommandResult<AgentResponse>;
 
 export default defineCommand<unknown, CLIInput<AskFlags>, AgentResponse>({
   id: 'mind:ask',
@@ -25,7 +26,7 @@ export default defineCommand<unknown, CLIInput<AskFlags>, AgentResponse>({
 
         if (json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
 
         const head = res.abstained
@@ -42,10 +43,10 @@ export default defineCommand<unknown, CLIInput<AskFlags>, AgentResponse>({
             },
           ],
         });
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

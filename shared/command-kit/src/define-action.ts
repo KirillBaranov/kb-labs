@@ -59,8 +59,8 @@ export interface ActionDefinition<TConfig = unknown, TInput = unknown> {
  *       // Send email...
  *
  *       return {
- *         data: { sent: true, messageId: '123' },
- *         exitCode: 0,
+ *         ok: true,
+ *         result: { sent: true, messageId: '123' },
  *       };
  *     }
  *   }

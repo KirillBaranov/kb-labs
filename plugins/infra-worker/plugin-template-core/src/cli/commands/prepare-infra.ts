@@ -106,7 +106,7 @@ export default defineCommand<unknown, PrepareInfraInput, PrepareInfraResult>({
       });
 
       return {
-        exitCode: 0,
+        ok: true,
         result,
       };
     },

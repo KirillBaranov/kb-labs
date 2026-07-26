@@ -28,6 +28,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/core-retry": "workspace:*",
     "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-registry": "workspace:*",

@@ -246,7 +246,10 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
         rawLineNo++;
         process.send!({
           type: 'log', requestId,
-          entry: { level: stream === 'stderr' ? 'error' : 'info', message: line, stream, lineNo: rawLineNo, timestamp: new Date().toISOString() },
+          // stderr is not equivalent to a failed execution. Discovery and
+          // other CLI tooling intentionally emit diagnostics on stderr while
+          // exiting successfully; the result/exit code remains authoritative.
+          entry: { level: stream === 'stderr' ? 'warn' : 'info', message: line, stream, lineNo: rawLineNo, timestamp: new Date().toISOString() },
         } satisfies LogWorkerMessage);
       }
     };

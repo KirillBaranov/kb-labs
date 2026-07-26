@@ -24,17 +24,7 @@ interface PlanFlags {
   json?: boolean;
 }
 
-type ReleasePlanResult = CommandResult & {
-  plan?: {
-    strategy: string;
-    registry: string;
-    packages: Array<{
-      name: string;
-      currentVersion?: string;
-      nextVersion?: string;
-    }>;
-  };
-};
+type ReleasePlanResult = CommandResult<unknown>;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -162,7 +152,7 @@ export default defineCommand({
         });
       }
 
-      return { exitCode: 0, plan };
+      return { ok: true, result: { plan } };
     },
   },
 });
