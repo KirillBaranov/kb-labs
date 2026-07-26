@@ -23,7 +23,7 @@ describe('mind sync delete — destructive confirmation gate', () => {
   it('errors when no paths are given (before any confirmation)', async () => {
     const { ctx, calls } = captureCtx();
     const res = await syncDeleteCmd.execute(ctx, mockCLIInput({ argv: [], flags: { index: 'code', yes: false } }));
-    expect(res.exitCode).toBe(1);
+    expect(res.ok).toBe(false);
     expect(calls.error).toHaveLength(1);
   });
 
@@ -33,8 +33,9 @@ describe('mind sync delete — destructive confirmation gate', () => {
       ctx,
       mockCLIInput({ argv: ['src/a.ts', 'src/b.ts'], flags: { index: 'code', yes: false, json: false } }),
     );
-    expect(res.exitCode).toBe(1);
-    expect(res.result).toBeUndefined();
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error('expected command failure');
+    expect(res.error).toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
     expect(calls.warn).toHaveLength(1);
     expect(calls.warn[0]).toContain('--yes');
   });

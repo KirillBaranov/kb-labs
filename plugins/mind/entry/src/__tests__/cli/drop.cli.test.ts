@@ -25,11 +25,12 @@ function captureCtx() {
 }
 
 describe('mind drop — destructive confirmation gate', () => {
-  it('blocks (exit 1) and warns without --yes — no result, no execution', async () => {
+  it('blocks with a typed failure and warns without --yes — no execution', async () => {
     const { ctx, calls } = captureCtx();
     const res = await dropCmd.execute(ctx, mockCLIInput({ flags: { index: 'code', yes: false, json: false } }));
-    expect(res.exitCode).toBe(1);
-    expect(res.result).toBeUndefined();
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error('expected command failure');
+    expect(res.error).toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
     expect(calls.warn).toHaveLength(1);
     expect(calls.warn[0]).toContain('--yes');
   });
@@ -37,7 +38,9 @@ describe('mind drop — destructive confirmation gate', () => {
   it('emits a machine-readable confirmationRequired signal in --json mode', async () => {
     const { ctx, calls } = captureCtx();
     const res = await dropCmd.execute(ctx, mockCLIInput({ flags: { index: 'code', yes: false, json: true } }));
-    expect(res.exitCode).toBe(1);
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error('expected command failure');
+    expect(res.error).toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
     expect(calls.json).toHaveLength(1);
     expect(calls.json[0]).toMatchObject({
       confirmationRequired: true,
