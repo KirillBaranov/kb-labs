@@ -12,7 +12,7 @@
  *   - HTTP 502 / 504 – upstream gateway errors (common behind a proxy)
  */
 
-import { classifyFailure } from '@kb-labs/core-retry';
+import { classifyFailure } from '@kb-labs/sdk/adapters';
 
 /** Options for {@link withRetry}. */
 export interface RetryOptions {

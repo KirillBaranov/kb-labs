@@ -14,6 +14,13 @@
  * this barrel rather than importing from core directly.
  */
 
+// Shared retry classification facade for application-level adapters.
+export {
+  classifyFailure,
+  decideRetry,
+  DEFAULT_TRANSIENT_RETRY_POLICY,
+} from '@kb-labs/core-retry';
+
 // Adapter manifest metadata
 export type {
   AdapterManifest,

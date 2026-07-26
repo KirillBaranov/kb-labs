@@ -557,9 +557,6 @@ importers:
 
   adapters/qdrant:
     dependencies:
-      '@kb-labs/core-retry':
-        specifier: workspace:*
-        version: link:../../core/retry
       '@qdrant/js-client-rest':
         specifier: ^1.12.0
         version: 1.17.0(typescript@5.9.3)
@@ -801,10 +798,6 @@ importers:
         version: 3.2.6(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.10)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.49.0)(tsx@4.21.0)(yaml@2.8.3)
 
   adapters/transport:
-    dependencies:
-      '@kb-labs/core-retry':
-        specifier: workspace:*
-        version: link:../../core/retry
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -5523,6 +5516,9 @@ importers:
 
   sdk/sdk:
     dependencies:
+      '@kb-labs/core-retry':
+        specifier: workspace:*
+        version: link:../../core/retry
       zod:
         specifier: ^3.25.76
         version: 3.25.76

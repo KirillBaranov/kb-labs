@@ -26,7 +26,7 @@
  */
 
 import type { AdapterCall, AdapterResponse } from "./types.js";
-import { classifyFailure } from '@kb-labs/core-retry';
+import { classifyFailure } from '@kb-labs/sdk/adapters/infra';
 
 /**
  * Transport configuration options.
