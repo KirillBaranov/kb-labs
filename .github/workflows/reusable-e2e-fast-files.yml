@@ -34,6 +34,13 @@ jobs:
           (cd tools/kb-dev && CGO_ENABLED=0 go build -o kb-dev . && chmod +x kb-dev)
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Restore fast E2E build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: fast-e2e-devkit-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            fast-e2e-devkit-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
       - name: Build packages once
         run: pnpm build
       - name: Pack packages once
