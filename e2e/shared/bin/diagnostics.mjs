@@ -141,6 +141,19 @@ export function createDiagnosticCollector(options = {}) {
     await writeText(path.join(rootDir, 'status', `kb-dev-status-${kind}.json`), result.stdout || result.stderr)
     if (result.code !== 0) collectionErrors.push({ source: `status:${kind}`, message: result.stderr || `exit ${result.code}` })
 
+    const diagnose = await runRaw(kbDev, ['diagnose', '--json'], `${kind}-kb-dev-diagnose`)
+    await writeText(path.join(rootDir, 'status', `kb-dev-diagnose-${kind}.json`), diagnose.stdout || diagnose.stderr)
+    if (diagnose.code !== 0) collectionErrors.push({ source: `diagnose:${kind}`, message: diagnose.stderr || `exit ${diagnose.code}` })
+    try {
+      const diagnosticPayload = JSON.parse(diagnose.stdout)
+      if (diagnosticPayload.config) {
+        await writeText(path.join(rootDir, 'config', `effective-config-${kind}.json`), JSON.stringify(diagnosticPayload.config, null, 2))
+      }
+    } catch {
+      // The complete diagnose output above remains available for partial or
+      // legacy kb-dev implementations that do not emit the config section.
+    }
+
     let status
     try { status = JSON.parse(result.stdout) } catch { status = null }
     if (status) latestStatus = status

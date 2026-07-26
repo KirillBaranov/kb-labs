@@ -20,3 +20,24 @@ func TestRedactDiagnosticLines(t *testing.T) {
 		t.Fatalf("redacted %d values, want 4: %s", strings.Count(joined, "[REDACTED]"), joined)
 	}
 }
+
+func TestSanitizedConfigRedactsSensitiveValues(t *testing.T) {
+	got := sanitizedConfig(map[string]any{
+		"services": map[string]any{
+			"gateway": map[string]any{
+				"env": map[string]any{
+					"ADMIN_PASSWORD": "secret",
+					"PUBLIC_MODE":    "enabled",
+				},
+			},
+		},
+	})
+	services := got["services"].(map[string]any)
+	env := services["gateway"].(map[string]any)["env"].(map[string]any)
+	if env["ADMIN_PASSWORD"] != "[REDACTED]" {
+		t.Fatalf("password was not redacted: %#v", env)
+	}
+	if env["PUBLIC_MODE"] != "enabled" {
+		t.Fatalf("non-sensitive config was changed: %#v", env)
+	}
+}

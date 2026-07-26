@@ -797,6 +797,11 @@ func (m *Manager) RootDir() string {
 	return m.rootDir
 }
 
+// ProjectDir returns the project root whose runtime config is used by services.
+func (m *Manager) ProjectDir() string {
+	return m.projectDir
+}
+
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
