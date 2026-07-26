@@ -144,6 +144,7 @@ tools/kb-dev/kb-dev
 tools/kb-deploy/kb-deploy
 tools/kb-devkit/kb-devkit
 tools/kb-monitor/kb-monitor
+tools/kb-env/kb-env
 
 # Module Federation dev-mode type cache (Rspack)
 **/.__mf__temp/

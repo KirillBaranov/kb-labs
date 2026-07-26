@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/adapters-fs/secure-storage
+ * @module @kb-labs/adapters-diskio/secure-storage
  * SecureStorageAdapter - IStorage wrapper with permission validation.
  *
  * Design Philosophy: Validation-only security (like fs-shim)
@@ -10,8 +10,8 @@
  *
  * @example
  * ```typescript
- * import { createAdapter } from '@kb-labs/adapters-fs';
- * import { SecureStorageAdapter } from '@kb-labs/adapters-fs/secure-storage';
+ * import { createAdapter } from '@kb-labs/adapters-diskio';
+ * import { SecureStorageAdapter } from '@kb-labs/adapters-diskio/secure-storage';
  *
  * const base = createAdapter({ baseDir: '/var/data' });
  * const secure = new SecureStorageAdapter(base, {

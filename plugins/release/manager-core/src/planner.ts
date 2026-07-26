@@ -106,6 +106,7 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
     ...(flow.packages !== undefined && { packages: flow.packages }),
     ...(flow.versioningStrategy && { versioningStrategy: flow.versioningStrategy }),
     ...(flow.checks !== undefined && { checks: flow.checks }),
+    ...(flow.build !== undefined && { build: flow.build }),
   };
 }
 

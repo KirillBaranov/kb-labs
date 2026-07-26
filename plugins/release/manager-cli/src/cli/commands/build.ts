@@ -7,6 +7,7 @@ import { defineCommand, type CLIInput, type CommandResult, type PluginContextV3,
 import {
   planRelease,
   buildPackages,
+  mergeConfigWithFlow,
   type ReleaseConfig,
   type BuildResult,
 } from '@kb-labs/release-manager-core';
@@ -80,15 +81,36 @@ export default defineCommand({
         return { exitCode: 0, ok: true, failed: [], results: [] };
       }
 
-      const buildLoader = useLoader(`Building ${plan.packages.length} package(s)...`);
+      const effectiveConfig = flags.flow ? mergeConfigWithFlow(config, flags.flow) : config;
+      const buildScript = effectiveConfig.build?.script;
+
+      const buildLoader = useLoader(
+        buildScript
+          ? `Running "pnpm run ${buildScript}"...`
+          : `Building ${plan.packages.length} package(s)...`,
+      );
       buildLoader.start();
 
-      const results = await buildPackages(plan.packages, {
-        logger: ctx.platform?.logger,
-        onProgress: (name, result) => {
-          ctx.platform?.logger?.info?.(`Built ${name}`, { ok: result.success, ms: result.durationMs });
-        },
-      });
+      const results: BuildResult[] = buildScript
+        ? await (async () => {
+            const startedAt = Date.now();
+            const execResult = await ctx.api.shell.exec('pnpm', ['run', buildScript], {
+              cwd: repoRoot,
+              timeout: 20 * 60 * 1000,
+            });
+            return [{
+              name: `pnpm run ${buildScript}`,
+              success: execResult.ok,
+              durationMs: Date.now() - startedAt,
+              error: execResult.ok ? undefined : (execResult.stderr || execResult.stdout).trim().split('\n').slice(-30).join('\n'),
+            }];
+          })()
+        : await buildPackages(plan.packages, {
+            logger: ctx.platform?.logger,
+            onProgress: (name, result) => {
+              ctx.platform?.logger?.info?.(`Built ${name}`, { ok: result.success, ms: result.durationMs });
+            },
+          });
 
       const ok = results.every(r => r.success);
       const failed = results.filter(r => !r.success).map(r => r.name);
