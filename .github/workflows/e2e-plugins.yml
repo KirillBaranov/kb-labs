@@ -75,6 +75,7 @@ jobs:
       health-steps: 60
       playwright-dir: e2e/${{ matrix.suite }}
       compose-project: kb-e2e-plugins-${{ matrix.suite }}
+      fast-build: true
     permissions:
       contents: read
 

@@ -41,6 +41,10 @@ on:
         description: 'Optional immutable build bundle produced by a prepare job'
         type: string
         default: ''
+      fast-build:
+        description: 'Build Docker images directly without shared Buildx layer caches'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -167,7 +171,7 @@ jobs:
       # setup-buildx-action (~20% flake rate on shared GitHub runners).
       # Retries 3× so a transient 429/503 from Docker Hub doesn't fail the job.
       - name: Pre-pull BuildKit image
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
         run: |
           for i in 1 2 3; do
             docker pull moby/buildkit:buildx-stable-1 && break
@@ -176,12 +180,12 @@ jobs:
           done
 
       - name: Set up Docker Buildx
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
         uses: docker/setup-buildx-action@v3
         timeout-minutes: 5
 
       - name: Cache Docker layers (platform)
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache-platform
@@ -189,7 +193,7 @@ jobs:
           restore-keys: buildx-platform-
 
       - name: Cache Docker layers (publisher)
-        if: inputs.prebuilt-artifact == ''
+        if: inputs.prebuilt-artifact == '' && !inputs.fast-build
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache-publisher
@@ -199,23 +203,31 @@ jobs:
       - name: Build platform image
         if: inputs.prebuilt-artifact == ''
         run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-platform \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
-            --load \
-            -t kb-e2e-ci-platform:latest \
-            -f e2e/platform/Dockerfile .
+          if [ "${{ inputs.fast-build }}" = "true" ]; then
+            docker build -t kb-e2e-ci-platform:latest -f e2e/platform/Dockerfile .
+          else
+            docker buildx build \
+              --cache-from type=local,src=/tmp/.buildx-cache-platform \
+              --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+              --load \
+              -t kb-e2e-ci-platform:latest \
+              -f e2e/platform/Dockerfile .
+          fi
 
       - name: Build publisher image
         if: inputs.prebuilt-artifact == ''
         run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
-            --load \
-            -t kb-e2e-ci-publisher:latest \
-            -f e2e/publisher/Dockerfile \
-            e2e/
+          if [ "${{ inputs.fast-build }}" = "true" ]; then
+            docker build -t kb-e2e-ci-publisher:latest -f e2e/publisher/Dockerfile e2e/
+          else
+            docker buildx build \
+              --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+              --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+              --load \
+              -t kb-e2e-ci-publisher:latest \
+              -f e2e/publisher/Dockerfile \
+              e2e/
+          fi
 
       # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
 
