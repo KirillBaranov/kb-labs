@@ -355,6 +355,7 @@ jobs:
       # more than it itself holds, and under-granting here causes the
       # entire run to fail at startup (0 jobs) before anything executes.
       contents: write
+      actions: read
 
   e2e-auth:
     needs: [build]
