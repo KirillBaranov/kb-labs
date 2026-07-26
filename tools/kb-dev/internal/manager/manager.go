@@ -678,11 +678,12 @@ func (m *Manager) Status() *StatusResult {
 	for id, svc := range m.services {
 		state := svc.GetState()
 		ss := ServiceStatus{
-			State:  state.String(),
-			Port:   svc.Config.Port,
-			URL:    serviceAddress(svc.Config),
-			Deps:   svc.Config.DependsOn,
-			Detail: svc.GetDetail(),
+			State:   state.String(),
+			Port:    svc.Config.Port,
+			URL:     serviceAddress(svc.Config),
+			Deps:    svc.Config.DependsOn,
+			Detail:  svc.GetDetail(),
+			LogFile: logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), id),
 		}
 
 		// Resolved dependency states.

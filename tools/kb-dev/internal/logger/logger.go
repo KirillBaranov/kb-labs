@@ -50,7 +50,7 @@ func Tail(logsDir, service string, n int) ([]string, error) {
 		return nil, fmt.Errorf("read log: %w", err)
 	}
 
-	if len(lines) <= n {
+	if n <= 0 || len(lines) <= n {
 		return lines, nil
 	}
 	return lines[len(lines)-n:], nil

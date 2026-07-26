@@ -372,6 +372,27 @@ jobs:
           mkdir -p /tmp/e2e-${{ inputs.suite }}-logs
           docker compose logs --no-color > /tmp/e2e-${{ inputs.suite }}-logs/all-services.log 2>&1 || true
           docker compose ps > /tmp/e2e-${{ inputs.suite }}-logs/ps.txt 2>&1 || true
+          docker compose ps -a --format json > /tmp/e2e-${{ inputs.suite }}-logs/compose-ps.json 2>&1 || true
+          docker compose ps -a -q | xargs -r docker inspect > /tmp/e2e-${{ inputs.suite }}-logs/compose-inspect.json 2>&1 || true
+          docker stats --no-stream --all --format '{{json .}}' > /tmp/e2e-${{ inputs.suite }}-logs/docker-stats.jsonl 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev status --json' > /tmp/e2e-${{ inputs.suite }}-logs/kb-dev-status.json 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev diagnose --json' > /tmp/e2e-${{ inputs.suite }}-logs/kb-dev-diagnose.json 2>&1 || true
+          for service in gateway rest-api workflow state-daemon marketplace marketplace-registry mcp-daemon; do
+            docker compose exec -T platform sh -c "kb-dev logs $service --all" \
+              > "/tmp/e2e-${{ inputs.suite }}-logs/$service.log" 2>&1 || true
+          done
+          for endpoint in \
+            gateway:http://localhost:4000 \
+            rest-api:http://localhost:5050 \
+            workflow:http://localhost:7778 \
+            state:http://localhost:7777 \
+            marketplace:http://localhost:5070 \
+            registry:http://localhost:5071 \
+            mcp:http://localhost:7779; do
+            name="${endpoint%%:*}"
+            url="${endpoint#*:}"
+            curl -sS --max-time 5 "$url/metrics" > "/tmp/e2e-${{ inputs.suite }}-logs/$name.prom" 2>&1 || true
+          done
 
       - name: Upload platform logs
         if: always()
@@ -396,6 +417,15 @@ jobs:
         with:
           name: playwright-report-${{ inputs.artifact-prefix }}-${{ github.run_id }}
           path: ${{ inputs.report-dir }}
+          retention-days: 14
+
+      - name: Upload E2E diagnostic dossiers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics-${{ inputs.artifact-prefix }}-${{ github.run_id }}
+          path: ${{ inputs.report-dir }}/diagnostics/
+          if-no-files-found: ignore
           retention-days: 14
 
       # ── Cleanup ──────────────────────────────────────────────────────────────
