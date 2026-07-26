@@ -134,6 +134,10 @@ export const qaCiEvidenceCaptureFlags = defineFlags({
     description: 'Path for the immutable dossier JSON',
     default: '.kb/qa/ci/dossier.json',
   },
+  excludeJob: {
+    type: 'string',
+    description: 'Comma-separated job names to exclude from evidence (for example, the collector job itself)',
+  },
   json: {
     type: 'boolean',
     description: 'Output the captured dossier as JSON',

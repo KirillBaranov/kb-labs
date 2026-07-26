@@ -161,7 +161,7 @@ jobs:
       - name: Capture CI evidence dossier
         env:
           GH_TOKEN: ${{ github.token }}
-        run: pnpm kb qa ci evidence capture --output .kb/qa/ci/dossier.json
+        run: pnpm kb qa ci evidence capture --exclude-job "Flaky history" --output .kb/qa/ci/dossier.json
 
       - name: Upload CI evidence dossier
         uses: actions/upload-artifact@v4

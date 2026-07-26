@@ -20,11 +20,16 @@ export default defineCommand<unknown, CLIInput<QaCiEvidenceCaptureFlags>, { exit
       try {
         const cwd = ctx.cwd ?? process.cwd();
         const provider = new GithubActionsProvider(ctx.api.shell, cwd);
+        const excludeJobNames = input.flags.excludeJob
+          ?.split(',')
+          .map(name => name.trim())
+          .filter(Boolean);
         const dossier = await provider.captureRun({
           repository,
           runId,
           workflowPath: process.env.GITHUB_WORKFLOW_REF?.split('@')[0],
           workflowSha: process.env.GITHUB_SHA,
+          excludeJobNames,
         });
         const output = resolve(cwd, input.flags.output);
         mkdirSync(dirname(output), { recursive: true });

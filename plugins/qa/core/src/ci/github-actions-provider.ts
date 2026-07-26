@@ -35,19 +35,34 @@ type GithubStep = NonNullable<GithubJob['steps']>[number];
 interface GithubRunListEntry { databaseId: number; }
 
 export interface CiProvider {
-  captureRun(input: { repository: string; runId: string; workflowPath?: string; workflowSha?: string }): Promise<CiRunDossier>;
+  captureRun(input: {
+    repository: string;
+    runId: string;
+    workflowPath?: string;
+    workflowSha?: string;
+    excludeJobNames?: string[];
+  }): Promise<CiRunDossier>;
 }
 
 /** GitHub Actions adapter. The only external requirement is the GitHub CLI already present on Actions runners. */
 export class GithubActionsProvider implements CiProvider {
   constructor(private readonly shell: ShellAPI, private readonly cwd: string) {}
 
-  async captureRun(input: { repository: string; runId: string; workflowPath?: string; workflowSha?: string }): Promise<CiRunDossier> {
+  async captureRun(input: {
+    repository: string;
+    runId: string;
+    workflowPath?: string;
+    workflowSha?: string;
+    excludeJobNames?: string[];
+  }): Promise<CiRunDossier> {
     const run = await this.api<GithubRun>(`repos/${input.repository}/actions/runs/${input.runId}`);
     const jobsResponse = await this.api<GithubJobsResponse>(`repos/${input.repository}/actions/runs/${input.runId}/jobs?per_page=100`);
     const failedLog = await this.getFailedLog(input.repository, input.runId);
-    const jobs = jobsResponse.jobs.map(job => this.toEvidence(job, failedLog));
-    const complete = jobs.every(job => job.conclusion !== null);
+    const excludedJobs = new Set(input.excludeJobNames ?? []);
+    const jobs = jobsResponse.jobs
+      .filter(job => !excludedJobs.has(job.name))
+      .map(job => this.toEvidence(job, failedLog));
+    const complete = jobs.length > 0 && jobs.every(job => job.conclusion !== null);
     return {
       schemaVersion: 1,
       provider: 'github-actions',
@@ -135,7 +150,7 @@ export class GithubActionsProvider implements CiProvider {
 function duration(startedAt: string | null, completedAt: string | null): number | null {
   if (!startedAt || !completedAt) {return null;}
   const value = Date.parse(completedAt) - Date.parse(startedAt);
-  return Number.isFinite(value) ? value : null;
+  return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 function classifyFailure(stepName: string, failedLog?: string): CiFailureEvidence {
