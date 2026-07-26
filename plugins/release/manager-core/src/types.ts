@@ -155,6 +155,21 @@ export interface FlowConfig {
    * back into a flow (`resolveFlowFromTag`) — see `./tag.ts`.
    */
   tagPattern?: string;
+  /** Replaces global build config for this flow. */
+  build?: BuildConfig;
+}
+
+export interface BuildConfig {
+  /**
+   * Name of a script in the repo root package.json to build all packages
+   * in the flow as one unit (run as `pnpm run <script>`, e.g.
+   * "build:affected"). Replaces the built-in per-package tsup build
+   * entirely — use this if you already have a build tool (topological
+   * ordering, caching, etc.) and don't want the release pipeline
+   * reimplementing it. Exit code 0 = success. When unset, falls back to
+   * the built-in safe-build strategy (`buildPackages` in build.ts).
+   */
+  script?: string;
 }
 
 export interface PackagesFilter {
@@ -204,6 +219,8 @@ export interface ReleaseConfig {
     type?: 'pnpm' | 'npm' | 'yarn';
     root?: string;
   };
+  /** Global build config — overridable per flow. See BuildConfig. */
+  build?: BuildConfig;
   /** Filter which packages are discovered and released. */
   packages?: PackagesFilter;
   /** Per-scope overrides — packages filter merged with global, checks replace global entirely. */

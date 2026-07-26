@@ -234,6 +234,9 @@
                   "@kb-labs/platform-client"
                 ]
               },
+              "build": {
+                "script": "build:affected"
+              },
               "checks": [
                 {
                   "id": "dist-exports",
@@ -271,6 +274,9 @@
                   "@kb-labs/adapters-fs",
                   "@kb-labs/platform-client"
                 ]
+              },
+              "build": {
+                "script": "build:affected"
               },
               "checks": [
                 {
@@ -673,6 +679,15 @@
         "trending": true,
         "description": "New source files must have a corresponding test file"
       }
-    ]
+    ],
+    "ci": {
+      "provider": "github-actions",
+      "repository": "kb-labs-team/kb-labs",
+      "dataBranch": "ci-data",
+      "artifactRetentionDays": 90,
+      "workflows": [
+        "e2e-platform.yml"
+      ]
+    }
   }
 }

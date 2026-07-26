@@ -10,10 +10,16 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import type { BuildResult, PackageVersion, PluginLogger } from './types';
+import { topoSortForBuild } from './dep-order';
 
 /**
  * Build all packages in a plan using safe build strategy.
  * Stops on first failure.
+ *
+ * Packages are topologically sorted first so an intra-release dependency
+ * (e.g. @kb-labs/sdk) always builds before its dependants — otherwise a
+ * dependant can fail to resolve the dependency's subpath exports in a
+ * fresh worktree where nothing has a pre-existing dist/ yet.
  */
 export async function buildPackages(
   packages: PackageVersion[],
@@ -23,8 +29,9 @@ export async function buildPackages(
   },
 ): Promise<BuildResult[]> {
   const results: BuildResult[] = [];
+  const ordered = topoSortForBuild(packages);
 
-  for (const pkg of packages) {
+  for (const pkg of ordered) {
     options?.logger?.info?.(`Building ${pkg.name}...`);
     const result = await runSafeBuild(pkg.path, pkg.name);
     results.push({ ...result, name: pkg.name });
