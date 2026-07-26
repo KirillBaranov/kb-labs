@@ -5,18 +5,6 @@ import { finished } from 'node:stream/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 
-const DEFAULT_SERVICES = ['gateway', 'rest-api', 'workflow', 'state-daemon', 'marketplace', 'marketplace-registry', 'mcp-daemon']
-
-const METRIC_URLS = {
-  gateway: process.env.GATEWAY_URL,
-  'rest-api': process.env.REST_URL,
-  workflow: process.env.WORKFLOW_URL,
-  state: process.env.STATE_URL,
-  marketplace: process.env.MARKETPLACE_URL,
-  'marketplace-registry': process.env.REGISTRY_URL,
-  mcp: process.env.MCP_URL,
-}
-
 const SECRET_PATTERNS = [
   /(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+/gi,
   /((?:password|passwd|secret|token|api[_-]?key|client[_-]?secret)\s*[:=]\s*)[^\s,;]+/gi,
@@ -68,6 +56,7 @@ export function createDiagnosticCollector(options = {}) {
   const metricSamples = []
   const collectionErrors = []
   let latestStatus
+  let latestDiagnose
   let timer
   let startedAt
   let finalized = false
@@ -146,6 +135,7 @@ export function createDiagnosticCollector(options = {}) {
     if (diagnose.code !== 0) collectionErrors.push({ source: `diagnose:${kind}`, message: diagnose.stderr || `exit ${diagnose.code}` })
     try {
       const diagnosticPayload = JSON.parse(diagnose.stdout)
+      latestDiagnose = diagnosticPayload
       if (diagnosticPayload.config) {
         await writeText(path.join(rootDir, 'config', `effective-config-${kind}.json`), JSON.stringify(diagnosticPayload.config, null, 2))
       }
@@ -157,8 +147,7 @@ export function createDiagnosticCollector(options = {}) {
     let status
     try { status = JSON.parse(result.stdout) } catch { status = null }
     if (status) latestStatus = status
-    const services = Object.keys(status?.services ?? {})
-    const serviceNames = services.length > 0 ? services : DEFAULT_SERVICES
+    const serviceNames = configuredServiceNames(status, latestDiagnose)
     await Promise.all(serviceNames.map(async service => {
       const logs = await runRaw(kbDev, ['logs', service, '--all'], `${kind}-logs-${service}`)
       await writeText(path.join(rootDir, 'services', `${service}-${kind}.log`), logs.stdout || logs.stderr)
@@ -187,9 +176,8 @@ export function createDiagnosticCollector(options = {}) {
     const capturedAt = new Date().toISOString()
     const values = {}
     await mkdir(path.join(rootDir, 'metrics'), { recursive: true })
-    await Promise.all(Object.entries(METRIC_URLS).map(async ([service, baseUrl]) => {
-      if (!baseUrl) return
-      const url = `${baseUrl.replace(/\/$/, '')}/metrics`
+    await Promise.all(Object.entries(metricTargets(latestStatus, latestDiagnose)).map(async ([service, baseUrl]) => {
+      const url = baseUrl.endsWith('/metrics') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/metrics`
       try {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 3000)
@@ -205,7 +193,7 @@ export function createDiagnosticCollector(options = {}) {
           metrics: parsePrometheusSummary(redacted),
         }
         if (kind !== 'timeline') await writeText(path.join(rootDir, 'metrics', `${service}-${kind}.prom`), redacted)
-        if (!response.ok) collectionErrors.push({ source: `metrics:${service}`, message: `HTTP ${response.status}` })
+        if (!response.ok && response.status !== 404) collectionErrors.push({ source: `metrics:${service}`, message: `HTTP ${response.status}` })
       } catch (error) {
         values[service] = { ok: false, url, error: error?.message ?? String(error) }
         collectionErrors.push({ source: `metrics:${service}`, message: error?.message ?? String(error) })
@@ -269,6 +257,29 @@ export function createDiagnosticCollector(options = {}) {
   }
 
   return { runId, rootDir, init, runCommand, snapshot, finalize }
+}
+
+function configuredServiceNames(status, diagnose) {
+  return [...new Set([
+    ...Object.keys(status?.services ?? {}),
+    ...Object.keys(diagnose?.config?.resolved?.services ?? {}),
+  ])].sort()
+}
+
+function metricTargets(status, diagnose) {
+  const targets = {}
+  for (const [service, snapshot] of Object.entries(status?.services ?? {})) {
+    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = snapshot.url
+  }
+  for (const [service, snapshot] of Object.entries(diagnose?.config?.resolved?.services ?? {})) {
+    if (targets[service]) continue
+    if (typeof snapshot.url === 'string' && /^https?:\/\//i.test(snapshot.url)) targets[service] = snapshot.url
+  }
+  for (const entry of String(process.env.E2E_DIAGNOSTICS_METRIC_URLS ?? '').split(',')) {
+    const separator = entry.indexOf('=')
+    if (separator > 0) targets[entry.slice(0, separator).trim()] = entry.slice(separator + 1).trim()
+  }
+  return Object.fromEntries(Object.entries(targets).filter(([, url]) => url))
 }
 
 async function listEvidence(rootDir) {

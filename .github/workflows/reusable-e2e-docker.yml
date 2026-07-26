@@ -284,22 +284,14 @@ jobs:
           docker stats --no-stream --all --format '{{json .}}' > /tmp/e2e-logs/docker-stats.jsonl 2>&1 || true
           docker compose exec -T platform sh -c 'kb-dev status --json' > /tmp/e2e-logs/kb-dev-status.json 2>&1 || true
           docker compose exec -T platform sh -c 'kb-dev diagnose --json' > /tmp/e2e-logs/kb-dev-diagnose.json 2>&1 || true
-          for service in gateway rest-api workflow state-daemon marketplace marketplace-registry mcp-daemon; do
+          for service in $(jq -r '.services // {} | keys[]' /tmp/e2e-logs/kb-dev-status.json 2>/dev/null || true); do
             docker compose exec -T platform sh -c "kb-dev logs $service --all" \
               > "/tmp/e2e-logs/$service.log" 2>&1 || true
           done
-          for endpoint in \
-            gateway:http://localhost:4000 \
-            rest-api:http://localhost:5050 \
-            workflow:http://localhost:7778 \
-            state:http://localhost:7777 \
-            marketplace:http://localhost:5070 \
-            registry:http://localhost:5071 \
-            mcp:http://localhost:7779; do
-            name="${endpoint%%:*}"
-            url="${endpoint#*:}"
+          while IFS=$'\t' read -r name url; do
+            [ -n "$name" ] || continue
             curl -sS --max-time 5 "$url/metrics" > "/tmp/e2e-logs/$name.prom" 2>&1 || true
-          done
+          done < <(jq -r '.services // {} | to_entries[] | select((.value.url // "") | startswith("http")) | [.key, .value.url] | @tsv' /tmp/e2e-logs/kb-dev-status.json 2>/dev/null || true)
           find e2e -path '*/report/diagnostics/*' -type f -print > /tmp/e2e-logs/diagnostic-files.txt 2>&1 || true
           docker compose exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' \
             > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
