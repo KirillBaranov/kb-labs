@@ -5,10 +5,23 @@ import { computeSuites } from './affected-plugin-e2e.mjs';
 
 test('empty or workflow-only diff does not invent a plugin suite', () => {
   assert.deepEqual(computeSuites(), []);
-  assert.deepEqual(
-    computeSuites({ changedFiles: ['.github/workflows/e2e-plugins.yml'] }),
-    [],
-  );
+});
+
+test('global CI and E2E infrastructure changes select every plugin suite', () => {
+  for (const changedFile of [
+    '.github/workflows/e2e-plugins.yml',
+    'e2e/shared/fixtures.ts',
+    'e2e/docker-compose.yml',
+    'scripts/ci/affected-plugin-e2e.mjs',
+    'pnpm-lock.yaml',
+  ]) {
+    assert.deepEqual(computeSuites({ changedFiles: [changedFile] }), [
+      'mind',
+      'workflows',
+      'marketplace',
+      'plugins',
+    ]);
+  }
 });
 
 test('direct changes in an e2e suite select that suite', () => {

@@ -79,6 +79,14 @@ function readChangedFilesFromArgs() {
 }
 
 export function computeSuites({ affected = [], changedFiles = [] } = {}) {
+  const globalInvalidator = changedFiles.some((file) =>
+    /^(\.github\/workflows\/|e2e\/(shared|platform|publisher)\/|e2e\/docker-compose[^/]*$|scripts\/ci\/|devkit\.yaml$|pnpm-lock\.yaml$)/.test(file),
+  );
+
+  if (globalInvalidator) {
+    return [...PLUGIN_E2E_SUITES];
+  }
+
   const affectedSet = new Set(affected);
   const changedSuiteDirs = new Set(
     changedFiles

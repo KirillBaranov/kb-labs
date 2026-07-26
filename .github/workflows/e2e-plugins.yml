@@ -1,4 +1,4 @@
-name: E2E Plugins (affected)
+name: Fast Plugin E2E (affected)
 
 # Per-plugin E2E matrix, gated by kb-devkit's affected engine.
 #
@@ -61,7 +61,7 @@ jobs:
         run: |
           # kb-devkit owns transitivity; the script maps affected packages → suites.
           .devkit/affected.sh > /tmp/changed-files
-          ./tools/kb-devkit/kb-devkit run build --affected --diff-only --json > /tmp/affected.json || true
+          ./tools/kb-devkit/kb-devkit run build --affected --diff-only --json > /tmp/affected.json
           OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
           echo "computed matrix: $OUT"
           echo "include=$(echo "$OUT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
@@ -97,6 +97,10 @@ jobs:
     steps:
       - name: Check outcome
         run: |
+          if [ "${{ needs.discover.result }}" != "success" ]; then
+            echo "::error::Affected-suite discovery failed; refusing to report a false green."
+            exit 1
+          fi
           if [ "${{ needs.discover.outputs.has-suites }}" != "true" ]; then
             echo "No affected plugin suites — nothing to run."
             exit 0
