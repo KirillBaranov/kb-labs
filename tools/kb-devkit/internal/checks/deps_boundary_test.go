@@ -80,6 +80,35 @@ export const x = 1;
 	}
 }
 
+func TestDepsRuleBoundary_IgnoresImportsInCommentsAndStrings(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{
+  "name": "@kb-labs/adapters-foo",
+  "devDependencies": {"@kb-labs/sdk": "workspace:*"}
+}`), 0o644); err != nil {
+		t.Fatalf("write pkg: %v", err)
+	}
+	srcDir := filepath.Join(dir, "src")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatalf("mkdir src: %v", err)
+	}
+	srcContent := `/**
+ * import { createAdapter } from '@kb-labs/adapters-blob-storage';
+ */
+const example = "import { createAdapter } from '@kb-labs/adapters-fs';";
+import { defineAdapterManifest } from '@kb-labs/sdk/adapters';
+export const x = 1;
+`
+	if err := os.WriteFile(filepath.Join(srcDir, "index.ts"), []byte(srcContent), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	pkg := workspace.Package{Name: "@kb-labs/adapters-foo", Dir: dir}
+	issues := (&DepsRule{}).Check(pkg, newBoundaryPreset())
+	if len(issues) != 0 {
+		t.Fatalf("issues = %#v, want none", issues)
+	}
+}
+
 func TestDepsRuleBoundary_AllowlistFlagsUnknownKbDep(t *testing.T) {
 	pkg := tempPackage(t, `{
 	  "name": "@kb-labs/adapters-foo",

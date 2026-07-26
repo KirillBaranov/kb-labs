@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/kb-labs/devkit/internal/config"
@@ -165,10 +164,6 @@ func checkBoundaryDeps(pkg workspace.Package, pkgName string, deps map[string]st
 	return issues
 }
 
-// importRe matches `from '...'` or `from "..."` strings in TS/JS sources.
-// We only care about @kb-labs/* specifiers, so the inner content is captured.
-var importRe = regexp.MustCompile(`from\s+['"](@kb-labs/[^'"]+)['"]`)
-
 // checkBoundaryImports walks the package source tree and reports any
 // @kb-labs/* import string that violates the allow/forbid lists.
 func checkBoundaryImports(pkg workspace.Package, pkgName string, rules config.DepsRules, checkName string) []Issue {
@@ -190,8 +185,7 @@ func checkBoundaryImports(pkg workspace.Package, pkgName string, rules config.De
 		if rerr != nil {
 			return nil
 		}
-		for _, m := range importRe.FindAllSubmatch(data, -1) {
-			spec := string(m[1])
+		for _, spec := range findKbFromImports(data) {
 			if spec == pkgName || strings.HasPrefix(spec, pkgName+"/") {
 				continue
 			}
@@ -226,6 +220,137 @@ func checkBoundaryImports(pkg workspace.Package, pkgName string, rules config.De
 		return nil
 	})
 	return issues
+}
+
+// findKbFromImports extracts package specifiers from static `from "..."`
+// clauses while ignoring comments, strings, and template literals. A regex
+// over the raw source would also match import examples in JSDoc comments.
+func findKbFromImports(data []byte) []string {
+	var specs []string
+
+	for i := 0; i < len(data); {
+		switch {
+		case data[i] == '/' && i+1 < len(data) && data[i+1] == '/':
+			i = skipLineComment(data, i+2)
+		case data[i] == '/' && i+1 < len(data) && data[i+1] == '*':
+			i = skipBlockComment(data, i+2)
+		case data[i] == '\'' || data[i] == '"':
+			i = skipQuotedString(data, i)
+		case data[i] == '`':
+			i = skipTemplateLiteral(data, i)
+		case isIdentifierStart(data[i]):
+			start := i
+			i++
+			for i < len(data) && isIdentifierPart(data[i]) {
+				i++
+			}
+			if string(data[start:i]) != "from" {
+				continue
+			}
+
+			i = skipWhitespaceAndComments(data, i)
+			if i >= len(data) || (data[i] != '\'' && data[i] != '"') {
+				continue
+			}
+			spec, next := readQuotedString(data, i)
+			i = next
+			if strings.HasPrefix(spec, "@kb-labs/") {
+				specs = append(specs, spec)
+			}
+		default:
+			i++
+		}
+	}
+
+	return specs
+}
+
+func isIdentifierStart(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b == '$'
+}
+
+func isIdentifierPart(b byte) bool {
+	return isIdentifierStart(b) || (b >= '0' && b <= '9')
+}
+
+func skipWhitespaceAndComments(data []byte, i int) int {
+	for i < len(data) {
+		if data[i] == ' ' || data[i] == '\t' || data[i] == '\r' || data[i] == '\n' {
+			i++
+			continue
+		}
+		if data[i] == '/' && i+1 < len(data) && data[i+1] == '/' {
+			i = skipLineComment(data, i+2)
+			continue
+		}
+		if data[i] == '/' && i+1 < len(data) && data[i+1] == '*' {
+			i = skipBlockComment(data, i+2)
+			continue
+		}
+		break
+	}
+	return i
+}
+
+func skipLineComment(data []byte, i int) int {
+	for i < len(data) && data[i] != '\n' {
+		i++
+	}
+	return i
+}
+
+func skipBlockComment(data []byte, i int) int {
+	for i+1 < len(data) {
+		if data[i] == '*' && data[i+1] == '/' {
+			return i + 2
+		}
+		i++
+	}
+	return len(data)
+}
+
+func skipQuotedString(data []byte, i int) int {
+	_, next := readQuotedString(data, i)
+	return next
+}
+
+func readQuotedString(data []byte, i int) (string, int) {
+	quote := data[i]
+	i++
+	start := i
+	var value strings.Builder
+	for i < len(data) {
+		if data[i] == '\\' {
+			if i+1 < len(data) {
+				i += 2
+			} else {
+				i++
+			}
+			continue
+		}
+		if data[i] == quote {
+			value.Write(data[start:i])
+			return value.String(), i + 1
+		}
+		i++
+	}
+	value.Write(data[start:])
+	return value.String(), len(data)
+}
+
+func skipTemplateLiteral(data []byte, i int) int {
+	i++
+	for i < len(data) {
+		if data[i] == '\\' {
+			i += 2
+			continue
+		}
+		if data[i] == '`' {
+			return i + 1
+		}
+		i++
+	}
+	return len(data)
 }
 
 // matchAny reports whether s matches any of the glob-style patterns. A pattern
