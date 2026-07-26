@@ -4,6 +4,10 @@ export { DevkitAdapter } from './devkit/devkit-adapter.js';
 export { captureGit } from './devkit/git-capture.js';
 export type { DevkitAdapterOptions } from './devkit/devkit-adapter.js';
 
+// CI evidence
+export { GithubActionsProvider, analyzeCiReliability, loadCiDossiers } from './ci/index.js';
+export type { CiProvider } from './ci/index.js';
+
 // Snapshot store
 export { SnapshotStore } from './snapshot/snapshot-store.js';
 

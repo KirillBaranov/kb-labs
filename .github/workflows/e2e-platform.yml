@@ -113,6 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,6 +155,21 @@ jobs:
 
       - name: Build all packages
         run: pnpm build
+
+      # CI stays deliberately light: capture an immutable, compact dossier and
+      # let the scheduled workflow-engine job perform analytics later.
+      - name: Capture CI evidence dossier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm kb qa ci evidence capture --exclude-job "Flaky history" --output .kb/qa/ci/dossier.json
+
+      - name: Upload CI evidence dossier
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-ci-evidence-${{ github.run_id }}
+          path: .kb/qa/ci/dossier.json
+          retention-days: 90
+          if-no-files-found: error
 
       - name: Download flaky-report artifacts
         uses: actions/download-artifact@v4

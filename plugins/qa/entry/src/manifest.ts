@@ -11,6 +11,9 @@ import {
   qaHistoryFlags,
   qaTrendsFlags,
   qaE2eFlakyFlags,
+  qaCiEvidenceCaptureFlags,
+  qaCiEvidenceSyncFlags,
+  qaCiOverviewFlags,
   qaRegressionsFlags,
   baselineUpdateFlags,
   baselineStatusFlags,
@@ -25,7 +28,7 @@ const pluginPermissions = combinePermissions()
     allow: ['**'],
   })
   .withShell({
-    allow: ['kb-devkit', 'git'],
+    allow: ['kb-devkit', 'git', 'gh'],
   })
   .withPlatform({
     analytics: true,
@@ -58,6 +61,8 @@ export const manifest = {
     groupMeta: [
       { path: 'qa', describe: 'Quality assurance powered by kb-devkit' },
       { path: 'qa baseline', describe: 'Baseline management' },
+      { path: 'qa ci', describe: 'CI evidence and reliability analysis' },
+      { path: 'qa ci evidence', describe: 'Immutable CI evidence capture' },
     ],
     commands: [
       {
@@ -124,6 +129,33 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
+        path: 'qa ci evidence capture',
+        category: 'CI',
+        describe: 'Capture a GitHub Actions run dossier (CI producer command)',
+        operationType: 'execute' as const,
+        handler: './cli/commands/qa-ci-evidence-capture.js#default',
+        flags: defineCommandFlags(qaCiEvidenceCaptureFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'qa ci evidence sync',
+        category: 'CI',
+        describe: 'Download new CI evidence artifacts into a local cache',
+        operationType: 'execute' as const,
+        handler: './cli/commands/qa-ci-evidence-sync.js#default',
+        flags: defineCommandFlags(qaCiEvidenceSyncFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'qa ci overview',
+        category: 'CI',
+        describe: 'Show a compact CI reliability overview',
+        operationType: 'read' as const,
+        handler: './cli/commands/qa-ci-overview.js#default',
+        flags: defineCommandFlags(qaCiOverviewFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
         path: 'qa regressions',
         category: 'History',
         describe: 'Detect regressions since last run',
@@ -178,6 +210,7 @@ export const manifest = {
       { method: 'GET',  path: QA_ROUTES.BASELINE_DIFF,     handler: './rest/handlers/baseline-diff-handler.js#default' },
       { method: 'GET',  path: QA_ROUTES.PACKAGE_TIMELINE,  handler: './rest/handlers/package-timeline-handler.js#default' },
       { method: 'GET',  path: QA_ROUTES.TASKS,             handler: './rest/handlers/tasks-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.CI_OVERVIEW,       handler: './rest/handlers/ci-overview-handler.js#default' },
     ],
   },
 
