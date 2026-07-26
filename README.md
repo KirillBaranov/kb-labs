@@ -1,301 +1,289 @@
+<h1 align="center">KB Labs</h1>
+
 <p align="center">
-  <strong>KB Labs</strong>
+  <strong>Open-source platform for developer automation.</strong>
+  <br />
+  Code review, commits, releases, and agent workflows — self-hosted and under your control.
 </p>
 
 <p align="center">
-  Automate engineering workflows. Extend AI agents safely. Control your infrastructure.
+  <a href="https://kblabs.ru">Website</a> ·
+  <a href="https://docs.kblabs.ru">Documentation</a> ·
+  <a href="https://kblabs.ru/en/install">Install</a> ·
+  <a href="https://kblabs.ru/en/changelog">Changelog</a> ·
+  <a href="https://kblabs.ru/en/roadmap">Roadmap</a> ·
+  <a href="https://discord.gg/kblabs">Discord</a>
 </p>
 
 <p align="center">
-  Open-source · Self-hosted · No cloud required
-</p>
-
-<p align="center">
-  <a href="https://kblabs.ru" target="_blank">Website</a> ·
-  <a href="https://docs.kblabs.ru" target="_blank">Docs</a> ·
-  <a href="https://discord.gg/kblabs" target="_blank">Discord</a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/kb-labs-team/kb-labs/blob/main/LICENSE-MIT">
-    <img src="https://img.shields.io/badge/core-MIT-blue.svg" alt="Core: MIT">
-  </a>
-  <a href="https://github.com/kb-labs-team/kb-labs/blob/main/LICENSE-KB-PUBLIC">
-    <img src="https://img.shields.io/badge/ecosystem-KB--Public-7C3AED.svg" alt="Ecosystem: KB-Public">
-  </a>
-  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node >= 20">
-  <img src="https://img.shields.io/badge/go-%3E%3D1.22-00ADD8.svg" alt="Go >= 1.22">
-  <img src="https://img.shields.io/badge/pnpm-workspace-F69220.svg" alt="pnpm workspace">
-</p>
-
-<p align="center">
+  <a href="https://www.npmjs.com/package/@kb-labs/cli-bin?activeTab=versions"><img src="https://img.shields.io/npm/v/%40kb-labs%2Fcli-bin?label=stable" alt="Stable release"></a>
+  <a href="https://www.npmjs.com/package/@kb-labs/cli-bin?activeTab=versions"><img src="https://img.shields.io/npm/v/%40kb-labs%2Fcli-bin/canary?label=canary" alt="Canary release"></a>
   <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="E2E Platform"></a>
-  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="Workflow E2E"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml/badge.svg?branch=main" alt="Security scan"></a>
 </p>
 
----
+<p align="center">
+  Open source · Self-hosted · No cloud required
+</p>
 
-**KB Labs runs your engineering workflows.** Define once — run from CI, terminal, or on a schedule. Watch every step. Replace any infrastructure adapter without touching your code.
+![A KB Labs workflow running in Studio, with every agent step visible in real time](docs/assets/workflow-in-progress.png)
 
-![Workflow running — github-issue-to-pr: agent reads the issue, plans implementation, creates a branch](docs/assets/workflow-in-progress.png)
+KB Labs turns engineering operations into versioned, observable workflows. Define a
+process once, run it from the terminal, CI, Studio, or a schedule, and keep humans,
+agents, and bots behind the same permission model.
 
-*Agent executing `github-issue-to-pr`: fetched the issue, created a branch, now planning implementation — all observable in real time.*
+## Why KB Labs
 
-![AI-powered commit generation: 6 commits across 23 files, typed and grouped automatically](docs/assets/commit-plugin-ui-example.png)
+| | |
+|---|---|
+| **Workflows, not scripts** | Releases, reviews, QA gates, and agent pipelines run on one engine with retries, approvals, logs, and artifacts. |
+| **Agents with boundaries** | Plugins expose only the commands an agent is allowed to call. Secrets and raw vendor APIs stay behind the platform. |
+| **Infrastructure without lock-in** | LLMs, databases, caches, storage, and observability providers sit behind typed adapter contracts. |
+| **One operational surface** | Run locally or self-hosted. Inspect every step in Studio and use the same workflow from CLI or CI. |
 
-*Commit plugin groups your changes into typed commits with confidence scores. Review and apply in one click.*
+KB Labs is built and operated with KB Labs: releases, review gates, QA, deployment,
+and dependency workflows run on the same engine shipped in this repository.
 
-![Release Manager: plan → changelog → preview → publish, 167 packages, 131 commits](docs/assets/release-manager-ui-example.png)
+## Quick start
 
-*Release Manager walks through the full cycle — plan, changelog, preview, publish — across the entire monorepo.*
-
----
-
-## Install
+Install the launcher:
 
 ```bash
 curl -fsSL https://kblabs.ru/install.sh | sh
 ```
 
-The public URL redirects to the maintained launcher script at
-[`tools/kb-create/install.sh`](tools/kb-create/install.sh), which installs
-`kb-create` into `~/.local/bin` (or `/usr/local/bin` when writable).
+Then bootstrap a project or try the guided demo:
 
 ```bash
-kb-create --demo     # install + demo on your codebase
-kb-create --yes      # defaults, no wizard
-kb-create my-project --engine  # declarative flow engine (migration switch)
+kb-create my-project
+kb-create --demo
 ```
 
-Or install individual Go tools standalone — no Node.js required:
+The launcher installs the required tools and generates a project configuration. See
+the [installation guide](https://kblabs.ru/en/install) for supported platforms,
+checksums, non-interactive setup, and individual tool downloads.
 
-| Tool | What it does |
-|------|-------------|
-| [kb-devkit](tools/kb-devkit) | Monorepo builds — topological order, content-addressable cache |
-| [kb-dev](tools/kb-dev) | Local service manager — start, stop, health probes |
-| [kb-deploy](tools/kb-deploy) | Deploy to any VPS — Docker + registry, plus **declarative `apply`** for fleet rollouts ([guide](docs/guides/delivery.md)) |
-| [kb-monitor](tools/kb-monitor) | Remote observability — health, logs, exec over SSH |
+## Define once. Run anywhere.
 
----
+Workflows are ordinary YAML files that live with your code:
 
-## What you get
+```yaml
+name: monorepo-health
+version: 1.0.0
 
-- **Workflows** — define release pipelines, QA gates, agent pipelines in code. Run from CLI, CI, or Studio UI. Every run is logged and observable.
-- **AI agents** — agents run as workflow steps with full isolation (in-process, worker-pool, or remote). Permissions declared, execution audited.
-- **Adapter layer** — 25+ contracts for LLM, cache, storage, logging, and more. Swap DataDog for ClickHouse, OpenAI for any compatible model — one line in config, no application code changed.
-- **Plugin system** — everything is a plugin. Ship your own commands, workflow steps, and agent tools. Install from the marketplace or build in-house.
+on:
+  manual: true
 
----
+jobs:
+  health:
+    runsOn: local
+    steps:
+      - name: Workspace stats
+        run: kb-devkit stats
+      - name: Type-check core
+        run: pnpm --filter @kb-labs/core-types type-check
+```
 
-## Extend internally — plugins
+Run the same workflow locally, from CI, on a schedule, or through Studio. Larger
+workflows can mix shell commands, plugin actions, AI agents, approval gates,
+conditional routes, retries, and typed artifacts.
 
-A plugin is a manifest + a handler. The platform discovers it, wires permissions, and exposes it as a CLI command, workflow step, or agent tool.
+→ [Workflow documentation](https://docs.kblabs.ru/concepts/overview)
 
-Don't give agents direct API access — encapsulate the logic in a plugin and expose only the commands they need.
+## The platform
+
+| Capability | What it provides | Source |
+|---|---|---|
+| **Workflow engine** | Durable execution, schedules, approvals, gates, retries, artifacts | [`plugins/workflow`](plugins/workflow) |
+| **Plugin runtime** | Discoverable commands with declared permissions and resource quotas | [`core/plugin-runtime`](core/plugin-runtime) |
+| **Agent runtime** | Isolated agent execution with traceable tool access | [`plugins/agents`](plugins/agents) |
+| **Adapter layer** | Typed contracts for LLM, cache, storage, logging, databases, and more | [`adapters`](adapters) |
+| **Studio** | Visual workflow runs, logs, analytics, configuration, and operations | [`studio`](studio) |
+| **Marketplace** | Installable plugins, adapters, and project capabilities | [`plugins/marketplace`](plugins/marketplace) |
+
+### Plugins: give agents commands, not credentials
+
+A plugin declares the operations it exposes and the permissions it needs. If a
+destructive command is not in the manifest, the agent cannot call it — even when
+the underlying vendor API supports it.
 
 ```typescript
-// plugins/clickup/entry/src/manifest.ts
 import { combinePermissions } from '@kb-labs/sdk'
 
 const permissions = combinePermissions()
-  .withEnv(['CLICKUP_API_KEY', 'CLICKUP_TEAM_ID'])
+  .withEnv(['CLICKUP_API_KEY'])
   .withNetwork({ fetch: ['api.clickup.com'] })
-  .withQuotas({ timeoutMs: 30000, memoryMb: 128 })
+  .withQuotas({ timeoutMs: 30_000, memoryMb: 128 })
   .build()
 
 export const manifest = {
   schema: 'kb.plugin/3',
   id: '@kb-labs/clickup',
-  display: { name: 'ClickUp', description: 'Manage ClickUp tasks, lists, and comments from CLI and REST API' },
   permissions,
   cli: {
     commands: [
-      {
-        path: 'clickup workspace',
-        describe: 'Show full workspace hierarchy (spaces → folders → lists)',
-        handler: './commands/workspace.js#default',
-        examples: ['kb clickup workspace', 'kb clickup workspace --json'],
-      },
-      {
-        path: 'clickup task create',
-        describe: 'Create a new task',
-        handler: './commands/task-create.js#default',
-        flags: [
-          { name: 'list',     type: 'string', description: 'Target list ID (required)' },
-          { name: 'name',     type: 'string', description: 'Task name (required)' },
-          { name: 'priority', type: 'number', description: '1=urgent 2=high 3=normal 4=low' },
-        ],
-        examples: ['kb clickup task create --list abc123 --name "Fix login bug" --priority 2'],
-      },
-      {
-        path: 'clickup task search',
-        describe: 'Search tasks across the workspace',
-        handler: './commands/task-search.js#default',
-        flags: [
-          { name: 'status', type: 'string', description: 'Filter by status (comma-separated)' },
-          { name: 'limit',  type: 'number', description: 'Max results', default: 20 },
-        ],
-        examples: ['kb clickup task search "auth bug" --status "in progress" --json'],
-      },
+      { path: 'clickup task search', handler: './commands/task-search.js#default' },
+      { path: 'clickup task create', handler: './commands/task-create.js#default' },
     ],
   },
 }
 ```
 
-```bash
-# CLI commands auto-generated from the manifest
-kb clickup workspace
-kb clickup task create --list abc123 --name "Fix login bug" --priority 2
-kb clickup task search "auth bug" --status "in progress"
+Those commands are available to people through the CLI and to agents as controlled
+tools. The credential never enters the agent context.
 
-# Same commands available as agent tools — no raw API access needed
-```
+→ [Plugin system](https://docs.kblabs.ru/concepts/plugin-system) ·
+[ClickUp plugin source](plugins/clickup)
 
-→ [See the full ClickUp plugin source](https://github.com/kb-labs-team/kb-labs/tree/main/plugins/clickup)
+### Adapters: change the provider, not your code
 
----
-
-## Connect externally — adapters
-
-An adapter implements a platform interface. Swap implementations without touching application code.
-
-```typescript
-// adapters/logging-datadog/src/manifest.ts
-import type { AdapterManifest } from '@kb-labs/core-platform'
-
-export const manifest: AdapterManifest = {
-  manifestVersion: '1.0.0',
-  id: 'logging-datadog',
-  name: 'Datadog Logger',
-  version: '1.0.0',
-  description: 'Datadog logging adapter',
-  type: 'extension',
-  implements: 'ILogger',
-  configSchema: {
-    apiKey: { type: 'string', description: 'Datadog API key' },
-    service: { type: 'string', default: 'my-app' },
-  }
-}
-```
+Plugins depend on platform contracts such as `ILLM`, `ICache`, `IStorage`, and
+`ILogger`. The configured adapter supplies the implementation:
 
 ```json
-// .kb/kb.config.json
 {
   "platform": {
     "adapters": {
-      "logger": "@acme/adapters-logging-datadog"
-    },
-    "adapterOptions": {
-      "logger": { "apiKey": "${DATADOG_API_KEY}", "service": "my-app" }
+      "llm": "@kb-labs/adapters-openai",
+      "cache": "@kb-labs/adapters-redis",
+      "logger": "@kb-labs/adapters-pino"
     }
   }
 }
 ```
 
-One line changed. No application code touched. The platform picks it up on next start.
+Swap OpenAI for another compatible LLM provider, Redis for an in-memory cache, or
+Pino for another logger without rewriting plugin business logic.
 
----
+→ [Adapter system](https://docs.kblabs.ru/concepts/adapter-system)
 
-## How KB Labs compares
+## Security by design
 
-**GitHub Actions** — great CI. Lives only in the pipeline. KB Labs runs the same scenarios locally, in Studio, on a schedule — and with agents as first-class steps inside any workflow.
+Security is enforced by the runtime rather than left to plugin authors or agent
+prompts:
 
-**LangGraph** — graph orchestration for agents. Agents only, no engineering infrastructure around them. KB Labs gives agents isolation, permissions, and observability — and embeds them into workflows alongside your existing tooling.
+| Layer | What is enforced |
+|---|---|
+| **On-prem by default** | Source code, workflow state, logs, and credentials stay on your infrastructure. External calls go only to providers you configure. |
+| **Declared capabilities** | Every plugin declares its environment, network, shell, platform, and resource access. Undeclared operations are rejected at runtime. |
+| **Execution isolation** | Trusted code can run in-process; stronger boundaries are available through worker processes and OCI containers with filesystem and network isolation. |
+| **Authentication and audit** | The Gateway authenticates requests with device-scoped JWTs, internal services stay private, and tool execution is traceable. |
 
-**MCP servers** — a common way to extend agents like Claude Code with external tools. Works, but every server is a new process to maintain, and there's no permission boundary: if the API allows it, the agent can do it. KB Labs plugins are different. You decide exactly what the agent can call. No `task delete` in the manifest — the agent physically cannot delete, regardless of what the underlying API supports. Internal agents go further: sandboxed execution, declared resource quotas, full audit trail.
+The repository is scanned daily with `pnpm audit`, `govulncheck`, Gitleaks, and
+Semgrep security and OWASP rules. Findings are uploaded as SARIF where supported.
 
-The ClickUp plugin in this repo is a real example: Claude Code uses `kb clickup task create` and `kb clickup task search` — it never touches the ClickUp API directly.
+→ [Security overview](https://kblabs.ru/en/security) ·
+[Security workflow](.github/workflows/security.yml)
 
----
+## See it in action
+
+<p>
+  <img width="49%" src="docs/assets/commit-plugin-ui-example.png" alt="Commit plugin grouping changes into reviewable conventional commits">
+  <img width="49%" src="docs/assets/release-manager-ui-example.png" alt="Release Manager planning and publishing a monorepo release">
+</p>
+
+The Commit plugin groups changes into typed, reviewable commits. Release Manager
+plans versions and changelogs across the monorepo, then previews exactly what will
+be published.
+
+More product walkthroughs and live examples are available on the
+[website](https://kblabs.ru/en/demo) and in the
+[documentation](https://docs.kblabs.ru).
 
 ## How it works
 
-```
-  pnpm kb <cmd>  ──▶  CLI runtime
-  browser        ──▶  Studio (:3000)
-                           │
-                  Gateway (:4000)   ← auth, routing
-                    ├── REST API (:5050)
-                    └── Workflow daemon (:7778)
-                              │
-                       Plugin runtime   ← sandbox + permissions
-                         ├── your plugin handler
-                         └── Adapter layer   ← LLM, cache, storage, …
-```
-
-CLI commands run **in-process** by default — no network hop, no Docker. Plugins call `useLLM()`, `useCache()`, `useStorage()` and the platform injects whichever adapter is configured in `kb.config.json`.
-
-→ [Architecture overview](https://docs.kblabs.ru/concepts/overview) · [Plugin system](https://docs.kblabs.ru/concepts/plugin-system) · [Adapter system](https://docs.kblabs.ru/concepts/adapter-system)
-
----
-
-## Architecture
-
-```
-core/        Types, runtime, config, plugin system   MIT
-sdk/         Public API for plugin and adapter authors MIT
-tools/       Go binaries                              MIT
-─────────────────────────────────────────────────────────
-plugins/     Automation: agents, workflow, gateway…  KB-Public
-adapters/    Backends: OpenAI, Redis, Mongo, Docker… KB-Public
-cli/         The kb command                          KB-Public
-studio/      Web UI                                  KB-Public
+```text
+Terminal / CI / Schedule / Studio
+                 │
+          Workflow engine
+        ┌────────┼────────┐
+   shell step  plugin   AI agent
+                 │        │
+          permission boundary
+                 │
+        typed platform contracts
+                 │
+     LLM · cache · storage · logs
 ```
 
-Core defines interfaces. Adapters implement them. Plugins use them. Core never knows what's above it.
+CLI commands run in-process by default, without a network hop or Docker. Services
+can be started together for Studio, shared APIs, scheduled workflows, and remote
+execution.
 
----
+→ [Architecture overview](https://docs.kblabs.ru/concepts/overview)
 
-## Troubleshooting
+## How it compares
 
-| Symptom | Fix |
-|---------|-----|
-| Command not found after building a plugin | `pnpm kb marketplace plugins refresh` |
-| Service not starting — port already in use | `lsof -i :<port>` → `kill -9 <PID>` |
-| 401 on every request | Check `gateway.staticTokens` in `kb.config.json`, or verify `GATEWAY_JWT_SECRET` didn't rotate |
-| `useLLM()` returns undefined | Add `llm` adapter to `platform.adapters` in `kb.config.json` |
-| Changes not showing up | Rebuild → clear cache → restart service → hard-reload browser (in that order) |
+| | Best at | Where KB Labs differs |
+|---|---|---|
+| **GitHub Actions** | Repository CI/CD | KB Labs runs the same workflow locally, in Studio, from CI, or on a schedule, with agents and approvals as first-class steps. |
+| **Agent frameworks** | Building agent graphs | KB Labs adds engineering workflows, operational visibility, plugin permissions, and swappable infrastructure adapters. |
+| **MCP servers** | Giving agents external tools | KB Labs plugins expose a deliberately restricted command surface and keep credentials, quotas, and audit inside the platform. |
 
-→ [Full troubleshooting guide](https://docs.kblabs.ru/guides/troubleshooting)
+KB Labs can sit beside your existing CI and agent stack. Adoption starts with one
+workflow; no platform migration is required.
 
----
+## Standalone tools
+
+The Go tools can also be installed and used independently — no Node.js runtime
+required:
+
+| Tool | Purpose |
+|---|---|
+| [`kb-devkit`](tools/kb-devkit) | Topological monorepo builds with content-addressable caching |
+| [`kb-dev`](tools/kb-dev) | Local service lifecycle, health checks, and logs |
+| [`kb-deploy`](tools/kb-deploy) | Docker and registry deployment to your own infrastructure |
+| [`kb-monitor`](tools/kb-monitor) | Remote health, logs, and command execution over SSH |
+
+## Project status
+
+Operational signals live here so the product header stays focused:
+
+| Signal | Status |
+|---|---|
+| Production and documentation | [![Deploy](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain) |
+| Main branch | [![CI](https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml?query=branch%3Amain) |
+| Platform E2E | [![E2E Platform](https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main)](https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain) |
+| Daily security scan | [![Security scan](https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml?query=branch%3Amain) |
+
+Node.js packages require Node 20 or newer; CI currently runs on Node 22. Go tools
+carry their required toolchain version in their respective `go.mod` files.
+
+For a terminal view of CI activity and compute usage:
+
+```bash
+./scripts/ci-status.sh
+./scripts/ci-status.sh 24h
+./scripts/ci-status.sh 7d
+```
+
+See the [CI/CD reference](docs/ci-cd.md) for triggers, gates, and troubleshooting.
 
 ## Contributing
 
-Issues and PRs are welcome. Check [open issues](https://github.com/kb-labs-team/kb-labs/issues) for good first contributions. For larger changes, open an issue first. Monorepo conventions in [CLAUDE.md](CLAUDE.md).
-
-### CI state at a glance
-
-The badges at the top of this README track main-branch status of each
-workflow. For a terminal view:
+Issues and pull requests are welcome. Start with
+[open issues](https://github.com/kb-labs-team/kb-labs/issues), and open an issue
+before proposing a large architectural change.
 
 ```bash
-./scripts/ci-status.sh           # latest run per workflow on main
-./scripts/ci-status.sh 24h       # what ran in the last 24h + compute spend
-./scripts/ci-status.sh 7d        # summary of the last 7 days
+pnpm install
+pnpm build
+pnpm check
+kb-dev start
 ```
 
-**Full CI/CD reference:** [`docs/ci-cd.md`](docs/ci-cd.md) — what runs
-when, what each workflow does, skip rules, concurrency, common
-scenarios. Read it before changing trigger rules. Decisions behind
-the setup are recorded in
-[ADR-0017](docs/adr/0017-e2e-pipeline-sharding-and-caching.md) and
-[ADR-0018](docs/adr/0018-ci-compute-budget-and-transparency.md);
-operational budget reference in [`docs/ci-budget.md`](docs/ci-budget.md).
-
----
+Repository conventions are documented in [`AGENTS.md`](AGENTS.md). Architecture
+decisions live in [`docs/adr`](docs/adr).
 
 ## License
 
-| What | License |
-|------|---------|
-| `core/`, `sdk/`, `tools/` | [MIT](LICENSE-MIT) — use freely, including commercially |
+| Code | License |
+|---|---|
+| `core/`, `sdk/`, `tools/` | [MIT](LICENSE-MIT) — free for commercial use |
 | `plugins/`, `cli/`, `adapters/`, `studio/` | [KB-Public v1](LICENSE-KB-PUBLIC) — free for personal and internal use |
 
-Selling hosted access? [Get in touch](https://kblabs.ru/enterprise).
-
----
+For hosted resale or commercial licensing, [get in touch](https://kblabs.ru/enterprise).
 
 <p align="center">
   Built by <a href="https://k-baranov.ru">Kirill Baranov</a>
