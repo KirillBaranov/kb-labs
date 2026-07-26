@@ -60,8 +60,9 @@ jobs:
         id: set
         run: |
           # kb-devkit owns transitivity; the script maps affected packages → suites.
+          .devkit/affected.sh > /tmp/changed-files
           ./tools/kb-devkit/kb-devkit run build --affected --diff-only --json > /tmp/affected.json || true
-          OUT=$(node scripts/ci/affected-plugin-e2e.mjs < /tmp/affected.json)
+          OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
           echo "computed matrix: $OUT"
           echo "include=$(echo "$OUT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
           echo "has-suites=$(echo "$OUT" | jq -r '(.suites | length) > 0')" >> "$GITHUB_OUTPUT"
