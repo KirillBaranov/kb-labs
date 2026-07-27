@@ -250,7 +250,7 @@ describe('defineCommand', () => {
   it('should work with async handlers', async () => {
     const handler = vi.fn(async () => {
       await new Promise<void>(resolve => { setTimeout(resolve, 10); });
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineCommand({
@@ -267,7 +267,7 @@ describe('defineCommand', () => {
   });
 
   it('should work with sync handlers', async () => {
-    const handler = vi.fn(() => ({ ok: true }));
+    const handler = vi.fn(() => ({ ok: true } as const));
 
     const command = defineCommand({
       id: 'test:command',

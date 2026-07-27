@@ -40,7 +40,7 @@ const command = defineCommand<
   handler: {
     execute: async (_ctx, input) => {
       const dryRun: boolean = input.flags.dryRun;
-      return { ok: !dryRun, result: { ok: !dryRun } };
+      return { ok: true, result: { ok: !dryRun } } as const;
     },
   },
 });
