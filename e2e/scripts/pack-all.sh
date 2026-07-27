@@ -13,6 +13,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${1:-$REPO_ROOT/e2e/packages}"
 
+# pnpm pack runs from each package directory, so a relative destination would
+# resolve differently for every package (and can leave the requested output
+# directory empty). Normalize custom destinations before changing directory.
+case "$OUT_DIR" in
+  /*) ;;
+  *) OUT_DIR="$REPO_ROOT/$OUT_DIR" ;;
+esac
+
 # Operate from REPO_ROOT so relative package paths (./core/…) resolve and the
 # path-exclusion patterns below don't match the repo root's own absolute path
 # (critical under .claude/worktrees/<id>/). OUT_DIR is absolute, set first.
@@ -72,7 +80,7 @@ done < <(cd "$REPO_ROOT" && find . \
 
 echo ""
 echo "==> Done: $PACKED packed, $SKIPPED skipped (private/not-built), $FAILED failed"
-echo "    Output: $OUT_DIR ($(ls "$OUT_DIR"/*.tgz 2>/dev/null | wc -l | tr -d ' ') tarballs)"
+echo "    Output: $OUT_DIR ($(find "$OUT_DIR" -maxdepth 1 -type f -name '*.tgz' 2>/dev/null | wc -l | tr -d ' ') tarballs)"
 
 if [ "$FAILED" -gt 0 ]; then
   echo "ERROR: $FAILED packages failed to pack"
