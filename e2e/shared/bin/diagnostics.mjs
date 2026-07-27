@@ -179,6 +179,7 @@ export function createDiagnosticCollector(options = {}) {
     await mkdir(path.join(rootDir, 'metrics'), { recursive: true })
     await Promise.all(Object.entries(metricTargets(latestStatus, latestDiagnose)).map(async ([service, target]) => {
       const baseUrl = target.url
+      const url = baseUrl.endsWith('/metrics') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/metrics`
       try {
         const headers = {}
         if (target.gateway) {
@@ -188,7 +189,6 @@ export function createDiagnosticCollector(options = {}) {
           })
           if (token) headers.Authorization = `Bearer ${token}`
         }
-        const url = baseUrl.endsWith('/metrics') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/metrics`
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 3000)
         const response = await fetch(url, { signal: controller.signal, headers })
