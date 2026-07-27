@@ -75,7 +75,7 @@ jobs:
           retention-days: 1
           compression-level: 3
       - name: Pack exact main E2E snapshot
-        run: bash e2e/scripts/pack-all.sh e2e/packages-base
+        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
       - name: Cache exact main E2E snapshot
         uses: actions/cache@v4
         with:

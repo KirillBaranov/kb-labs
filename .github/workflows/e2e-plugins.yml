@@ -81,7 +81,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Pack PR packages once
-        run: bash e2e/scripts/pack-all.sh e2e/packages/pr
+        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages/pr"
       - name: Assemble exact base + PR E2E bundle
         run: |
           test -n "$(find e2e/packages-base -maxdepth 1 -name '*.tgz' -print -quit)"

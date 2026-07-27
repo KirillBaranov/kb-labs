@@ -118,7 +118,7 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
       - name: Pack base packages
         if: steps.base-cache.outputs.cache-hit != 'true'
-        run: bash e2e/scripts/pack-all.sh e2e/packages-base
+        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
