@@ -19,7 +19,7 @@
  * 2. Handler is object with execute method
  * 3. Input is single { argv, flags } object
  * 4. Context is PluginContextV3
- * 5. Returns { exitCode } instead of { ok }
+ * 5. Returns { ok, result } from the canonical CommandResult contract
  */
 
 import { defineCommand, useLoader, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
@@ -125,7 +125,7 @@ export default defineCommand<unknown, LoaderInput, LoaderResult>({
     // Final summary
     ctx.ui.success(`\nLoader Test Complete - ${result.completed ? 'Success' : 'Failed'}`);
 
-      return { exitCode: 0, result };
+      return { ok: true, result };
     }
   }
 });
