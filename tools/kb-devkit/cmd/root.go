@@ -46,6 +46,7 @@ checks — declaratively configured via devkit.yaml and reusable YAML packs.
 
 Commands:
   run      <task> [task2 ...] [--affected] [--no-cache] [--json]
+  affected [--json]
   init     create a starter devkit.yaml
   check    [--package X] [--json]
   fix      [--package X] [--dry-run] [--safe|--scaffold|--sync|--all] [--json]

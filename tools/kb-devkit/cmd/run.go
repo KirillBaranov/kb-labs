@@ -15,6 +15,7 @@ import (
 
 var (
 	runAffected    bool
+	runDiffOnly    bool
 	runPackages    []string
 	runNoCache     bool
 	runLive        bool
@@ -59,8 +60,10 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("affected: %w", err)
 			}
-			dirty := engine.DirtyPackages(ws, args, cacheRoot)
-			pkgs = engine.UnionPackages(ws, pkgs, dirty)
+			if !runDiffOnly {
+				dirty := engine.DirtyPackages(ws, args, cacheRoot)
+				pkgs = engine.UnionPackages(ws, pkgs, dirty)
+			}
 			if len(pkgs) == 0 {
 				o := newOutput()
 				o.OK("No affected or dirty packages — nothing to run")
@@ -130,6 +133,7 @@ Examples:
 
 func init() {
 	runCmd.Flags().BoolVar(&runAffected, "affected", false, "run only changed packages + all downstream dependents")
+	runCmd.Flags().BoolVar(&runDiffOnly, "diff-only", false, "with --affected, use only the configured diff; do not include dirty or never-run packages")
 	runCmd.Flags().StringSliceVar(&runPackages, "packages", nil, "run specific packages (comma-separated)")
 	runCmd.Flags().BoolVar(&runNoCache, "no-cache", false, "bypass cache lookup (still stores result)")
 	runCmd.Flags().BoolVar(&runLive, "live", false, "stream output while running (forces concurrency=1)")

@@ -45,7 +45,7 @@ jobs:
     permissions:
       contents: read
 
-  # ── 2. Build affected TS packages ──────────────────────────────────────────
+  # ── 2. Build TS packages in the complete PR diff closure ───────────────────
   build:
     name: Build TS (affected)
     runs-on: ubuntu-latest
@@ -73,8 +73,8 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, topological)
-        run: ./tools/kb-devkit/kb-devkit run build
+      - name: Build (devkit, PR diff)
+        run: ./tools/kb-devkit/kb-devkit run build --affected --diff-only
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
@@ -83,6 +83,61 @@ jobs:
           path: dist-artifacts.tar
           retention-days: 1
           compression-level: 3
+
+  # ── 2a. Exact base snapshot for the PR fast E2E overlay ───────────────────
+  # The normal path restores this from main's cache. On the first rollout, or
+  # after cache eviction, build the exact PR base SHA once instead of falling
+  # back to a potentially stale npm @kb-labs/* package.
+  base-snapshot:
+    name: Build exact base E2E snapshot
+    runs-on: ubuntu-latest
+    needs: [preflight, build-tools]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - name: Install Go tools
+        run: |
+          chmod +x tools-bin/*
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+          cp tools-bin/kb-dev tools/kb-dev/kb-dev
+      - name: Restore exact base snapshot cache
+        id: base-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            e2e/packages-base
+            base-dist-artifacts.tar
+          key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
+      - name: Install base dependencies
+        if: steps.base-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build base packages
+        if: steps.base-cache.outputs.cache-hit != 'true'
+        run: ./tools/kb-devkit/kb-devkit run build --no-cache
+      - name: Pack base packages
+        if: steps.base-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
+      - name: Archive base dist packages
+        if: steps.base-cache.outputs.cache-hit != 'true'
+        run: find . -path '*/node_modules/*' -prune -o -path '*/.kb/*' -prune -o -type d -name dist -print | tar cf base-dist-artifacts.tar -T -
+      - name: Validate exact base E2E snapshot
+        run: |
+          count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
+          echo "Base snapshot tarballs: $count"
+          test "$count" -gt 100
+          test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
@@ -123,7 +178,7 @@ jobs:
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - name: Run ${{ matrix.task }} on affected packages
-        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }} --affected
+        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }} --affected --diff-only
 
   # ── 4. Workspace checks — devkit structure, deps and boundaries ────────────
   devkit-checks:
@@ -358,10 +413,10 @@ jobs:
         if: steps.gate.outputs.run != 'true'
         run: echo "kb-create e2e skipped (no kb-create changes in this PR)"
 
-  # ── E2E suites — run after all checks pass ─────────────────────────────────
+  # ── E2E suites — run after the shared build, in parallel with checks ───────
 
   e2e-platform:
-    needs: [checks]
+    needs: [build]
     uses: ./.github/workflows/e2e-platform.yml
     permissions:
       # flaky-history (added in e2e-platform.yml) pushes to the ci-data
@@ -370,9 +425,19 @@ jobs:
       # entire run to fail at startup (0 jobs) before anything executes.
       contents: write
       actions: read
-
+  fast-plugin-e2e:
+    name: Fast Plugin E2E
+    needs: [build, base-snapshot]
+    uses: ./.github/workflows/e2e-plugins.yml
+    with:
+      dist-artifact: dist
+      go-tools-artifact: go-tools
+      base-snapshot-key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
+    permissions:
+      contents: read
+      actions: read
   e2e-auth:
-    needs: [checks]
+    needs: [build]
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
       suite: auth
@@ -388,7 +453,7 @@ jobs:
       contents: read
 
   e2e-oauth:
-    needs: [checks]
+    needs: [build]
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
       suite: oauth
@@ -405,7 +470,7 @@ jobs:
       contents: read
 
   e2e-marketplace:
-    needs: [checks]
+    needs: [build]
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:
       suite: marketplace
@@ -417,7 +482,7 @@ jobs:
       contents: read
 
   e2e-rest-api:
-    needs: [checks]
+    needs: [build]
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:
       suite: rest-api

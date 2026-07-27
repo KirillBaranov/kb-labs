@@ -1,0 +1,174 @@
+name: Reusable — Prepare E2E platform bundle
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: 'Artifact name consumed by the E2E matrix shards'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
+  COMPOSE_PROJECT_NAME: kb-e2e-platform-prepare
+
+jobs:
+  build:
+    name: E2E prepare / build once
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Build Go tools (kb-devkit, kb-dev)
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
+      - name: Build all packages (topological order)
+        run: pnpm build
+
+      - name: Restore packed .tgz cache
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-v4-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Pack @kb-labs/* packages
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh
+
+      - name: Verify packed package set
+        run: |
+          count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
+          echo "Packed tarballs: $count"
+          test "$count" -ge 100
+
+      - name: Pre-pull BuildKit image
+        run: |
+          for i in 1 2 3; do
+            docker pull moby/buildkit:buildx-stable-1 && break
+            echo "Attempt $i failed, retrying in 15s…"
+            sleep 15
+          done
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        timeout-minutes: 5
+
+      - name: Cache Docker layers (platform)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-platform
+          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'e2e/platform/registry-manifest.json', 'tools/kb-create/**', 'tools/kb-dev/**') }}
+          restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (publisher)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
+
+      - name: Build platform image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-platform \
+            --cache-to type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            --load -t kb-e2e-ci-platform:latest -f e2e/platform/Dockerfile .
+
+      - name: Build publisher image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load -t kb-e2e-ci-publisher:latest -f e2e/publisher/Dockerfile e2e/
+
+      - name: Prepare Verdaccio storage permissions
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
+      - name: Start Verdaccio
+        run: docker compose up -d verdaccio
+
+      - name: Wait for Verdaccio
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps verdaccio | grep -q healthy; then
+              echo "Verdaccio healthy after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs verdaccio
+          exit 1
+
+      - name: Publish packages once
+        run: docker compose run --rm publisher
+
+      - name: Stop Verdaccio without deleting snapshot
+        if: always()
+        run: docker compose down --remove-orphans || true
+
+      - name: Restore snapshot ownership
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage || true
+
+      - name: Create immutable E2E files bundle
+        run: |
+          find . -path '*/node_modules/*' -prune -o -type d -name dist -print > /tmp/dist-paths
+          tar czf /tmp/e2e-files.tar.gz \
+            .kb/devkit \
+            tools/kb-devkit/kb-devkit \
+            tools/kb-dev/kb-dev \
+            e2e/packages \
+            e2e/.verdaccio-storage \
+            -T /tmp/dist-paths
+
+      - name: Save immutable Docker images
+        run: docker save kb-e2e-ci-platform:latest kb-e2e-ci-publisher:latest > /tmp/e2e-images.tar
+
+      - name: Upload immutable E2E bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            /tmp/e2e-files.tar.gz
+            /tmp/e2e-images.tar
+          retention-days: 1
+          compression-level: 0

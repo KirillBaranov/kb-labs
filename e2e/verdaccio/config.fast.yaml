@@ -1,0 +1,36 @@
+# Fast PR E2E registry: every @kb-labs/* package must come from the exact
+# base snapshot or this PR. Internal packages must never silently resolve from
+# npm, where the version may be stale relative to the checkout.
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: 1000
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org
+    timeout: 180s
+    max_fails: 3
+    fail_timeout: 15s
+    cache: true
+
+packages:
+  '@kb-labs/*':
+    access: $all
+    publish: $all
+  '**':
+    access: $all
+    publish: $all
+    proxy: npmjs
+
+log:
+  type: stdout
+  format: pretty
+  level: warn
+
+server:
+  keepAliveTimeout: 60
+
+max_body_size: 200mb

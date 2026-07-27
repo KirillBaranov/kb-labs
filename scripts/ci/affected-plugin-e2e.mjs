@@ -13,8 +13,9 @@
  * Source of truth for the suite list = the `plugin-e2e-suite` devkit category.
  *
  * Usage:
- *   kb-devkit run build --affected --json | node scripts/ci/affected-plugin-e2e.mjs
+ *   kb-devkit run build --affected --diff-only --json | node scripts/ci/affected-plugin-e2e.mjs
  *   node scripts/ci/affected-plugin-e2e.mjs --packages @kb-labs/mind-core,@kb-labs/sdk
+ *   node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files
  *
  * Output (stdout, one line): {"suites":["mind"],"include":[{"suite":"mind"}]}
  *   - `suites`  — unique affected plugin-e2e suite names
@@ -65,12 +66,49 @@ function readAffectedFromStdin() {
   return results.map((r) => r.Package ?? r.package).filter(Boolean);
 }
 
-const affected = new Set(readAffectedFromArgs() ?? readAffectedFromStdin());
+function readChangedFilesFromArgs() {
+  const i = process.argv.indexOf('--changed-files');
+  if (i === -1 || !process.argv[i + 1]) {
+    return [];
+  }
+  return fs
+    .readFileSync(process.argv[i + 1], 'utf8')
+    .split('\n')
+    .map((file) => file.trim())
+    .filter(Boolean);
+}
 
-const suites = PLUGIN_E2E_SUITES.filter((suite) =>
-  suiteWorkspaceDeps(suite).some((dep) => affected.has(dep)),
-);
+export function computeSuites({ affected = [], changedFiles = [] } = {}) {
+  const globalInvalidator = changedFiles.some((file) =>
+    /^(\.github\/workflows\/|e2e\/(shared|platform|publisher)\/|e2e\/docker-compose[^/]*$|scripts\/ci\/|devkit\.yaml$|pnpm-lock\.yaml$)/.test(file),
+  );
 
-process.stdout.write(
-  JSON.stringify({ suites, include: suites.map((suite) => ({ suite })) }) + '\n',
-);
+  if (globalInvalidator) {
+    return [...PLUGIN_E2E_SUITES];
+  }
+
+  const affectedSet = new Set(affected);
+  const changedSuiteDirs = new Set(
+    changedFiles
+      .map((file) => file.match(/^e2e\/([^/]+)\//)?.[1])
+      .filter((suite) => PLUGIN_E2E_SUITES.includes(suite)),
+  );
+
+  return PLUGIN_E2E_SUITES.filter(
+    (suite) =>
+      changedSuiteDirs.has(suite) ||
+      suiteWorkspaceDeps(suite).some((dep) => affectedSet.has(dep)),
+  );
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const affected = readAffectedFromArgs() ?? readAffectedFromStdin();
+  const suites = computeSuites({
+    affected,
+    changedFiles: readChangedFilesFromArgs(),
+  });
+
+  process.stdout.write(
+    JSON.stringify({ suites, include: suites.map((suite) => ({ suite })) }) + '\n',
+  );
+}
