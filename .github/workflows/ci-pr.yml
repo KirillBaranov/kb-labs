@@ -109,7 +109,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages-base
-          key: e2e-base-tgz-v1-${{ github.event.pull_request.base.sha }}
+          key: e2e-base-tgz-v2-${{ github.event.pull_request.base.sha }}
       - name: Install base dependencies
         if: steps.base-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -408,7 +408,7 @@ jobs:
     with:
       dist-artifact: dist
       go-tools-artifact: go-tools
-      base-snapshot-key: e2e-base-tgz-v1-${{ github.event.pull_request.base.sha }}
+      base-snapshot-key: e2e-base-tgz-v2-${{ github.event.pull_request.base.sha }}
     permissions:
       contents: read
       actions: read
