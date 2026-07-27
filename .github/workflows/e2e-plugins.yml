@@ -88,13 +88,14 @@ jobs:
           echo "Base snapshot tarballs: $base_count"
           test "$base_count" -gt 100
           test -n "$(find e2e/packages/pr -maxdepth 1 -name '*.tgz' -print -quit)"
+          mkdir -p e2e/packages/base
+          cp e2e/packages-base/*.tgz e2e/packages/base/
       - name: Create files bundle
         run: |
           find . -path '*/node_modules/*' -prune -o -type d -name dist -print > /tmp/dist-paths
           tar czf /tmp/e2e-files.tar.gz \
             tools/kb-devkit/kb-devkit \
             tools/kb-dev/kb-dev \
-            e2e/packages-base \
             e2e/packages \
             -T /tmp/dist-paths
       - uses: actions/upload-artifact@v4
