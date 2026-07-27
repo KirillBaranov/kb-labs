@@ -29,7 +29,7 @@ describe('infra-worker commands', () => {
       },
     });
 
-    expect(result.ok).toBe(true);
+    expect(result.exitCode).toBe(0);
     expect(result.result).toEqual({
       workspaceId: 'ws_custom_1',
       environmentId: undefined,
