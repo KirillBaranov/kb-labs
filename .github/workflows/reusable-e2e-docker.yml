@@ -46,7 +46,7 @@ on:
         type: boolean
         default: false
       fast-registry:
-        description: 'Allow unaffected @kb-labs packages to resolve from npm'
+        description: 'Use the PR base snapshot plus PR overlay for @kb-labs packages'
         type: boolean
         default: false
       artifact-prefix:

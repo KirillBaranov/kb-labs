@@ -364,6 +364,7 @@ jobs:
     with:
       dist-artifact: dist
       go-tools-artifact: go-tools
+      base-snapshot-key: e2e-base-tgz-v1-${{ github.event.pull_request.base.sha }}
     permissions:
       contents: read
       actions: read

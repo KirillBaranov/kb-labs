@@ -1,5 +1,5 @@
-# Fast PR E2E override. Local affected tarballs are preferred by Verdaccio;
-# unchanged packages may fall back to the published npm versions.
+# Fast PR E2E override. Internal packages are supplied by the exact base
+# snapshot plus PR overlay; missing internal packages fail the bootstrap.
 services:
   verdaccio:
     volumes:

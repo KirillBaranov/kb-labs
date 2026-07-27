@@ -74,6 +74,14 @@ jobs:
           path: dist-artifacts.tar
           retention-days: 1
           compression-level: 3
+      - name: Pack exact main E2E snapshot
+        run: bash e2e/scripts/pack-all.sh e2e/packages-base
+      - name: Cache exact main E2E snapshot
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages-base
+          key: e2e-base-tgz-v1-${{ github.sha }}
+          enableCrossOsArchive: false
 
   # ── 2b. Dependency hygiene (Single Version Policy) ─────────────────────────
   deps:
@@ -333,7 +341,7 @@ jobs:
       - name: Confirm Verdaccio warm cache
         if: steps.verdaccio-cache.outputs.cache-hit == 'true'
         run: |
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' 2>/dev/null | wc -l | tr -d ' ')
           pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
           echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
           if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then

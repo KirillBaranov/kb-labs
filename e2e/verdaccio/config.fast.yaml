@@ -1,6 +1,6 @@
-# Fast PR E2E registry: local affected packages override the npm versions;
-# unaffected packages are resolved from npm so an affected-only build can
-# still bootstrap the complete platform.
+# Fast PR E2E registry: every @kb-labs/* package must come from the exact
+# base snapshot or this PR. Internal packages must never silently resolve from
+# npm, where the version may be stale relative to the checkout.
 storage: /verdaccio/storage
 
 auth:
@@ -20,7 +20,6 @@ packages:
   '@kb-labs/*':
     access: $all
     publish: $all
-    proxy: npmjs
   '**':
     access: $all
     publish: $all

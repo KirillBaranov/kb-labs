@@ -71,9 +71,10 @@ echo "==> Publishing packages (pnpm publish for sha512 integrity, parallel x${PA
 # xargs is the most portable parallel primitive available in /bin/sh.
 # The worker is inlined into `sh -c` since POSIX sh lacks `export -f`.
 
-TARBALLS=$(ls /packages/*.tgz 2>/dev/null)
-[ -z "$TARBALLS" ] && { echo "ERROR: no tarballs found in /packages"; exit 1; }
-TOTAL=$(echo "$TARBALLS" | wc -l | tr -d ' ')
+publish_set() {
+  set_dir="$1"
+  find "$set_dir" -maxdepth 1 -type f -name '*.tgz' -print 2>/dev/null | sort
+}
 
 # Worker: published-or-409 → echo ✓/~ and exit 0; anything else → exit 1.
 # REGISTRY is exported above; the worker reads it from env.
@@ -95,11 +96,28 @@ WORKER='
 
 export REGISTRY
 
-if echo "$TARBALLS" | xargs -n 1 -P "$PARALLELISM" -I {} sh -c "$WORKER" _ {}; then
-  echo "==> Published: $TOTAL  Failed: 0"
+publish_tarballs() {
+  set_dir="$1"
+  tarballs="$(publish_set "$set_dir")"
+  [ -n "$(echo "$tarballs" | tr -d '[:space:]')" ] || return 0
+  total=$(echo "$tarballs" | sed '/^$/d' | wc -l | tr -d ' ')
+  if echo "$tarballs" | xargs -n 1 -P "$PARALLELISM" -I {} sh -c "$WORKER" _ {}; then
+    echo "==> Published $set_dir: $total  Failed: 0"
+  else
+    echo "==> ERROR: at least one package failed to publish from $set_dir"
+    exit 1
+  fi
+}
+
+# In the PR fast lane publish the PR overlay as a complete phase first.
+# Verdaccio rejects a second publish of the same version, so publishing base
+# afterwards leaves the PR tarball active for changed packages while filling
+# all unchanged ones. Keeping phases separate avoids an xargs race.
+if [ -d /packages/pr ]; then
+  publish_tarballs /packages/pr
+  publish_tarballs /packages/base
 else
-  echo "==> ERROR: at least one package failed to publish"
-  exit 1
+  publish_tarballs /packages
 fi
 
 echo "==> All packages ready in Verdaccio"
