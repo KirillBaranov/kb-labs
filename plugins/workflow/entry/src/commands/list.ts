@@ -2,19 +2,19 @@
  * workflow:list command - List active executions
  */
 
-import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { type ListFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 type ListInput = ListFlags & { argv?: string[]; flags?: ListFlags };
 
-export default defineCommand<unknown, ListInput, { exitCode: number }>({
+export default defineCommand<unknown, ListInput, unknown>({
   id: 'workflow:list',
   description: 'List active workflow executions',
 
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Workflow listing with filtering (status/type), JSON/human output formats, run state formatting, and error handling
-    async execute(ctx: PluginContextV3, input: ListInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: ListInput): Promise<CommandResult> {
       const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
       const statusFilter = flags.status;
@@ -60,7 +60,7 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
             }
           }
 
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         // Default: list active executions (runs)
@@ -94,11 +94,11 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
           }
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
         if (!outputJson) { ctx.ui?.warn?.('Start with: kb-dev start workflow'); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

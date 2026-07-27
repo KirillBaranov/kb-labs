@@ -53,9 +53,7 @@ interface RunFlags {
   json?: boolean;
 }
 
-type ReleaseRunResult = CommandResult & {
-  report?: ReleaseReport;
-};
+type ReleaseRunResult = CommandResult<unknown>;
 
 const BUMP_SYMBOL: Record<string, string> = {
   major: '!!',
@@ -339,7 +337,7 @@ export default defineCommand({
             sections: [{ items: preErrors.map(e => `${ctx.ui.symbols.error} ${e}`) }],
             status: 'error',
           });
-          return { exitCode: 1 };
+          return { ok: false, error: 'Command failed' };
         }
       }
 
@@ -365,7 +363,7 @@ export default defineCommand({
           sections: [{ items: [`${ctx.ui.symbols.warning} No packages to release`] }],
           status: 'info',
         });
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       // 3. Show plan table
@@ -380,7 +378,7 @@ export default defineCommand({
             sections: [{ items: [`${ctx.ui.symbols.info} Cancelled`] }],
             status: 'info',
           });
-          return { exitCode: 0 };
+          return { ok: true };
         }
       }
 
@@ -421,7 +419,7 @@ export default defineCommand({
 
       reportPipelineResult(ctx, flags, result, dryRun, skipPublish);
 
-      return { exitCode: result.success ? 0 : 1, report: result.report };
+      return result.success ? { ok: true, result: { report: result.report } } : { ok: false, error: 'Command failed', result: { report: result.report } };
     },
   },
 });

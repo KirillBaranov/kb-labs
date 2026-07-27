@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   analyzeLayering,
@@ -14,12 +15,12 @@ import {
 import { CACHE_KEYS, CACHE_TTLS, defaultQualityConfig, type QualityPluginConfig, type HealthScore, type KnipReport } from '@kb-labs/quality-contracts';
 import type { HealthFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<HealthFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<HealthFlags>, unknown>({
   id: 'quality:health',
   description: 'Multidimensional health score: architecture, TypeScript, dead code, dependencies',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<HealthFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<HealthFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -29,7 +30,9 @@ export default defineCommand<unknown, CLIInput<HealthFlags>, { exitCode: number 
       if (cached && !flags.refresh) {
         const health = cached as HealthScore;
         outputHealth(health, flags, ctx);
-        return { exitCode: health.score < cfg.thresholds.health ? 1 : 0 };
+        return health.score < cfg.thresholds.health
+          ? { ok: false, error: 'Health score is below threshold', result: health }
+          : { ok: true, result: health };
       }
 
       const [layering, types] = await Promise.all([
@@ -57,7 +60,9 @@ export default defineCommand<unknown, CLIInput<HealthFlags>, { exitCode: number 
       await ctx.platform.cache.set(CACHE_KEYS.HEALTH, health, CACHE_TTLS.FAST);
 
       outputHealth(health, flags, ctx);
-      return { exitCode: health.score < cfg.thresholds.health ? 1 : 0 };
+        return health.score < cfg.thresholds.health
+          ? { ok: false, error: 'Health score is below threshold', result: health }
+          : { ok: true, result: health };
     },
   },
 });

@@ -1,4 +1,4 @@
-import { defineCommand, handleError, validationError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, validationError, type CLIInput, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { registryPost } from '../registry-http.js';
 
 interface ShareFlags {
@@ -14,29 +14,29 @@ interface ShareTokenResult {
   expiresAt?: string;
 }
 
-export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<ShareFlags>, ShareTokenResult>({
   id: 'marketplace:share',
   description: 'Share a private plugin (--with or --link)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<ShareFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<ShareFlags>): Promise<CommandResult<ShareTokenResult>> {
       const { flags = {}, argv = [] } = input;
       const pkg = argv[0];
       const t0 = Date.now();
 
       if (!pkg) {
         validationError(ctx, 'Package spec is required', 'Usage: kb marketplace share kb:handle/name [--with handle | --link]', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Package spec is required' };
       }
 
       if (!flags.with && !flags.link) {
         validationError(ctx, 'Specify --with <handle> to grant access, or --link to generate a share token', undefined, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Specify --with or --link' };
       }
 
       if (!pkg.startsWith('kb:')) {
         validationError(ctx, 'Package must be a kb: spec', 'Example: kb:kirill/my-plugin', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Package must be a kb: spec' };
       }
 
       const sliced = pkg.slice(3);
@@ -45,7 +45,7 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }
       const name = slashIdx > 0 ? sliced.slice(slashIdx + 1) : '';
       if (!handle || !name) {
         validationError(ctx, 'Invalid kb: spec — expected kb:handle/name', undefined, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Invalid kb: spec' };
       }
 
       try {
@@ -54,7 +54,7 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }
 
           if (flags.json) {
             ctx.ui?.json?.({ added: flags.with, pkg });
-            return { exitCode: 0 };
+            return { ok: true };
           }
 
           ctx.ui?.success?.(`${flags.with} can now install ${pkg}`, {
@@ -67,7 +67,7 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }
             hint: 'For one-time access without an account, use --link instead',
             timing: Date.now() - t0,
           });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         const ttlDays = flags.ttl ? parseInt(flags.ttl, 10) : 7;
@@ -75,7 +75,7 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }
 
         if (flags.json) {
           ctx.ui?.json?.(result);
-          return { exitCode: 0 };
+          return { ok: true, result };
         }
 
         const expiry = result.expiresAt
@@ -95,10 +95,10 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, { exitCode: number }
           timing: Date.now() - t0,
         });
 
-        return { exitCode: 0 };
+        return { ok: true, result };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
   },

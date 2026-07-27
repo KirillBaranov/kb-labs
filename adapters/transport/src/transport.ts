@@ -26,6 +26,7 @@
  */
 
 import type { AdapterCall, AdapterResponse } from "./types.js";
+import { classifyFailure } from '@kb-labs/sdk/adapters/infra';
 
 /**
  * Transport configuration options.
@@ -178,40 +179,11 @@ export class CircuitOpenError extends TransportError {
  * @returns true if error should be retried
  */
 export function isRetryableError(error: Error): boolean {
-  // Timeout errors are retryable
-  if (error instanceof TimeoutError) {
-    return true;
-  }
-
   // Circuit breaker open is NOT retryable (wait for half-open state)
   if (error instanceof CircuitOpenError) {
     return false;
   }
-
-  // Check error code for network errors
-  const code = (error as { code?: string }).code;
-  if (code) {
-    const retryableCodes = [
-      "ECONNRESET", // Connection reset
-      "ECONNREFUSED", // Connection refused
-      "ETIMEDOUT", // Operation timed out
-      "ENOTFOUND", // DNS lookup failed
-      "EAI_AGAIN", // DNS temporary failure
-    ];
-    return retryableCodes.includes(code);
-  }
-
-  // Check HTTP status for server errors
-  const e = error as { status?: number; statusCode?: number };
-  const status = e.status ?? e.statusCode;
-  if (status) {
-    // 503 Service Unavailable is retryable
-    // 429 Too Many Requests is retryable
-    return status === 503 || status === 429;
-  }
-
-  // Default: not retryable
-  return false;
+  return classifyFailure(error, { source: 'transport', phase: 'dispatch' }).transient;
 }
 
 /**

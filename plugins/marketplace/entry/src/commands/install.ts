@@ -51,7 +51,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
 
       if (argv.length === 0) {
         validationError(ctx, 'Please specify at least one package to install', 'Usage: kb marketplace install <package>', flags.json);
-        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+        return { ok: false, error: 'Please specify at least one package to install', result: { installed: [], warnings: [], scope: '' } };
       }
 
       let scopeCtx;
@@ -63,7 +63,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { installed: [], warnings: [], scope: '' } };
       }
 
       try {
@@ -90,10 +90,10 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
           });
         }
 
-        return { exitCode: 0, result };
+        return { ok: true, result };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { installed: [], warnings: [], scope: '' } };
       }
     },
   },

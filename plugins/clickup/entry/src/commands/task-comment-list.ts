@@ -13,7 +13,7 @@ export default defineCommand({
       const [taskId] = input.argv;
       if (!taskId) {
         validationError(ctx, 'Task ID is required', 'Usage: kb clickup task comment list <taskId>', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -21,12 +21,12 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? comments : comments.map(c => ({ id: c.id, user: c.user.username, comment_text: c.comment_text, date: c.date })));
-          return { exitCode: 0, result: comments };
+          return { ok: true, result: comments };
         }
 
         if (!comments.length) {
           ctx.ui?.info?.('No comments.');
-          return { exitCode: 0, result: comments };
+          return { ok: true, result: comments };
         }
 
         ctx.ui?.chain?.(comments.map(c => {
@@ -37,10 +37,10 @@ export default defineCommand({
           };
         }));
 
-        return { exitCode: 0, result: comments };
+        return { ok: true, result: comments };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

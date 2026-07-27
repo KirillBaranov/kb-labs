@@ -12,14 +12,18 @@ KB Labs uses structured error codes throughout — in CLI output, REST API respo
 **CLI output** (JSON mode):
 ```json
 {
-  "exitCode": 1,
+  "ok": false,
   "error": {
     "code": "CONFIG_NOT_RESOLVED",
     "message": "No profile matched the current environment",
     "details": { "profileId": "production" }
-  }
+  },
+  "result": null,
+  "meta": {}
 }
 ```
+
+Commands return one canonical envelope: `{ ok: true, result?, meta? }` on success or `{ ok: false, error, result?, meta? }` on failure. The `result` field carries plugin business data; `meta` carries optional execution metadata. A command's process exit code is an execution detail and is not part of the plugin result contract.
 
 **REST API**:
 ```json
@@ -110,16 +114,24 @@ export const MyPluginErrors = {
 | `FORBIDDEN` | 403 | Token valid but insufficient permissions | Check plugin permissions and tenant tier |
 | `PERMISSION_DENIED` | 403 | Plugin permission check failed | Check `permissions` in manifest; request needed grants |
 
-## Exit codes (CLI)
+## Command results, diagnostics, and retries
 
-| Exit code | Meaning |
-|-----------|---------|
-| `0` | Success |
-| `1` | Command failed (expected error: bad input, missing config, etc.) |
-| `2` | CLI infrastructure error (plugin load failure, dispatch error) |
-| `130` | Interrupted by user (Ctrl+C) |
+The command result envelope separates plugin business outcome from worker execution. A command may write useful diagnostics to `stderr`; those diagnostics are retained and streamed, but `stderr` alone does not make a command unsuccessful. A command is unsuccessful when it returns `ok: false` or the execution layer cannot complete it.
 
-The mapping from error codes to exit codes lives in `mapCliErrorToExitCode` in the CLI runtime. Plugins control exit codes by returning `{ exitCode: N }` from their handlers.
+Workflow retries are policy-driven. A step is not retried merely because it produced `stderr`: retry requires an explicit failure and a retry policy that permits the failure classification. Network, timeout, rate-limit, and server failures are classified as transient when appropriate, while non-idempotent operations may still require an idempotency key before they can be retried.
+
+Plugin and adapter authors should use the shared classifier from the SDK facade instead of defining local error-code or message-matching rules:
+
+```ts
+import { classifyFailure } from '@kb-labs/sdk';
+
+const failure = classifyFailure(error, {
+  source: 'command',
+  phase: 'running',
+});
+```
+
+The same taxonomy is used by CLI, execution, adapters, and workflow hosts.
 
 ## Diagnosing errors
 

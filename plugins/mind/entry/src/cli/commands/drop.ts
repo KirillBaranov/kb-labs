@@ -1,8 +1,9 @@
 import { defineCommand, handleError, confirmDestructive, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { DropRequestSchema, type DropFlags, type DropResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-type DropResult = { exitCode: number; result?: DropResponse };
+type DropResult = CommandResult<DropResponse>;
 
 export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
   id: 'mind:drop',
@@ -37,15 +38,15 @@ export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
 
         if (json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
         ctx.ui?.success?.(
           `Dropped "${res.indexId}" — removed ${res.droppedChunks} vector(s), ${res.droppedFiles} doc(s)`,
         );
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

@@ -17,12 +17,12 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: accounts });
-          return { exitCode: 0, result: accounts };
+          return { ok: true, result: accounts };
         }
 
         if (!accounts.length) {
           ctx.ui?.info?.('No accounts configured. Set INBOX_ACCOUNTS=work,personal and account vars.');
-          return { exitCode: 0, result: accounts };
+          return { ok: true, result: accounts };
         }
 
         ctx.ui?.chain?.(accounts.map((acc, i) => ({
@@ -35,10 +35,10 @@ export default defineCommand({
           }],
         })));
 
-        return { exitCode: 0, result: accounts };
+        return { ok: true, result: accounts };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

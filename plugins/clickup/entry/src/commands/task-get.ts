@@ -14,7 +14,7 @@ export default defineCommand({
       const [taskId] = input.argv;
       if (!taskId) {
         validationError(ctx, 'Task ID is required', 'Usage: kb clickup task get <taskId>', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -26,7 +26,7 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? { task, comments } : slimTaskWithDesc(task));
-          return { exitCode: 0, result: { task, comments } };
+          return { ok: true, result: { task, comments } };
         }
 
         const priority = task.priority?.priority ?? '–';
@@ -65,10 +65,10 @@ export default defineCommand({
           sections,
         });
 
-        return { exitCode: 0, result: { task, comments } };
+        return { ok: true, result: { task, comments } };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

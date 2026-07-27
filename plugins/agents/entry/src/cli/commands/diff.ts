@@ -7,6 +7,7 @@
  */
 
 import { defineCommand, useLogger } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import type { PluginContextV3 } from '@kb-labs/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -17,7 +18,7 @@ type DiffInput = {
   json?: boolean;
 };
 
-type DiffResult = { exitCode: number; response?: unknown };
+type DiffResult = CommandResult<unknown>;
 
 type DiffChange =
   | { type: 'add'; line: number; content: string }
@@ -37,7 +38,7 @@ export default defineCommand({
       if (!changeId) {
         const err = { success: false, error: 'Missing required --change-id flag' };
         ctx.ui?.json?.(err);
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       try {
@@ -65,7 +66,7 @@ export default defineCommand({
         if (!snapshot) {
           const err = { success: false, error: `Change not found: ${changeId}` };
           ctx.ui?.json?.(err);
-          return { exitCode: 1, response: err };
+          return { ok: false, error: 'Command failed', result: err };
         }
 
         // Calculate diff
@@ -87,7 +88,7 @@ export default defineCommand({
           printDiff(ctx, snapshot, diff);
         }
 
-        return { exitCode: 0, response };
+        return { ok: true, result: response };
       } catch (err) {
         logger.error('agent:diff error:', err instanceof Error ? err : undefined);
         const errResponse = {
@@ -95,7 +96,7 @@ export default defineCommand({
           error: err instanceof Error ? err.message : String(err),
         };
         ctx.ui?.json?.(errResponse);
-        return { exitCode: 1, response: errResponse };
+        return { ok: false, error: 'Command failed', result: errResponse };
       }
     },
   },

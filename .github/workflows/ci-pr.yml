@@ -5,7 +5,9 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  # e2e-platform publishes flaky-history to the ci-data branch. Jobs below
+  # explicitly narrow this back to read unless they need that write access.
+  contents: write
 
 concurrency:
   group: ci-pr-${{ github.event.pull_request.number }}
@@ -21,6 +23,8 @@ jobs:
   preflight:
     name: Preflight
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,12 +42,16 @@ jobs:
     name: Build Go tools
     needs: preflight
     uses: ./.github/workflows/build-go-tools.yml
+    permissions:
+      contents: read
 
   # ── 2. Build affected TS packages ──────────────────────────────────────────
   build:
     name: Build TS (affected)
     runs-on: ubuntu-latest
     needs: [preflight, build-tools]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,6 +89,8 @@ jobs:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: read
     strategy:
       fail-fast: true
       matrix:
@@ -120,6 +130,8 @@ jobs:
     name: Devkit checks
     runs-on: ubuntu-latest
     needs: [build-tools, build]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -164,6 +176,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-tools, build]
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     env:
       COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.ci-launcher.yml
@@ -355,6 +369,7 @@ jobs:
       # more than it itself holds, and under-granting here causes the
       # entire run to fail at startup (0 jobs) before anything executes.
       contents: write
+      actions: read
 
   e2e-auth:
     needs: [checks]

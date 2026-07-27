@@ -2,7 +2,7 @@
  * workflow:run command - Run workflow by workflow ID
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -47,18 +47,18 @@ function parseTriggerType(value: string | undefined): WorkflowRunRequest['trigge
   throw new Error(`Invalid trigger type: ${value}. Expected manual|api|cron`);
 }
 
-export default defineCommand<unknown, CLIInput<WorkflowRunFlagsInput>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<WorkflowRunFlagsInput>, unknown>({
   id: 'workflow:run',
   description: 'Run workflow by ID with optional target/isolation overrides. Pass JSON payload via --input (not --inputs).',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<WorkflowRunFlagsInput>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<WorkflowRunFlagsInput>): Promise<CommandResult> {
       const outputJson = input.flags.json ?? false;
       const workflowId = input.flags['workflow-id'];
 
       if (!workflowId) {
         validationError(ctx, 'Missing required flag: --workflow-id', 'Usage: kb workflow:run --workflow-id <id>', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -124,10 +124,10 @@ export default defineCommand<unknown, CLIInput<WorkflowRunFlagsInput>, { exitCod
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

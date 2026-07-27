@@ -1,8 +1,9 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { SearchRequestSchema, type SearchFlags, type SearchResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-type SearchResult = { exitCode: number; result?: SearchResponse };
+type SearchResult = CommandResult<SearchResponse>;
 
 export default defineCommand<unknown, CLIInput<SearchFlags>, SearchResponse>({
   id: 'mind:search',
@@ -27,7 +28,7 @@ export default defineCommand<unknown, CLIInput<SearchFlags>, SearchResponse>({
 
         if (json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
         if (res.results.length === 0) {
           ctx.ui?.warn?.(`No results in index "${res.indexId}"`);
@@ -45,10 +46,10 @@ export default defineCommand<unknown, CLIInput<SearchFlags>, SearchResponse>({
             ],
           });
         }
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

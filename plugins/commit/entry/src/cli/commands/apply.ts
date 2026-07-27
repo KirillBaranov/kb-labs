@@ -4,6 +4,7 @@
  */
 
 import { defineCommand, useLoader, useConfig, findRepoRoot, validationError, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import {
   applyCommitPlan,
   loadPlan,
@@ -20,11 +21,7 @@ type ApplyInput = {
   scope?: string;
 };
 
-type ApplyResult = {
-  exitCode: number;
-  result?: ApplyOutput;
-  meta?: Record<string, unknown>;
-};
+type ApplyResult = CommandResult<ApplyOutput>;
 
 export default defineCommand({
   id: 'commit:apply',
@@ -56,14 +53,14 @@ export default defineCommand({
       if (!plan) {
         loadLoader.fail('No commit plan found');
         validationError(ctx, 'No commit plan found', 'Run `kb commit:generate` first', input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       if (plan.commits.length === 0) {
         loadLoader.stop();
         ctx.ui?.warn?.('Commit plan is empty. Nothing to apply.');
         return {
-          exitCode: 0,
+          ok: true,
           result: {
             success: true,
             commits: [],
@@ -159,13 +156,13 @@ export default defineCommand({
         }
       }
 
-      return {
-        exitCode: result.success ? 0 : 1,
+      return result.success ? {
+        ok: true,
         result: output,
         meta: {
           timing: Date.now() - startTime,
         },
-      };
+      } : { ok: false, error: 'Commit apply failed', result: output };
     },
   },
 });

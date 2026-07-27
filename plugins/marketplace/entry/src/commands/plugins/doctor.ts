@@ -35,7 +35,7 @@ export default defineCommand<unknown, DoctorInput, DoctorResultData>({
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { ok: false, total: 0, issues: [] } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { ok: false, total: 0, issues: [] } };
       }
 
       try {
@@ -57,10 +57,10 @@ export default defineCommand<unknown, DoctorInput, DoctorResultData>({
           });
         }
 
-        return { exitCode: report.ok ? 0 : 1, result: report };
+        return report.ok ? { ok: true, result: report } : { ok: false, error: 'Marketplace doctor found issues', result: report };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { ok: false, total: 0, issues: [] } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { ok: false, total: 0, issues: [] } };
       }
     },
   },

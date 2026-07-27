@@ -6,7 +6,7 @@
  * Use --log-failed to see only the logs from failed steps.
  */
 
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import type { WorkflowRunDetail } from '../http-client.js';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -157,12 +157,12 @@ function pickFields(run: WorkflowRunDetail, fields: string[]): Record<string, un
   return result;
 }
 
-export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsViewFlags>, unknown>({
   id: 'workflow:runs-view',
   description: 'View workflow run details for investigation',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsViewFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsViewFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const rawJson = flags?.json;
       const jsonFields: string | undefined =
@@ -186,7 +186,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
           const latest = await client.listRuns({ limit: 1 });
           if (!latest.length) {
             ctx.ui?.info?.('No runs found');
-            return { exitCode: 0 };
+            return { ok: true };
           }
           runId = latest[0]!.id!;
           ctx.ui?.info?.(`Showing latest run: ${runId}`);
@@ -202,7 +202,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
             const fields = jsonFields.split(',').map(f => f.trim());
             ctx.ui?.json?.({ ok: true, data: pickFields(run, fields) });
           }
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         // --log or --log-failed: show run logs
@@ -252,7 +252,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
                 } catch { /* skip malformed */ }
               }
             }
-            return { exitCode: 0 };
+            return { ok: true };
           }
 
           // Run already completed — fetch historical logs
@@ -264,7 +264,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
 
           if (filteredLogs.length === 0) {
             ctx.ui?.info?.('No logs found');
-            return { exitCode: 0 };
+            return { ok: true };
           }
 
           const logLines = filteredLogs.map(l => {
@@ -278,7 +278,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
             { header: showLogFailed ? 'Failed step logs' : 'Run logs', items: logLines },
           ];
           ctx.ui?.success?.(`Run ${runId}`, { title: run.name, sections });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         // Default: show run tree (optionally with per-step stdout)
@@ -304,8 +304,8 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
         // When a single step is targeted via --step, lift the inline stdout cap
         const maxStdoutLines = stepFilter ? Infinity : 20;
         const sections = renderRun(run, stepLogs, { maxStdoutLines });
-        const exitCode = run.status === 'failed' ? 1 : 0;
-        const status = exitCode === 1 ? 'error' : 'success';
+        const failed = run.status === 'failed';
+        const status = failed ? 'error' : 'success';
 
         ctx.ui?.sideBox?.({
           title: runId,
@@ -313,10 +313,12 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
           sections,
         });
 
-        return { exitCode };
+        return failed
+          ? { ok: false, error: 'Workflow run failed' }
+          : { ok: true };
       } catch (error) {
         handleError(ctx, error, !!jsonFields);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

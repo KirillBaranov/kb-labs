@@ -19,13 +19,13 @@ export default defineCommand({
       const [rawUid] = input.argv;
       if (!rawUid) {
         validationError(ctx, 'uid is required', 'Usage: kb inbox thread <uid>', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const uid = parseInt(rawUid, 10);
       if (isNaN(uid)) {
         validationError(ctx, `Invalid uid: "${rawUid}" — must be a number`, undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -36,7 +36,7 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: thread });
-          return { exitCode: 0, result: thread };
+          return { ok: true, result: thread };
         }
 
         ctx.ui?.info?.(`Thread: ${thread.length} message${thread.length !== 1 ? 's' : ''}`);
@@ -51,10 +51,10 @@ export default defineCommand({
           }],
         })));
 
-        return { exitCode: 0, result: thread };
+        return { ok: true, result: thread };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

@@ -4,19 +4,13 @@
  * Runs tests across monorepo packages and collects coverage statistics.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { runTests } from '@kb-labs/quality-core/tests';
 import { CACHE_KEYS, type TestRunResult } from '@kb-labs/quality-contracts';
 import { type CheckTestsFlags } from './flags.js';
 
 // Input type with backward compatibility
 type CheckTestsInput = CheckTestsFlags & { argv?: string[] };
-
-type CheckTestsCommandResult = {
-  exitCode: number;
-  result?: TestRunResult;
-  meta?: Record<string, unknown>;
-};
 
 export default defineCommand({
   id: 'quality:check-tests',
@@ -26,7 +20,7 @@ export default defineCommand({
     async execute(
       ctx: PluginContextV3,
       input: CheckTestsInput
-    ): Promise<CheckTestsCommandResult> {
+    ): Promise<CommandResult<TestRunResult>> {
       const { ui, platform } = ctx;
 
       // V3: Flags may come wrapped in input.flags or passed directly
@@ -41,7 +35,9 @@ export default defineCommand({
         const cached = await platform.cache.get<TestRunResult>(cacheKey);
         if (cached) {
           outputTestResults({ ...cached, cached: true }, flags, ui);
-          return { exitCode: cached.failing > 0 ? 1 : 0, result: cached };
+          return cached.failing > 0
+            ? { ok: false, error: 'Test failures found', result: cached }
+            : { ok: true, result: cached };
         }
       }
 
@@ -69,11 +65,9 @@ export default defineCommand({
       // Output results
       outputTestResults({ ...result, cached: false }, flags, ui);
 
-      return {
-        exitCode: result.failing > 0 ? 1 : 0,
-        result,
-        meta: { cached: false },
-      };
+      return result.failing > 0
+        ? { ok: false, error: 'Test failures found', result, meta: { cached: false } }
+        : { ok: true, result, meta: { cached: false } };
     },
   },
 });

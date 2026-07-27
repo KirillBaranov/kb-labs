@@ -61,7 +61,7 @@ describe('defineCommand', () => {
   });
 
   it('should call handler with correct input (V3 API)', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 0, ok: true, result: 'success' });
+    const handler = vi.fn().mockResolvedValue({ ok: true, result: 'success' });
 
     const command = defineCommand({
       id: 'test:command',
@@ -73,8 +73,8 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: { name: 'test' }, argv: [] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(true);
     expect(handler).toHaveBeenCalledOnce();
     expect(handler.mock.calls[0]?.[0]).toBe(mockCtx);
     expect(handler.mock.calls[0]?.[1]).toEqual({ flags: { name: 'test' }, argv: [] });
@@ -105,7 +105,7 @@ describe('defineCommand', () => {
   });
 
   it('should allow workflow host', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 0, ok: true });
+    const handler = vi.fn().mockResolvedValue({ ok: true });
 
     const command = defineCommand({
       id: 'test:command',
@@ -120,12 +120,12 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(handler).toHaveBeenCalledOnce();
   });
 
   it('should handle handler returning number', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 0, ok: true });
+    const handler = vi.fn().mockResolvedValue({ ok: true });
 
     const command = defineCommand({
       id: 'test:command',
@@ -137,12 +137,11 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('should handle handler returning object with ok', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 0, ok: true, data: 'test' });
+    const handler = vi.fn().mockResolvedValue({ ok: true, result: 'test' });
 
     const command = defineCommand({
       id: 'test:command',
@@ -154,8 +153,7 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('should handle errors in handler', async () => {
@@ -175,7 +173,7 @@ describe('defineCommand', () => {
   });
 
   it('should call cleanup if provided', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 0, ok: true });
+    const handler = vi.fn().mockResolvedValue({ ok: true });
     const cleanup = vi.fn().mockResolvedValue(undefined);
 
     const command = defineCommand({
@@ -197,8 +195,8 @@ describe('defineCommand', () => {
     expect(cleanup).toHaveBeenCalledOnce();
   });
 
-  it('should handle handler returning exit code 2', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 2, ok: false });
+  it('should handle handler returning a failure result', async () => {
+    const handler = vi.fn().mockResolvedValue({ ok: false, error: 'failed' });
 
     const command = defineCommand({
       id: 'test:command',
@@ -210,12 +208,11 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(2);
-    expect(result.exitCode).not.toBe(0);
+    expect(result.ok).toBe(false);
   });
 
   it('should handle handler returning object with ok: false', async () => {
-    const handler = vi.fn().mockResolvedValue({ exitCode: 1, ok: false });
+    const handler = vi.fn().mockResolvedValue({ ok: false, error: 'failed' });
 
     const command = defineCommand({
       id: 'test:command',
@@ -227,16 +224,13 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(1);
-    expect(result.exitCode).not.toBe(0);
+    expect(result.ok).toBe(false);
   });
 
   it('should pass through custom result fields', async () => {
     const handler = vi.fn().mockResolvedValue({
-      exitCode: 0,
       ok: true,
-      customField: 'custom-value',
-      data: { nested: 'data' },
+      result: { customField: 'custom-value', nested: 'data' },
     });
 
     const command = defineCommand({
@@ -249,16 +243,14 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] }) as any;
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
-    expect(result.customField).toBe('custom-value');
-    expect(result.data).toEqual({ nested: 'data' });
+    expect(result.ok).toBe(true);
+    expect(result.result).toEqual({ customField: 'custom-value', nested: 'data' });
   });
 
   it('should work with async handlers', async () => {
     const handler = vi.fn(async () => {
       await new Promise<void>(resolve => { setTimeout(resolve, 10); });
-      return { exitCode: 0, ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineCommand({
@@ -271,12 +263,11 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('should work with sync handlers', async () => {
-    const handler = vi.fn(() => ({ exitCode: 0, ok: true }));
+    const handler = vi.fn(() => ({ ok: true } as const));
 
     const command = defineCommand({
       id: 'test:command',
@@ -288,8 +279,7 @@ describe('defineCommand', () => {
 
     const result = await command.execute(mockCtx, { flags: {}, argv: [] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 });
 
@@ -333,7 +323,7 @@ describe('defineCommand — dry-run routing', () => {
 
     expect(intent).toHaveBeenCalledOnce();
     expect(execute).not.toHaveBeenCalled();
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockCtx.ui.info).toHaveBeenCalledWith(
       expect.stringContaining('Dry-run: Delete task abc'),
       expect.objectContaining({ sections: expect.any(Array) }),
@@ -342,7 +332,7 @@ describe('defineCommand — dry-run routing', () => {
 
   it('calls execute() when dry-run is false', async () => {
     const intent = vi.fn();
-    const execute = vi.fn().mockResolvedValue({ exitCode: 0 });
+    const execute = vi.fn().mockResolvedValue({ ok: true });
 
     const command = defineCommand({
       id: 'test:dry',
@@ -356,7 +346,7 @@ describe('defineCommand — dry-run routing', () => {
   });
 
   it('calls execute() when dry-run is true but intent is not defined', async () => {
-    const execute = vi.fn().mockResolvedValue({ exitCode: 0 });
+    const execute = vi.fn().mockResolvedValue({ ok: true });
 
     const command = defineCommand({
       id: 'test:no-intent',

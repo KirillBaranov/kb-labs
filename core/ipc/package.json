@@ -34,6 +34,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/core-retry": "workspace:*",
     "@kb-labs/core-platform": "workspace:*"
   },
   "devDependencies": {

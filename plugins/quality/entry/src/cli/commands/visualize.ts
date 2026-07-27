@@ -7,7 +7,7 @@
  * - Statistics about the graph
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import type { UIFacade } from '@kb-labs/sdk';
 import {
   buildDependencyGraph,
@@ -29,17 +29,12 @@ type VisualizeFlags = {
 
 type VisualizeInput = VisualizeFlags & { argv?: string[] };
 
-type VisualizeCommandResult = {
-  exitCode: number;
-  graph?: DependencyGraph;
-};
-
 export default defineCommand({
   id: 'quality:visualize',
   description: 'Visualize dependency graph',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: VisualizeInput): Promise<VisualizeCommandResult> {
+    async execute(ctx: PluginContextV3, input: VisualizeInput): Promise<CommandResult<{ graph: DependencyGraph }>> {
       const { ui } = ctx;
 
       // V3: Flags may come wrapped in input.flags or passed directly
@@ -66,7 +61,7 @@ export default defineCommand({
         outputStats(graph, flags, ui);
       }
 
-      return { exitCode: 0 };
+      return { ok: true, result: { graph } };
     },
   },
 });

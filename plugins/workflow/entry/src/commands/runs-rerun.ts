@@ -5,7 +5,7 @@
  * With --failed-only, only jobs that failed or were interrupted are requeued.
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsRerunFlags {
@@ -15,7 +15,7 @@ interface RunsRerunFlags {
   'dry-run'?: boolean;
 }
 
-export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsRerunFlags>, unknown>({
   id: 'workflow:runs-rerun',
   description: 'Rerun a workflow run',
 
@@ -29,14 +29,14 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
 
       if (!runId) {
         validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-rerun <runId> [--run-id=<id>] [--failed-only]', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const failedOnly = flags?.['failed-only'] ?? false;
 
@@ -67,10 +67,10 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

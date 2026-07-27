@@ -12,6 +12,7 @@ import {
   displayArtifacts,
   handleError,
   type PluginContextV3,
+  type CommandResult,
   type ArtifactInfo,
 } from '@kb-labs/sdk';
 import { stat } from 'node:fs/promises';
@@ -38,11 +39,7 @@ type GenerateInput = GenerateFlags & {
   flags?: GenerateFlags;
 };
 
-type GenerateResult = {
-  exitCode: number;
-  result?: GenerateOutput;
-  meta?: Record<string, unknown>;
-};
+type GenerateResult = CommandResult<GenerateOutput>;
 
 export default defineCommand({
   id: 'commit:generate',
@@ -77,9 +74,7 @@ export default defineCommand({
       if (!hasChanges(status)) {
         statusLoader.stop();
         ctx.ui?.warn?.('No changes to commit');
-        return {
-          exitCode: 1,
-        };
+        return { ok: false, error: 'No changes to commit' };
       }
       statusLoader.succeed('Found changes to commit');
 
@@ -116,7 +111,7 @@ export default defineCommand({
       } catch (err) {
         analyzeLoader.fail('Failed to generate commit plan');
         handleError(ctx, err, input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       // Save plan
@@ -127,7 +122,7 @@ export default defineCommand({
       } catch (err) {
         saveLoader.fail('Failed to save plan');
         handleError(ctx, err, input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const planPath = getCurrentPlanPath(cwd, effectiveScope);
       saveLoader.succeed('Plan saved');
@@ -221,7 +216,7 @@ export default defineCommand({
       }
 
       return {
-        exitCode: 0,
+        ok: true,
         result: output,
         meta: {
           timing: Date.now() - startTime,

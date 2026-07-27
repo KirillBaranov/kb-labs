@@ -12,6 +12,8 @@ import {
   type WorkflowEventName,
 } from '@kb-labs/workflow-constants'
 import type { ICache, IEventBus, ILogger, IAnalytics, ISnapshotManager, Unsubscribe } from '@kb-labs/core-platform'
+import type { ClassifiedFailure, RetryPolicyConfig } from '@kb-labs/core-contracts'
+import { classifyFailure, decideRetry } from '@kb-labs/core-retry'
 import { StateStore } from './state-store'
 import { ConcurrencyManager, type AcquireOptions } from './concurrency-manager'
 import {
@@ -190,7 +192,8 @@ export class WorkflowEngine {
     runId: string,
     jobId: string,
     error: Error,
-    shouldRetry = true
+    failure?: ClassifiedFailure,
+    policyOverride?: false | { max: number; backoff?: 'exp' | 'lin'; initialIntervalMs?: number; maxIntervalMs?: number; on?: string[] }
   ): Promise<void> {
     const run = await this.stateStore.getRun(runId)
     if (!run) {
@@ -222,6 +225,24 @@ export class WorkflowEngine {
       attempt: (job.attempt || 0) + 1,
     })
 
+    const classified = failure ?? classifyFailure(error, { source: 'execution', phase: 'response' })
+    const retryConfig: RetryPolicyConfig | undefined = policyOverride !== undefined && typeof policyOverride !== 'boolean'
+      ? {
+          maxAttempts: policyOverride.max + 1,
+          retryOn: (policyOverride.on ?? ['command', 'network', 'timeout', 'rate_limit', 'server', 'infrastructure']) as RetryPolicyConfig['retryOn'],
+          initialDelayMs: policyOverride.initialIntervalMs ?? 1000,
+          backoff: policyOverride.backoff === 'lin' ? 'linear' : 'exponential',
+          maxDelayMs: policyOverride.maxIntervalMs ?? 30_000,
+          respectRetryAfter: true,
+          requireIdempotencyForUnsafeFailures: true,
+        }
+      : undefined
+    const retryDecision = policyOverride === false
+      ? { retry: false, reason: 'policy_denied' as const, delayMs: 0 }
+      : retryConfig
+      ? decideRetry({ failure: classified, attempt: job.attempt || 0, policy: retryConfig })
+      : decideRetry({ failure: classified, attempt: job.attempt || 0 })
+
     // Track job failure
     this.analytics?.track('workflow.job.failed', {
       runId,
@@ -229,7 +250,9 @@ export class WorkflowEngine {
       jobName: job.jobName,
       attempt: (job.attempt || 0) + 1,
       errorMessage: error.message,
-      willRetry: shouldRetry && this.shouldRetryJob(job),
+      willRetry: retryDecision.retry,
+      failureKind: classified.kind,
+      failureCode: classified.code,
     }).catch(() => {})
 
     await this.events.publish({
@@ -240,8 +263,8 @@ export class WorkflowEngine {
     })
 
     // Check if should retry
-    if (shouldRetry && this.shouldRetryJob(job)) {
-      const backoffMs = this.calculateBackoff(job.attempt || 0, job.retries)
+    if (retryDecision.retry) {
+      const backoffMs = retryDecision.delayMs
 
       this.logger.info('Scheduling job retry', {
         runId,
@@ -806,43 +829,6 @@ export class WorkflowEngine {
   }
 
   /**
-   * Determine if job should be retried based on retry policy.
-   */
-  private shouldRetryJob(job: JobRun): boolean {
-    const retryPolicy = job.retries || { max: 3, backoff: 'exp' as const }
-    const attempt = job.attempt || 0
-
-    return attempt < retryPolicy.max
-  }
-
-  /**
-   * Calculate backoff delay using exponential or linear strategy.
-   */
-  private calculateBackoff(
-    attempt: number,
-    policy?: { backoff: 'exp' | 'lin'; initialIntervalMs?: number; maxIntervalMs?: number }
-  ): number {
-    const config = {
-      backoff: policy?.backoff || 'exp',
-      initialIntervalMs: policy?.initialIntervalMs || 1000,
-      maxIntervalMs: policy?.maxIntervalMs || 60000,
-    }
-
-    let backoffMs: number
-
-    if (config.backoff === 'exp') {
-      // Exponential: 1s, 2s, 4s, 8s, 16s, 32s...
-      backoffMs = config.initialIntervalMs * Math.pow(2, attempt)
-    } else {
-      // Linear: 1s, 2s, 3s, 4s, 5s...
-      backoffMs = config.initialIntervalMs * (attempt + 1)
-    }
-
-    // Cap at maxIntervalMs
-    return Math.min(backoffMs, config.maxIntervalMs)
-  }
-
-  /**
    * Move permanently failed job to Dead Letter Queue.
    */
   /**
@@ -1316,7 +1302,3 @@ function computeDurationMs(
   }
   return Math.max(0, end - start)
 }
-
-
-
-

@@ -20,13 +20,13 @@ interface RelatedLogEntry {
   msg: string;
 }
 
-interface LogGetResult extends CommandResult {
+type LogGetResult = CommandResult & {
   _rawLog?: LogRecord;
   _rawRelated?: RelatedLogEntry[];
   log?: Record<string, unknown>;
   correlationKeys?: CorrelationKeys;
   related?: RelatedLogEntry[];
-}
+};
 
 export const logsGet = defineSystemCommand<Flags, LogGetResult>({
   name: 'get',
@@ -79,7 +79,8 @@ export const logsGet = defineSystemCommand<Flags, LogGetResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Get', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Get', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

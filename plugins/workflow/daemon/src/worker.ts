@@ -268,6 +268,9 @@ export async function createWorkflowWorker(
 
     // Create job execution promise for graceful shutdown tracking
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Step execution loop: handles data flow, spec.if, builtin:approval polling, builtin:gate routing with restart-from
+    let failedStepFailure: import('@kb-labs/core-contracts').ClassifiedFailure | undefined;
+    let failedStepRetry: typeof job.steps[number]['spec']['retry'] | undefined;
+
     const jobPromise = (async () => {
       try {
         // Execute job steps using SandboxRunner
@@ -638,6 +641,8 @@ export async function createWorkflowWorker(
 
             // Mark step as failed (sets finishedAt timestamp + error)
             await engine.markStepFailed(run.id, job.id, step.id, error);
+            failedStepFailure = result.failure;
+            failedStepRetry = step.spec.retry;
 
             stepLogger.error('Step failed', error, {
               runId: run.id,
@@ -727,7 +732,8 @@ export async function createWorkflowWorker(
         const err = error instanceof Error ? error : new Error(String(error));
         const jobDuration = Date.now() - jobStartTime;
 
-        await engine.markJobFailed(run.id, job.id, err);
+        const retryPolicy = failedStepRetry ?? job.retries;
+        await engine.markJobFailed(run.id, job.id, err, failedStepFailure, retryPolicy);
 
         // Track job processing failed
         analytics?.track('workflow.worker.job.failed', {

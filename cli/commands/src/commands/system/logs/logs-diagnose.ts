@@ -16,14 +16,14 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
-interface DiagnoseResult extends CommandResult {
+type DiagnoseResult = CommandResult & {
   period?: { from: string; to: string };
   summary?: { total: number; errors: number; warnings: number; sources: string[] };
   topErrors?: TopError[];
   bySource?: Record<string, SourceBreakdown>;
   recentErrors?: object[];
   _raw?: LogRecord[];
-}
+};
 
 export const logsDiagnose = defineSystemCommand<Flags, DiagnoseResult>({
   name: 'diagnose',
@@ -84,7 +84,8 @@ export const logsDiagnose = defineSystemCommand<Flags, DiagnoseResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Diagnose', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Diagnose', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

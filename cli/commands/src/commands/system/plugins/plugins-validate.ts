@@ -105,7 +105,7 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
       manifestContent = await fs.readFile(manifestPath, 'utf-8');
     } catch (error) {
       ctx.ui.error(`Failed to read manifest: ${error instanceof Error ? error.message : String(error)}\n`);
-      return { ok: false };
+      return { ok: false, error: 'Failed to read manifest' };
     }
 
     // Try to import manifest (for TypeScript files)
@@ -121,7 +121,7 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
         manifest = JSON.parse(manifestContent);
       } catch (_jsonError) {
         ctx.ui.error(`Failed to parse manifest: ${error instanceof Error ? error.message : String(error)}\n`);
-        return { ok: false };
+        return { ok: false, error: 'Failed to parse manifest' };
       }
     }
 
@@ -133,7 +133,7 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
       for (const msg of validationResult.errors) {
         ctx.ui.write(`  - ${msg}\n`);
       }
-      return { ok: false, valid: false, errors: validationResult.errors.map((msg) => ({ path: '', message: msg })) };
+      return { ok: false, error: 'Manifest validation failed', valid: false, errors: validationResult.errors.map((msg) => ({ path: '', message: msg })) };
     }
 
     ctx.ui.success('✅ Manifest structure is valid!\n');
@@ -150,7 +150,7 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
         for (const issue of crossValidation.issues) {
           ctx.ui.write(`  - ${issue}\n`);
         }
-        return { ok: false, valid: false, errors: crossValidation.issues.map((issue) => ({
+        return { ok: false, error: 'Contract validation failed', valid: false, errors: crossValidation.issues.map((issue) => ({
           path: '',
           message: issue,
         })) };
@@ -163,4 +163,3 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
     return { ok: true, valid: true };
   },
 });
-

@@ -11,7 +11,7 @@
  *   pnpm kb agent:rollback --run-id={id} --session-id={id} --dry-run
  */
 
-import { defineCommand, useLogger } from '@kb-labs/sdk';
+import { defineCommand, useLogger , type CommandResult} from '@kb-labs/sdk';
 import type { PluginContextV3 } from '@kb-labs/sdk';
 import { ChangeStore } from '@kb-labs/agent-history';
 import type { FileChange } from '@kb-labs/agent-history';
@@ -34,7 +34,7 @@ export default defineCommand({
   description: 'Rollback file changes made by agents in a session or run',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: RollbackInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: RollbackInput): Promise<CommandResult> {
       const logger = useLogger();
       const flags = ((input as Record<string, unknown>).flags ?? input) as Record<string, unknown>;
 
@@ -45,7 +45,7 @@ export default defineCommand({
       const asJson = Boolean(flags['json']);
 
       if (!sessionId) {
-        return output(ctx, asJson, { success: false, error: 'Missing --session-id' }, 1);
+        return output(ctx, asJson, { success: false, error: 'Missing --session-id' }, false);
       }
 
       const workingDir = process.cwd();
@@ -66,7 +66,7 @@ export default defineCommand({
         }
 
         if (changes.length === 0) {
-          return output(ctx, asJson, { success: true, rolledBack: 0, message: 'No changes to rollback' }, 0);
+          return output(ctx, asJson, { success: true, rolledBack: 0, message: 'No changes to rollback' }, true);
         }
 
         // Process in reverse chronological order
@@ -80,7 +80,7 @@ export default defineCommand({
             operation: c.operation,
             action: !c.before ? 'delete (was new file)' : 'restore to before state',
           }));
-          return output(ctx, asJson, { success: true, dryRun: true, wouldRollback: preview }, 0);
+          return output(ctx, asJson, { success: true, dryRun: true, wouldRollback: preview }, true);
         }
 
         let rolledBack = 0;
@@ -105,16 +105,16 @@ export default defineCommand({
           }
         }
 
-        return output(ctx, asJson, { success: errors.length === 0, rolledBack, errors }, errors.length > 0 ? 1 : 0);
+        return output(ctx, asJson, { success: errors.length === 0, rolledBack, errors }, errors.length === 0);
       } catch (e) {
         logger.error('agent:rollback error', e instanceof Error ? e : undefined);
-        return output(ctx, asJson, { success: false, error: String(e) }, 1);
+        return output(ctx, asJson, { success: false, error: String(e) }, false);
       }
     },
   },
 });
 
-function output(ctx: PluginContextV3, asJson: boolean, data: unknown, exitCode: number): { exitCode: number } {
+function output(ctx: PluginContextV3, asJson: boolean, data: unknown, success: boolean): CommandResult<unknown> {
   if (asJson) {
     ctx.ui?.json?.(data);
   } else {
@@ -135,5 +135,7 @@ function output(ctx: PluginContextV3, asJson: boolean, data: unknown, exitCode: 
       ctx.ui.write(`❌ ${d['error']}\n`);
     }
   }
-  return { exitCode };
+  return success
+    ? { ok: true, result: data }
+    : { ok: false, error: 'Command failed', result: data };
 }

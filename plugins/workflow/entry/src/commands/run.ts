@@ -2,7 +2,7 @@
  * workflow:job-run command - Submit a raw job for execution
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3, useLoader , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunFlagsInput {
@@ -13,13 +13,13 @@ interface RunFlagsInput {
   wait?: boolean;
 }
 
-export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunFlagsInput>, unknown>({
   id: 'workflow:job-run',
   description: 'Submit a raw job for execution',
 
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Workflow execution with input parsing, validation, wait mode (polling + websocket logs), JSON/human output, and error handling
-    async execute(ctx: PluginContextV3, input: CLIInput<RunFlagsInput>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunFlagsInput>): Promise<CommandResult> {
       const outputJson = input.flags.json ?? false;
       const handler = input.flags.handler;
       const inputStr = input.flags.input;
@@ -28,7 +28,7 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
 
       if (!handler) {
         validationError(ctx, 'Missing required flag: --handler', 'Usage: kb workflow job-run --handler=<handler> [--input=<json>]', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       // Parse input JSON if provided
@@ -38,7 +38,7 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
           parsedInput = JSON.parse(inputStr);
         } catch {
           validationError(ctx, 'Invalid JSON in --input flag', undefined, outputJson);
-          return { exitCode: 1 };
+          return { ok: false, error: 'Command failed' };
         }
       }
 
@@ -81,7 +81,7 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
                   cause: `Job ID: ${result.id}`,
                 });
               }
-              return { exitCode: 1 };
+              return { ok: false, error: 'Command failed' };
             }
 
             maxAttempts--;
@@ -112,7 +112,7 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         if (outputJson) {
           handleError(ctx, error, true);
@@ -120,7 +120,7 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
           const message = error instanceof Error ? error.message : String(error);
           ctx.ui?.error?.(message, { hint: 'Start with: kb-dev start workflow' });
         }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

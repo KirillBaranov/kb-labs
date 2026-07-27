@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   DevkitAdapter,
@@ -14,7 +15,7 @@ import {
 import { type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { BaselineUpdateFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<BaselineUpdateFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<BaselineUpdateFlags>, unknown>({
   id: 'qa:baseline:update',
   description: 'Run check + stats and save as new baseline',
 
@@ -28,7 +29,7 @@ export default defineCommand<unknown, CLIInput<BaselineUpdateFlags>, { exitCode:
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<BaselineUpdateFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<BaselineUpdateFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -50,7 +51,7 @@ export default defineCommand<unknown, CLIInput<BaselineUpdateFlags>, { exitCode:
         }
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

@@ -10,9 +10,7 @@ interface RollbackFlags {
   json?: boolean;
 }
 
-type ReleaseRollbackResult = CommandResult & {
-  message?: string;
-};
+type ReleaseRollbackResult = CommandResult<unknown>;
 
 export default defineCommand({
   id: 'release:rollback',
@@ -38,7 +36,7 @@ export default defineCommand({
       ctx.platform?.logger?.info?.('Release rollback completed');
 
       if (flags.json) {
-        ctx.ui?.json?.({ exitCode: 4, message: 'Rollback completed' });
+      ctx.ui?.json?.({ ok: true, result: { message: 'Rollback completed' } });
       } else {
         ctx.ui?.sideBox?.({
           title: 'Rollback',
@@ -54,7 +52,7 @@ export default defineCommand({
       }
 
       // Return exit code 4 for rollback executed
-      return { exitCode: 4, message: 'Rollback completed' };
+      return { ok: true, result: { message: 'Rollback completed' } };
     },
   },
 });

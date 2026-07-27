@@ -97,7 +97,7 @@ describe('PluginContextV3 Structure Snapshot', () => {
         ]
       `);
 
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineSystemCommand({
@@ -133,7 +133,7 @@ describe('PluginContextV3 Structure Snapshot', () => {
       expect(ctx.info).toBeUndefined();
       expect(ctx.result).toBeUndefined();
 
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineSystemCommand({
@@ -173,7 +173,7 @@ describe('PluginContextV3 Structure Snapshot', () => {
         ]
       `);
 
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineSystemCommand({
@@ -209,7 +209,7 @@ describe('PluginContextV3 Structure Snapshot', () => {
         ]
       `);
 
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineSystemCommand({
@@ -235,7 +235,7 @@ describe('PluginContextV3 Structure Snapshot', () => {
         ]
       `);
 
-      return { ok: true };
+      return { ok: true } as const;
     });
 
     const command = defineSystemCommand({

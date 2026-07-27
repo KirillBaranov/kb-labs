@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, resolve, normalize } from 'node:path';
-import { defineCommand, type PluginContextV3, type CLIInput } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CLIInput, type CommandResult } from '@kb-labs/sdk';
 
 interface PageFlags {
   badge?: string;
   'dry-run'?: boolean;
 }
 
-type PageResult = { exitCode: number };
+type PageResult = Record<string, never>;
 
 type JsonObj = { [key: string]: JsonVal };
 type JsonVal = string | number | boolean | null | JsonVal[] | JsonObj;
@@ -99,7 +99,7 @@ export default async function OpengraphImage({
 async function runPage(
   ctx: PluginContextV3,
   input: CLIInput<PageFlags>,
-): Promise<PageResult> {
+): Promise<CommandResult<PageResult>> {
   const argv = input.argv ?? [];
   const segment = argv.find((a) => !a.startsWith('-'));
 
@@ -108,13 +108,13 @@ async function runPage(
     ctx.ui.write(
       'Examples:\n  kb site page pricing\n  kb site page solutions/my-solution --badge Solutions\n',
     );
-    return { exitCode: 1 };
+    return { ok: false, error: 'A page segment is required' };
   }
 
   // Reject path traversal — only forward slashes and alphanumeric/hyphen segments allowed
   if (!/^[a-z0-9][a-z0-9/-]*$/.test(segment) || segment.includes('..') || normalize(segment) !== segment) {
     ctx.ui.error(`Invalid segment '${segment}' — use only lowercase letters, digits, hyphens, and forward slashes`);
-    return { exitCode: 1 };
+    return { ok: false, error: `Invalid segment '${segment}'` };
   }
 
   const badge = input.flags?.badge ?? '';
@@ -128,7 +128,7 @@ async function runPage(
   // Double-check the resolved path is still inside localeDir (defense in depth)
   if (!segmentDir.startsWith(resolve(localeDir) + '/') && segmentDir !== resolve(localeDir)) {
     ctx.ui.error(`Segment '${segment}' resolves outside app/[locale]/ — aborting`);
-    return { exitCode: 1 };
+    return { ok: false, error: `Segment '${segment}' resolves outside app/[locale]/` };
   }
 
   const namespace = segment
@@ -145,12 +145,12 @@ async function runPage(
 
   if (existsSync(pagePath)) {
     ctx.ui.error(`page.tsx already exists at app/[locale]/${segment}/`);
-    return { exitCode: 1 };
+    return { ok: false, error: `page.tsx already exists at app/[locale]/${segment}/` };
   }
 
   if (existsSync(ogPath)) {
     ctx.ui.error(`opengraph-image.tsx already exists at app/[locale]/${segment}/ — remove it first or use a different segment`);
-    return { exitCode: 1 };
+    return { ok: false, error: `opengraph-image.tsx already exists at app/[locale]/${segment}/` };
   }
 
   const pageContent = pageTemplate(segment, namespace);
@@ -196,7 +196,7 @@ async function runPage(
     ],
   });
 
-  return { exitCode: 0 };
+  return { ok: true };
 }
 
 export default defineCommand({

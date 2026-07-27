@@ -2,7 +2,7 @@
  * workflow:runs-status <runId> command — show status summary for a workflow run
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import type { RunsStatusFlags } from '../flags.js';
 
@@ -23,19 +23,19 @@ function formatDuration(ms?: number): string {
   return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-export default defineCommand<unknown, CLIInput<RunsStatusFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsStatusFlags>, unknown>({
   id: 'workflow:runs-status',
   description: 'Show status summary for a workflow run',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsStatusFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsStatusFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
 
       if (!runId) {
         validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs status <runId>', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -44,7 +44,7 @@ export default defineCommand<unknown, CLIInput<RunsStatusFlags>, { exitCode: num
 
         if (outputJson) {
           ctx.ui?.json?.({ ok: true, data: run });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         const trigger = run.trigger
@@ -93,10 +93,10 @@ export default defineCommand<unknown, CLIInput<RunsStatusFlags>, { exitCode: num
         }
 
         ctx.ui?.success?.('Run Status', { title: run.name, sections });
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

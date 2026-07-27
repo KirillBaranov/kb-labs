@@ -6,11 +6,11 @@
  * while still using the snapshot env.
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import type { RunsRestartFlags } from '../flags.js';
 
-export default defineCommand<unknown, CLIInput<RunsRestartFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsRestartFlags>, unknown>({
   id: 'workflow:runs-restart',
   description: 'Restart a run from a specific step, inheriting outputs of all preceding steps',
 
@@ -24,7 +24,7 @@ export default defineCommand<unknown, CLIInput<RunsRestartFlags>, { exitCode: nu
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsRestartFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsRestartFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
@@ -36,7 +36,7 @@ export default defineCommand<unknown, CLIInput<RunsRestartFlags>, { exitCode: nu
           'Usage: kb workflow runs-restart <runId> [--from-step=<stepId>]',
           outputJson,
         );
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const fromStepId = flags?.['from-step'];
@@ -67,10 +67,10 @@ export default defineCommand<unknown, CLIInput<RunsRestartFlags>, { exitCode: nu
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

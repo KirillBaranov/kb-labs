@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import { scanWorkspace, buildPackageMap } from '@kb-labs/quality-core';
 import { defaultQualityConfig, type QualityPluginConfig } from '@kb-labs/quality-contracts';
@@ -16,12 +17,12 @@ const LAYER_NAMES: Record<number, string> = {
   4: 'studio',
 };
 
-export default defineCommand<unknown, CLIInput<ContextFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<ContextFlags>, unknown>({
   id: 'quality:context',
   description: 'Package context for agents: layer, dependents, dependencies, coupling',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<ContextFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<ContextFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -47,7 +48,7 @@ export default defineCommand<unknown, CLIInput<ContextFlags>, { exitCode: number
             [...byLayer.entries()].map(([l, names]) => [LAYER_NAMES[l] ?? `layer-${l}`, names])
           );
           ctx.ui?.json?.({ totalPackages: packages.length, byLayer: summary });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         const sections = [...byLayer.entries()]
@@ -58,13 +59,13 @@ export default defineCommand<unknown, CLIInput<ContextFlags>, { exitCode: number
           }));
 
         ctx.ui?.success?.(`Workspace: ${packages.length} packages`, { sections });
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       const pkg = packageMap.get(pkgName);
       if (!pkg) {
         ctx.ui?.error?.(`Package not found: ${pkgName}`);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       // Workspace deps (efferent)
@@ -93,7 +94,7 @@ export default defineCommand<unknown, CLIInput<ContextFlags>, { exitCode: number
 
       if (flags.json) {
         ctx.ui?.json?.(context);
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       ctx.ui?.success?.(`Context: ${pkgName}`, {
@@ -118,7 +119,7 @@ export default defineCommand<unknown, CLIInput<ContextFlags>, { exitCode: number
         ],
       });
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

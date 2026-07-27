@@ -23,9 +23,13 @@ describe('confirmDestructive', () => {
     expect(c.ui.warn).not.toHaveBeenCalled();
   });
 
-  it('blocks with exit 1 and warns the human when not confirmed', () => {
+  it('blocks with a typed failure and warns the human when not confirmed', () => {
     const c = ctx();
-    expect(confirmDestructive(c, { confirmed: false, isJson: false, action: ACTION })).toEqual({ exitCode: 1 });
+    expect(confirmDestructive(c, { confirmed: false, isJson: false, action: ACTION })).toMatchObject({
+      ok: false,
+      error: { code: 'CONFIRMATION_REQUIRED', kind: 'validation' },
+      result: { confirmationRequired: true },
+    });
     expect(c.ui.warn).toHaveBeenCalledTimes(1);
     expect(c.ui.json).not.toHaveBeenCalled();
   });
@@ -33,7 +37,11 @@ describe('confirmDestructive', () => {
   it('emits a machine-readable signal in json mode (agent sees blast radius)', () => {
     const c = ctx();
     const res = confirmDestructive(c, { confirmed: false, isJson: true, action: ACTION });
-    expect(res).toEqual({ exitCode: 1 });
+    expect(res).toMatchObject({
+      ok: false,
+      error: { code: 'CONFIRMATION_REQUIRED' },
+      result: { confirmationRequired: true },
+    });
     expect(c.ui.warn).not.toHaveBeenCalled();
     const sig = (c.ui.json as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
     expect(sig).toMatchObject({

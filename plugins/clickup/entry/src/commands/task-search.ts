@@ -33,12 +33,12 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? tasks : tasks.map(slimTask));
-          return { exitCode: 0, result: tasks };
+          return { ok: true, result: tasks };
         }
 
         if (!tasks.length) {
           ctx.ui?.info?.('No tasks found.');
-          return { exitCode: 0, result: tasks };
+          return { ok: true, result: tasks };
         }
 
         ctx.ui?.chain?.(tasks.map(task => {
@@ -55,10 +55,10 @@ export default defineCommand({
           };
         }));
 
-        return { exitCode: 0, result: tasks };
+        return { ok: true, result: tasks };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

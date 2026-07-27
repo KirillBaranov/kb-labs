@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   SnapshotStore,
@@ -12,12 +13,12 @@ import {
 import { type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { BaselineDiffFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<BaselineDiffFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<BaselineDiffFlags>, unknown>({
   id: 'qa:baseline:diff',
   description: 'Diff current state against baseline',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<BaselineDiffFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<BaselineDiffFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -27,7 +28,7 @@ export default defineCommand<unknown, CLIInput<BaselineDiffFlags>, { exitCode: n
 
       if (!baseline) {
         ctx.ui?.error?.('No baseline found. Run `qa baseline update` first.');
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const latestCheck = store.latestCheck();
@@ -35,7 +36,7 @@ export default defineCommand<unknown, CLIInput<BaselineDiffFlags>, { exitCode: n
 
       if (!latestCheck || !latestStats) {
         ctx.ui?.error?.('No check/stats snapshots found. Run `qa check` and `qa stats` first.');
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const diff = compareWithBaseline(latestCheck.raw, latestStats.raw, baseline);
@@ -48,7 +49,9 @@ export default defineCommand<unknown, CLIInput<BaselineDiffFlags>, { exitCode: n
         }
       }
 
-      return { exitCode: diff.newIssueCount > 0 ? 1 : 0 };
+      return diff.newIssueCount > 0
+        ? { ok: false, error: 'New issues found', result: diff }
+        : { ok: true, result: diff };
     },
   },
 });

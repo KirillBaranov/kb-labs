@@ -1,8 +1,9 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { ExploreRequestSchema, type ExploreFlags, type ExploreResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-type ExploreResult = { exitCode: number; result?: ExploreResponse };
+type ExploreResult = CommandResult<ExploreResponse>;
 
 export default defineCommand<unknown, CLIInput<ExploreFlags>, ExploreResponse>({
   id: 'mind:explore',
@@ -24,7 +25,7 @@ export default defineCommand<unknown, CLIInput<ExploreFlags>, ExploreResponse>({
 
         if (json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
         if (res.files.length === 0) {
           ctx.ui?.warn?.(`No relevant files in index "${res.indexId}"`);
@@ -46,10 +47,10 @@ export default defineCommand<unknown, CLIInput<ExploreFlags>, ExploreResponse>({
             },
           );
         }
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

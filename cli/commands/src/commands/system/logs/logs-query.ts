@@ -8,13 +8,13 @@ import { platform } from '@kb-labs/core-runtime';
 import type { LogQuery, LogRecord, LogLevel } from '@kb-labs/core-platform';
 import { parseRelativeTime, formatLogLine, formatLogJson } from './logs-utils';
 
-interface LogQueryResult extends CommandResult {
+type LogQueryResult = CommandResult & {
   logs?: ReturnType<typeof formatLogJson>[];
   total?: number;
   hasMore?: boolean;
   source?: string;
   _raw?: LogRecord[];
-}
+};
 
 type Flags = {
   level: { type: 'string'; description?: string };
@@ -79,7 +79,8 @@ export const logsQuery = defineSystemCommand<Flags, LogQueryResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Query', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Query', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

@@ -9,7 +9,7 @@ import { platform } from '@kb-labs/core-runtime';
 import { parseRelativeTime, computeLogStats } from './logs-utils';
 import type { LogQuery, LogRecord, LogLevel } from '@kb-labs/core-platform';
 
-interface LogSummarizeResult extends CommandResult {
+type LogSummarizeResult = CommandResult & {
   question?: string;
   summary?: string | null;
   llmUsed?: boolean;
@@ -20,7 +20,7 @@ interface LogSummarizeResult extends CommandResult {
     sources: string[];
     topErrors: { message: string; count: number; source: string }[];
   };
-}
+};
 
 type Flags = {
   from: { type: 'string'; description?: string };
@@ -173,7 +173,8 @@ export const logsSummarize = defineSystemCommand<Flags, LogSummarizeResult>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Summarize', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown';
+      ctx.ui.error('Log Summarize', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

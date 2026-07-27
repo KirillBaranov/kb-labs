@@ -49,6 +49,7 @@ import type {
 } from '../types'
 import { toWorkflowOutputs } from './output-normalizer.js'
 import type { IAnalytics, ILogger } from '@kb-labs/core-platform'
+import { classifyFailure } from '@kb-labs/core-retry'
 
 export interface SandboxRunnerOptions {
   /**
@@ -351,10 +352,19 @@ export class SandboxRunner implements Runner {
 
       // If handler returned ok: false in its output data, treat as step failure.
       // This covers shell steps that return {ok: false, exitCode: N} without throwing.
-      if (data && typeof data === 'object' && data.ok === false) {
+      const commandFailed = data && typeof data === 'object' && (
+        data.ok === false || (typeof data.exitCode === 'number' && data.exitCode !== 0)
+      )
+      if (commandFailed) {
         const message = data.stderr
           ? String(data.stderr).slice(0, 500)
           : `Step handler reported failure (exitCode: ${data.exitCode ?? 'unknown'})`;
+        const failure = classifyFailure(
+          data.error && typeof data.error === 'object'
+            ? data.error
+            : { message, kind: 'command', code: 'COMMAND_FAILED' },
+          { source: 'command' },
+        )
         context.logger.error('Plugin handler reported failure via ok:false', {
           stepId: context.stepId,
           exitCode: data.exitCode,
@@ -366,6 +376,7 @@ export class SandboxRunner implements Runner {
             message,
             code: 'HANDLER_REPORTED_FAILURE',
           },
+          failure,
         }
       }
 
@@ -400,6 +411,7 @@ export class SandboxRunner implements Runner {
           code: 'STEP_TIMEOUT',
           details: result.error?.details,
         },
+        failure: classifyFailure(result.error, { source: 'execution', phase: 'response' }),
       }
     }
 
@@ -411,15 +423,16 @@ export class SandboxRunner implements Runner {
       code: result.error?.code,
     })
 
-    return {
-      status: 'failed',
-      error: {
+      return {
+        status: 'failed',
+        error: {
         message: result.error?.message ?? 'Plugin execution failed',
         code: result.error?.code ?? 'UNKNOWN_ERROR',
         stack: result.error?.stack,
-        details: result.error?.details,
-      },
-    }
+          details: result.error?.details,
+        },
+        failure: classifyFailure(result.error, { source: 'execution', phase: 'response' }),
+      }
   }
 
   /**

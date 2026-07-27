@@ -46,7 +46,7 @@ export default defineCommand<unknown, RestoreSnapshotInput, RestoreSnapshotResul
       ctx.ui.success(`Snapshot restored: ${result.snapshotId}`);
 
       return {
-        exitCode: 0,
+        ok: true,
         result,
       };
     },

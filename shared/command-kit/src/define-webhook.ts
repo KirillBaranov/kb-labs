@@ -58,8 +58,8 @@ export interface WebhookDefinition<TConfig = unknown, TInput = unknown> {
  *       // Process webhook...
  *
  *       return {
- *         data: { processed: true },
- *         exitCode: 0,
+ *         ok: true,
+ *         result: { processed: true },
  *       };
  *     }
  *   }

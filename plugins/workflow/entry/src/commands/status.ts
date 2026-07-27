@@ -2,19 +2,19 @@
  * workflow:status command - Get job status
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { type StatusFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 type StatusInput = StatusFlags & { argv?: string[] };
 
-export default defineCommand<unknown, StatusInput, { exitCode: number }>({
+export default defineCommand<unknown, StatusInput, unknown>({
   id: 'workflow:status',
   description: 'Get status of a workflow job',
 
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Job status display with deep run/job/step traversal, multiple output formats (JSON/human), timing calculations, status color coding, and error aggregation
-    async execute(ctx: PluginContextV3, input: StatusInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: StatusInput): Promise<CommandResult> {
       ctx.ui?.warn?.('workflow status is deprecated; use: kb workflow runs status <runId>');
       const flags = (input as { flags?: StatusFlags }).flags ?? input;
       const outputJson = flags.json ?? false;
@@ -22,7 +22,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
 
       if (!jobId) {
         validationError(ctx, 'Missing required flag: --job-id', 'Usage: kb workflow status --job-id=<job-id>', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -101,12 +101,11 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },
 });
-

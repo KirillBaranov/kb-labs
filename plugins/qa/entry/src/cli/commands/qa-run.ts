@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   DevkitAdapter,
@@ -15,12 +16,12 @@ import {
 import { DEFAULT_TASKS, type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { QaRunFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaRunFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaRunFlags>, unknown>({
   id: 'qa:run',
   description: 'Run devkit tasks and record results',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaRunFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaRunFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -53,7 +54,7 @@ export default defineCommand<unknown, CLIInput<QaRunFlags>, { exitCode: number }
         }
       }
 
-      return { exitCode: raw.ok ? 0 : 1 };
+      return raw.ok ? { ok: true, result: raw } : { ok: false, error: 'QA run failed', result: raw };
     },
   },
 });

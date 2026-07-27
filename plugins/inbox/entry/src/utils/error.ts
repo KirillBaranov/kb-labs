@@ -58,7 +58,7 @@ function getHint(code: InboxErrorCode, message: string): string | undefined {
  * JSON mode  → { ok: false, error: { code, message, hint? } }  — agent-parseable
  * Human mode → ctx.ui.error() with hint and cause fields
  *
- * Call right before `return { exitCode: 1, result: null }`.
+ * Call right before `return { ok: false, error: 'Command failed', result: null }`.
  */
 export function handleError(ctx: PluginContextV3, err: unknown, isJson?: boolean): void {
   if (err instanceof InboxError) {

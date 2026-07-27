@@ -2,7 +2,7 @@
  * workflow:runs-logs <runId> command — fetch logs for a workflow run
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import type { RunsLogsFlags } from '../flags.js';
 
@@ -27,19 +27,19 @@ function renderLogs(ctx: PluginContextV3, logs: LogEntry[], outputJson: boolean)
   }
 }
 
-export default defineCommand<unknown, CLIInput<RunsLogsFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsLogsFlags>, unknown>({
   id: 'workflow:runs-logs',
   description: 'Fetch logs for a workflow run',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsLogsFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsLogsFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
 
       if (!runId) {
         validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs logs <runId>', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -49,10 +49,10 @@ export default defineCommand<unknown, CLIInput<RunsLogsFlags>, { exitCode: numbe
           failedOnly: flags?.['log-failed'],
         });
         renderLogs(ctx, logs as LogEntry[], outputJson);
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

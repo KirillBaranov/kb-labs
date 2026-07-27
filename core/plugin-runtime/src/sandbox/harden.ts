@@ -396,7 +396,7 @@ function patchProcessExit(
   process.exit = function sandboxedExit(code?: number) {
     const message =
       `process.exit() is blocked. Return from handler instead.\n` +
-      `Use: return { exitCode: ${code ?? 0} }`;
+      `Use: return { ok: ${code === 0 ? 'true' : 'false'} }`;
 
     emitViolation({
       kind: 'exit',

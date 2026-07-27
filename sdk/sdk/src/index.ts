@@ -34,6 +34,29 @@ export {
   MessageRouter,
 } from './command/index.js';
 
+// Canonical command result and retry contracts for plugin authors.
+export type {
+  CommandSuccess,
+  CommandFailure,
+  CommandError,
+  ClassifiedFailure,
+  FailureClassificationContext,
+  FailureInfo,
+  FailureKind,
+  RetrySafety,
+  FailureSource,
+  RetryDecision,
+  RetryPolicyConfig,
+} from './contracts/index.js';
+
+// Public retry facade. Adapters and plugins must consume retry classification
+// through the SDK instead of importing core implementation packages directly.
+export {
+  classifyFailure,
+  decideRetry,
+  DEFAULT_TRANSIENT_RETRY_POLICY,
+} from '@kb-labs/core-retry';
+
 // Test utilities (legacy — prefer `@kb-labs/sdk/testing` for full mock builders)
 export {
   createTestContext,

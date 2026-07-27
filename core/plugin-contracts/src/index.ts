@@ -218,6 +218,9 @@ export type {
   CommandHandler,
   CommandDefinition,
   CommandResult,
+  CommandSuccess,
+  CommandFailure,
+  CommandError,
   CommandResultWithMeta,
   StandardMeta,
   RestHandler,
@@ -229,6 +232,18 @@ export type {
   WebhookHandler,
   WebhookDefinition,
 } from './handlers.js';
+
+// Canonical execution failure taxonomy used by command and workflow hosts.
+export type {
+  ClassifiedFailure,
+  FailureClassificationContext,
+  FailureInfo,
+  FailureKind,
+  RetrySafety,
+  FailureSource,
+  RetryDecision,
+  RetryPolicyConfig,
+} from '@kb-labs/core-contracts';
 
 // Runner utilities
 export type { ExecutionMetaOptions } from './runner.js';

@@ -40,7 +40,7 @@ export default defineCommand<unknown, ListInput, ListResultData>({
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { entries: [], total: 0 } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { entries: [], total: 0 } };
       }
 
       try {
@@ -68,10 +68,10 @@ export default defineCommand<unknown, ListInput, ListResultData>({
           });
         }
 
-        return { exitCode: 0, result: data };
+        return { ok: true, result: data };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { entries: [], total: 0 } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { entries: [], total: 0 } };
       }
     },
   },

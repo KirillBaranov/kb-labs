@@ -1,4 +1,4 @@
-import { defineCommand, useConfig, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useConfig, findRepoRoot, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { execSync } from 'node:child_process';
 import type { PolicyConfig, CheckReport } from '@kb-labs/policy-contracts';
 import { detectCategory } from '../../core/category-resolver.js';
@@ -9,17 +9,14 @@ type CheckInput = {
   json?: boolean;
 };
 
-type CheckResult = {
-  exitCode: number;
-  report: CheckReport;
-};
+type CheckResult = CheckReport;
 
 export default defineCommand({
   id: 'policy:check',
   description: 'Run policy checks for changed repos or a specific path. Exits with code 1 on violations.',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CheckInput): Promise<CheckResult> {
+    async execute(ctx: PluginContextV3, input: CheckInput): Promise<CommandResult<CheckResult>> {
       const flags = (input as { flags?: CheckInput }).flags ?? input;
       const workspaceRoot = (await findRepoRoot(ctx.cwd)) ?? ctx.cwd;
       const policyConfig = await useConfig<PolicyConfig>();
@@ -32,7 +29,7 @@ export default defineCommand({
           summary: { total: 0, passed: 0, failed: 0, violations: 0 },
         };
         if (flags.json) {ctx.ui.json?.({ passed: false, error: 'No policies config' });}
-        return { exitCode: 1, report: emptyReport };
+        return { ok: false, error: 'No policies config found', result: emptyReport };
       }
 
       const repoPaths = flags.path
@@ -56,7 +53,9 @@ export default defineCommand({
         renderHumanReport(ctx, report);
       }
 
-      return { exitCode: report.passed ? 0 : 1, report };
+      return report.passed
+        ? { ok: true, result: report }
+        : { ok: false, error: 'Policy violations found', result: report };
     },
   },
 });

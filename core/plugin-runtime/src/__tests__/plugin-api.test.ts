@@ -137,7 +137,7 @@ describe('Plugin API', () => {
   });
 
   // OutputAPI removed - use return values instead (V3 migration)
-  // ctx.api.output -> return { exitCode, result, meta }
+  // ctx.api.output is represented by the canonical command result.
 
   describe('state API', () => {
     it('should prefix keys with tenant:plugin', async () => {
@@ -577,7 +577,7 @@ describe('Plugin API', () => {
 
     it('should call provided invoker when permission granted', async () => {
       const mockInvoker = vi.fn().mockResolvedValue({
-        exitCode: 0,
+        ok: true,
         result: { output: 'success' },
       });
 
@@ -599,7 +599,7 @@ describe('Plugin API', () => {
       const result = await api.invoke.call('@kb-labs/other-plugin', { input: 'data' });
 
       expect(result).toEqual({
-        exitCode: 0,
+        ok: true,
         result: { output: 'success' },
       });
 

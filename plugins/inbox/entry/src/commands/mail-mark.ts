@@ -22,13 +22,13 @@ export default defineCommand({
       const [rawUid] = input.argv;
       if (!rawUid) {
         validationError(ctx, 'uid is required', 'Usage: kb inbox mark <uid> --read|--unread|--spam|--flagged|--unflagged', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const uid = parseInt(rawUid, 10);
       if (isNaN(uid)) {
         validationError(ctx, `Invalid uid: "${rawUid}" — must be a number`, undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const action: MarkAction | undefined =
@@ -41,7 +41,7 @@ export default defineCommand({
 
       if (!action) {
         validationError(ctx, 'One of --read, --unread, --spam, --flagged, --unflagged is required', undefined, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -50,14 +50,14 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: { uid, action } });
-          return { exitCode: 0, result: { uid, action } };
+          return { ok: true, result: { uid, action } };
         }
 
         ctx.ui?.success?.(`Marked uid=${uid} as ${action}`);
-        return { exitCode: 0, result: null };
+        return { ok: true, result: null };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

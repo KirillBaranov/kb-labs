@@ -110,10 +110,10 @@ export async function testCommand<TResult = unknown, TConfig = unknown>(
   let result: TResult | undefined;
   let meta: Record<string, unknown> | undefined;
 
-  if (raw != null && typeof raw === 'object' && 'exitCode' in raw) {
+  if (raw != null && typeof raw === 'object' && 'ok' in raw) {
     const cmdResult = raw as CommandResult<TResult>;
-    exitCode = cmdResult.exitCode;
-    result = cmdResult.result;
+    exitCode = cmdResult.ok ? 0 : 1;
+    result = cmdResult.result as TResult | undefined;
     meta = cmdResult.meta;
   } else if (raw === undefined || raw === null) {
     exitCode = 0;

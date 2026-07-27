@@ -41,7 +41,7 @@ export default defineCommand<unknown, UndoInput, UndoResult>({
       const backup = getLastBackup(rootDir);
       if (!backup) {
         validationError(ctx, 'No backups found. Run switch first to create a backup.', undefined, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Undo operation failed' };
       }
 
       const loader = useLoader(`Restoring from backup ${backup.id}...`);
@@ -54,7 +54,7 @@ export default defineCommand<unknown, UndoInput, UndoResult>({
       } catch (err) {
         loader.fail('Restore failed');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Undo operation failed' };
       }
       loader.succeed(`Restored ${restored} file(s)`);
       tracker.checkpoint('restore');
@@ -90,7 +90,9 @@ export default defineCommand<unknown, UndoInput, UndoResult>({
         });
       }
 
-      return { exitCode: errors.length > 0 ? 1 : 0, result, meta: { timing: tracker.total() } };
+      return errors.length > 0
+        ? { ok: false, error: `${errors.length} undo operation(s) failed`, result, meta: { timing: tracker.total() } }
+        : { ok: true, result, meta: { timing: tracker.total() } };
     },
   },
 });
