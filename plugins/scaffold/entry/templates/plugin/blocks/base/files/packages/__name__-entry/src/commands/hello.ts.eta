@@ -26,7 +26,7 @@ export default defineCommand({
       // 1. Validate — synchronous, before try/catch
       if (input.flags.who !== undefined && input.flags.who.trim() === '') {
         validationError(ctx, '--who cannot be empty', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'INVALID_ARGS', result: null };
       }
 
       // 2. Call core, wrap in try/catch
@@ -39,10 +39,10 @@ export default defineCommand({
           ctx.ui?.info?.(greeting);
         }
 
-        return { exitCode: 0, result: { greeting } };
+        return { ok: true, result: { greeting } };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: null };
       }
     },
   },
