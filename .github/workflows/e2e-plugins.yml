@@ -13,9 +13,14 @@ name: Fast Plugin E2E (affected)
 # Mirrors e2e-platform.yml (static infra matrix); this one is dynamic + affected.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      dist-artifact:
+        type: string
+        required: true
+      go-tools-artifact:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -31,14 +36,51 @@ env:
 
 jobs:
   prepare:
-    name: Prepare fast E2E files
+    name: Prepare fast E2E files from CI build
     needs: discover
     if: ${{ needs.discover.outputs.has-suites == 'true' }}
-    uses: ./.github/workflows/reusable-e2e-fast-files.yml
-    with:
-      artifact-name: fast-e2e-files-${{ github.run_id }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.go-tools-artifact }}
+          path: tools-bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.dist-artifact }}
+      - name: Restore CI build artifacts
+        run: |
+          chmod +x tools-bin/*
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+          cp tools-bin/kb-dev tools/kb-dev/kb-dev
+          tar xf dist-artifacts.tar
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Pack packages once
+        run: bash e2e/scripts/pack-all.sh
+      - name: Create files bundle
+        run: |
+          find . -path '*/node_modules/*' -prune -o -type d -name dist -print > /tmp/dist-paths
+          tar czf /tmp/e2e-files.tar.gz \
+            tools/kb-devkit/kb-devkit \
+            tools/kb-dev/kb-dev \
+            e2e/packages \
+            -T /tmp/dist-paths
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fast-e2e-files-${{ github.run_id }}
+          path: /tmp/e2e-files.tar.gz
+          retention-days: 1
+          compression-level: 0
 
   # ── Discover affected plugin suites ────────────────────────────────────────
   discover:
@@ -51,13 +93,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # full history so --affected can diff against the base
-      - uses: actions/setup-go@v5
+      - uses: actions/download-artifact@v4
         with:
-          go-version: '1.25'
-          cache-dependency-path: tools/kb-devkit/go.sum
-      - name: Build kb-devkit
-        run: make build
-        working-directory: tools/kb-devkit
+          name: ${{ inputs.go-tools-artifact }}
+          path: tools-bin/
+      - name: Install kb-devkit
+        run: |
+          chmod +x tools-bin/*
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
       - name: Compute affected plugin-e2e matrix
         id: set
         run: |

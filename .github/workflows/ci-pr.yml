@@ -357,6 +357,17 @@ jobs:
       contents: write
       actions: read
 
+  fast-plugin-e2e:
+    name: Fast Plugin E2E
+    needs: [build]
+    uses: ./.github/workflows/e2e-plugins.yml
+    with:
+      dist-artifact: dist
+      go-tools-artifact: go-tools
+    permissions:
+      contents: read
+      actions: read
+
   e2e-auth:
     needs: [build]
     uses: ./.github/workflows/reusable-e2e-playwright.yml
