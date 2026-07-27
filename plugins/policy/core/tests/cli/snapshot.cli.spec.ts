@@ -33,7 +33,7 @@ describe('policy:snapshot', () => {
 
     const result = await snapshotCommand.execute(ctx as never, mockCLIInput<SnapshotFlags>({ flags: { path: 'platform/kb-labs-sdk' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(updateSnapshots).toHaveBeenCalledWith('platform/kb-labs-sdk', expect.any(String));
     expect(captured.success.length).toBeGreaterThan(0);
   });
@@ -44,7 +44,7 @@ describe('policy:snapshot', () => {
 
     const result = await snapshotCommand.execute(ctx as never, mockCLIInput<SnapshotFlags>());
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(updateSnapshots).not.toHaveBeenCalled();
   });
 
@@ -54,7 +54,7 @@ describe('policy:snapshot', () => {
 
     const result = await snapshotCommand.execute(ctx as never, mockCLIInput<SnapshotFlags>({ flags: { path: 'platform/kb-labs-sdk', 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(updateSnapshots).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('platform/kb-labs-sdk');

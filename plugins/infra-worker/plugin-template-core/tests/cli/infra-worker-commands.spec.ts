@@ -29,7 +29,7 @@ describe('infra-worker commands', () => {
       },
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(result.result).toEqual({
       workspaceId: 'ws_custom_1',
       environmentId: undefined,
@@ -65,7 +65,7 @@ describe('infra-worker commands', () => {
       },
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(result.result?.workspaceId).toBeDefined();
     expect(result.result?.environmentId).toBeDefined();
     expect(result.result?.snapshotId).toBeDefined();
@@ -91,7 +91,7 @@ describe('infra-worker commands', () => {
       },
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(result.result).toEqual({ snapshotId: 'snap_mock_1' });
     expect(result.ctx.api.snapshot.capture).toHaveBeenCalledWith({
       workspaceId: 'ws_123',
