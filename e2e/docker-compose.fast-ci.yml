@@ -1,0 +1,6 @@
+# Fast PR E2E override. Local affected tarballs are preferred by Verdaccio;
+# unchanged packages may fall back to the published npm versions.
+services:
+  verdaccio:
+    volumes:
+      - ./verdaccio/config.fast.yaml:/verdaccio/conf/config.yaml:ro

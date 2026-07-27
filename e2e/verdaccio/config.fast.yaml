@@ -1,0 +1,37 @@
+# Fast PR E2E registry: local affected packages override the npm versions;
+# unaffected packages are resolved from npm so an affected-only build can
+# still bootstrap the complete platform.
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: 1000
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org
+    timeout: 180s
+    max_fails: 3
+    fail_timeout: 15s
+    cache: true
+
+packages:
+  '@kb-labs/*':
+    access: $all
+    publish: $all
+    proxy: npmjs
+  '**':
+    access: $all
+    publish: $all
+    proxy: npmjs
+
+log:
+  type: stdout
+  format: pretty
+  level: warn
+
+server:
+  keepAliveTimeout: 60
+
+max_body_size: 200mb

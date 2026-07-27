@@ -45,6 +45,14 @@ on:
         description: 'Build Docker images directly without shared Buildx layer caches'
         type: boolean
         default: false
+      fast-registry:
+        description: 'Allow unaffected @kb-labs packages to resolve from npm'
+        type: boolean
+        default: false
+      artifact-prefix:
+        description: 'Prefix for per-suite artifacts to avoid collisions between lanes'
+        type: string
+        default: ''
       prebuilt-files-artifact:
         description: 'Optional bundle containing built dist, tools, and E2E tarballs (images are built in each shard)'
         type: string
@@ -54,7 +62,8 @@ permissions:
   contents: read
 
 env:
-  COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
+  COMPOSE_FILE: >-
+    ${{ inputs.fast-registry && 'e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.fast-ci.yml' || 'e2e/docker-compose.yml:e2e/docker-compose.ci.yml' }}
   COMPOSE_PROJECT_NAME: ${{ inputs.compose-project }}
 
 jobs:
@@ -354,7 +363,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: platform-logs-${{ github.run_id }}-${{ inputs.suite }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}platform-logs-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/e2e-logs/
           retention-days: 14
 
@@ -385,7 +394,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kb-e2e-diag-${{ github.run_id }}-${{ inputs.suite }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}kb-e2e-diag-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/kb-e2e-diag.json
           if-no-files-found: ignore
           retention-days: 14
@@ -394,7 +403,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.run_id }}-${{ inputs.suite }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}playwright-report-${{ github.run_id }}-${{ inputs.suite }}
           path: e2e/${{ inputs.suite }}/report/
           retention-days: 14
 
@@ -402,7 +411,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-diagnostics-${{ inputs.suite }}-${{ github.run_id }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}e2e-diagnostics-${{ inputs.suite }}-${{ github.run_id }}
           path: e2e/${{ inputs.suite }}/report/diagnostics/
           if-no-files-found: ignore
           retention-days: 14
@@ -411,7 +420,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flaky-report-${{ inputs.suite }}-${{ github.run_id }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}flaky-report-${{ inputs.suite }}-${{ github.run_id }}
           path: e2e/${{ inputs.suite }}/flaky-report.json
           if-no-files-found: ignore
           retention-days: 14
@@ -488,6 +497,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-timings-${{ github.run_id }}-${{ inputs.suite }}
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}e2e-timings-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/e2e-timings/
           retention-days: 90

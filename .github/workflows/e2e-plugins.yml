@@ -129,6 +129,8 @@ jobs:
       playwright-dir: e2e/${{ matrix.suite }}
       compose-project: kb-e2e-plugins-${{ matrix.suite }}
       fast-build: true
+      fast-registry: true
+      artifact-prefix: fast
       prebuilt-files-artifact: fast-e2e-files-${{ github.run_id }}
     permissions:
       contents: read
