@@ -23,10 +23,10 @@ export default defineCommand({
           ctx.ui?.info?.(`pong @ ${payload.at}`);
         }
 
-        return { exitCode: 0, result: payload };
+        return { ok: true, result: payload };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: null };
       }
     },
   },
