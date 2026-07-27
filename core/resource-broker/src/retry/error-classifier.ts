@@ -4,6 +4,7 @@
  */
 
 import type { ErrorType } from '../types.js';
+import { classifyFailure } from '@kb-labs/core-retry';
 
 /**
  * Classify an error for retry decision.
@@ -12,103 +13,12 @@ import type { ErrorType } from '../types.js';
  * @returns Error type classification
  */
 export function classifyError(error: unknown): ErrorType {
-  if (!error) {
-    return 'unknown';
-  }
-
-  // Handle Error objects
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    const name = error.name.toLowerCase();
-
-    // Rate limit errors (429)
-    if (
-      message.includes('429') ||
-      message.includes('rate limit') ||
-      message.includes('too many requests') ||
-      message.includes('quota exceeded') ||
-      name.includes('ratelimit')
-    ) {
-      return 'rate_limit';
-    }
-
-    // Timeout errors
-    if (
-      message.includes('timeout') ||
-      message.includes('timed out') ||
-      message.includes('etimedout') ||
-      message.includes('deadline exceeded') ||
-      name.includes('timeout')
-    ) {
-      return 'timeout';
-    }
-
-    // Network errors
-    if (
-      message.includes('econnrefused') ||
-      message.includes('econnreset') ||
-      message.includes('enotfound') ||
-      message.includes('network') ||
-      message.includes('socket') ||
-      message.includes('dns') ||
-      name.includes('fetch') ||
-      name.includes('network')
-    ) {
-      return 'network';
-    }
-
-    // Server errors (5xx)
-    if (
-      message.includes('500') ||
-      message.includes('502') ||
-      message.includes('503') ||
-      message.includes('504') ||
-      message.includes('internal server') ||
-      message.includes('bad gateway') ||
-      message.includes('service unavailable') ||
-      message.includes('gateway timeout')
-    ) {
-      return 'server_error';
-    }
-
-    // Client errors (4xx except 429)
-    if (
-      message.includes('400') ||
-      message.includes('401') ||
-      message.includes('403') ||
-      message.includes('404') ||
-      message.includes('bad request') ||
-      message.includes('unauthorized') ||
-      message.includes('forbidden') ||
-      message.includes('not found')
-    ) {
-      return 'client_error';
-    }
-  }
-
-  // Handle response-like objects with status codes
-  if (typeof error === 'object' && error !== null) {
-    const obj = error as Record<string, unknown>;
-
-    // Check status code
-    const status = obj.status ?? obj.statusCode ?? obj.code;
-    if (typeof status === 'number') {
-      if (status === 429) {return 'rate_limit';}
-      if (status >= 500) {return 'server_error';}
-      if (status >= 400) {return 'client_error';}
-    }
-
-    // Check error code string
-    const code = obj.code;
-    if (typeof code === 'string') {
-      const lowerCode = code.toLowerCase();
-      if (lowerCode.includes('timeout')) {return 'timeout';}
-      if (lowerCode.includes('econnrefused')) {return 'network';}
-      if (lowerCode.includes('econnreset')) {return 'network';}
-      if (lowerCode.includes('enotfound')) {return 'network';}
-    }
-  }
-
+  const kind = classifyFailure(error, { source: 'transport' }).kind;
+  if (kind === 'rate_limit') {return 'rate_limit';}
+  if (kind === 'timeout') {return 'timeout';}
+  if (kind === 'network') {return 'network';}
+  if (kind === 'server') {return 'server_error';}
+  if (kind === 'validation' || kind === 'authentication' || kind === 'authorization' || kind === 'not_found') {return 'client_error';}
   return 'unknown';
 }
 

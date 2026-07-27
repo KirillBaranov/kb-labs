@@ -1,20 +1,20 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { analyzeCiReliability, loadCiDossiers } from '@kb-labs/qa-core';
 import type { QaCiOverviewFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaCiOverviewFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaCiOverviewFlags>, unknown>({
   id: 'qa:ci-overview',
   description: 'Show a compact CI reliability overview from captured dossiers',
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaCiOverviewFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaCiOverviewFlags>): Promise<CommandResult> {
       const cwd = ctx.cwd ?? process.cwd();
       const inputPath = resolve(cwd, input.flags.input);
       const dossiers = loadCiDossiers(inputPath);
       if (dossiers.length === 0) {
         ctx.ui?.error?.(`No CI dossiers found under ${inputPath}. Run \`kb qa ci evidence capture\` in CI first.`);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const overview = analyzeCiReliability(dossiers);
       if (input.flags.output) {
@@ -40,7 +40,7 @@ export default defineCommand<unknown, CLIInput<QaCiOverviewFlags>, { exitCode: n
           ],
         });
       }
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

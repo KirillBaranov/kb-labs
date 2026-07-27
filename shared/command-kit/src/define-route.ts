@@ -58,8 +58,8 @@ export interface RouteDefinition<TConfig = unknown, TInput = unknown> {
  *   handler: {
  *     async execute(context, input: { name: string }) {
  *       return {
- *         data: { message: `Hello, ${input.name}!` },
- *         exitCode: 0,
+ *         ok: true,
+ *         result: { message: `Hello, ${input.name}!` },
  *       };
  *     }
  *   }

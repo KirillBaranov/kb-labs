@@ -1,4 +1,5 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { type StatusFlags, type IndexSummary, type StatusResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
@@ -7,7 +8,7 @@ export default defineCommand<unknown, CLIInput<StatusFlags>, StatusResponse>({
   description: 'Show Mind index status',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<StatusFlags>): Promise<{ exitCode: number; result?: StatusResponse }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<StatusFlags>): Promise<CommandResult<StatusResponse>> {
       const { flags } = input;
       try {
         const mind = await buildMind(ctx.cwd);
@@ -15,12 +16,12 @@ export default defineCommand<unknown, CLIInput<StatusFlags>, StatusResponse>({
 
         if (flags.json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
 
         if (res.indexes.length === 0) {
           ctx.ui?.warn?.('No indexes built yet. Run `kb mind index` first.');
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
 
         ctx.ui?.success?.('Mind indexes', {
@@ -38,10 +39,10 @@ export default defineCommand<unknown, CLIInput<StatusFlags>, StatusResponse>({
             },
           ],
         });
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

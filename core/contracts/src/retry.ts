@@ -14,13 +14,58 @@
  *   Handler saves progress via ctx.checkpoint, resumes on retry.
  */
 
-/**
- * Error classification for retry decisions.
- */
+/** Canonical failure source. */
+export type FailureSource = 'execution' | 'command' | 'transport' | 'workflow';
+
+/** Canonical failure taxonomy shared by execution, CLI and workflow hosts. */
+export type FailureKind =
+  | 'command'
+  | 'network'
+  | 'timeout'
+  | 'rate_limit'
+  | 'server'
+  | 'validation'
+  | 'configuration'
+  | 'authentication'
+  | 'authorization'
+  | 'not_found'
+  | 'cancelled'
+  | 'infrastructure'
+  | 'unknown';
+
+/** Safety of repeating an operation after a failure. */
+export type RetrySafety = 'safe' | 'requires_idempotency' | 'never';
+
+/** Structured failure information supplied by a plugin or execution layer. */
+export interface FailureInfo {
+  message: string;
+  code: string;
+  kind?: FailureKind;
+  source?: FailureSource;
+  details?: Record<string, unknown>;
+  retryAfterMs?: number;
+}
+
+/** Classifier output used by all retry policies. */
+export interface ClassifiedFailure extends FailureInfo {
+  kind: FailureKind;
+  source: FailureSource;
+  transient: boolean;
+  retrySafety: RetrySafety;
+  phase?: 'dispatch' | 'running' | 'response';
+}
+
+/** Input context that prevents ambiguous transport failures from being retried blindly. */
+export interface FailureClassificationContext {
+  source?: FailureSource;
+  phase?: 'dispatch' | 'running' | 'response';
+  idempotent?: boolean;
+}
+
+/** Backward-compatible retry input. Prefer ClassifiedFailure for new code. */
 export interface RetryableError {
   code: string;
   message: string;
-  /** Whether the error is safe to retry */
   retryable: boolean;
 }
 
@@ -35,6 +80,29 @@ export interface IRetryPolicy {
   shouldRetry(error: RetryableError, attempt: number): boolean;
   /** Delay in ms before next attempt (for backoff). */
   getDelay(attempt: number): number;
+}
+
+/** Failure kinds allowed by a retry policy. */
+export type RetryableFailureKind = FailureKind;
+
+/** Shared retry configuration. maxAttempts includes the initial attempt. */
+export interface RetryPolicyConfig {
+  maxAttempts: number;
+  retryOn: RetryableFailureKind[];
+  neverRetryOn?: FailureKind[];
+  initialDelayMs: number;
+  backoff: 'fixed' | 'linear' | 'exponential';
+  multiplier?: number;
+  maxDelayMs: number;
+  jitter?: number;
+  respectRetryAfter?: boolean;
+  requireIdempotencyForUnsafeFailures?: boolean;
+}
+
+export interface RetryDecision {
+  retry: boolean;
+  reason: 'retryable' | 'attempts_exhausted' | 'policy_denied' | 'not_idempotent' | 'unsafe_phase';
+  delayMs: number;
 }
 
 /**

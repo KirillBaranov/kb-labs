@@ -25,11 +25,11 @@ export default defineCommand({
       const listId = input.argv[0] as string | undefined;
       if (!listId) {
         validationError(ctx, 'listId is required', 'Usage: kb clickup list delete <listId> --force', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
       if (!input.flags.force) {
         validationError(ctx, `--force is required to delete list ${listId}`, 'Add --force to confirm deletion', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -41,10 +41,10 @@ export default defineCommand({
           ctx.ui?.success?.(`Deleted list ${listId}`);
         }
 
-        return { exitCode: 0, result: { deleted: true, listId } };
+        return { ok: true, result: { deleted: true, listId } };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

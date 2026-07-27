@@ -22,11 +22,7 @@ interface GitFlags {
   json?: boolean;
 }
 
-type ReleaseGitResult = CommandResult & {
-  committed?: boolean;
-  tagged?: string[];
-  pushed?: boolean;
-};
+type ReleaseGitResult = CommandResult<unknown>;
 
 function buildGitSections(
   result: { committed: boolean; tagged: string[]; pushed: boolean },
@@ -111,7 +107,7 @@ export default defineCommand({
         if (flags.json) { ctx.ui?.json?.({ committed: false, tagged: [], pushed: false, message: msg }); }
         else { ctx.ui?.write?.(msg); }
         console.log('::kb-output::' + JSON.stringify({ committed: false, tagged: [], pushed: false }));
-        return { exitCode: 0, committed: false, tagged: [], pushed: false };
+        return { ok: true, result: { committed: false, tagged: [], pushed: false } };
       }
 
       const scopePath = await resolveScopePath(repoRoot, flags.scope ?? 'root');
@@ -140,7 +136,7 @@ export default defineCommand({
 
       if (flags.json) {
         ctx.ui?.json?.(result);
-        return { exitCode: 0, ...result };
+        return { ok: true, result };
       }
 
       ctx.ui?.sideBox?.({
@@ -149,7 +145,7 @@ export default defineCommand({
         status: 'success',
       });
 
-      return { exitCode: 0, ...result };
+      return { ok: true, result };
     },
   },
 });

@@ -17,14 +17,7 @@ interface VerifyFlags {
   json?: boolean;
 }
 
-type ReleaseVerifyResult = CommandResult & {
-  plan?: {
-    packages: Array<{ name: string }>;
-  };
-  breakingDetected?: boolean;
-  valid?: boolean;
-  issues?: string[];
-};
+type ReleaseVerifyResult = CommandResult<unknown>;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -134,13 +127,15 @@ export default defineCommand({
         });
       }
 
-      return {
-        exitCode: isValid ? 0 : 2,
+      const result = {
         valid: isValid,
         plan,
         issues,
         breakingDetected: hasBreaking,
       };
+      return isValid
+        ? { ok: true, result }
+        : { ok: false, error: 'Release verification failed', result };
     },
   },
 });

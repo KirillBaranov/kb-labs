@@ -10,7 +10,7 @@
  *   pnpm kb agent trace context --task-id=<id> --json
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import type { TraceCommandResponse, TraceErrorCode } from '@kb-labs/agent-contracts';
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 
@@ -71,7 +71,7 @@ export default defineCommand({
   description: 'View what the LLM sees at each iteration — context window, truncations, and responses',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: TraceContextInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: TraceContextInput): Promise<CommandResult> {
       const flags: TraceContextFlags = input.flags ?? input;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
       const filterIteration = typeof flags.iteration === 'string'
@@ -82,7 +82,7 @@ export default defineCommand({
         const loaded = await loadTrace(taskId);
         if (!loaded.ok) {
           ctx.ui?.json?.(error('INVALID_TASK_ID', formatTraceLoadError(loaded.error)));
-          return { exitCode: 1 };
+          return { ok: false, error: 'Command failed' };
         }
         const events = loaded.events;
 
@@ -124,7 +124,7 @@ export default defineCommand({
 
         if (filtered.length === 0) {
           ctx.ui.write('No context:snapshot events found. Make sure agent was run with latest build.\n');
-          return { exitCode: 1 };
+          return { ok: false, error: 'Command failed' };
         }
 
         if (flags.json) {
@@ -133,10 +133,10 @@ export default defineCommand({
           printTimeline(ctx, filtered);
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (err) {
         ctx.ui?.json?.(error('TRACE_NOT_FOUND', `Trace not found: ${taskId}`));
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

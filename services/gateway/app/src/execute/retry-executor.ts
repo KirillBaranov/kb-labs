@@ -12,6 +12,7 @@
  */
 
 import type { ExecutionRetryConfig, CancellationReason } from '@kb-labs/core-contracts';
+import { classifyFailure } from '@kb-labs/core-retry';
 import type { ExecutionEventMessage } from '@kb-labs/gateway-contracts';
 import { CancelledError } from './errors.js';
 
@@ -64,8 +65,8 @@ export async function executeWithRetry<T>(
       if (attempt >= maxAttempts) { break; }
 
       // Check if error is retryable
-      const classified = classifyError(err);
-      if (cfg.onlyRetryable && !classified.retryable) { break; }
+      const classified = classifyFailure(err, { source: 'transport', phase: 'dispatch' });
+      if (cfg.onlyRetryable && !classified.transient) { break; }
 
       // Backoff delay
       const delay = Math.min(
@@ -127,33 +128,4 @@ function interruptibleDelay(ms: number, signal: AbortSignal): Promise<void> {
     };
     signal.addEventListener('abort', onAbort, { once: true });
   });
-}
-
-interface ClassifiedError {
-  code: string;
-  message: string;
-  retryable: boolean;
-}
-
-function classifyError(err: unknown): ClassifiedError {
-  if (!(err instanceof Error)) {
-    return { code: 'UNKNOWN', message: String(err), retryable: false };
-  }
-
-  const msg = err.message;
-
-  // Transport / network — retryable
-  if (msg.includes('ECONNREFUSED') || msg.includes('ECONNRESET') ||
-      msg.includes('ETIMEDOUT') || msg.includes('timed out') ||
-      msg.includes('503') || msg.includes('Service Unavailable')) {
-    return { code: 'TRANSPORT_ERROR', message: msg, retryable: true };
-  }
-
-  // Host went offline — retryable (may reconnect)
-  if (msg.includes('Host not connected')) {
-    return { code: 'HOST_UNAVAILABLE', message: msg, retryable: true };
-  }
-
-  // Everything else — not retryable
-  return { code: 'HANDLER_ERROR', message: msg, retryable: false };
 }

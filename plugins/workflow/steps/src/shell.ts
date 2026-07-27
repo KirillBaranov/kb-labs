@@ -261,7 +261,12 @@ async function shellHandler(
 
     const emitLine = (stream: 'stdout' | 'stderr', line: string) => {
       lineNo++;
-      void ctx.api.events.emit('log.line', { stream, line, lineNo, level: stream === 'stderr' ? 'error' : 'info' });
+      // stderr is an output stream, not an exit-status signal. Several
+      // perfectly successful tools (notably command discovery) deliberately
+      // write diagnostics there. The step result is evaluated from exitCode;
+      // keep stderr visible without turning every diagnostic line into an
+      // error event.
+      void ctx.api.events.emit('log.line', { stream, line, lineNo, level: stream === 'stderr' ? 'warn' : 'info' });
     };
 
     proc.stdout?.on('data', (chunk: Buffer) => {

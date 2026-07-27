@@ -3,7 +3,10 @@
  * Command Kit - High-level API and utilities for building CLI commands
  */
 
-import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
+import type {
+  CommandResult as PluginCommandResult,
+  PluginContextV3,
+} from '@kb-labs/plugin-contracts';
 import type { FlagSchemaDefinition, InferFlags } from './flags/index';
 
 // Re-exports
@@ -32,13 +35,6 @@ export * from './define-webhook';
 export * from './define-websocket';
 export * from './define-action';
 export * from './ws-types';
-
-/**
- * Command execution status
- */
-// Note: 'warning' and 'info' are legacy statuses from cli-ui, they may be used for display purposes
-// but semantically a command is either successful or not
-export type CommandStatus = 'success' | 'failed' | 'error' | 'cancelled' | 'skipped' | 'warning' | 'info';
 
 /**
  * Helper types for command results (optional - use when convenient)
@@ -70,14 +66,13 @@ export type ResultWith<T extends Record<string, unknown>> = CommandResult & T;
  * 
  * Recommended fields:
  * - `error?: string` - error message when ok === false
- * - `status?: CommandStatus` - execution status (auto-inferred if not provided)
  * 
  * Additional fields should be added via generic TResult type parameter.
  * 
  * @example
  * ```typescript
  * // Minimal result (not recommended - use explicit type)
- * type MyResult = CommandResult; // { ok: boolean; error?: string; status?: CommandStatus }
+ * type MyResult = CommandResult;
  * 
  * // Extended result with custom fields (RECOMMENDED)
  * type WorkflowRunResult = CommandResult & {
@@ -91,14 +86,7 @@ export type ResultWith<T extends Record<string, unknown>> = CommandResult & T;
  * };
  * ```
  */
-export type CommandResult = {
-  /** Whether the command executed successfully - REQUIRED */
-  ok: boolean;
-  /** Error message if ok === false - RECOMMENDED for error cases */
-  error?: string;
-  /** Execution status - automatically inferred from ok if not provided */
-  status?: CommandStatus;
-};
+export type CommandResult<T = unknown> = PluginCommandResult<T>;
 
 /**
  * Command handler function signature
@@ -408,4 +396,3 @@ export interface CommandConfig<
  * // Low-level UI: table(), keyValue(), list(), box(), sideBox()
  * ```
  */
-

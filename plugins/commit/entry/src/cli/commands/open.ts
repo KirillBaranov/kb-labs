@@ -4,6 +4,7 @@
  */
 
 import { defineCommand, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { loadPlan, getCurrentPlanPath, formatCommitMessage } from '@kb-labs/commit-core';
 import type { OpenOutput } from '@kb-labs/commit-contracts';
 
@@ -12,11 +13,7 @@ type OpenInput = {
   scope?: string;
 };
 
-type OpenResult = {
-  exitCode: number;
-  result?: OpenOutput;
-  meta?: Record<string, unknown>;
-};
+type OpenResult = CommandResult<OpenOutput>;
 
 export default defineCommand({
   id: 'commit:open',
@@ -35,7 +32,7 @@ export default defineCommand({
         plan = await loadPlan(cwd, scope);
       } catch (err) {
         handleError(ctx, err, input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const planPath = getCurrentPlanPath(cwd, scope);
 
@@ -105,7 +102,7 @@ export default defineCommand({
       }
 
       return {
-        exitCode: 0,
+        ok: true,
         result: output,
         meta: {
           timing: Date.now() - startTime,

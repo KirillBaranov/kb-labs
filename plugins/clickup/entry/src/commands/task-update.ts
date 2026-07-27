@@ -49,7 +49,7 @@ export default defineCommand({
       const [taskId] = input.argv;
       if (!taskId) {
         validationError(ctx, 'Task ID is required', 'Usage: kb clickup task update <taskId> [--name ...] [--status ...]', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const { name, desc, status, priority, assignee_add, assignee_rem, due, json, full } = input.flags;
@@ -85,10 +85,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: task };
+        return { ok: true, result: task };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

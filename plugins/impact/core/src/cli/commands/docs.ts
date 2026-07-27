@@ -36,7 +36,7 @@ export default defineCommand<unknown, DocsInput, unknown>({
       } catch {
         if (flags.json) {ctx.ui?.json?.({ docs: { stale: [], review: [], reindex: [] } });}
         else {ctx.ui?.warn?.('Could not find workspace root');}
-        return { exitCode: 1 };
+        return { ok: false, error: 'Could not find workspace root' };
       }
 
       const changed = detectChangedPackages(root);
@@ -44,7 +44,7 @@ export default defineCommand<unknown, DocsInput, unknown>({
         const empty = { docs: { stale: [], review: [], reindex: [] }, recommendations: [] };
         if (flags.json) {ctx.ui?.json?.(empty);}
         else {ctx.ui?.success?.('No changes detected');}
-        return { exitCode: 0, result: empty };
+        return { ok: true, result: empty };
       }
 
       const graph = buildReverseDependencyGraph(root);
@@ -84,7 +84,7 @@ export default defineCommand<unknown, DocsInput, unknown>({
         }));
       }
 
-      return { exitCode: 0, result };
+      return { ok: true, result };
     },
   },
 });

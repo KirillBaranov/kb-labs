@@ -18,7 +18,7 @@
 
 import { readFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv, type CommandResult } from '@kb-labs/sdk';
 import {
   mergeConfigWithFlow,
   resolvePublishTag,
@@ -54,8 +54,8 @@ interface DeliverFailure {
   errorHint?: string;
 }
 
-interface DeliverResult {
-  exitCode: number;
+interface DeliverPayload {
+  success: boolean;
   target?: string;
   published?: Array<{ name: string; version: string }>;
   failed?: DeliverFailure[];
@@ -108,14 +108,14 @@ export default defineCommand({
   description: 'Ship the tarballs `release stage` already packed to a target (npm) — no packing, no rebuild',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<DeliverFlags>): Promise<DeliverResult> {
+    async execute(ctx: PluginContextV3, input: CLIInput<DeliverFlags>): Promise<CommandResult<DeliverPayload>> {
       const { flags } = input;
       const target = flags.target ?? 'npm';
 
       if (target !== 'npm') {
         const msg = `release:deliver --target ${target} is not implemented — only "npm" ships this pass (see release plan's out-of-scope section for github-release/mirror)`;
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const cwd = ctx.cwd || process.cwd();
@@ -128,7 +128,7 @@ export default defineCommand({
       if (typeof flowResult !== 'string') {
         const msg = `release:deliver ${flowResult.error}`;
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       const config: ReleaseConfig = mergeConfigWithFlow(baseConfig, flowResult);
 
@@ -136,12 +136,12 @@ export default defineCommand({
       const manifest = loadManifest(artifactsDir);
       if (!Array.isArray(manifest)) {
         if (flags.json) { ctx.ui?.json?.({ error: manifest.error }); } else { ctx.ui?.error?.(manifest.error); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       if (manifest.length === 0) {
         const msg = `manifest.json at ${artifactsDir} lists no packages`;
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       const dryRun = flags['dry-run'];
@@ -185,11 +185,12 @@ export default defineCommand({
           errorCode: r.errorCode,
           errorHint: r.errorHint,
         }));
-        const result: DeliverResult = { exitCode: 1, target, published: publishedList, failed: failedList };
+        const result: DeliverPayload = { success: false, target, published: publishedList, failed: failedList };
 
         writeGithubStepSummary(buildFailureSummaryMarkdown(target, publishedList.length, failedList));
 
-        if (flags.json) { ctx.ui?.json?.(result); } else {
+        const response = { ok: false as const, error: 'Delivery failed', result };
+        if (flags.json) { ctx.ui?.json?.(response); } else {
           ctx.ui?.sideBox?.({
             title: 'Deliver — npm',
             sections: [{
@@ -199,14 +200,15 @@ export default defineCommand({
             status: 'error',
           });
         }
-        return result;
+        return response;
       }
       publishLoader.succeed(`Delivered ${publishResult.results.length} package(s) to npm`);
 
       if (dryRun) {
-        const result: DeliverResult = { exitCode: 0, target, published: publishResult.results.map(r => ({ name: r.name, version: r.version })) };
-        if (flags.json) { ctx.ui?.json?.(result); }
-        return result;
+        const result: DeliverPayload = { success: true, target, published: publishResult.results.map(r => ({ name: r.name, version: r.version })) };
+        const response = { ok: true as const, result };
+        if (flags.json) { ctx.ui?.json?.(response); }
+        return response;
       }
 
       // Post-delivery verification against the real registry — this is the
@@ -223,8 +225,8 @@ export default defineCommand({
       });
       const verifyIssues = verifyResults.flatMap(r => r.issues);
 
-      const result: DeliverResult = {
-        exitCode: verifyIssues.length === 0 ? 0 : 1,
+      const result: DeliverPayload = {
+        success: verifyIssues.length === 0,
         target,
         published: publishResult.results.map(r => ({ name: r.name, version: r.version })),
         verifyIssues,
@@ -246,8 +248,11 @@ export default defineCommand({
       }
 
       if (flags.json) {
-        ctx.ui?.json?.(result);
-        return result;
+        const response = verifyIssues.length === 0
+          ? { ok: true as const, result }
+          : { ok: false as const, error: 'Delivery verification failed', result };
+        ctx.ui?.json?.(response);
+        return response;
       }
 
       ctx.ui?.sideBox?.({
@@ -259,7 +264,9 @@ export default defineCommand({
         status: verifyIssues.length === 0 ? 'success' : 'error',
       });
 
-      return result;
+      return verifyIssues.length === 0
+        ? { ok: true, result }
+        : { ok: false, error: 'Delivery verification failed', result };
     },
   },
 });

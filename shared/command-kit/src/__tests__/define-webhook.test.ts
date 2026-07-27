@@ -42,7 +42,7 @@ describe('defineWebhook', () => {
         event: 'github:push',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
         },
       });
@@ -63,7 +63,7 @@ describe('defineWebhook', () => {
         event: 'github:push',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
         },
       });
@@ -82,7 +82,7 @@ describe('defineWebhook', () => {
     });
 
     it('should accept valid webhook host context', async () => {
-      const execute = vi.fn(async () => ({ data: {}, exitCode: 0 }));
+      const execute = vi.fn(async () => ({ ok: true, result: {} } as const));
 
       const handler = defineWebhook({
         event: 'github:push',
@@ -103,7 +103,7 @@ describe('defineWebhook', () => {
         event: 'github:push',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
           cleanup,
         },

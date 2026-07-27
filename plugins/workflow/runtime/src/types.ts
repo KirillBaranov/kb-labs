@@ -2,6 +2,7 @@ import type { StepSpec } from '@kb-labs/workflow-contracts'
 import type { ArtifactClient } from '@kb-labs/workflow-artifacts'
 import type { StepState } from '@kb-labs/workflow-constants'
 import type { ILogger } from '@kb-labs/core-platform'
+import type { ClassifiedFailure } from '@kb-labs/core-contracts'
 import type {
   PluginContextV3 as PluginContext,
   ExecutionTarget,
@@ -70,6 +71,8 @@ export interface StepExecutionFailure {
     stack?: string
     details?: Record<string, unknown>
   }
+  /** Normalized failure used by workflow retry policy. */
+  failure?: ClassifiedFailure
 }
 
 export type StepExecutionResult = StepExecutionSuccess | StepExecutionFailure

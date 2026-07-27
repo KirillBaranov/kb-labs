@@ -7,6 +7,7 @@ import {
   defineCommand,
   validationError,
   handleError,
+  type CommandResult,
   type PluginContextV3,
   type CLIInput,
 } from '@kb-labs/sdk';
@@ -45,10 +46,7 @@ interface ScaffoldFlags {
   mode?: string;
 }
 
-type ScaffoldResult = {
-  exitCode: number;
-  result?: { outRoot: string; files: number };
-};
+type ScaffoldResult = { outRoot: string; files: number };
 
 async function readVersion(pkgPath: string): Promise<string> {
   try {
@@ -97,7 +95,7 @@ function parsePositional(argv: string[] | undefined): {
 async function runDefault(
   ctx: PluginContextV3,
   rawInput: CLIInput<ScaffoldFlags>,
-): Promise<ScaffoldResult> {
+): Promise<CommandResult<ScaffoldResult>> {
   const start = Date.now();
   const input = { ...rawInput.flags, argv: rawInput.argv };
 
@@ -106,7 +104,7 @@ async function runDefault(
   const available = await listEntities(TEMPLATES_ROOT);
   if (available.length === 0) {
     validationError(ctx, 'No scaffold templates found. Reinstall @kb-labs/scaffold.');
-    return { exitCode: 1 };
+    return { ok: false, error: 'No scaffold templates found' };
   }
 
   if (!entityArg) {
@@ -117,12 +115,12 @@ async function runDefault(
       flags: SCAFFOLD_FLAGS,
     }) + '\n');
     ctx.ui?.info?.(`Available entities: ${available.join(', ')}`);
-    return { exitCode: 1 };
+    return { ok: false, error: `Unknown entity "${entityArg}"` };
   }
 
   if (!available.includes(entityArg)) {
     validationError(ctx, `Unknown entity "${entityArg}". Available: ${available.join(', ')}`);
-    return { exitCode: 1 };
+    return { ok: false, error: 'An entity name is required' };
   }
 
   if (!nameArg) {
@@ -132,13 +130,13 @@ async function runDefault(
       examples: [`kb scaffold run ${entityArg} my-${entityArg}`],
       flags: SCAFFOLD_FLAGS,
     }) + '\n');
-    return { exitCode: 1 };
+    return { ok: false, error: 'An entity name is required' };
   }
 
   const problem = runValidator('npmName', nameArg);
   if (problem) {
     validationError(ctx, `Invalid name "${nameArg}": ${problem}`, 'Name must be lowercase, no spaces, valid npm package name.');
-    return { exitCode: 1 };
+    return { ok: false, error: `Invalid name "${nameArg}": ${problem}` };
   }
 
   const entity = await loadEntity(TEMPLATES_ROOT, entityArg);
@@ -168,7 +166,7 @@ async function runDefault(
     resolveBlocks(entity.blocks, selectedBlocks);
   } catch (e) {
     handleError(ctx, e);
-    return { exitCode: 1 };
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
   for (const blockId of selectedBlocks) {
@@ -211,7 +209,7 @@ async function runDefault(
         { header: 'Files', items: formatTree(result.files).split('\n').filter(Boolean) },
       ],
     });
-    return { exitCode: 0, result: { outRoot, files: result.files.length } };
+    return { ok: true, result: { outRoot, files: result.files.length } };
   }
 
   if (state.exists && !state.empty) {
@@ -219,7 +217,7 @@ async function runDefault(
       ctx.ui?.warn?.(`--force: overwriting ${outRoot}`);
     } else {
       validationError(ctx, `Output directory "${outRoot}" already exists and is not empty.`, 'Use --force to overwrite.');
-      return { exitCode: 1 };
+      return { ok: false, error: `Output directory "${outRoot}" already exists and is not empty` };
     }
   }
 
@@ -264,10 +262,7 @@ async function runDefault(
     timing,
   });
 
-  return {
-    exitCode: 0,
-    result: { outRoot, files: result.files.length },
-  };
+  return { ok: true, result: { outRoot, files: result.files.length } };
 }
 
 type LinkOutcome = 'ok' | 'no-shell' | 'failed';

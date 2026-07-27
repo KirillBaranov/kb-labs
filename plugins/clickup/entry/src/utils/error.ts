@@ -14,7 +14,7 @@ function apiHint(err: ClickUpApiError): string {
 }
 
 /**
- * Output a structured error and return — call right before `return { exitCode: 1, result: null }`.
+ * Output a structured error and return — call right before `return { ok: false, error: 'Command failed', result: null }`.
  * In JSON mode emits `{ ok: false, error: { code, message, hint?, status? } }`.
  * In CLI mode uses ctx.ui.error() with hint and cause.
  */

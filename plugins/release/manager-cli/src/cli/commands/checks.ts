@@ -19,11 +19,7 @@ interface ChecksFlags {
   json?: boolean;
 }
 
-type ReleaseChecksResult = CommandResult & {
-  ok?: boolean;
-  failed?: string[];
-  results?: CheckResult[];
-};
+type ReleaseChecksResult = CommandResult<unknown>;
 
 function buildChecksSections(
   results: CheckResult[],
@@ -78,7 +74,7 @@ export default defineCommand({
           ctx.ui?.write?.(msg);
         }
         console.log('::kb-output::' + JSON.stringify({ ok: true, failed: [] }));
-        return { exitCode: 0, ok: true, failed: [], results: [] };
+        return { ok: true, result: { ok: true, failed: [], results: [] } };
       }
 
       const planLoader = useLoader('Discovering packages...');
@@ -112,7 +108,7 @@ export default defineCommand({
 
       if (flags.json) {
         ctx.ui?.json?.({ ok, failed, results });
-        return { exitCode: ok ? 0 : 1, ok, failed, results };
+        return ok ? { ok: true, result: { ok, failed, results } } : { ok: false, error: 'Command failed', result: { ok, failed, results } };
       }
 
       ctx.ui?.sideBox?.({
@@ -121,7 +117,7 @@ export default defineCommand({
         status: ok ? 'success' : 'error',
       });
 
-      return { exitCode: ok ? 0 : 1, ok, failed, results };
+      return ok ? { ok: true, result: { ok, failed, results } } : { ok: false, error: 'Command failed', result: { ok, failed, results } };
     },
   },
 });

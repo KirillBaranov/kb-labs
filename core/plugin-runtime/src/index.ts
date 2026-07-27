@@ -109,6 +109,9 @@ export type {
   ExecutionMeta,
   // CLI types (for wrapCliResult)
   CommandResult,
+  CommandSuccess,
+  CommandFailure,
+  CommandError,
   CommandResultWithMeta,
   StandardMeta,
 } from '@kb-labs/plugin-contracts';

@@ -1,6 +1,10 @@
 import { createRegistry } from '@kb-labs/core-registry';
 import { generateExamples } from '../../utils/generate-examples';
-import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import {
+  defineSystemCommand,
+  type ErrorResult,
+  type SuccessResult,
+} from '@kb-labs/shared-command-kit';
 
 type HealthFlags = {
   json: { type: 'boolean'; description?: string };
@@ -13,10 +17,17 @@ type HealthSnapshot = {
   uptimeSec: number;
 };
 
-type HealthResult = CommandResult & {
+type HealthSuccess = SuccessResult<{
+  healthStatus: 'healthy' | 'degraded' | 'unhealthy';
+  snapshot: HealthSnapshot;
+}>;
+
+type HealthFailure = ErrorResult<{
   healthStatus: 'healthy' | 'degraded' | 'unhealthy';
   snapshot?: HealthSnapshot;
-};
+}>;
+
+type HealthResult = HealthSuccess | HealthFailure;
 
 export const health = defineSystemCommand<HealthFlags, HealthResult>({
   name: 'health',
@@ -54,7 +65,7 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
       ctx.platform?.logger?.info('Health check completed', { status: snapshot.status });
 
       return {
-        ok: snapshot.status === 'healthy',
+        ok: true,
         status: snapshot.status === 'healthy' ? 'success' as const : 'warning' as const,
         healthStatus: (snapshot.status as HealthResult['healthStatus']) || 'unhealthy',
         snapshot: snapshot as HealthSnapshot,
@@ -80,11 +91,11 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
       const jsonOutput = result.snapshot || {
         schema: 'kb.health/1',
         status: result.healthStatus,
-        error: result.error,
+        error: !result.ok ? result.error : undefined,
       };
       ctx.ui?.json?.(jsonOutput);
     } else {
-      if (result.error) {
+      if (!result.ok) {
         ctx.ui.error('System Health', {
           sections: [
             {
@@ -136,4 +147,3 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
     }
   },
 });
-

@@ -12,9 +12,7 @@ interface ReportFlags {
   json?: boolean;
 }
 
-type ReleaseReportResult = CommandResult & {
-  report?: ReleaseReport;
-};
+type ReleaseReportResult = CommandResult<unknown>;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -40,14 +38,14 @@ function buildReportSections(report: ReleaseReport): Array<{ header?: string; it
 function handleReportNotFound(flags: ReportFlags, ctx: PluginContextV3): ReleaseReportResult {
   ctx.platform?.logger?.warn?.('No release report found');
   if (flags.json) {
-    ctx.ui?.json?.({ exitCode: 3, meta: { error: 'No release report found' } });
+    ctx.ui?.json?.({ ok: false, error: 'No release report found' });
   } else {
     ctx.ui?.error?.('No release report found', {
       hint: 'Run: kb release run',
       cause: 'No report has been generated for the current release',
     });
   }
-  return { exitCode: 3, meta: { error: 'No release report found' } };
+  return { ok: false, error: 'No release report found' };
 }
 
 // ── command ────────────────────────────────────────────────────────────────
@@ -83,7 +81,7 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: report.result.ok ? 0 : 1, report };
+        return report.result.ok ? { ok: true, result: { report } } : { ok: false, error: 'Command failed', result: { report } };
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           return handleReportNotFound(flags, ctx);

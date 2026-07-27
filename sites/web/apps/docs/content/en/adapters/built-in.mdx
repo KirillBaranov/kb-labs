@@ -95,6 +95,25 @@ To swap an adapter, change one line in `kb.config.jsonc` under `platform.adapter
 
 `@kb-labs/adapters-transport` is a base package consumed by other adapters — not selected directly via `kb.config.jsonc`. Don't worry about it unless you're writing a custom adapter that needs the same HTTP/WebSocket primitives.
 
+## Retry classification
+
+Built-in adapters use the retry taxonomy exposed through the SDK facade. Custom adapters should classify failures through the SDK rather than importing the retry implementation directly:
+
+```ts
+import { classifyFailure } from '@kb-labs/sdk/adapters';
+
+const failure = classifyFailure(error, {
+  source: 'transport',
+  phase: 'dispatch',
+});
+
+if (failure.transient && failure.retrySafety === 'safe') {
+  // Retry only when repeating the operation is safe.
+}
+```
+
+Infrastructure adapters can import the same facade from `@kb-labs/sdk/adapters/infra`. A diagnostic written to `stderr` is not, by itself, a failed adapter operation.
+
 ## What's not here yet
 
 The roadmap-but-not-shipped list (don't try to use these via `kb.config.jsonc` — they 404):

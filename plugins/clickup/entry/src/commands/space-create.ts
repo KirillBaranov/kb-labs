@@ -28,7 +28,7 @@ export default defineCommand({
       const { name, color, json, full } = input.flags;
       if (!name) {
         validationError(ctx, '--name is required', undefined, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -46,10 +46,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: space };
+        return { ok: true, result: space };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

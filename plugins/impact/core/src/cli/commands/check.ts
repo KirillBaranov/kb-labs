@@ -47,14 +47,14 @@ export default defineCommand<unknown, CheckInput, ImpactAnalysisResult>({
       } catch {
         if (flags.json) {ctx.ui?.json?.(EMPTY_RESULT);}
         else {ctx.ui?.warn?.('Could not find workspace root');}
-        return { exitCode: 1 };
+        return { ok: false, error: 'Could not find workspace root' };
       }
 
       const changed = detectChangedPackages(root);
       if (changed.length === 0) {
         if (flags.json) {ctx.ui?.json?.(EMPTY_RESULT);}
         else {ctx.ui?.success?.('No changes detected');}
-        return { exitCode: 0, result: EMPTY_RESULT };
+        return { ok: true, result: EMPTY_RESULT };
       }
 
       const graph = buildReverseDependencyGraph(root);
@@ -83,7 +83,7 @@ export default defineCommand<unknown, CheckInput, ImpactAnalysisResult>({
         ctx.ui?.write?.(formatHumanReadable(result));
       }
 
-      return { exitCode: 0, result };
+      return { ok: true, result };
     },
   },
 });

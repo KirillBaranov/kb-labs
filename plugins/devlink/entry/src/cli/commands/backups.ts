@@ -44,7 +44,7 @@ export default defineCommand<unknown, BackupsInput, BackupsResult>({
         } catch (err) {
           loader.fail('Restore failed');
           handleError(ctx, err, outputJson);
-          return { exitCode: 1 };
+          return { ok: false, error: 'Backup operation failed' };
         }
         loader.succeed(`Restored ${restored} file(s)`);
         tracker.checkpoint('restore');
@@ -65,7 +65,7 @@ export default defineCommand<unknown, BackupsInput, BackupsResult>({
           });
         }
 
-        return { exitCode: 0, result, meta: { timing: tracker.total() } };
+        return { ok: true, result, meta: { timing: tracker.total() } };
       }
 
       // ─── List mode ───────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export default defineCommand<unknown, BackupsInput, BackupsResult>({
         }
       }
 
-      return { exitCode: 0, result, meta: { timing: tracker.total() } };
+      return { ok: true, result, meta: { timing: tracker.total() } };
     },
   },
 });

@@ -24,7 +24,7 @@ export default defineCommand<unknown, DisableInput, { packageId: string; scope: 
 
       if (!packageId) {
         validationError(ctx, 'Specify a plugin to disable', 'Usage: kb marketplace plugins disable <plugin-id>', flags.json);
-        return { exitCode: 1, result: { packageId: '', scope: '' } };
+        return { ok: false, error: 'A package id is required', result: { packageId: '', scope: '' } };
       }
 
       let scopeCtx;
@@ -36,7 +36,7 @@ export default defineCommand<unknown, DisableInput, { packageId: string; scope: 
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { packageId: '', scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { packageId: '', scope: '' } };
       }
 
       try {
@@ -46,10 +46,10 @@ export default defineCommand<unknown, DisableInput, { packageId: string; scope: 
         } else {
           ctx.ui?.success?.(`Disabled ${packageId} (${scopeCtx.scope})`);
         }
-        return { exitCode: 0, result: { packageId, scope: scopeCtx.scope } };
+        return { ok: true, result: { packageId, scope: scopeCtx.scope } };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { packageId: '', scope: '' } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { packageId: '', scope: '' } };
       }
     },
   },

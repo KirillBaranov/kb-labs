@@ -30,42 +30,42 @@ describe('toWorkflowOutputs', () => {
 
   describe('CommandResult handler output (CLI commands via command: steps)', () => {
     it('extracts .result from CommandResult with object payload', () => {
-      const data = { exitCode: 0, result: { score: 95, grade: 'A' } };
+      const data = { ok: true, result: { score: 95, grade: 'A' } };
       expect(toWorkflowOutputs(data)).toEqual({ score: 95, grade: 'A' });
     });
 
     it('extracts .result from CommandResult with meta', () => {
-      const data = { exitCode: 0, result: { x: 1 }, meta: { duration: 100 } };
+      const data = { ok: true, result: { x: 1 }, meta: { duration: 100 } };
       expect(toWorkflowOutputs(data)).toEqual({ x: 1 });
     });
 
     it('wraps primitive .result in { result }', () => {
-      const data = { exitCode: 0, result: 'hello' };
+      const data = { ok: true, result: 'hello' };
       expect(toWorkflowOutputs(data)).toEqual({ result: 'hello' });
     });
 
     it('wraps numeric .result in { result }', () => {
-      const data = { exitCode: 0, result: 42 };
+      const data = { ok: true, result: 42 };
       expect(toWorkflowOutputs(data)).toEqual({ result: 42 });
     });
 
     it('returns {} when CommandResult.result is undefined (key present)', () => {
-      const data = { exitCode: 0, result: undefined };
+      const data = { ok: true, result: undefined };
       expect(toWorkflowOutputs(data)).toEqual({});
     });
 
     it('returns {} when CommandResult.result is explicitly undefined', () => {
-      const data = { exitCode: 0, result: undefined };
+      const data = { ok: true, result: undefined };
       expect(toWorkflowOutputs(data)).toEqual({});
     });
 
-    it('handles non-zero exitCode (still extracts result)', () => {
-      const data = { exitCode: 1, result: { error: 'failed' } };
+    it('handles failed CommandResult (still extracts result)', () => {
+      const data = { ok: false, error: 'failed', result: { error: 'failed' } };
       expect(toWorkflowOutputs(data)).toEqual({ error: 'failed' });
     });
 
     it('handles CommandResult with null .result', () => {
-      const data = { exitCode: 0, result: null };
+      const data = { ok: true, result: null };
       expect(toWorkflowOutputs(data)).toEqual({});
     });
   });
@@ -121,7 +121,7 @@ describe('toWorkflowOutputs', () => {
     });
 
     it('CLI handler returning CommandResult → same outputs in both modes', () => {
-      const handlerReturn = { exitCode: 0, result: { passed: true }, meta: {} };
+      const handlerReturn = { ok: true, result: { passed: true }, meta: {} };
 
       const inProcessOutputs = toWorkflowOutputs(handlerReturn);
       const subprocessOutputs = toWorkflowOutputs(handlerReturn);
@@ -132,18 +132,6 @@ describe('toWorkflowOutputs', () => {
   });
 
   describe('edge cases', () => {
-    it('does not treat object with exitCode but no numeric value as CommandResult', () => {
-      // exitCode must be a number for CommandResult detection
-      const data = { exitCode: 'not-a-number', result: { x: 1 } };
-      expect(toWorkflowOutputs(data)).toEqual({ exitCode: 'not-a-number', result: { x: 1 } });
-    });
-
-    it('passes through object with only exitCode (no result key) as plain object', () => {
-      // No `result` key → not a CommandResult → pass through as-is
-      const data = { exitCode: 0 };
-      expect(toWorkflowOutputs(data)).toEqual({ exitCode: 0 });
-    });
-
     it('passes through shell handler output as-is (has exitCode but no result key)', () => {
       // Shell handler returns { stdout, stderr, exitCode, ok }
       // This must NOT be treated as CommandResult

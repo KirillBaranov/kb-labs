@@ -4,6 +4,7 @@
  */
 
 import { defineCommand, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { clearPlan, hasPlan } from '@kb-labs/commit-core';
 import type { ResetOutput } from '@kb-labs/commit-contracts';
 
@@ -11,11 +12,7 @@ type ResetInput = {
   scope?: string;
 };
 
-type ResetResult = {
-  exitCode: number;
-  result?: ResetOutput;
-  meta?: Record<string, unknown>;
-};
+type ResetResult = CommandResult<ResetOutput>;
 
 export default defineCommand({
   id: 'commit:reset',
@@ -42,7 +39,7 @@ export default defineCommand({
       if (!exists) {
         ctx.ui?.info?.('No commit plan to clear.');
         return {
-          exitCode: 0,
+          ok: true,
           result: {
             success: true,
             message: 'No commit plan to clear.',
@@ -58,7 +55,7 @@ export default defineCommand({
         await clearPlan(cwd, scope);
       } catch (err) {
         handleError(ctx, err);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       ctx.ui?.success?.('Plan Cleared', {
@@ -71,7 +68,7 @@ export default defineCommand({
       });
 
       return {
-        exitCode: 0,
+        ok: true,
         result: {
           success: true,
           message: 'Commit plan cleared successfully.',

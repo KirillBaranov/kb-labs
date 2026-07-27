@@ -14,14 +14,14 @@ import type {
 } from '@kb-labs/plugin-contracts';
 
 /**
- * Check if value is a CommandResult (has exitCode property)
+ * Check whether a handler returned the canonical command result.
  */
 function isCommandResult<T>(value: unknown): value is CommandResult<T> {
   return (
     typeof value === 'object' &&
     value !== null &&
-    'exitCode' in value &&
-    typeof (value as CommandResult<T>).exitCode === 'number'
+    'ok' in value &&
+    typeof (value as { ok?: unknown }).ok === 'boolean'
   );
 }
 
@@ -48,7 +48,7 @@ function toStandardMeta(
  * Wrap RunResult from runner into CLI-specific CommandResultWithMeta
  *
  * CLI commands can return either:
- * - CommandResult<T> with exitCode, result, meta
+ * - CommandResult<T> with ok, result, meta
  * - T directly (data only, defaults to exitCode: 0)
  * - void/undefined (defaults to exitCode: 0)
  *
@@ -65,14 +65,17 @@ export function wrapCliResult<T>(
 
   // Case 1: Handler returned CommandResult
   if (isCommandResult<T>(data)) {
+    const ok = data.ok;
+    const exitCode = ok ? 0 : 1;
     const mergedMeta: StandardMeta & Record<string, unknown> = {
       ...data.meta,
       ...standardMeta,
     };
 
     return {
-      exitCode: data.exitCode,
-      result: data.result,
+      exitCode,
+      ok,
+      result: data.result as T | undefined,
       meta: mergedMeta,
     };
   }
@@ -81,6 +84,7 @@ export function wrapCliResult<T>(
   if (data === undefined || data === null) {
     return {
       exitCode: 0,
+      ok: true,
       meta: standardMeta as StandardMeta & Record<string, unknown>,
     };
   }
@@ -88,6 +92,7 @@ export function wrapCliResult<T>(
   // Case 3: Handler returned raw data T
   return {
     exitCode: 0,
+    ok: true,
     result: data as T,
     meta: standardMeta as StandardMeta & Record<string, unknown>,
   };

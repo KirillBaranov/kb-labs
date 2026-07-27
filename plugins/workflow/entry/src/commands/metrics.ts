@@ -2,18 +2,18 @@
  * workflow:metrics command - Get workflow metrics
  */
 
-import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { type MetricsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 type MetricsInput = MetricsFlags & { argv?: string[]; flags?: MetricsFlags };
 
-export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
+export default defineCommand<unknown, MetricsInput, unknown>({
   id: 'workflow:metrics',
   description: 'Get workflow daemon metrics',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: MetricsInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: MetricsInput): Promise<CommandResult> {
       const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
 
@@ -50,7 +50,7 @@ export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         if (outputJson) {
           handleError(ctx, error, true);
@@ -58,9 +58,8 @@ export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
           const message = error instanceof Error ? error.message : String(error);
           ctx.ui?.error?.(message, { hint: 'Start with: kb-dev start workflow' });
         }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },
 });
-

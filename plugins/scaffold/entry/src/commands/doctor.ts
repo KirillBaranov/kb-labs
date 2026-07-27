@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { scanRoot, type Finding } from '@kb-labs/scaffold-core';
 
 interface DoctorFlags {
@@ -7,13 +7,7 @@ interface DoctorFlags {
   json?: boolean;
 }
 
-type DoctorResult = {
-  exitCode: number;
-  result?: {
-    packagesScanned: number;
-    findings: Finding[];
-  };
-};
+type DoctorResult = { packagesScanned: number; findings: Finding[] };
 
 export default defineCommand({
   id: 'scaffold:doctor',
@@ -23,7 +17,7 @@ export default defineCommand({
     async execute(
       ctx: PluginContextV3,
       input: DoctorFlags,
-    ): Promise<DoctorResult> {
+    ): Promise<CommandResult<DoctorResult>> {
       const root = resolve(input.path ?? '.kb/plugins');
       const workspaceRoot = ctx.cwd ?? process.cwd();
       let scan: Awaited<ReturnType<typeof scanRoot>>;
@@ -31,7 +25,7 @@ export default defineCommand({
         scan = await scanRoot(root, { workspaceRoot });
       } catch (err) {
         handleError(ctx, err, input.json);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
 
       const { errorCount, warnCount } = scan.findings.reduce(
@@ -83,8 +77,15 @@ export default defineCommand({
         }
       }
 
-      return {
-        exitCode: hasErrors ? 1 : 0,
+      return hasErrors ? {
+        ok: false,
+        error: `${errorCount} error(s) found`,
+        result: {
+          packagesScanned: scan.packagesScanned,
+          findings: scan.findings,
+        },
+      } : {
+        ok: true,
         result: {
           packagesScanned: scan.packagesScanned,
           findings: scan.findings,

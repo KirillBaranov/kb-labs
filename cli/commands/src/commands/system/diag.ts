@@ -7,7 +7,7 @@
  *                                    why a specific command is (or isn't) visible.
  */
 
-import { defineSystemCommand } from '@kb-labs/shared-command-kit';
+import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { generateExamples } from '../../utils/generate-examples';
 import { registry } from '../../registry/service';
 import { discoverManifests, resetInProcCache, loadConfig } from '../../registry/discover';
@@ -40,8 +40,7 @@ type DiagSummary = {
   errors: number;
 };
 
-type DiagResult = {
-  ok: boolean;
+type DiagResult = CommandResult & {
   diagnostics: DiagDetails[];
   summary: DiagSummary;
 };
@@ -57,8 +56,7 @@ type TraceStage = {
 };
 
 /** Full result returned from runTrace(). */
-type CommandTraceResult = {
-  ok: boolean;
+type CommandTraceResult = CommandResult & {
   command: string;
   stages: TraceStage[];
   verdict: { rootCause: string; remediation?: string };
@@ -484,14 +482,17 @@ async function runTrace(ctx: TraceCtx): Promise<CommandTraceResult> {
     stages.find(s => s.status === 'error') ??
     stages.find(s => s.status === 'warning');
 
-  return {
-    ok: !stages.some(s => s.status === 'error' || s.status === 'warning'),
+  const result = {
     command: ctx.segments.join(' '),
     stages,
     verdict: failing
       ? { rootCause: failing.code, remediation: failing.remediation }
       : { rootCause: 'NONE' },
   };
+
+  return failing
+    ? { ok: false, error: failing.message, ...result }
+    : { ok: true, ...result };
 }
 
 // ── Command ────────────────────────────────────────────────────────────────────
@@ -713,7 +714,9 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult | CommandTraceResu
 
     ctx.platform?.logger?.info('Diag command completed', summary);
 
-    return { ok: summary.errors === 0, diagnostics, summary };
+    return summary.errors === 0
+      ? { ok: true, diagnostics, summary }
+      : { ok: false, error: `${summary.errors} diagnostic error(s) found`, diagnostics, summary };
   },
 
   // eslint-disable-next-line sonarjs/cognitive-complexity

@@ -29,11 +29,11 @@ export default defineCommand({
       const { folder, space, name, json, full } = input.flags;
       if (!name) {
         validationError(ctx, '--name is required', undefined, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
       if (!folder && !space) {
         validationError(ctx, '--folder or --space is required', 'Use `kb clickup workspace` to find IDs', json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -50,10 +50,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: list };
+        return { ok: true, result: list };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

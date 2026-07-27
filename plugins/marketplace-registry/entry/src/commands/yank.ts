@@ -1,4 +1,4 @@
-import { defineCommand, handleError, validationError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, validationError, type CLIInput, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { registryPost } from '../registry-http.js';
 
 interface YankFlags {
@@ -6,24 +6,24 @@ interface YankFlags {
   json?: boolean;
 }
 
-export default defineCommand<unknown, CLIInput<YankFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<YankFlags>, unknown>({
   id: 'marketplace:yank',
   description: 'Yank a specific version (soft-remove — tarball stays, fresh installs blocked)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<YankFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<YankFlags>): Promise<CommandResult> {
       const { flags = {}, argv = [] } = input;
       const [pkg, version] = argv;
       const t0 = Date.now();
 
       if (!pkg || !version) {
         validationError(ctx, 'Package spec and version are required', 'Usage: kb marketplace yank kb:handle/name <version>', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Package spec and version are required' };
       }
 
       if (!pkg.startsWith('kb:')) {
         validationError(ctx, 'Package must be a kb: spec', 'Example: kb:kirill/my-plugin', flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Package must be a kb: spec' };
       }
 
       const sliced = pkg.slice(3);
@@ -32,7 +32,7 @@ export default defineCommand<unknown, CLIInput<YankFlags>, { exitCode: number }>
       const name = slashIdx > 0 ? sliced.slice(slashIdx + 1) : '';
       if (!handle || !name) {
         validationError(ctx, 'Invalid kb: spec — expected kb:handle/name', undefined, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Invalid kb: spec' };
       }
 
       try {
@@ -40,7 +40,7 @@ export default defineCommand<unknown, CLIInput<YankFlags>, { exitCode: number }>
 
         if (flags.json) {
           ctx.ui?.json?.({ yanked: true, pkg, version });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         const items = [
@@ -57,10 +57,10 @@ export default defineCommand<unknown, CLIInput<YankFlags>, { exitCode: number }>
           timing: Date.now() - t0,
         });
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
   },

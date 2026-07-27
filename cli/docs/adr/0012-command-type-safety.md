@@ -81,7 +81,6 @@ export const wfList = defineSystemCommand<WorkflowListResult>({
 export type CommandResult = {
   ok: boolean;           // REQUIRED in handler return
   error?: string;        // RECOMMENDED for error cases
-  status?: CommandStatus; // Auto-inferred if not provided
 };
 ```
 
@@ -420,4 +419,3 @@ export const systemCmd = defineSystemCommand<SystemCmdResult>({
 
 **Last Updated:** 2025-11-20  
 **Next Review:** 2026-05-20 (6 months)
-

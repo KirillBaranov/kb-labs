@@ -2,7 +2,7 @@
  * workflow:runs-list command — like `gh run list`
  */
 
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsListFlags {
@@ -41,12 +41,12 @@ function formatDuration(ms?: number): string {
   return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsListFlags>, unknown>({
   id: 'workflow:runs-list',
   description: 'List workflow runs',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsListFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsListFlags>): Promise<CommandResult> {
       const flags = input.flags;
       const outputJson = flags?.json ?? false;
       const limit = flags?.limit ?? 20;
@@ -61,12 +61,12 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
 
         if (outputJson) {
           ctx.ui?.json?.({ ok: true, data: runs });
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         if (runs.length === 0) {
           ctx.ui?.info?.('No runs found');
-          return { exitCode: 0 };
+          return { ok: true };
         }
 
         ctx.ui?.table?.(
@@ -96,10 +96,10 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
         );
         ctx.ui?.success?.(`${runs.length} run(s)`);
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

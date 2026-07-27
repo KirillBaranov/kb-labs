@@ -33,7 +33,7 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.(input.flags.full ? workspace : toCompact(workspace));
-          return { exitCode: 0, result: workspace };
+          return { ok: true, result: workspace };
         }
 
         const sections = workspace.spaces.map(space => ({
@@ -48,10 +48,10 @@ export default defineCommand({
         }));
         ctx.ui?.info?.(workspace.name, { sections });
 
-        return { exitCode: 0, result: workspace };
+        return { ok: true, result: workspace };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

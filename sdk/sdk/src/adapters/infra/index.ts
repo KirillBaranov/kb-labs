@@ -14,6 +14,13 @@
  * internals directly.
  */
 
+// Shared retry classification facade for infrastructure adapters.
+export {
+  classifyFailure,
+  decideRetry,
+  DEFAULT_TRANSIENT_RETRY_POLICY,
+} from '@kb-labs/core-retry';
+
 // Transport (IPC layer used by adapters/transport)
 export type {
   ITransport,

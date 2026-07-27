@@ -4,7 +4,7 @@
  * Uses event-driven UI rendering instead of simple loaders.
  */
 
-import { defineCommand, useAnalytics, useCache, useConfig, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useAnalytics, useCache, useConfig, type CommandResult, type PluginContextV3 } from '@kb-labs/sdk';
 import {
   SessionManager,
   PlanDocumentService,
@@ -54,19 +54,7 @@ type RunInput = {
   argv?: string[];
 };
 
-type RunResult = {
-  exitCode: number;
-  sessionId?: string;
-  result?: {
-    success: boolean;
-    summary: string;
-    filesCreated: string[];
-    filesModified: string[];
-    filesRead: string[];
-    iterations: number;
-    tokensUsed: number;
-  };
-};
+type RunResult = CommandResult<unknown>;
 
 function parseBooleanFlag(value: unknown, defaultValue: boolean): boolean {
   if (typeof value === 'boolean') {
@@ -166,7 +154,7 @@ export default defineCommand({
             if (plan.status !== 'draft') {
               ctx.ui?.warn?.(`Plan is not in draft state (current: ${plan.status}). Nothing to approve.`);
               clearTimeout_();
-              return { exitCode: 1 };
+              return { ok: false, error: 'Command failed' };
             }
             const approvedAt = new Date().toISOString();
             const approvedPlan = { ...plan, status: 'approved' as const, approvedAt, approvalComment: 'Approved via CLI --approve', updatedAt: approvedAt };
@@ -177,7 +165,7 @@ export default defineCommand({
             ctx.ui?.success?.(`Plan approved: ${approvedPlan.id} (session: ${sessionId})`);
             ctx.ui?.info?.(`Ready to execute: kb agent run --session-id=${sessionId}`);
             clearTimeout_();
-            return { exitCode: 0, sessionId: sessionId as string };
+            return { ok: true, result: { sessionId: sessionId as string } };
           } catch {
             if (jsonOutput) {
               ctx.ui?.json?.({ ok: false, error: { code: 'NO_PLAN', message: `No approved plan for session ${sessionId}` } });
@@ -188,12 +176,12 @@ export default defineCommand({
               });
             }
             clearTimeout_();
-            return { exitCode: 1 };
+            return { ok: false, error: 'Command failed' };
           }
         }
         ctx.ui?.error?.('Error: --task is required');
         clearTimeout_();
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       // Build mode config
@@ -349,10 +337,9 @@ export default defineCommand({
               }
               const specSucceeded = specResult.success;
               clearTimeout_();
-              return {
-                exitCode: specSucceeded ? 0 : 1,
-                sessionId: effectiveSessionId,
-                result: {
+              return specSucceeded
+                ? { ok: true, result: {
+                    sessionId: effectiveSessionId,
                   success: specSucceeded,
                   summary: specResult.summary,
                   filesCreated: specResult.filesCreated,
@@ -360,8 +347,17 @@ export default defineCommand({
                   filesRead: specResult.filesRead,
                   iterations: specResult.iterations,
                   tokensUsed: specResult.tokensUsed,
-                },
-              };
+                } }
+                : { ok: false, error: 'Command failed', result: {
+                    sessionId: effectiveSessionId,
+                    success: specSucceeded,
+                    summary: specResult.summary,
+                    filesCreated: specResult.filesCreated,
+                    filesModified: specResult.filesModified,
+                    filesRead: specResult.filesRead,
+                    iterations: 0,
+                    tokensUsed: 0,
+                  } };
             }
           } catch {
             // No plan.json or unreadable — fall through to normal flow
@@ -551,11 +547,8 @@ export default defineCommand({
         // Just return the structured result
 
         const runSucceeded = result.success;
-        const structuredResult = {
-          exitCode: runSucceeded ? 0 : 1,
-          sessionId: effectiveSessionId,
-          summary: result.summary,
-          data: {
+        const structuredResult = runSucceeded
+          ? { ok: true as const, result: {
             sessionId: effectiveSessionId,
             success: runSucceeded,
             summary: result.summary,
@@ -565,8 +558,18 @@ export default defineCommand({
             iterations: result.iterations,
             tokensUsed: result.tokensUsed,
             hasPlan: mode === 'plan' && !!result.plan,
-          },
-        };
+          } }
+          : { ok: false as const, error: 'Command failed', result: {
+            sessionId: effectiveSessionId,
+            success: runSucceeded,
+            summary: result.summary,
+            filesCreated: result.filesCreated,
+            filesModified: result.filesModified,
+            filesRead: result.filesRead,
+            iterations: result.iterations,
+            tokensUsed: result.tokensUsed,
+            hasPlan: mode === 'plan' && !!result.plan,
+          } };
 
         if (jsonOutput) {
           ctx.ui?.json?.(structuredResult);
@@ -588,7 +591,7 @@ export default defineCommand({
               cause: reason,
             });
           }
-          return { exitCode: 124 }; // 124 mirrors the POSIX timeout(1) exit code
+          return { ok: false, error: 'Command timed out' };
         }
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (jsonOutput) {
@@ -599,7 +602,7 @@ export default defineCommand({
             cause: errorMessage,
           });
         }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

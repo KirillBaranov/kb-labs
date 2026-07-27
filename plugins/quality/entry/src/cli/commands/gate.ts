@@ -3,17 +3,18 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import { analyzeLayering, QualitySnapshotStore } from '@kb-labs/quality-core';
 import { defaultQualityConfig, type QualityPluginConfig } from '@kb-labs/quality-contracts';
 import type { GateFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<GateFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<GateFlags>, unknown>({
   id: 'quality:gate',
   description: 'Architecture gate: fail if new layering violations introduced',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<GateFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<GateFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -45,7 +46,9 @@ export default defineCommand<unknown, CLIInput<GateFlags>, { exitCode: number }>
 
       if (flags.json) {
         ctx.ui?.json?.(result);
-        return { exitCode: failed ? 1 : 0 };
+        return failed
+          ? { ok: false, error: 'Quality gate failed', result: { failed } }
+          : { ok: true, result: { failed } };
       }
 
       if (!failed) {
@@ -54,7 +57,7 @@ export default defineCommand<unknown, CLIInput<GateFlags>, { exitCode: number }>
             ? `Gate passed — no new violations (${current} pre-existing)`
             : 'Gate passed — no layering violations';
         ctx.ui?.success?.(msg);
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       const sections = [];
@@ -74,7 +77,7 @@ export default defineCommand<unknown, CLIInput<GateFlags>, { exitCode: number }>
       }
 
       ctx.ui?.error?.('Gate failed — architecture violations detected', { sections });
-      return { exitCode: 1 };
+      return { ok: false, error: 'Command failed' };
     },
   },
 });

@@ -19,7 +19,7 @@ export default defineCommand({
 
         if (input.flags.json) {
           ctx.ui?.json?.({ ok: true, result: folders });
-          return { exitCode: 0, result: folders };
+          return { ok: true, result: folders };
         }
 
         ctx.ui?.chain?.(folders.map(f => ({
@@ -34,10 +34,10 @@ export default defineCommand({
           }],
         })));
 
-        return { exitCode: 0, result: folders };
+        return { ok: true, result: folders };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

@@ -2,11 +2,11 @@
  * workflow:runs-cancel <runId> command — cancel an active workflow run
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import type { RunsCancelFlags } from '../flags.js';
 
-export default defineCommand<unknown, CLIInput<RunsCancelFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsCancelFlags>, unknown>({
   id: 'workflow:runs-cancel',
   description: 'Cancel a workflow run',
 
@@ -19,14 +19,14 @@ export default defineCommand<unknown, CLIInput<RunsCancelFlags>, { exitCode: num
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsCancelFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsCancelFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
 
       if (!runId) {
         validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs cancel <runId> [--run-id=<id>]', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -52,10 +52,10 @@ export default defineCommand<unknown, CLIInput<RunsCancelFlags>, { exitCode: num
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

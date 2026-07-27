@@ -54,7 +54,7 @@ export default defineCommand<unknown, StatusInput, StatusResult>({
       } catch (err) {
         loader.fail('Analysis failed');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Unable to read DevLink status' };
       }
 
       loader.succeed('Analysis complete');
@@ -124,7 +124,7 @@ export default defineCommand<unknown, StatusInput, StatusResult>({
         });
       }
 
-      return { exitCode: 0, result, meta: { timing: tracker.total() } };
+      return { ok: true, result, meta: { timing: tracker.total() } };
     },
   },
 });

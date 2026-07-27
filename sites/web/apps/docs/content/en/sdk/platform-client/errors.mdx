@@ -7,7 +7,7 @@ order: 9
 
 `@kb-labs/platform-client` has a deliberately simple error model: every proxy method throws a plain `Error` when something goes wrong, and every error's `message` comes from either the server's `PlatformCallResponse.error` or from the HTTP layer when the server didn't respond with a valid response.
 
-There's no error class hierarchy, no retry logic, no circuit breaker, no exponential backoff. The client is ~300 lines of zero-dep code; anything beyond basic HTTP dispatch belongs in your calling code.
+The client itself still has no error class hierarchy, retry logic, circuit breaker, or exponential backoff. It is ~300 lines of zero-dep HTTP dispatch. For consistent failure classification in calling code, use the classifier exposed by `@kb-labs/sdk`.
 
 This page covers what the errors look like, how to classify them, and patterns for retries and timeouts.
 
@@ -78,9 +78,11 @@ This is rare — usually means the server is misbehaving or you're hitting the w
 
 ## Classifying errors
 
-Since the client throws plain `Error`s, classification is by message matching. Not elegant, but works:
+The client still throws plain `Error`s, but callers do not need to maintain their own message-matching rules. The SDK classifier maps transport, HTTP, timeout, rate-limit, server, and other failures to the shared taxonomy:
 
 ```ts
+import { classifyFailure } from '@kb-labs/sdk';
+
 async function safeLLMCall(prompt: string): Promise<string | null> {
   try {
     const response = await platform.llm.complete(prompt);
@@ -88,25 +90,26 @@ async function safeLLMCall(prompt: string): Promise<string | null> {
   } catch (err) {
     if (!(err instanceof Error)) throw err;
 
-    // Network errors — likely recoverable
-    if (err.message.includes('fetch failed') || err.message.includes('ECONNREFUSED')) {
+    const failure = classifyFailure(err, {
+      source: 'transport',
+      phase: 'dispatch',
+    });
+
+    if (failure.kind === 'network' || failure.kind === 'timeout') {
       console.warn('Gateway unreachable, skipping LLM');
       return null;
     }
 
-    // Auth errors — not recoverable by retry
-    if (err.message.includes('401') || err.message.includes('403')) {
+    if (failure.kind === 'authentication' || failure.kind === 'authorization') {
       throw new Error('Authentication failed — check KB_API_KEY');
     }
 
-    // Rate limit — retry after backoff
-    if (err.message.includes('429')) {
+    if (failure.kind === 'rate_limit') {
       console.warn('Rate limited, will retry later');
       return null;
     }
 
-    // Server error — retry once
-    if (err.message.includes('500') || err.message.includes('502')) {
+    if (failure.kind === 'server') {
       console.warn('Server error, retrying once');
       try {
         const response = await platform.llm.complete(prompt);
@@ -122,7 +125,7 @@ async function safeLLMCall(prompt: string): Promise<string | null> {
 }
 ```
 
-You can build a thin wrapper like this once and reuse it across all proxy calls.
+The classifier is the canonical place for failure categories. Retry decisions still belong to the caller or workflow policy, including the question of whether the operation is safe to repeat.
 
 ## Retry with exponential backoff
 
@@ -142,19 +145,12 @@ async function withRetry<T>(
       const isLastAttempt = attempt === maxAttempts - 1;
       if (isLastAttempt) throw err;
 
-      const message = err instanceof Error ? err.message : String(err);
+      const failure = classifyFailure(err, {
+        source: 'transport',
+        phase: 'dispatch',
+      });
 
-      // Only retry on transient failures
-      const isRetriable =
-        message.includes('fetch failed') ||
-        message.includes('ECONNREFUSED') ||
-        message.includes('429') ||
-        message.includes('500') ||
-        message.includes('502') ||
-        message.includes('503') ||
-        message.includes('504');
-
-      if (!isRetriable) throw err;
+      if (!failure.transient || failure.retrySafety === 'never') throw err;
 
       const delay = baseDelayMs * Math.pow(2, attempt);
       await new Promise((r) => setTimeout(r, delay));
@@ -173,7 +169,7 @@ const response = await withRetry(
 
 `maxAttempts: 3` with `baseDelayMs: 1000` gives you attempts at 0s, 1s, 2s (delays between attempts), with a total upper bound around 3 seconds plus per-call latency. Tune to your latency budget.
 
-**Don't retry non-idempotent operations** without care. `llm.complete` is fine (a retry is just another LLM call — same or different output, no side effects). `cache.set` is fine (idempotent). `platform.call('workflows', 'run', ...)` is **not** safe to retry without an `idempotencyKey` — you'll create duplicate workflow runs.
+**Don't retry non-idempotent operations** without care. `llm.complete` is usually safe (a retry is just another LLM call — same or different output, no side effects). `cache.set` is idempotent. `platform.call('workflows', 'run', ...)` is **not** safe to retry without an `idempotencyKey` — you'll create duplicate workflow runs. A transient classification means the failure may be recoverable; it does not override operation safety.
 
 ## Timeouts
 

@@ -7,11 +7,11 @@
  * Use --action=reject to reject instead of approve (default is approve).
  */
 
-import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import type { RunsApproveFlags } from '../flags.js';
 
-export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunsApproveFlags>, unknown>({
   id: 'workflow:runs-approve',
   description: 'Approve or reject a pending approval step in a workflow run',
 
@@ -25,7 +25,7 @@ export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: nu
       };
     },
 
-    async execute(ctx: PluginContextV3, input: CLIInput<RunsApproveFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsApproveFlags>): Promise<CommandResult> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
       const runId = flags?.['run-id'] ?? argv[0];
@@ -40,12 +40,12 @@ export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: nu
             '       kb workflow runs approve <runId> --job-id=<jobId> --step-id=<stepId>',
           outputJson,
         );
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       if (action !== 'approve' && action !== 'reject') {
         validationError(ctx, `Invalid action "${action}" — must be "approve" or "reject"`, '', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -69,14 +69,14 @@ export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: nu
                 sections: [{ header: 'Details', items: ['No steps are currently waiting for approval.'] }],
               });
             }
-            return { exitCode: 1 };
+            return { ok: false, error: 'Command failed' };
           }
 
           const first = pending[0];
           if (!first) {
             // Guard — cannot happen after the length===0 check above, but satisfies TS.
             ctx.ui?.error?.('No pending approvals', { title: runId, sections: [] });
-            return { exitCode: 1 };
+            return { ok: false, error: 'Command failed' };
           }
 
           if (pending.length > 1) {
@@ -105,7 +105,7 @@ export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: nu
                 ],
               });
             }
-            return { exitCode: 1 };
+            return { ok: false, error: 'Command failed' };
           }
 
           // Single pending — resolve it.
@@ -141,10 +141,10 @@ export default defineCommand<unknown, CLIInput<RunsApproveFlags>, { exitCode: nu
           });
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

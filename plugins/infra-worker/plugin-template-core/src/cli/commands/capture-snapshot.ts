@@ -36,7 +36,7 @@ export default defineCommand<unknown, CaptureSnapshotInput, CaptureSnapshotResul
       ctx.ui.success(`Snapshot captured: ${result.snapshotId}`);
 
       return {
-        exitCode: 0,
+        ok: true,
         result,
       };
     },

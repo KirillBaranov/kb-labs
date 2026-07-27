@@ -30,7 +30,7 @@ export default defineCommand({
       const listId = input.argv[0] as string | undefined;
       if (!listId) {
         validationError(ctx, 'listId is required', 'Usage: kb clickup list update <listId> --name "new name"', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -44,10 +44,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: list };
+        return { ok: true, result: list };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

@@ -5,7 +5,7 @@
  * Token-first (programmatic), OTP fallback for interactive terminal.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv, type CommandResult } from '@kb-labs/sdk';
 import { planRelease, type ReleaseConfig } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
 import { publishPackagesProgrammatic, type ProgrammaticPublishResult } from '../../shared/publish-programmatic';
@@ -21,18 +21,15 @@ interface PublishFlags {
   json?: boolean;
 }
 
-interface PublishResult {
-  exitCode: number;
-  published?: Array<{ name: string; version: string }>;
-  failed?: Array<{ name: string; version: string; error: string }>;
-  summary?: {
-    total: number;
-    successful: number;
-    failed: number;
-  };
-}
+type PublishResult = CommandResult<unknown>;
 
 type PublishResultItem = { success: boolean; name: string; version: string; error?: string };
+type PublishSummary = {
+  success: boolean;
+  published?: Array<{ name: string; version: string }>;
+  failed?: Array<{ name: string; version: string; error: string }>;
+  summary?: { total: number; successful: number; failed: number };
+};
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -63,11 +60,11 @@ function buildPublishSections(
   return sections;
 }
 
-function toPublishResult(results: PublishResultItem[]): PublishResult {
+function toPublishResult(results: PublishResultItem[]): PublishSummary {
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   return {
-    exitCode: failed === 0 ? 0 : 1,
+    success: failed === 0,
     published: results.filter(r => r.success).map(r => ({ name: r.name, version: r.version })),
     failed: results.filter(r => !r.success).map(r => ({
       name: r.name,
@@ -115,7 +112,7 @@ export default defineCommand({
         } else {
           ctx.ui?.write?.(msg);
         }
-        return { exitCode: 1, summary: { total: 0, successful: 0, failed: 0 } };
+        return { ok: false, error: 'Command failed', result: { summary: { total: 0, successful: 0, failed: 0 } } };
       }
 
       let rawResult: ProgrammaticPublishResult | PublishWithOTPResult;
@@ -147,18 +144,22 @@ export default defineCommand({
         failed: publishResult.failed?.map(p => p.name) ?? [],
       }));
 
+      const response = publishResult.success
+        ? { ok: true as const, result: publishResult }
+        : { ok: false as const, error: 'Publish failed', result: publishResult };
+
       if (json) {
-        ctx.ui?.json?.(publishResult);
-        return publishResult;
+        ctx.ui?.json?.(response);
+        return response;
       }
 
       ctx.ui?.sideBox?.({
         title: dryRun ? 'Publish Dry-Run' : 'Publish Summary',
         sections: buildPublishSections(rawResult.results, ctx.ui.symbols),
-        status: publishResult.exitCode === 0 ? 'success' : 'error',
+        status: publishResult.success ? 'success' : 'error',
       });
 
-      return publishResult;
+      return response;
     },
   },
 });

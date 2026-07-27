@@ -409,4 +409,19 @@ describe('shellHandler — timeout regression (BUG: timedOut + reject:false = si
       shellModule.execute(ctx, { command: 'sleep 10', timeout: 100 }),
     ).rejects.toThrow(/timed out/i)
   }, 5000)
+
+  it('keeps successful stderr diagnostics at warn level', async () => {
+    const ctx = makeMockCtx()
+    const result = await shellModule.execute(ctx, {
+      command: `node -e "process.stderr.write('discovery diagnostic\\n')"`,
+    })
+
+    expect(result).toMatchObject({ exitCode: 0, ok: true, stderr: 'discovery diagnostic\n' })
+    expect(ctx.api.events.emit).toHaveBeenCalledWith('log.line', {
+      stream: 'stderr',
+      line: 'discovery diagnostic',
+      lineNo: 1,
+      level: 'warn',
+    })
+  })
 })

@@ -7,6 +7,7 @@
  */
 
 import { defineCommand, useLogger, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import type {
   TraceCommandResponse,
   IterationResponse,
@@ -23,7 +24,7 @@ type TraceIterationInput = {
   json?: boolean;
 };
 
-type TraceIterationResult = { exitCode: number; response?: TraceCommandResponse };
+type TraceIterationResult = CommandResult<TraceCommandResponse>;
 
 export default defineCommand({
   id: 'trace:iteration',
@@ -39,7 +40,7 @@ export default defineCommand({
     if (iteration === undefined || iteration < 1) {
       const err = error('INVALID_ITERATION', 'Missing or invalid --iteration flag (must be >= 1)');
       ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-      return { exitCode: 1, response: err };
+      return { ok: false, error: 'Command failed', result: err };
     }
 
     try {
@@ -52,7 +53,7 @@ export default defineCommand({
           'CORRUPTED_TRACE';
         const err = error(code, formatTraceLoadError(loaded.error));
         ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       const normalized = normalizeTraceEvents(loaded.events);
@@ -61,7 +62,7 @@ export default defineCommand({
       if (filtered.length === 0) {
         const err = error('INVALID_ITERATION', `No events found for iteration ${iteration}`);
         ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       // Calculate summary
@@ -92,12 +93,12 @@ export default defineCommand({
         printHumanReadable(ctx, iteration, filtered, summary);
       }
 
-      return { exitCode: 0, response };
+      return { ok: true, result: response };
     } catch (err) {
       logger.error('trace:iteration error:', err instanceof Error ? err : undefined);
       const errResponse = error('IO_ERROR', err instanceof Error ? err.message : String(err));
       ctx.ui.write(JSON.stringify(errResponse, null, 2) + '\n');
-      return { exitCode: 1, response: errResponse };
+      return { ok: false, error: 'Command failed', result: errResponse };
     }
     },
   },

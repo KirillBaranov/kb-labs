@@ -9,6 +9,7 @@
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { execFile as execFileCb } from 'node:child_process';
@@ -115,7 +116,7 @@ export default defineCommand({
   description: 'Show quality control report for agent runs (quality, tokens, tools, drift, regressions)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: QualityReportInput): Promise<{ exitCode: number; response?: unknown }> {
+    async execute(ctx: PluginContextV3, input: QualityReportInput): Promise<CommandResult<unknown>> {
       const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
         ? (input as { flags: QualityReportInput }).flags
         : input;
@@ -128,7 +129,7 @@ export default defineCommand({
       if (!Number.isFinite(days) || days <= 0) {
         const err = { success: false, error: '--days must be a positive number' };
         ctx.ui?.json?.(err);
-        return { exitCode: 1, response: err };
+        return { ok: false, error: 'Command failed', result: err };
       }
 
       const analyticsDir = path.join(process.cwd(), '.kb', 'analytics', 'buffer');
@@ -136,7 +137,7 @@ export default defineCommand({
       if (files.length === 0) {
         const out = { success: true, message: 'No analytics files found for selected period', runs: 0 };
         ctx.ui?.json?.(out);
-        return { exitCode: 0, response: out };
+        return { ok: true, result: out };
       }
 
       const since = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -155,7 +156,7 @@ export default defineCommand({
         printReport(ctx, report);
       }
 
-      return { exitCode: 0, response: report };
+      return { ok: true, result: report };
     },
   },
 });

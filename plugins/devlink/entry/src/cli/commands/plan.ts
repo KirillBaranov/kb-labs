@@ -47,7 +47,7 @@ export default defineCommand<unknown, PlanInput, DevlinkPlan>({
       } catch (err) {
         loader.fail('Failed to build plan');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
       loader.succeed(`Plan ready: ${plan.items.length} change(s)`);
       tracker.checkpoint('plan');
@@ -102,7 +102,7 @@ export default defineCommand<unknown, PlanInput, DevlinkPlan>({
         }
       }
 
-      return { exitCode: 0, result: plan, meta: { timing: tracker.total() } };
+      return { ok: true, result: plan, meta: { timing: tracker.total() } };
     },
   },
 });

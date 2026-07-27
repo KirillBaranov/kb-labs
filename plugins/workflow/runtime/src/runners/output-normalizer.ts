@@ -11,21 +11,21 @@
  */
 
 /**
- * Check if value looks like a CLI CommandResult ({ exitCode, result }).
+ * Check if value looks like a plugin CommandResult.
  * CLI command handlers return this shape; workflow handlers return raw data.
  *
- * Requires BOTH `exitCode` (number) AND `result` key to be present.
- * This prevents false positives from shell handler output which has
- * `exitCode` but uses `stdout`/`stderr` instead of `result`.
+ * A shell result also has `exitCode`, so it must not be mistaken for a
+ * plugin result even when its process succeeded.
  */
-function isCommandResult(value: unknown): value is { exitCode: number; result?: unknown; meta?: Record<string, unknown> } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'exitCode' in value &&
-    'result' in value &&
-    typeof (value as Record<string, unknown>).exitCode === 'number'
-  );
+type RuntimeCommandResult = { ok: boolean; result?: unknown; error?: unknown; meta?: Record<string, unknown> };
+
+function isCommandResult(value: unknown): value is RuntimeCommandResult {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return typeof record.ok === 'boolean' && !('exitCode' in record);
 }
 
 /**
@@ -35,11 +35,10 @@ function isCommandResult(value: unknown): value is { exitCode: number; result?: 
  * | Handler returns                          | step.outputs              |
  * |------------------------------------------|---------------------------|
  * | { foo: 'bar' }                           | { foo: 'bar' }            |
- * | { exitCode: 0, result: { x: 1 } }       | { x: 1 }                 |
- * | { exitCode: 0, result: 'hello' }         | { result: 'hello' }      |
- * | { exitCode: 0, result: undefined }       | {}                        |
- * | { exitCode: 0, result: null }            | {}                        |
- * | { exitCode: 0 }  (no result key)         | { exitCode: 0 }           |
+ * | { ok: true, result: { x: 1 } }           | { x: 1 }                 |
+ * | { ok: true, result: 'hello' }            | { result: 'hello' }      |
+ * | { ok: true, result: undefined }          | {}                        |
+ * | { ok: true, result: null }               | {}                        |
  * | { stdout: '...', exitCode: 0, ok: true } | { stdout, exitCode, ok }  |
  * | 'hello' (primitive)                      | { result: 'hello' }      |
  * | 42 (number)                              | { result: 42 }           |

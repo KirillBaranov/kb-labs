@@ -4,7 +4,7 @@
  * Uses DFS to find all circular dependency chains in the monorepo.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import {
   buildDependencyGraph,
   findCircularDependencies,
@@ -17,17 +17,12 @@ type CyclesFlags = {
 
 type CyclesInput = CyclesFlags & { argv?: string[] };
 
-type CyclesCommandResult = {
-  exitCode: number;
-  cycles?: string[][];
-};
-
 export default defineCommand({
   id: 'quality:cycles',
   description: 'Detect circular dependencies in monorepo',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CyclesInput): Promise<CyclesCommandResult> {
+    async execute(ctx: PluginContextV3, input: CyclesInput): Promise<CommandResult<{ cycles: string[][] }>> {
       const { ui } = ctx;
 
       // V3: Flags may come wrapped in input.flags or passed directly
@@ -44,10 +39,9 @@ export default defineCommand({
       // Output results
       outputCycles(cycles, flags, ui);
 
-      return {
-        exitCode: cycles.length > 0 ? 1 : 0,
-        cycles,
-      };
+      return cycles.length > 0
+        ? { ok: false, error: 'Circular dependencies found', result: { cycles } }
+        : { ok: true, result: { cycles } };
     },
   },
 });

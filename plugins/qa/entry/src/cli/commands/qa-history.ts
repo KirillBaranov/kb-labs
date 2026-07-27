@@ -3,6 +3,7 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import {
   SnapshotStore,
@@ -11,12 +12,12 @@ import {
 import { type QAPluginConfig } from '@kb-labs/qa-contracts';
 import type { QaHistoryFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<QaHistoryFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<QaHistoryFlags>, unknown>({
   id: 'qa:history',
   description: 'Show QA run history',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<QaHistoryFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<QaHistoryFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -33,7 +34,7 @@ export default defineCommand<unknown, CLIInput<QaHistoryFlags>, { exitCode: numb
         }
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

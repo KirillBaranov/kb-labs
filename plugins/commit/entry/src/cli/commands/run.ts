@@ -13,6 +13,7 @@ import {
   type PluginContextV3,
   type CLIInput,
 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import {
   generateCommitPlan,
   savePlan,
@@ -32,11 +33,7 @@ import {
 } from '@kb-labs/commit-contracts';
 import { resolveScopePath } from '../../rest/handlers/scope-resolver';
 
-type RunResult = {
-  exitCode: number;
-  result?: CommitRunOutput;
-  meta?: Record<string, unknown>;
-};
+type RunResult = CommandResult<CommitRunOutput>;
 
 async function resolveContext(ctx: PluginContextV3, flags: CommitFlags) {
   const llm = useLLM();
@@ -119,13 +116,13 @@ export default defineCommand({
       } catch (err) {
         statusLoader.fail('Failed to check git status');
         handleError(ctx, err, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       if (!hasChanges(status)) {
         statusLoader.stop();
         ctx.ui?.warn?.('No changes to commit');
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
       statusLoader.succeed('Git status analyzed');
 
@@ -162,7 +159,7 @@ export default defineCommand({
             cause: applyResult.errors.join('; '),
           });
         }
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       await saveToHistory(cwd, plan, applyResult);
@@ -230,7 +227,7 @@ export default defineCommand({
       }
 
       return {
-        exitCode: 0,
+        ok: true,
         result: output,
         meta: { timing: Date.now() - startTime },
       };

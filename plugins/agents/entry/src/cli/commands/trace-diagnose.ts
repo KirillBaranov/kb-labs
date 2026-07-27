@@ -9,7 +9,7 @@
  *   pnpm kb agent trace diagnose --task-id=<id> --json
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import type { TraceCommandResponse, TraceErrorCode, DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 import { normalizeTraceEvents } from './trace-event-normalizer.js';
@@ -131,7 +131,7 @@ export default defineCommand({
   description: 'Quick diagnostic analysis — answers "what went wrong?" in one command',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: TraceDiagnoseInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: TraceDiagnoseInput): Promise<CommandResult> {
       const flags: TraceDiagnoseInput =
         (typeof input === 'object' && input !== null && 'flags' in input)
           ? (input as { flags: TraceDiagnoseInput }).flags
@@ -142,7 +142,7 @@ export default defineCommand({
         const loaded = await loadTrace(taskId);
         if (!loaded.ok) {
           ctx.ui?.json?.(mkError('INVALID_TASK_ID', formatTraceLoadError(loaded.error)));
-          return { exitCode: 1 };
+          return { ok: false, error: 'Command failed' };
         }
         const events = loaded.events;
 
@@ -154,10 +154,12 @@ export default defineCommand({
           printReport(ctx, report);
         }
 
-        return { exitCode: report.issues.some(i => i.severity === 'critical') ? 1 : 0 };
+        return report.issues.some(i => i.severity === 'critical')
+          ? { ok: false, error: 'Command failed', result: report }
+          : { ok: true, result: report };
       } catch {
         ctx.ui?.json?.(mkError('TRACE_NOT_FOUND', `Trace not found: ${taskId}`));
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

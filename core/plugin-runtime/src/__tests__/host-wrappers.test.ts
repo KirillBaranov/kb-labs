@@ -33,11 +33,11 @@ describe('Host Wrappers', () => {
   };
 
   describe('wrapCliResult', () => {
-    it('should wrap CommandResult with exitCode', () => {
-      const runResult: RunResult<{ exitCode: number; result: { data: string }; meta?: Record<string, unknown> }> = {
+    it('should wrap a successful CommandResult', () => {
+      const runResult: RunResult<{ ok: true; result: { data: string }; meta?: Record<string, unknown> }> = {
         ok: true,
         data: {
-          exitCode: 0,
+          ok: true,
           result: { data: 'success' },
           meta: { custom: 'value' },
         },
@@ -60,11 +60,12 @@ describe('Host Wrappers', () => {
       expect(result.meta?.executedAt).toBeDefined();
     });
 
-    it('should wrap non-zero exitCode CommandResult', () => {
-      const runResult: RunResult<{ exitCode: number; result: { error: string } }> = {
+    it('should wrap a failed CommandResult', () => {
+      const runResult: RunResult<{ ok: false; error: string; result: { error: string } }> = {
         ok: true,
         data: {
-          exitCode: 1,
+          ok: false,
+          error: 'failed',
           result: { error: 'failed' },
         },
         executionMeta: mockExecutionMeta,
@@ -118,10 +119,10 @@ describe('Host Wrappers', () => {
     });
 
     it('should preserve custom meta from CommandResult', () => {
-      const runResult: RunResult<{ exitCode: number; meta: { customField: string; anotherField: number } }> = {
+      const runResult: RunResult<{ ok: true; meta: { customField: string; anotherField: number } }> = {
         ok: true,
         data: {
-          exitCode: 0,
+          ok: true,
           meta: { customField: 'test', anotherField: 42 },
         },
         executionMeta: mockExecutionMeta,

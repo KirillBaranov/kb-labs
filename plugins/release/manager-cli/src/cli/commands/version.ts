@@ -20,11 +20,7 @@ interface VersionFlags {
   json?: boolean;
 }
 
-type ReleaseVersionResult = CommandResult & {
-  ok?: boolean;
-  updated?: number;
-  updates?: Array<{ package: string; from: string; to: string; updated: boolean }>;
-};
+type ReleaseVersionResult = CommandResult<unknown>;
 
 function buildVersionSections(
   updates: Array<{ package: string; from: string; to: string; updated: boolean }>,
@@ -117,7 +113,7 @@ export default defineCommand({
         if (flags.json) { ctx.ui?.json?.({ ok: true, updated: 0, updates: [], message: msg }); }
         else { ctx.ui?.write?.(msg); }
         console.log('::kb-output::' + JSON.stringify({ ok: true, updated: 0 }));
-        return { exitCode: 0, ok: true, updated: 0, updates: [] };
+        return { ok: true, result: { ok: true, updated: 0, updates: [] } };
       }
 
       const versionLoader = useLoader(`Bumping ${plan.packages.length} package version(s)...`);
@@ -137,7 +133,7 @@ export default defineCommand({
 
       if (flags.json) {
         ctx.ui?.json?.({ ok, updated, updates });
-        return { exitCode: ok ? 0 : 1, ok, updated, updates };
+        return ok ? { ok: true, result: { ok, updated, updates } } : { ok: false, error: 'Command failed', result: { ok, updated, updates } };
       }
 
       ctx.ui?.sideBox?.({
@@ -146,7 +142,7 @@ export default defineCommand({
         status: ok ? 'success' : 'error',
       });
 
-      return { exitCode: ok ? 0 : 1, ok, updated, updates };
+      return ok ? { ok: true, result: { ok, updated, updates } } : { ok: false, error: 'Command failed', result: { ok, updated, updates } };
     },
   },
 });

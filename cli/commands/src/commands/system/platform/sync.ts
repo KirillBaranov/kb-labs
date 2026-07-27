@@ -89,11 +89,11 @@ export const platformSyncCommand = defineSystemCommand<PlatformSyncFlags, Platfo
       errors: result.errors.length,
     });
 
-    return {
-      ok: result.ok,
-      status: result.ok ? ('success' as const) : ('error' as const),
-      sync: result,
-    };
+    if (result.ok) {
+      return { ok: true, status: 'success' as const, sync: result };
+    }
+
+    return { ok: false, error: result.errors.join('; ') || 'Platform sync failed', status: 'error' as const, sync: result };
   },
   // eslint-disable-next-line sonarjs/cognitive-complexity
   formatter(result, ctx, flags) {
@@ -105,7 +105,7 @@ export const platformSyncCommand = defineSystemCommand<PlatformSyncFlags, Platfo
     const sync = result.sync;
     if (!sync) {
       ctx.ui.error('Platform Sync', {
-        sections: [{ header: 'Error', items: [result.error ?? 'Unknown error'] }],
+        sections: [{ header: 'Error', items: ['Unknown error'] }],
       });
       return;
     }

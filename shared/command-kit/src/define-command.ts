@@ -86,7 +86,7 @@ export interface CommandDefinition<TConfig = unknown, TInput = unknown, TResult 
  *       context.ui.success(`Hello, ${target}!`);
  *
  *       return {
- *         exitCode: 0,
+ *         ok: true,
  *         result: { message: `Hello, ${target}!`, target },
  *         meta: { version: 'v3' }
  *       };
@@ -111,7 +111,7 @@ export function defineCommand<TConfig = unknown, TInput = unknown, TResult = unk
         return (async () => {
           const intent = await definition.handler.intent!(context, input);
           renderDryRunIntent(context.ui, intent);
-          return { exitCode: 0, result: intent as unknown as TResult };
+          return { ok: true, result: intent as unknown as TResult };
         })();
       }
 

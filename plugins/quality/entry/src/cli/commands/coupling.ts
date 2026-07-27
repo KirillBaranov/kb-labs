@@ -3,17 +3,18 @@ import {
   useConfig,
   type CLIInput,
   type PluginContextV3,
+  type CommandResult,
 } from '@kb-labs/sdk';
 import { analyzeCoupling } from '@kb-labs/quality-core';
 import { type QualityPluginConfig } from '@kb-labs/quality-contracts';
 import type { CouplingFlags } from './flags.js';
 
-export default defineCommand<unknown, CLIInput<CouplingFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<CouplingFlags>, unknown>({
   id: 'quality:coupling',
   description: 'Show coupling metrics per package (afferent/efferent/instability)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<CouplingFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<CouplingFlags>): Promise<CommandResult> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();
       const cwd = ctx.cwd ?? process.cwd();
@@ -22,7 +23,7 @@ export default defineCommand<unknown, CLIInput<CouplingFlags>, { exitCode: numbe
 
       if (flags.json) {
         ctx.ui?.json?.(report);
-        return { exitCode: 0 };
+        return { ok: true };
       }
 
       const sorted =
@@ -42,7 +43,7 @@ export default defineCommand<unknown, CLIInput<CouplingFlags>, { exitCode: numbe
         sections: [{ header: `Top ${top.length} by instability`, items }],
       });
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   },
 });

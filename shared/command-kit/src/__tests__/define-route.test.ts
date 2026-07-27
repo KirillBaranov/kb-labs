@@ -43,7 +43,7 @@ describe('defineRoute', () => {
         method: 'POST',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
         },
       });
@@ -65,7 +65,7 @@ describe('defineRoute', () => {
         method: 'POST',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
         },
       });
@@ -89,7 +89,7 @@ describe('defineRoute', () => {
         method: 'post',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
         },
       });
@@ -108,7 +108,7 @@ describe('defineRoute', () => {
     });
 
     it('should accept valid REST host context', async () => {
-      const execute = vi.fn(async () => ({ data: {}, exitCode: 0 }));
+      const execute = vi.fn(async () => ({ ok: true, result: {} } as const));
 
       const handler = defineRoute({
         path: '/api/test',
@@ -124,7 +124,7 @@ describe('defineRoute', () => {
 
   describe('handler execution', () => {
     it('should call execute with context and input', async () => {
-      const execute = vi.fn(async (ctx, input) => ({ data: { received: input }, exitCode: 0 }));
+      const execute = vi.fn(async (ctx, input) => ({ ok: true, result: { received: input } } as const));
 
       const handler = defineRoute({
         path: '/api/test',
@@ -139,7 +139,7 @@ describe('defineRoute', () => {
     });
 
     it('should return handler result', async () => {
-      const expectedResult = { data: { message: 'success' }, exitCode: 0 };
+      const expectedResult = { ok: true, result: { message: 'success' } } as const;
 
       const handler = defineRoute({
         path: '/api/test',
@@ -182,7 +182,7 @@ describe('defineRoute', () => {
         method: 'POST',
         handler: {
           async execute() {
-            return { data: {}, exitCode: 0 };
+            return { ok: true, result: {} } as const;
           },
           cleanup,
         },

@@ -83,7 +83,8 @@ export const logsStats = defineSystemCommand<Flags, Result>({
     }
 
     if (!result.ok) {
-      ctx.ui.error('Log Stats', { sections: [{ header: 'Error', items: [result.error ?? 'Unknown error'] }] });
+      const error = typeof result.error === 'string' ? result.error : 'Unknown error';
+      ctx.ui.error('Log Stats', { sections: [{ header: 'Error', items: [error] }] });
       return;
     }
 

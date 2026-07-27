@@ -92,7 +92,7 @@ describe('Sandbox Runner', () => {
         export default {
           async execute(ctx, input) {
             return {
-              exitCode: 0,
+              ok: true,
               result: { message: 'success' },
               meta: { custom: 'value' }
             };
@@ -122,7 +122,7 @@ describe('Sandbox Runner', () => {
 
       // Raw CommandResult is in data
       expect(runResult.data).toEqual({
-        exitCode: 0,
+        ok: true,
         result: { message: 'success' },
         meta: { custom: 'value' },
       });

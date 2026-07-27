@@ -2,7 +2,7 @@
  * workflow:logs command - Get job or run logs
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3 , type CommandResult} from '@kb-labs/sdk';
 import { type LogsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -28,12 +28,12 @@ function renderLogs(ctx: PluginContextV3, logs: LogEntry[], outputJson: boolean)
   }
 }
 
-export default defineCommand<unknown, LogsInput, { exitCode: number }>({
+export default defineCommand<unknown, LogsInput, unknown>({
   id: 'workflow:logs',
   description: 'Get logs for a workflow job or run',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: LogsInput): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: LogsInput): Promise<CommandResult> {
       ctx.ui?.warn?.('workflow logs is deprecated; use: kb workflow runs logs <runId>');
       const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
@@ -42,7 +42,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
 
       if (!jobId && !runId) {
         validationError(ctx, 'Missing required flag: --job-id or --run-id', 'Usage: kb workflow logs --run-id=<run-id>', outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
 
       try {
@@ -56,10 +56,10 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
           renderLogs(ctx, logs as LogEntry[], outputJson);
         }
 
-        return { exitCode: 0 };
+        return { ok: true };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },

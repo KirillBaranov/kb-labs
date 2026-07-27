@@ -31,7 +31,7 @@ export default defineCommand({
       const spaceId = input.argv[0] as string | undefined;
       if (!spaceId) {
         validationError(ctx, 'spaceId is required', 'Usage: kb clickup space update <spaceId> --name "new name"', input.flags.json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       const { name, color, json, full } = input.flags;
@@ -47,10 +47,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: space };
+        return { ok: true, result: space };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

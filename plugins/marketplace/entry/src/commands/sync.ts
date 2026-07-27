@@ -55,7 +55,7 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
         } else {
           handleError(ctx, err, flags.json);
         }
-        return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
+        return { ok: false, error: 'Marketplace scope is not configured', result: { added: [], skipped: [], total: 0 } };
       }
 
       // Sync reads include/exclude patterns from the config file located at
@@ -74,7 +74,7 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
           undefined,
           flags.json,
         );
-        return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
+        return { ok: false, error: 'No marketplace.sync.include configured', result: { added: [], skipped: [], total: 0 } };
       }
 
       try {
@@ -99,10 +99,10 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
           });
         }
 
-        return { exitCode: 0, result };
+        return { ok: true, result };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
+        return { ok: false, error: err instanceof Error ? err.message : String(err), result: { added: [], skipped: [], total: 0 } };
       }
     },
   },

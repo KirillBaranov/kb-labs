@@ -42,11 +42,11 @@ export default defineCommand({
 
       if (!list) {
         validationError(ctx, '--list is required', 'Use `kb clickup list tasks <listId>` to find the list ID', json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
       if (!name) {
         validationError(ctx, '--name is required', undefined, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
 
       try {
@@ -75,10 +75,10 @@ export default defineCommand({
           });
         }
 
-        return { exitCode: 0, result: task };
+        return { ok: true, result: task };
       } catch (err) {
         handleError(ctx, err, json);
-        return { exitCode: 1, result: null };
+        return { ok: false, error: 'Command failed', result: null };
       }
     },
   },

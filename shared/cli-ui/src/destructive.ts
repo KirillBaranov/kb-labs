@@ -1,3 +1,5 @@
+import type { CommandFailure } from '@kb-labs/plugin-contracts';
+
 /**
  * Destructive-action protocol (SOFT layer).
  *
@@ -122,17 +124,27 @@ export function renderDestructiveMessage(a: DestructiveAction): string {
 export function confirmDestructive(
   ctx: ConfirmContext,
   opts: { confirmed: boolean; isJson?: boolean; action: DestructiveAction },
-): { exitCode: number } | null {
+): CommandFailure | null {
   if (opts.confirmed) {
     return null;
   }
   const a = opts.action;
+  const signal = buildConfirmationSignal(a);
   if (opts.isJson) {
     // Machine-readable signal — `ctx.ui.json` emits one parseable line by
     // default (the agent extracts it with `grep "^{"`).
-    ctx.ui?.json?.(buildConfirmationSignal(a));
+    ctx.ui?.json?.(signal);
   } else {
     (ctx.ui?.warn ?? ctx.ui?.error)?.(renderDestructiveMessage(a));
   }
-  return { exitCode: 1 };
+  return {
+    ok: false,
+    error: {
+      code: 'CONFIRMATION_REQUIRED',
+      kind: 'validation',
+      message: signal.message,
+      details: { ...signal },
+    },
+    result: signal,
+  };
 }

@@ -94,7 +94,9 @@ export function registerMetricsRoutes(
     reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
     return promMetrics + '\n' + customLines.join('\n');
   };
-  for (const path of metricsPaths) server.get(path, handler);
+  for (const path of metricsPaths) {
+    server.get(path, handler);
+  }
 
   server.get(`${basePath}/metrics/headers/debug`, {
     schema: {

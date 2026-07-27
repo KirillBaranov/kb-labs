@@ -293,7 +293,7 @@ export function defineWebSocket<TConfig = unknown, TIncoming = unknown, TOutgoin
         await definition.handler.cleanup?.();
       }
 
-      return { exitCode: 0 };
+      return { ok: true };
     },
   };
 }

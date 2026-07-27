@@ -347,7 +347,7 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
             ? 'No staged files found. Stage files with `git add` first, or use `--scope=changed`.'
             : 'No changed files found. Use `--scope=all` to review all files, or `--files` to specify files explicitly.';
           validationError(ctx, hint, undefined, flags.json);
-          return { exitCode: 1, result: { passed: false, issues: [], summary: hint } };
+          return { ok: false, error: 'Command failed', result: { passed: false, issues: [], summary: hint } };
         }
 
         // Run review
@@ -491,21 +491,21 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
         const agentReport = toAgentReport(result);
 
         if (blockerCount > 0) {
-          return { exitCode: 1, result: agentReport };
+          return { ok: false, error: 'Command failed', result: agentReport };
         }
 
         if (mode === 'heuristic' && highCount > 0) {
           // In CI mode (heuristic), fail on high severity
-          return { exitCode: 1, result: agentReport };
+          return { ok: false, error: 'Command failed', result: agentReport };
         }
 
-        return { exitCode: 0, result: agentReport };
+        return { ok: true, result: agentReport };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         loader.fail(`Review failed: ${message}`);
         handleError(ctx, error, flags.json);
         ctx.platform.logger?.error?.('review:run failed', error instanceof Error ? error : new Error(message));
-        return { exitCode: 1, result: { passed: false, issues: [], summary: `Review error: ${message}` } };
+        return { ok: false, error: 'Command failed', result: { passed: false, issues: [], summary: `Review error: ${message}` } };
       }
     },
   },

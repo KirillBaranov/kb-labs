@@ -1,9 +1,10 @@
 import { defineCommand, handleError, useLoader, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CommandResult } from '@kb-labs/sdk';
 import { type IndexFlags, type IndexResponse } from '@kb-labs/mind-contracts';
 import { type IngestProgress } from '@kb-labs/mind-core';
 import { buildMind } from '../../platform';
 
-type IndexCmdResult = { exitCode: number; result?: IndexResponse };
+type IndexCmdResult = CommandResult<IndexResponse>;
 
 /** Map an ingest stage to a one-line loader label. */
 function stageText(e: IngestProgress): string {
@@ -48,7 +49,7 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, IndexResponse>({
 
         if (flags.json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0, result: res };
+          return { ok: true, result: res };
         }
         const summary = `Indexed ${res.filesIndexed} file(s), ${res.chunks} chunk(s) into "${res.indexId}" (${res.durationMs}ms)`;
         if (loader) {
@@ -56,10 +57,10 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, IndexResponse>({
         } else {
           ctx.ui?.success?.(summary);
         }
-        return { exitCode: 0, result: res };
+        return { ok: true, result: res };
       } catch (err) {
         handleError(ctx, err, flags.json);
-        return { exitCode: 1 };
+        return { ok: false, error: 'Command failed' };
       }
     },
   },
