@@ -84,7 +84,9 @@ jobs:
         run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages/pr"
       - name: Assemble exact base + PR E2E bundle
         run: |
-          test -n "$(find e2e/packages-base -maxdepth 1 -name '*.tgz' -print -quit)"
+          base_count=$(find e2e/packages-base -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
+          echo "Base snapshot tarballs: $base_count"
+          test "$base_count" -gt 100
           test -n "$(find e2e/packages/pr -maxdepth 1 -name '*.tgz' -print -quit)"
       - name: Create files bundle
         run: |
