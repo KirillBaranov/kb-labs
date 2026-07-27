@@ -91,7 +91,6 @@ jobs:
           echo "Base snapshot tarballs: $count"
           test "$count" -gt 100
           test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
-          enableCrossOsArchive: false
 
   # ── 2b. Dependency hygiene (Single Version Policy) ─────────────────────────
   deps:
