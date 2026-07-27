@@ -76,16 +76,21 @@ jobs:
           compression-level: 3
       - name: Pack exact main E2E snapshot
         run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
+      - name: Archive exact main dist snapshot
+        run: find . -path '*/node_modules/*' -prune -o -path '*/.kb/*' -prune -o -type d -name dist -print | tar cf base-dist-artifacts.tar -T -
       - name: Cache exact main E2E snapshot
         uses: actions/cache@v4
         with:
-          path: e2e/packages-base
-          key: e2e-base-tgz-v3-${{ github.sha }}
+          path: |
+            e2e/packages-base
+            base-dist-artifacts.tar
+          key: e2e-base-tgz-v4-${{ github.sha }}
       - name: Validate exact main E2E snapshot
         run: |
           count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           echo "Base snapshot tarballs: $count"
           test "$count" -gt 100
+          test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
           enableCrossOsArchive: false
 
   # ── 2b. Dependency hygiene (Single Version Policy) ─────────────────────────

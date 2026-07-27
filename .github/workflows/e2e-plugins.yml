@@ -66,18 +66,23 @@ jobs:
           chmod +x tools-bin/*
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
           cp tools-bin/kb-dev tools/kb-dev/kb-dev
-          tar xf dist-artifacts.tar
       - name: Restore exact base E2E snapshot
         id: base-snapshot
         uses: actions/cache@v4
         with:
-          path: e2e/packages-base
+          path: |
+            e2e/packages-base
+            base-dist-artifacts.tar
           key: ${{ inputs.base-snapshot-key }}
       - name: Require exact base E2E snapshot
         if: steps.base-snapshot.outputs.cache-hit != 'true'
         run: |
           echo "::error::Exact base E2E snapshot is unavailable (${{ inputs.base-snapshot-key }}). Refusing npm fallback for @kb-labs/* packages."
           exit 1
+      - name: Restore base dist, then overlay PR dist
+        run: |
+          tar xf base-dist-artifacts.tar
+          tar xf dist-artifacts.tar
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Pack PR packages once

@@ -116,8 +116,10 @@ jobs:
         id: base-cache
         uses: actions/cache@v4
         with:
-          path: e2e/packages-base
-          key: e2e-base-tgz-v3-${{ github.event.pull_request.base.sha }}
+          path: |
+            e2e/packages-base
+            base-dist-artifacts.tar
+          key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
       - name: Install base dependencies
         if: steps.base-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -127,11 +129,15 @@ jobs:
       - name: Pack base packages
         if: steps.base-cache.outputs.cache-hit != 'true'
         run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
+      - name: Archive base dist packages
+        if: steps.base-cache.outputs.cache-hit != 'true'
+        run: find . -path '*/node_modules/*' -prune -o -path '*/.kb/*' -prune -o -type d -name dist -print | tar cf base-dist-artifacts.tar -T -
       - name: Validate exact base E2E snapshot
         run: |
           count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           echo "Base snapshot tarballs: $count"
           test "$count" -gt 100
+          test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
@@ -426,7 +432,7 @@ jobs:
     with:
       dist-artifact: dist
       go-tools-artifact: go-tools
-      base-snapshot-key: e2e-base-tgz-v3-${{ github.event.pull_request.base.sha }}
+      base-snapshot-key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
     permissions:
       contents: read
       actions: read
