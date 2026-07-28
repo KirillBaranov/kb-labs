@@ -96,9 +96,11 @@ jobs:
             const pkg = byName.get(name);
             if (!pkg) continue;
             const manifest = JSON.parse(fs.readFileSync(`${pkg.path}/package.json`, 'utf8'));
+            // Build prerequisites are runtime/peer workspace packages. Dev
+            // tools (test runners, eslint, devkit) belong to quality jobs and
+            // must not turn an affected build into a repository rebuild.
             const deps = {
               ...manifest.dependencies,
-              ...manifest.devDependencies,
               ...manifest.peerDependencies,
             };
             for (const dep of Object.keys(deps ?? {})) {
