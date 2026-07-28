@@ -1,0 +1,147 @@
+name: Fast Plugin E2E (affected)
+
+on:
+  workflow_call:
+    inputs:
+      dist-artifact:
+        type: string
+        required: true
+      go-tools-artifact:
+        type: string
+        required: true
+      base-snapshot-key:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-plugins-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  KB_DEVKIT_BASE_REF: ${{ format('origin/{0}...HEAD', github.event.pull_request.base.ref) }}
+
+jobs:
+  discover:
+    name: Discover affected suites
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+      has-suites: ${{ steps.set.outputs.has-suites }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.go-tools-artifact }}
+          path: tools-bin/
+      - name: Install kb-devkit
+        run: chmod +x tools-bin/* && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Compute affected plugin-e2e matrix
+        id: set
+        run: |
+          .devkit/affected.sh > /tmp/changed-files
+          ./tools/kb-devkit/kb-devkit affected --json > /tmp/affected.json
+          OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
+          echo "computed matrix: $OUT"
+          echo "include=$(echo "$OUT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
+          echo "has-suites=$(echo "$OUT" | jq -r '(.suites | length) > 0')" >> "$GITHUB_OUTPUT"
+
+  prepare:
+    name: Prepare fast E2E files from CI build
+    needs: discover
+    if: needs.discover.outputs.has-suites == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.go-tools-artifact }}
+          path: tools-bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.dist-artifact }}
+      - name: Restore CI build artifacts
+        run: chmod +x tools-bin/* && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit && cp tools-bin/kb-dev tools/kb-dev/kb-dev
+      - name: Restore exact base E2E snapshot
+        id: base-snapshot
+        uses: actions/cache@v4
+        with:
+          path: |
+            e2e/packages-base
+            base-dist-artifacts.tar
+          key: ${{ inputs.base-snapshot-key }}
+      - name: Require exact base E2E snapshot
+        if: steps.base-snapshot.outputs.cache-hit != 'true'
+        run: |
+          echo "::error::Exact base E2E snapshot is unavailable (${{ inputs.base-snapshot-key }}). Refusing npm fallback."
+          exit 1
+      - name: Restore base dist, then overlay PR dist
+        run: tar xf base-dist-artifacts.tar && tar xf dist-artifacts.tar
+      - run: pnpm install --frozen-lockfile
+      - name: Pack PR packages once
+        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages/pr"
+      - name: Assemble exact base + PR E2E bundle
+        run: |
+          base_count=$(find e2e/packages-base -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
+          test "$base_count" -gt 100
+          test -n "$(find e2e/packages/pr -maxdepth 1 -name '*.tgz' -print -quit)"
+          mkdir -p e2e/packages/base
+          cp e2e/packages-base/*.tgz e2e/packages/base/
+      - name: Create files bundle
+        run: |
+          find . -path '*/node_modules/*' -prune -o -type d -name dist -print > /tmp/dist-paths
+          tar czf /tmp/e2e-files.tar.gz tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev e2e/packages -T /tmp/dist-paths
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fast-e2e-files-${{ github.run_id }}
+          path: /tmp/e2e-files.tar.gz
+          retention-days: 1
+          compression-level: 0
+
+  e2e:
+    needs: [discover, prepare]
+    if: needs.discover.outputs.has-suites == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.include) }}
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: ${{ matrix.suite }}
+      e2e-package: "@kb-labs/e2e-${{ matrix.suite }}"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      playwright-dir: e2e/${{ matrix.suite }}
+      compose-project: kb-e2e-plugins-${{ matrix.suite }}
+      fast-build: true
+      fast-registry: true
+      artifact-prefix: fast
+      prebuilt-files-artifact: fast-e2e-files-${{ github.run_id }}
+    permissions:
+      contents: read
+
+  aggregate:
+    name: Plugin E2E
+    needs: [discover, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check outcome
+        run: |
+          if [ "${{ needs.discover.result }}" != "success" ]; then
+            echo "::error::Affected-suite discovery failed; refusing false green."
+            exit 1
+          fi
+          if [ "${{ needs.discover.outputs.has-suites }}" != "true" ]; then exit 0; fi
+          if [ "${{ needs.e2e.result }}" = "success" ]; then exit 0; fi
+          echo "::error::A plugin E2E shard did not succeed (${{ needs.e2e.result }})."
+          exit 1

@@ -1,0 +1,133 @@
+name: E2E Platform Tests
+
+on:
+  workflow_call:
+  workflow_run:
+    workflows: [CI, Release Binaries]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'
+
+concurrency:
+  group: e2e-platform-${{ github.event.workflow_run.id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-platform-build.yml
+    with:
+      artifact-name: e2e-platform-prebuilt-${{ github.run_id }}
+    permissions:
+      contents: read
+
+  e2e:
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [services, platform, plugins, gateway, workflows, studio, marketplace, marketplace-registry]
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: ${{ matrix.suite }}
+      e2e-package: "@kb-labs/e2e-${{ matrix.suite }}"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      playwright-dir: e2e/plugins
+      compose-project: kb-e2e-ci-${{ matrix.suite }}
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
+    permissions:
+      contents: read
+
+  e2e-mcp:
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: mcp
+      e2e-package: "@kb-labs/e2e-mcp"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      compose-project: kb-e2e-ci-mcp
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
+    permissions:
+      contents: read
+
+  aggregate:
+    name: Platform E2E
+    needs: [e2e, e2e-mcp]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate aggregation logic
+        run: node --test scripts/ci/aggregate-e2e-result.test.mjs
+      - name: Check matrix outcome
+        run: node scripts/ci/aggregate-e2e-result.mjs "${{ needs.e2e.result }}" "${{ needs.e2e-mcp.result }}"
+
+  flaky-history:
+    name: Flaky history
+    needs: [e2e, e2e-mcp, aggregate]
+    if: always() && needs.e2e.result != 'skipped' && needs.e2e-mcp.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-platform-prebuilt-${{ github.run_id }}
+          path: /tmp/e2e-prebuilt
+      - name: Extract immutable E2E bundle
+        run: tar xzf /tmp/e2e-prebuilt/e2e-files.tar.gz && chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Capture CI evidence dossier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm kb qa ci evidence capture --exclude-job "Flaky history" --output .kb/qa/ci/dossier.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-ci-evidence-${{ github.run_id }}
+          path: .kb/qa/ci/dossier.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: flaky-report-*-${{ github.run_id }}
+          path: /tmp/flaky-reports
+          merge-multiple: false
+      - name: Sync existing flaky history from ci-data
+        run: pnpm kb qa e2e flaky --sync --agent || true
+      - name: Ingest flaky-report shards into history
+        run: pnpm kb qa e2e flaky --ingest /tmp/flaky-reports --agent
+      - name: Commit flaky history to ci-data branch
+        run: |
+          git config user.name "kb-qa[bot]"
+          git config user.email "kb-qa[bot]@users.noreply.github.com"
+          git fetch origin ci-data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/ci-data; then
+            git worktree add /tmp/ci-data-wt ci-data
+          else
+            git worktree add --detach /tmp/ci-data-wt "${{ github.sha }}"
+            git -C /tmp/ci-data-wt checkout --orphan ci-data
+            git -C /tmp/ci-data-wt rm -rf -q .
+          fi
+          mkdir -p /tmp/ci-data-wt/.kb/qa/snapshots
+          cp .kb/qa/snapshots/e2e-flaky.json /tmp/ci-data-wt/.kb/qa/snapshots/e2e-flaky.json
+          cd /tmp/ci-data-wt
+          git add -f .kb/qa/snapshots/e2e-flaky.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore(qa): update e2e flaky history ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          git push origin ci-data
