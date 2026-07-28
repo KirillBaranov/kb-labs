@@ -661,22 +661,17 @@ func TestInstall_PMInstallErrorHardFails(t *testing.T) {
 	}
 }
 
-// TestInstall_BinaryDownloadFailSoftContinues verifies the soft-fail branch
-// ("L2x: Warn: services can be started manually, continue") — a failed
-// binary install (e.g. kb-dev download) must not fail Install() as a whole;
-// the rest of the install (config, scan) must still complete.
-func TestInstall_BinaryDownloadFailSoftContinues(t *testing.T) {
+// TestInstall_BinaryDownloadFailureHardFails verifies that the required
+// service-manager binary is part of the installation contract. A failed
+// binary install must not leave a successful-looking partial platform behind.
+func TestInstall_BinaryDownloadFailureHardFails(t *testing.T) {
 	platformDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	var lines []string
 	fake := &fakePM{name: "npm"}
 	ins := &Installer{
 		PM:  fake,
 		Log: discardLogger(),
-		OnLine: func(line string) {
-			lines = append(lines, line)
-		},
 	}
 	// Force platform.CopyBinary to fail deterministically: it needs to
 	// os.MkdirAll(platformDir+"/bin", ...) before writing, and MkdirAll
@@ -695,30 +690,17 @@ func TestInstall_BinaryDownloadFailSoftContinues(t *testing.T) {
 	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir}
 
 	result, err := ins.Install(sel, &m)
-	if err != nil {
-		t.Fatalf("Install() error = %v, want nil (binary failure must be soft)", err)
+	if err == nil {
+		t.Fatal("Install() error = nil, want required binary failure")
 	}
-	if result == nil {
-		t.Fatal("Install() result = nil, want a Result on soft-fail continuation")
+	if result != nil {
+		t.Fatalf("Install() result = %+v, want nil on required binary failure", result)
 	}
-	if len(result.InstalledBinaries) != 0 {
-		t.Errorf("InstalledBinaries = %v, want empty (the one binary failed)", result.InstalledBinaries)
+	if !strings.Contains(err.Error(), "install required binaries") {
+		t.Errorf("Install() error = %v, want required-binary context", err)
 	}
-
-	found := false
-	for _, l := range lines {
-		if strings.Contains(l, "WARN: binary install failed") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("expected a WARN line about binary install failure, got lines: %v", lines)
-	}
-
-	// The rest of the install must have completed: config written.
-	if _, err := config.Read(platformDir); err != nil {
-		t.Errorf("config.Read() after soft binary failure = %v, want config to still be written", err)
+	if _, readErr := config.Read(platformDir); readErr == nil {
+		t.Error("config.Read() succeeded after required binary failure — partial install must not be reported as complete")
 	}
 }
 

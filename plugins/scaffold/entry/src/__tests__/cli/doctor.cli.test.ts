@@ -26,7 +26,7 @@ describe('scaffold:doctor', () => {
     const ctx = createMockContext({ ui });
     const result = await doctorCommand.execute(ctx, {});
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('3');
   });
@@ -44,7 +44,7 @@ describe('scaffold:doctor', () => {
     const ctx = createMockContext({ ui });
     const result = await doctorCommand.execute(ctx, { json: true });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     const payload = captured.json[0] as { packagesScanned: number; findings: unknown[] };
     expect(payload.packagesScanned).toBe(2);
@@ -63,7 +63,7 @@ describe('scaffold:doctor', () => {
     const ctx = createMockContext({ ui });
     const result = await doctorCommand.execute(ctx, {});
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -90,7 +90,7 @@ describe('scaffold:doctor', () => {
     const ctx = createMockContext({ ui });
     const result = await doctorCommand.execute(ctx, {});
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

@@ -104,15 +104,19 @@ case "$OS" in
 esac
 
 if [ "$VERSION" = "latest" ]; then
-  # Prefer API-resolved tag (works with pre-releases), but gracefully fall
-  # back to GitHub's built-in latest/download if API is rate-limited.
-  RESOLVED_VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=1" 2>/dev/null | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*$/\1/p' | head -n 1)"
-  if [ -n "$RESOLVED_VERSION" ]; then
-    BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"
-  else
-    warn "GitHub API unavailable; falling back to releases/latest/download."
-    BASE_URL="https://github.com/${REPO}/releases/latest/download"
+  # The repository has separate npm/platform releases and binary releases.
+  # GitHub's "latest" can point at a release without installer assets, so
+  # resolve only the dedicated binary release stream.
+  RELEASES_JSON="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=100" 2>/dev/null)" || {
+    err "Unable to resolve the latest binary release from GitHub."
+    exit 1
+  }
+  RESOLVED_VERSION="$(printf '%s\n' "$RELEASES_JSON" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
+  if [ -z "$RESOLVED_VERSION" ]; then
+    err "No binary release was found for ${REPO}."
+    exit 1
   fi
+  BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"
 else
   RESOLVED_VERSION="$VERSION"
   BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"

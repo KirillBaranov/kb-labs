@@ -49,7 +49,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Update');
   });
@@ -61,7 +61,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(captured.infos[0]?.message).toContain('Nothing to update');
   });
@@ -78,7 +78,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     expect(captured.json[0]).toMatchObject({ installed: expect.any(Array) });
   });
@@ -90,7 +90,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -104,7 +104,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     // No packageIds in body when argv is empty
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/update',
@@ -158,8 +158,8 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.result?.warnings).toContain('Breaking change in v2.0.0');
+    expect(result.ok).toBe(true);
+    expect((result.result as { warnings: string[] }).warnings).toContain('Breaking change in v2.0.0');
   });
 
   it('CUP-09: --dry-run shows intent, HTTP post is NOT called', async () => {
@@ -167,7 +167,7 @@ describe('marketplace:update', () => {
     const ctx = createMockContext({ ui });
     const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['plugin-a'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

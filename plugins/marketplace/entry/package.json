@@ -21,13 +21,14 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "lint": "eslint .",
+    "lint": "eslint src",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
     "test:cli": "vitest run --config vitest.cli.config.ts --passWithNoTests",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/cli-runtime": "workspace:*",
     "@kb-labs/core-workspace": "workspace:*",
     "@kb-labs/marketplace-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*"

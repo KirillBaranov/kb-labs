@@ -117,3 +117,16 @@ func TestDescribeSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestMergeIDsPreservesExistingSelectionAndDeduplicates(t *testing.T) {
+	got := mergeIDs([]string{"release", "commit"}, []string{"commit", "workflow"})
+	want := []string{"release", "commit", "workflow"}
+	if len(got) != len(want) {
+		t.Fatalf("mergeIDs() = %v, want %v", got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("mergeIDs() = %v, want %v", got, want)
+		}
+	}
+}

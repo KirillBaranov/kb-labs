@@ -88,6 +88,13 @@ func TestSoloDeveloperJourney(t *testing.T) {
 	if out, code := runPM(t, pluginRoot, "run", "build"); code != 0 {
 		t.Fatalf("pnpm run build (scaffolded plugin) exited %d:\n%s", code, out)
 	}
+	// The command must remain discoverable when invoked from the generated
+	// plugin directory, not only from the project root. Project scope is
+	// resolved by walking up to the project's .kb/kb.config.json.
+	out, code = runKbIn(t, platformDir, projectDir, pluginRoot, "demo", "ping")
+	if code != 0 || !strings.Contains(out, "pong") {
+		t.Fatalf("kb demo ping from generated plugin directory exited %d:\n%s", code, out)
+	}
 
 	manifestJS := filepath.Join(entryDir, "dist", "manifest.js")
 	if _, err := os.Stat(manifestJS); err != nil {

@@ -68,7 +68,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Synced');
   });
@@ -81,7 +81,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(captured.infos[0]?.message).toContain('up to date');
   });
@@ -99,7 +99,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     expect(captured.json[0]).toMatchObject({ added: expect.any(Array), total: 1 });
   });
@@ -112,7 +112,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -126,7 +126,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -140,7 +140,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -149,7 +149,7 @@ describe('marketplace:sync', () => {
     const ctx = createMockContext({ ui });
     const result = await syncCommand.execute(ctx, mockCLIInput({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

@@ -101,7 +101,7 @@ describe('marketplace sync — autoEnable behaviour', () => {
     await writeConfig(tmpDir, []);
     const ctx = makeCtx(tmpDir);
     const result = await syncCommand.execute(ctx as any, { flags: {} } as any);
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockPost).not.toHaveBeenCalled();
   });
 });

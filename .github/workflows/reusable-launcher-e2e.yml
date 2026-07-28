@@ -182,6 +182,10 @@ jobs:
       # NPM_CONFIG_REGISTRY is intentionally NOT set here: pm.Detect() only
       # falls back to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
 
+      - name: Test curl installer entrypoint
+        if: inputs.gate == false || steps.gate.outputs.run == 'true'
+        run: bash tools/kb-create/install_test.sh
+
       - name: Run kb-create e2e via devkit
         if: inputs.gate == false || steps.gate.outputs.run == 'true'
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache

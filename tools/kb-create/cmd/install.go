@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/devservices"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
@@ -87,6 +88,21 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Explicit component installs are additive to an existing installation.
+	// The wizard still supplies defaults for a brand-new platform, but a
+	// follow-up `install --plugins X` must not silently remove prior choices.
+	if previous, readErr := config.Read(sel.PlatformDir); readErr == nil {
+		if flagInstallServices != "" {
+			services = mergeIDs(previous.SelectedServices, services)
+		} else {
+			services = append([]string(nil), previous.SelectedServices...)
+		}
+		if flagInstallPlugins != "" {
+			plugins = mergeIDs(previous.SelectedPlugins, plugins)
+		} else {
+			plugins = append([]string(nil), previous.SelectedPlugins...)
+		}
+	}
 	sel.Services = services
 	sel.Plugins = plugins
 	sel.ServiceVersions = serviceVersions
@@ -143,6 +159,21 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	printAdapterReconciliation(out, sel.PlatformDir, adapters, result.InstalledPlugins)
 
 	return nil
+}
+
+func mergeIDs(existing, requested []string) []string {
+	seen := make(map[string]struct{}, len(existing)+len(requested))
+	merged := make([]string, 0, len(existing)+len(requested))
+	for _, ids := range [][]string{existing, requested} {
+		for _, id := range ids {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			merged = append(merged, id)
+		}
+	}
+	return merged
 }
 
 // printAdapterReconciliation reports on capability roles: whether an

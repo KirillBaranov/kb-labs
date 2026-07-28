@@ -945,6 +945,51 @@ func TestWriteStarterWorkflows_RunCommentsUseWorkflowIdFlag(t *testing.T) {
 	}
 }
 
+func TestWriteStarterWorkflows_HealthcheckSupportsProjectsWithoutPackageJSON(t *testing.T) {
+	kbDir := t.TempDir()
+
+	if err := writeStarterWorkflows(kbDir); err != nil {
+		t.Fatalf("writeStarterWorkflows: %v", err)
+	}
+
+	healthcheck, err := os.ReadFile(filepath.Join(kbDir, "workflows", "healthcheck.yaml"))
+	if err != nil {
+		t.Fatalf("read healthcheck: %v", err)
+	}
+	content := string(healthcheck)
+	for _, expected := range []string{
+		"if [ -f package.json ]; then",
+		"if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi",
+		"pnpm run build --if-present",
+		"pnpm run lint --if-present",
+		"pnpm run test --if-present",
+	} {
+		if !strings.Contains(content, expected) {
+			t.Errorf("healthcheck is missing project-safe command %q", expected)
+		}
+	}
+}
+
+func TestWriteStarterWorkflows_ScheduledReportUsesWorkflowTriggerSchema(t *testing.T) {
+	kbDir := t.TempDir()
+
+	if err := writeStarterWorkflows(kbDir); err != nil {
+		t.Fatalf("writeStarterWorkflows: %v", err)
+	}
+
+	report, err := os.ReadFile(filepath.Join(kbDir, "workflows", "scheduled-report.yaml"))
+	if err != nil {
+		t.Fatalf("read scheduled-report: %v", err)
+	}
+	content := string(report)
+	if !strings.Contains(content, "schedule:\n    cron: \"0 9 * * 1-5\"") {
+		t.Errorf("scheduled-report must use object trigger schema, got:\n%s", content)
+	}
+	if strings.Contains(content, "schedule: \"0 9 * * 1-5\"") {
+		t.Error("scheduled-report still uses the legacy string schedule shape")
+	}
+}
+
 // TestWriteDemoWorkflow_RunCommentUsesWorkflowIdFlag mirrors
 // TestWriteStarterWorkflows_RunCommentsUseWorkflowIdFlag for the --demo-only
 // demo.yaml (written by writeDemoWorkflow, not writeStarterWorkflows): its

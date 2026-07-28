@@ -46,7 +46,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('my-plugin');
   });
@@ -58,7 +58,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     expect(captured.json[0]).toMatchObject({ ok: true, removed: ['my-plugin'] });
   });
@@ -70,7 +70,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['missing-pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -79,7 +79,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -104,9 +104,10 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['plugin-a', 'plugin-b'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.result?.removed).toEqual(['plugin-a', 'plugin-b']);
-    expect(result.result?.scope).toBe('project');
+    expect(result.ok).toBe(true);
+    const uninstallResult = result.result as { removed: string[]; scope: string };
+    expect(uninstallResult.removed).toEqual(['plugin-a', 'plugin-b']);
+    expect(uninstallResult.scope).toBe('project');
   });
 
   it('CU-07: --dry-run shows intent, HTTP post is NOT called', async () => {
@@ -114,7 +115,7 @@ describe('marketplace:uninstall', () => {
     const ctx = createMockContext({ ui });
     const result = await uninstallCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

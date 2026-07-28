@@ -24,6 +24,10 @@ func kbBinJS(platformDir string) string {
 // shape as TestKbCliSmoke, factored out so journey tests can chain multiple
 // `kb` subcommands after a single install.
 func runKb(t *testing.T, platformDir, projectDir string, args ...string) (string, int) {
+	return runKbIn(t, platformDir, projectDir, projectDir, args...)
+}
+
+func runKbIn(t *testing.T, platformDir, projectDir, cwd string, args ...string) (string, int) {
 	t.Helper()
 	binJS := kbBinJS(platformDir)
 	if _, err := os.Stat(binJS); err != nil {
@@ -32,7 +36,7 @@ func runKb(t *testing.T, platformDir, projectDir string, args ...string) (string
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", append([]string{binJS}, args...)...) // #nosec G204
-	cmd.Dir = projectDir
+	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "KB_PLATFORM="+platformDir, "KB_PROJECT="+projectDir)
 	out, err := cmd.CombinedOutput()
 	code := 0

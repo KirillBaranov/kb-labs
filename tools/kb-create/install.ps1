@@ -41,13 +41,17 @@ $ResolvedVersion = $null
 
 if ($Version -eq "latest") {
     try {
-        $releases = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=1"
-        $ResolvedVersion = $releases[0].tag_name
+        $releases = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=100"
+        $binaryRelease = $releases | Where-Object { $_.tag_name -like "*-binaries" } | Select-Object -First 1
+        if (-not $binaryRelease) {
+            throw "No binary release was found for $Repo."
+        }
+        $ResolvedVersion = $binaryRelease.tag_name
         $BaseUrl = "https://github.com/$Repo/releases/download/$ResolvedVersion"
         Write-Info "Channel: latest (resolved to $ResolvedVersion)"
     } catch {
-        Write-Warn "GitHub API unavailable; falling back to releases/latest/download."
-        $BaseUrl = "https://github.com/$Repo/releases/latest/download"
+        Write-Err "Unable to resolve the latest binary release from GitHub: $($_.Exception.Message)"
+        exit 1
     }
 } else {
     $ResolvedVersion = $Version
