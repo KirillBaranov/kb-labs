@@ -26,7 +26,9 @@ import {
   disablePlugin,
   DiagnosticCollector,
   loadManifest,
+  extractEntityKinds,
 } from '@kb-labs/core-discovery';
+import { isManifestV3, type ManifestV3 } from '@kb-labs/plugin-contracts';
 import type {
   PackageSource,
   EntityKindStrategy,
@@ -225,7 +227,7 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   // Link / Unlink
   // -------------------------------------------------------------------------
 
-  async link(ctx: ScopeContext, packagePath: string): Promise<InstallResultEntry> {
+  async link(ctx: ScopeContext, packagePath: string, sourceManifest?: unknown): Promise<InstallResultEntry> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
     const absPath = path.resolve(scopeRoot, packagePath);
 
@@ -242,7 +244,13 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     const id: string = pkgJson.name;
     const version: string = pkgJson.version ?? '0.0.0';
 
-    const primaryKind = await this.detectKind(absPath);
+    // Scaffold can link a package before its TypeScript entry has been built.
+    // In that case the caller supplies the generated manifest; it is still
+    // validated here and becomes the canonical source for lock/cache metadata.
+    const manifest = sourceManifest && isManifestV3(sourceManifest)
+      ? sourceManifest as ManifestV3
+      : undefined;
+    const primaryKind = manifest ? 'plugin' : await this.detectKind(absPath);
     if (primaryKind === null) {
       throw new InvalidEntityError(
         `Cannot link "${id}" (${absPath}) — not a valid KB Labs entity ` +
@@ -252,9 +260,11 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     this.assertScopeAllowsKind(ctx.scope, primaryKind);
 
     const strategy = this.strategies.get(primaryKind);
-    const provides = strategy
-      ? await strategy.extractProvides(absPath)
-      : [primaryKind];
+    const provides = manifest
+      ? extractEntityKinds(manifest)
+      : strategy
+        ? await strategy.extractProvides(absPath)
+        : [primaryKind];
 
     const integrity = await computeIntegrity(absPath);
 
@@ -267,14 +277,15 @@ export class MarketplaceService implements MarketplaceServiceAPI {
       provides,
     });
 
-    await addToMarketplaceLock(scopeRoot, id, entry);
-    await this.cacheManifest(scopeRoot, id, absPath, primaryKind, integrity);
+    const canonicalId = manifest?.id ?? id;
+    await addToMarketplaceLock(scopeRoot, canonicalId, entry);
+    await this.cacheManifest(scopeRoot, canonicalId, absPath, primaryKind, integrity, manifest);
 
     if (strategy?.afterInstall) {
-      await strategy.afterInstall(id, absPath, this, ctx);
+      await strategy.afterInstall(canonicalId, absPath, this, ctx);
     }
 
-    return { id, version, primaryKind, provides, packageRoot: absPath, scope: ctx.scope };
+    return { id: canonicalId, version, primaryKind, provides, packageRoot: absPath, scope: ctx.scope };
   }
 
   async unlink(ctx: ScopeContext, packageId: string): Promise<void> {
@@ -572,9 +583,19 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     packageRoot: string,
     primaryKind: EntityKind,
     integrity: string,
+    sourceManifest?: ManifestV3,
   ): Promise<void> {
     try {
       if (primaryKind === 'plugin') {
+        if (sourceManifest) {
+          await setCacheEntry(scopeRoot, packageId, {
+            manifestType: 'plugin',
+            manifest: sourceManifest,
+            cachedAt: new Date().toISOString(),
+            integrity,
+          });
+          return;
+        }
         const diag = new DiagnosticCollector();
         const manifest = await loadManifest(packageRoot, diag);
         if (manifest) {

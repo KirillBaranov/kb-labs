@@ -230,7 +230,7 @@ async function runDefault(
       ? `${outRoot}/packages/${nameArg}-entry`
       : outRoot;
 
-  await linkWithMarketplace(entryPkgDir, ctx.cwd);
+  await linkWithMarketplace(entryPkgDir, ctx.cwd, result.manifest);
 
   const registrationNote = 'Registered in .kb/marketplace.lock';
 
@@ -297,7 +297,7 @@ async function loadMarketplaceCredentials(): Promise<MarketplaceAuth | null> {
 }
 
 /** Register through the canonical marketplace API; the daemon owns lock format and integrity. */
-async function linkWithMarketplace(entryPkgDir: string, cwd: string): Promise<void> {
+async function linkWithMarketplace(entryPkgDir: string, cwd: string, manifest: Record<string, unknown>): Promise<void> {
   const projectRoot = await findProjectConfigRoot(cwd);
   if (!projectRoot) {
     throw new Error(`Cannot register scaffolded plugin: no project config found from ${cwd}`);
@@ -316,7 +316,7 @@ async function linkWithMarketplace(entryPkgDir: string, cwd: string): Promise<vo
         'Content-Type': 'application/json',
         ...(auth ? { Authorization: `Bearer ${auth.credentials.accessToken}` } : {}),
       },
-      body: JSON.stringify({ path: resolve(entryPkgDir), scope: 'project', projectRoot }),
+      body: JSON.stringify({ path: resolve(entryPkgDir), scope: 'project', projectRoot, manifest }),
     });
     if (response.status === 401 && auth && attempt === 0) {
       auth = await auth.refresh();
