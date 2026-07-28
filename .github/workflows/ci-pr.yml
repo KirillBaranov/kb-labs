@@ -83,8 +83,36 @@ jobs:
             echo "No affected packages — nothing to build"
             exit 0
           fi
-          echo "Building affected packages: $affected"
-          ./tools/kb-devkit/kb-devkit run build --packages "$affected"
+          pnpm list --recursive --depth -1 --json > /tmp/workspace-packages.json
+          build_packages=$(AFFECTED="$affected" node - <<'NODE'
+          const fs = require('node:fs');
+          const packages = JSON.parse(fs.readFileSync('/tmp/workspace-packages.json', 'utf8'))
+            .filter((pkg) => pkg.name && pkg.path);
+          const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
+          const selected = new Set(process.env.AFFECTED.split(','));
+          const queue = [...selected];
+          while (queue.length > 0) {
+            const name = queue.shift();
+            const pkg = byName.get(name);
+            if (!pkg) continue;
+            const manifest = JSON.parse(fs.readFileSync(`${pkg.path}/package.json`, 'utf8'));
+            const deps = {
+              ...manifest.dependencies,
+              ...manifest.devDependencies,
+              ...manifest.peerDependencies,
+            };
+            for (const dep of Object.keys(deps ?? {})) {
+              if (byName.has(dep) && !selected.has(dep)) {
+                selected.add(dep);
+                queue.push(dep);
+              }
+            }
+          }
+          process.stdout.write([...selected].join(','));
+          NODE
+          )
+          echo "Building affected packages and workspace prerequisites: $build_packages"
+          ./tools/kb-devkit/kb-devkit run build --packages "$build_packages"
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
