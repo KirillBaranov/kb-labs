@@ -62,7 +62,7 @@ func TestTelemetryFailureCategoryAvoidsRawErrorPayload(t *testing.T) {
 		err  error
 		want string
 	}{
-		{errors.New("ERR_PNPM_NO_MATCHING_VERSION: @kb-labs/adapters-fs"), "dependency_version"},
+		{errors.New("ERR_PNPM_NO_MATCHING_VERSION: @kb-labs/data-store"), "dependency_version"},
 		{errors.New("preflight failed: node is missing"), "environment_preflight"},
 		{errors.New("permission denied: /private/project"), "filesystem_permission"},
 	} {

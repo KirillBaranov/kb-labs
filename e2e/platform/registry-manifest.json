@@ -69,7 +69,7 @@
     }
   ],
   "adapters": [
-    { "name": "@kb-labs/adapters-fs" },
+    { "name": "@kb-labs/data-store" },
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
     { "name": "@kb-labs/adapters-analytics-file" },

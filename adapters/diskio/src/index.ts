@@ -1,269 +1,190 @@
-/**
- * @module @kb-labs/adapters-diskio
- * Filesystem-backed blob storage adapter implementing IStorage interface.
- *
- * @example
- * ```typescript
- * import { createAdapter } from '@kb-labs/adapters-diskio';
- *
- * const storage = createAdapter({
- *   baseDir: '/var/data',
- * });
- *
- * await storage.write('docs/readme.md', Buffer.from('# Hello'));
- * const content = await storage.read('docs/readme.md');
- * const files = await storage.list('docs/');
- * await storage.delete('docs/readme.md');
- * ```
- */
+import { createReadStream, createWriteStream } from "node:fs";
+import { access, copyFile, mkdir, readFile, readdir, rename, stat as statFile, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { pipeline } from "node:stream/promises";
+import type { IStorage, StorageMetadata } from "@kb-labs/sdk/adapters";
 
-import fs from "node:fs/promises";
-import path from "node:path";
-import type {
-  IStorage,
-  StorageMetadata,
-} from "@kb-labs/sdk/adapters";
-
-// Re-export manifest
 export { manifest } from "./manifest.js";
 
-/**
- * Configuration for filesystem storage adapter.
- */
 export interface FilesystemStorageConfig {
-  /** Base directory for all file operations (default: process.cwd()) */
   baseDir?: string;
 }
 
-/**
- * Filesystem implementation of IStorage interface.
- */
-export class FilesystemStorageAdapter implements IStorage {
-  private baseDir: string;
+const MIME_BY_SUFFIX: Readonly<Record<string, string>> = {
+  ".css": "text/css",
+  ".gif": "image/gif",
+  ".html": "text/html",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "application/javascript",
+  ".json": "application/json",
+  ".md": "text/markdown",
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".ts": "application/typescript",
+  ".txt": "text/plain",
+  ".zip": "application/zip",
+};
 
-  constructor(config: FilesystemStorageConfig = {}) {
-    this.baseDir = config.baseDir ?? process.cwd();
+function mimeFor(filePath: string): string {
+  return MIME_BY_SUFFIX[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+}
+
+function isMissing(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+/** A small, dependency-free storage implementation backed by one directory. */
+export class DiskStorageAdapter implements IStorage {
+  private readonly root: string;
+
+  constructor(options: FilesystemStorageConfig = {}) {
+    this.root = resolve(options.baseDir ?? process.cwd());
   }
 
-  /**
-   * Resolve relative path to absolute path within baseDir.
-   */
-  private resolvePath(relativePath: string): string {
-    // Normalize path and ensure it's within baseDir (security)
-    const normalized = path.normalize(relativePath);
-    const absolute = path.isAbsolute(normalized)
-      ? normalized
-      : path.join(this.baseDir, normalized);
+  private insideRoot(input: string): string {
+    const cleaned = normalize(input);
+    const candidate = resolve(this.root, cleaned);
+    const remainder = relative(this.root, candidate);
 
-    // Ensure path is within baseDir (prevent directory traversal)
-    if (!absolute.startsWith(this.baseDir)) {
-      throw new Error(`Path traversal detected: ${relativePath}`);
+    if (isAbsolute(input) || remainder === ".." || remainder.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) {
+      throw new Error(`Path traversal detected: ${input}`);
     }
 
-    return absolute;
+    return candidate;
   }
 
-  private async ensureDir(dirPath: string): Promise<void> {
-    await fs.mkdir(dirPath, { recursive: true });
+  private async makeParent(filePath: string): Promise<void> {
+    await mkdir(dirname(filePath), { recursive: true });
   }
 
-  /**
-   * Recursively walk a directory, yielding absolute file paths.
-   */
-  private async *walk(dirPath: string): AsyncGenerator<string> {
+  private async *filesUnder(directory: string): AsyncGenerator<string> {
     let entries;
     try {
-      entries = await fs.readdir(dirPath, { withFileTypes: true });
+      entries = await readdir(directory, { withFileTypes: true });
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return;
-      }
+      if (isMissing(error)) return;
       throw error;
     }
 
     for (const entry of entries) {
-      const entryPath = path.join(dirPath, entry.name);
+      const fullPath = join(directory, entry.name);
       if (entry.isDirectory()) {
-        yield* this.walk(entryPath);
+        yield* this.filesUnder(fullPath);
       } else if (entry.isFile()) {
-        yield entryPath;
+        yield fullPath;
       }
     }
   }
 
-  async read(filepath: string): Promise<Buffer | null> {
-    const absolutePath = this.resolvePath(filepath);
+  private metadata(filePath: string, size: number, modified: Date): StorageMetadata {
+    const pathFromRoot = relative(this.root, filePath);
+    return {
+      path: pathFromRoot,
+      size,
+      lastModified: modified.toISOString(),
+      contentType: mimeFor(pathFromRoot),
+    };
+  }
 
+  async read(filePath: string): Promise<Buffer | null> {
+    const target = this.insideRoot(filePath);
     try {
-      return await fs.readFile(absolutePath);
+      return await readFile(target);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return null;
-      }
+      if (isMissing(error)) return null;
       throw error;
     }
   }
 
-  async write(filepath: string, data: Buffer): Promise<void> {
-    const absolutePath = this.resolvePath(filepath);
-
-    // Ensure directory exists
-    await this.ensureDir(path.dirname(absolutePath));
-
-    await fs.writeFile(absolutePath, data);
+  async write(filePath: string, data: Buffer): Promise<void> {
+    const target = this.insideRoot(filePath);
+    await this.makeParent(target);
+    await writeFile(target, data);
   }
 
-  async delete(filepath: string): Promise<void> {
-    const absolutePath = this.resolvePath(filepath);
-
+  async delete(filePath: string): Promise<void> {
     try {
-      await fs.unlink(absolutePath);
+      await unlink(this.insideRoot(filePath));
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        // File doesn't exist - that's okay
-        return;
-      }
+      if (isMissing(error)) return;
       throw error;
     }
   }
 
   async list(prefix: string): Promise<string[]> {
-    const absolutePrefix = this.resolvePath(prefix);
-    const results: string[] = [];
-
-    for await (const filePath of this.walk(absolutePrefix)) {
-      results.push(path.relative(this.baseDir, filePath));
-    }
-
-    return results;
+    const start = this.insideRoot(prefix);
+    const found: string[] = [];
+    for await (const file of this.filesUnder(start)) found.push(relative(this.root, file));
+    return found;
   }
 
-  async exists(filepath: string): Promise<boolean> {
-    const absolutePath = this.resolvePath(filepath);
-
+  async exists(filePath: string): Promise<boolean> {
     try {
-      await fs.access(absolutePath);
+      await access(this.insideRoot(filePath));
       return true;
-    } catch {
+    } catch (error) {
+      if (isMissing(error)) return false;
       return false;
     }
   }
 
-  // ============================================================================
-  // EXTENDED METHODS (optional - implements IStorage extended interface)
-  // ============================================================================
-
-  /**
-   * Get file metadata (size, mtime, etc).
-   * Optional method - implements IStorage.stat().
-   */
-  async stat(filepath: string): Promise<StorageMetadata | null> {
-    const absolutePath = this.resolvePath(filepath);
-
+  async readStream(filePath: string): Promise<NodeJS.ReadableStream | null> {
+    const target = this.insideRoot(filePath);
     try {
-      const stats = await fs.stat(absolutePath);
-
-      return {
-        path: filepath,
-        size: stats.size,
-        lastModified: stats.mtime.toISOString(),
-        contentType: this.guessContentType(filepath),
-      };
+      await access(target);
+      return createReadStream(target);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return null;
-      }
+      if (isMissing(error)) return null;
       throw error;
     }
   }
 
-  /**
-   * Copy file within storage.
-   * Optional method - implements IStorage.copy().
-   */
-  async copy(sourcePath: string, destPath: string): Promise<void> {
-    const absoluteSource = this.resolvePath(sourcePath);
-    const absoluteDest = this.resolvePath(destPath);
-
-    // Ensure destination directory exists
-    await this.ensureDir(path.dirname(absoluteDest));
-
-    await fs.copyFile(absoluteSource, absoluteDest);
+  async writeStream(filePath: string, stream: NodeJS.ReadableStream): Promise<void> {
+    const target = this.insideRoot(filePath);
+    await this.makeParent(target);
+    await pipeline(stream, createWriteStream(target));
   }
 
-  /**
-   * Move file within storage.
-   * Optional method - implements IStorage.move().
-   */
-  async move(sourcePath: string, destPath: string): Promise<void> {
-    const absoluteSource = this.resolvePath(sourcePath);
-    const absoluteDest = this.resolvePath(destPath);
-
-    // Ensure destination directory exists
-    await this.ensureDir(path.dirname(absoluteDest));
-
-    await fs.rename(absoluteSource, absoluteDest);
-  }
-
-  /**
-   * List files with metadata.
-   * Optional method - implements IStorage.listWithMetadata().
-   */
-  async listWithMetadata(prefix: string): Promise<StorageMetadata[]> {
-    const absolutePrefix = this.resolvePath(prefix);
-    const results: StorageMetadata[] = [];
-
-    for await (const filePath of this.walk(absolutePrefix)) {
-      const stats = await fs.stat(filePath);
-      const relativePath = path.relative(this.baseDir, filePath);
-
-      results.push({
-        path: relativePath,
-        size: stats.size,
-        lastModified: stats.mtime.toISOString(),
-        contentType: this.guessContentType(relativePath),
-      });
+  async stat(filePath: string): Promise<StorageMetadata | null> {
+    const target = this.insideRoot(filePath);
+    try {
+      const info = await statFile(target);
+      return this.metadata(target, info.size, info.mtime);
+    } catch (error) {
+      if (isMissing(error)) return null;
+      throw error;
     }
-
-    return results;
   }
 
-  /**
-   * Guess content type from file extension.
-   * Simple implementation - can be extended with mime-types library.
-   */
-  private guessContentType(filepath: string): string {
-    const ext = path.extname(filepath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      ".txt": "text/plain",
-      ".md": "text/markdown",
-      ".json": "application/json",
-      ".js": "application/javascript",
-      ".ts": "application/typescript",
-      ".html": "text/html",
-      ".css": "text/css",
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".gif": "image/gif",
-      ".svg": "image/svg+xml",
-      ".pdf": "application/pdf",
-      ".zip": "application/zip",
-    };
+  async copy(source: string, destination: string): Promise<void> {
+    const from = this.insideRoot(source);
+    const to = this.insideRoot(destination);
+    await this.makeParent(to);
+    await copyFile(from, to);
+  }
 
-    return mimeTypes[ext] ?? "application/octet-stream";
+  async move(source: string, destination: string): Promise<void> {
+    const from = this.insideRoot(source);
+    const to = this.insideRoot(destination);
+    await this.makeParent(to);
+    await rename(from, to);
+  }
+
+  async listWithMetadata(prefix: string): Promise<StorageMetadata[]> {
+    const start = this.insideRoot(prefix);
+    const output: StorageMetadata[] = [];
+    for await (const file of this.filesUnder(start)) {
+      const info = await statFile(file);
+      output.push(this.metadata(file, info.size, info.mtime));
+    }
+    return output;
   }
 }
 
-/**
- * Create filesystem storage adapter.
- * This is the factory function called by initPlatform() when loading adapters.
- */
-export function createAdapter(
-  config?: FilesystemStorageConfig,
-): FilesystemStorageAdapter {
-  return new FilesystemStorageAdapter(config);
+export function createAdapter(config?: FilesystemStorageConfig): DiskStorageAdapter {
+  return new DiskStorageAdapter(config);
 }
 
-// Default export for direct import
 export default createAdapter;

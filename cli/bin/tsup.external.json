@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "externals": [
     "@kb-labs/adapters-analytics-file",
-    "@kb-labs/adapters-fs",
+    "@kb-labs/data-store",
     "@kb-labs/adapters-openai",
     "@kb-labs/adapters-pino",
     "@kb-labs/adapters-qdrant",

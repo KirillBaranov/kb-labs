@@ -16,7 +16,7 @@ func TestGenDevManifestFiltersPlugins(t *testing.T) {
 	src := `{
       "version": "3.0.0",
       "core": [{"name": "@kb-labs/sdk", "localPath": "/ws/sdk"}],
-      "adapters": [{"name": "@kb-labs/adapters-fs"}],
+      "adapters": [{"name": "@kb-labs/data-store"}],
       "services": [{"id": "rest", "pkg": "@kb-labs/rest-api-app", "localPath": "/ws/rest"}],
       "plugins": [
         {"id": "mind", "pkg": "@kb-labs/mind-entry", "localPath": "/ws/mind"},

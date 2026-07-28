@@ -5625,7 +5625,7 @@ importers:
       '@kb-labs/adapters-analytics-file':
         specifier: workspace:*
         version: link:../../../adapters/analytics-file
-      '@kb-labs/adapters-diskio':
+      '@kb-labs/data-store':
         specifier: workspace:*
         version: link:../../../adapters/diskio
       '@kb-labs/adapters-eventbus-cache':

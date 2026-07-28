@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/adapters-diskio",
-  "description": "Filesystem-backed blob storage adapter implementing IStorage, using only node:fs/promises",
+  "name": "@kb-labs/data-store",
+  "description": "Independent local-directory IStorage adapter with streams, metadata and permission wrapping",
   "version": "2.110.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,6 +19,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",

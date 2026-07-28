@@ -18,7 +18,7 @@ export class MockPlatformSource implements PlatformDataSource {
         // Multi-adapter example: array of providers for LLM
         llm: ['@kb-labs/adapters-openai', '@kb-labs/adapters-vibeproxy'],
         embeddings: '@kb-labs/adapters-openai/embeddings',
-        storage: '@kb-labs/adapters-fs',
+        storage: '@kb-labs/data-store',
         logger: '@kb-labs/adapters-pino',
         analytics: '@kb-labs/adapters-analytics-file',
         vectorStore: '@kb-labs/adapters-qdrant',

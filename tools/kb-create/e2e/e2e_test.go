@@ -299,7 +299,7 @@ func TestInstallYes(t *testing.T) {
 	// only derived entries from `exports`, not `kb.manifest`). Fixed in preset
 	// for future releases; allowlist drops with the next publish.
 	scanWarningAllowlist := []string{
-		"@kb-labs/adapters-fs: manifest not found:",
+		"@kb-labs/data-store: manifest not found:",
 		"@kb-labs/adapters-openai: manifest not found:",
 		"@kb-labs/adapters-sqlite: manifest not found:",
 	}

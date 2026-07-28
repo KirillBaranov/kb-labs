@@ -499,7 +499,7 @@ func generateFull(opts Options) string {
 	b.WriteString("      // Configure an explicit provider key before running an AI command.\n")
 	fmt.Fprintf(&b, "      \"llm\": %s,\n\n", quote(adapterPkg("llm", "@kb-labs/adapters-kblabs-gateway")))
 	b.WriteString("      // File storage backend.\n")
-	fmt.Fprintf(&b, "      \"storage\": %s,\n\n", quote(adapterPkg("storage", "@kb-labs/adapters-fs")))
+	fmt.Fprintf(&b, "      \"storage\": %s,\n\n", quote(adapterPkg("storage", "@kb-labs/data-store")))
 	b.WriteString("      // Structured logger.\n")
 	fmt.Fprintf(&b, "      \"logger\": %s,\n\n", quote(adapterPkg("logger", "@kb-labs/adapters-pino")))
 	b.WriteString("      // In-memory log ring buffer for recent log access.\n")

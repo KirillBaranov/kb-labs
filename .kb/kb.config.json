@@ -1,7 +1,7 @@
 {
   "platform": {
     "adapters": {
-      "storage": "@kb-labs/adapters-fs",
+      "storage": "@kb-labs/data-store",
       "documentDatabase": "@kb-labs/adapters-sqlite",
       "kvStore": "@kb-labs/adapters-sqlite/kv",
       "logger": "@kb-labs/adapters-pino",
@@ -329,7 +329,7 @@
                   "adapters-mongodb",
                   "adapters-qdrant",
                   "adapters-pino",
-                  "adapters-fs",
+                  "data-store",
                   "adapters-sqlite",
                   "adapters-vibeproxy"
                 ]

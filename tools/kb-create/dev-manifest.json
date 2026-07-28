@@ -11,7 +11,7 @@
     { "name": "@kb-labs/adapters-kblabs-gateway", "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/kblabs-gateway" }
   ],
   "adapters": [
-    { "name": "@kb-labs/adapters-fs",               "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/fs" },
+    { "name": "@kb-labs/data-store",                "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/diskio" },
     { "name": "@kb-labs/adapters-pino",             "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer",   "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/log-ringbuffer" },
     { "name": "@kb-labs/adapters-analytics-file",   "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/analytics-file" }

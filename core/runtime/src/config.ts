@@ -97,7 +97,7 @@ export interface AdaptersConfig {
   embeddings?: AdapterValue;
   /** Cache adapter package(s) (e.g., "@kb-labs/adapters-redis") */
   cache?: AdapterValue;
-  /** Storage adapter package(s) (e.g., "@kb-labs/adapters-fs") */
+  /** Storage adapter package(s) (e.g., "@kb-labs/data-store") */
   storage?: AdapterValue;
   /** Logger adapter package(s) (e.g., "@kb-labs/adapters-pino") */
   logger?: AdapterValue;

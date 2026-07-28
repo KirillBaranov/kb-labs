@@ -635,7 +635,7 @@ func TestGenerateFull_AdapterDefaults(t *testing.T) {
 
 	defaults := []string{
 		`"llm": "@kb-labs/adapters-kblabs-gateway"`,
-		`"storage": "@kb-labs/adapters-fs"`,
+		`"storage": "@kb-labs/data-store"`,
 		`"logger": "@kb-labs/adapters-pino"`,
 		`"logRingBuffer": "@kb-labs/adapters-log-ringbuffer"`,
 		`"analytics": "@kb-labs/adapters-analytics-file"`,
@@ -985,7 +985,7 @@ func TestGenerateFull_AdapterOverrides(t *testing.T) {
 	})
 
 	assertContains(t, content, `"storage": "@acme/adapters-s3@1.2.3"`, "storage override applied")
-	if strings.Contains(content, `"storage": "@kb-labs/adapters-fs"`) {
+	if strings.Contains(content, `"storage": "@kb-labs/data-store"`) {
 		t.Error("storage default should not appear when overridden")
 	}
 	// Unrelated defaults must be untouched by the override.

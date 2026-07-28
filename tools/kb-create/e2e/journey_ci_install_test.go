@@ -41,7 +41,7 @@ func TestCIInstallJourney_PinnedPluginsServicesAndAdapters(t *testing.T) {
 	out, code := run(t, bin, "install",
 		"--plugins", "release@"+pinnedVersion+",commit",
 		"--services", "workflow",
-		"--adapters", "cache=@kb-labs/adapters-redis,bogus-role=@kb-labs/adapters-fs",
+		"--adapters", "cache=@kb-labs/adapters-redis,bogus-role=@kb-labs/data-store",
 		"--platform", platformDir,
 	)
 	if code != 0 {

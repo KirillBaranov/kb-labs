@@ -78,7 +78,7 @@
     }
   ],
   "adapters": [
-    { "name": "@kb-labs/adapters-fs" },
+    { "name": "@kb-labs/data-store" },
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
     { "name": "@kb-labs/adapters-analytics-file" },
@@ -133,7 +133,7 @@
   "adapterConfig": {
     "adapters": {
       "llm": "@kb-labs/adapters-kblabs-gateway",
-      "storage": "@kb-labs/adapters-fs",
+      "storage": "@kb-labs/data-store",
       "logger": "@kb-labs/adapters-pino",
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "analytics": "@kb-labs/adapters-analytics-file",

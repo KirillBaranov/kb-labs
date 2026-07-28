@@ -1,19 +1,11 @@
-/**
- * @module @kb-labs/adapters-fs/manifest
- * Adapter manifest for filesystem storage.
- */
-
 import type { AdapterManifest } from "@kb-labs/sdk/adapters";
 
-/**
- * Adapter manifest for filesystem storage.
- */
 export const manifest: AdapterManifest = {
   manifestVersion: "1.0.0",
-  id: "fs-storage",
-  name: "Filesystem Storage",
+  id: "disk-io-storage",
+  name: "Disk I/O Storage",
   version: "1.0.0",
-  description: "Local filesystem storage adapter with path security",
+  description: "A local directory storage adapter with boundary checks and metadata support",
   author: "KB Labs Team",
   license: "KBPL-1.1",
   type: "core",
@@ -21,7 +13,6 @@ export const manifest: AdapterManifest = {
   capabilities: {
     streaming: true,
     custom: {
-      glob: true,
       metadata: true,
     },
   },
@@ -29,7 +20,7 @@ export const manifest: AdapterManifest = {
     baseDir: {
       type: "string",
       default: "process.cwd()",
-      description: "Base directory for all file operations",
+      description: "Directory used as the storage root",
     },
   },
 };

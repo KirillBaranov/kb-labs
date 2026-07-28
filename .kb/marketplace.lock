@@ -191,7 +191,7 @@
       ],
       "enabled": true
     },
-    "@kb-labs/adapters-fs": {
+    "@kb-labs/data-store": {
       "version": "2.105.0",
       "integrity": "sha256-zKQT7niUFwhesiUGwcgAv/THXJq35+cEhwAFPYH41zI=",
       "resolvedPath": "./adapters/fs",
