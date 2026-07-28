@@ -79,6 +79,10 @@ jobs:
         # ^build prerequisites (SDK/contracts) before emitting DTS/manifests.
         run: |
           affected=$(./tools/kb-devkit/kb-devkit affected --json | jq -r '.packages | join(",")')
+          # kb-create E2E installs the published CLI entrypoint directly;
+          # keep it in the immutable dist bundle even when the PR only edits
+          # installer/scaffold internals.
+          affected="${affected:+$affected,}@kb-labs/cli-bin"
           if [ -z "$affected" ]; then
             echo "No affected packages — nothing to build"
             exit 0
