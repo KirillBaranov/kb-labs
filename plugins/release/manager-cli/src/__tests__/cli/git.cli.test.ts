@@ -26,6 +26,7 @@ vi.mock('../../shared/utils.js', () => ({
 }));
 
 import { planRelease, commitAndTagRelease } from '@kb-labs/release-manager-core';
+import { useConfig } from '@kb-labs/sdk';
 import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
 import gitCommand from '../../cli/commands/git.js';
 
@@ -81,6 +82,21 @@ describe('release:git', () => {
     const out = captured.json[0] as Record<string, unknown>;
     expect(out.committed).toBe(true);
     expect(Array.isArray(out.tagged)).toBe(true);
+  });
+
+  it('GB-05: --flow is forwarded to commitAndTagRelease as flowName + tagPattern (regression: tag defaulted to "release-vX" instead of "<flow>-vX")', async () => {
+    vi.mocked(useConfig).mockResolvedValue({
+      flows: { platform: { tagPattern: '{flow}-v{version}' } },
+    } as never);
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    await gitCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'platform' } }));
+
+    expect(vi.mocked(commitAndTagRelease)).toHaveBeenCalledWith(
+      expect.objectContaining({ flowName: 'platform', tagPattern: '{flow}-v{version}' }),
+    );
   });
 
   it('GB-04: --dry-run shows intent, commitAndTagRelease is NOT called', async () => {

@@ -120,6 +120,8 @@ export default defineCommand({
         plan,
         dryRun: false,
         noVerify,
+        flowName: flags.flow,
+        tagPattern: flags.flow ? config.flows?.[flags.flow]?.tagPattern : undefined,
       });
 
       if (result.pushed) {
