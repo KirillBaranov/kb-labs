@@ -102,6 +102,7 @@ jobs:
             const deps = {
               ...manifest.dependencies,
               ...manifest.peerDependencies,
+              ...manifest.optionalDependencies,
             };
             for (const dep of Object.keys(deps ?? {})) {
               if (byName.has(dep) && !selected.has(dep)) {
