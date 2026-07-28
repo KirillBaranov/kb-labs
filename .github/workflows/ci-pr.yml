@@ -73,8 +73,11 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, PR diff)
-        run: ./tools/kb-devkit/kb-devkit run build --affected --diff-only
+      - name: Build (devkit, PR diff + workspace dependencies)
+        # A clean runner has no prebuilt workspace dependency artifacts.
+        # Let the build DAG materialize ^build prerequisites (SDK/contracts)
+        # before emitting DTS and manifests for the affected PR packages.
+        run: ./tools/kb-devkit/kb-devkit run build --affected
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
