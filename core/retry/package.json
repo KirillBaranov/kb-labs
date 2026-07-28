@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/core-retry",
-  "version": "2.109.0",
+  "version": "2.110.0",
   "description": "Canonical failure classification and retry policy primitives",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "pnpm clean && tsup --config tsup.config.ts",
     "clean": "rimraf dist",

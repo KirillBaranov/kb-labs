@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-diskio",
   "description": "Filesystem-backed blob storage adapter implementing IStorage, using only node:fs/promises",
-  "version": "2.109.0",
+  "version": "2.110.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
