@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 	"strings"
 	"time"
 )
+
+const binariesReleaseSuffix = "-binaries"
 
 // Result describes a successfully downloaded binary.
 type Result struct {
@@ -46,7 +49,7 @@ func Download(repo, name, destDir string, progress chan<- Progress) (*Result, er
 
 	progress <- Progress{Binary: name, Status: "resolving"}
 
-	version, err := latestTag(repo)
+	version, err := latestBinariesTag(repo)
 	if err != nil {
 		progress <- Progress{Binary: name, Status: "error", Error: err}
 		return nil, fmt.Errorf("resolve latest release for %s: %w", repo, err)
@@ -111,9 +114,13 @@ func Symlink(target, linkDir, name string) error {
 
 // ── internal ────────────────────────────────────────────────────────────────
 
-// latestTag resolves the latest release tag via the GitHub API.
-func latestTag(repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
+// latestBinariesTag resolves the newest dedicated binary release tag.
+//
+// The repository also publishes npm/platform releases. They may become the
+// GitHub "latest" release and do not contain Go binary assets, so this lookup
+// must select the separate *-binaries release stream explicitly.
+func latestBinariesTag(repo string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
@@ -137,25 +144,22 @@ func latestTag(repo string) (string, error) {
 		return "", err
 	}
 
-	// Minimal JSON parsing — extract "tag_name": "vX.Y.Z"
-	// Avoids pulling encoding/json for a single field.
-	const key = `"tag_name"`
-	idx := strings.Index(string(body), key)
-	if idx < 0 {
-		return "", fmt.Errorf("tag_name not found in GitHub API response for %s", repo)
+	return latestBinariesTagFromJSON(body, repo)
+}
+
+func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
+	var releases []struct {
+		TagName string `json:"tag_name"`
 	}
-	rest := string(body)[idx+len(key):]
-	// Skip to opening quote.
-	q1 := strings.Index(rest, `"`)
-	if q1 < 0 {
-		return "", fmt.Errorf("malformed tag_name in GitHub API response")
+	if err := json.Unmarshal(body, &releases); err != nil {
+		return "", fmt.Errorf("parse GitHub releases for %s: %w", repo, err)
 	}
-	rest = rest[q1+1:]
-	q2 := strings.Index(rest, `"`)
-	if q2 < 0 {
-		return "", fmt.Errorf("malformed tag_name in GitHub API response")
+	for _, release := range releases {
+		if strings.HasSuffix(release.TagName, binariesReleaseSuffix) {
+			return release.TagName, nil
+		}
 	}
-	return rest[:q2], nil
+	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
 }
 
 // downloadToTemp downloads a URL into a temporary file and returns its path.

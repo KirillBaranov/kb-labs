@@ -5,8 +5,9 @@ name: Release Binaries
 #
 # Tag format: v<MAJOR>.<MINOR>.<PATCH>-binaries (e.g. v0.4.0-binaries).
 # Valid semver (prerelease suffix) — goreleaser accepts it. The release is
-# still marked as non-prerelease (see .goreleaser.yaml) so /releases/latest
-# points at it. Suffix distinguishes from npm release tags (pure vX.Y.Z).
+# still marked as non-prerelease (see .goreleaser.yaml), while consumers select
+# this stream by its -binaries suffix. Suffix distinguishes it from npm release
+# tags (platform-vX.Y.Z and sdk-vX.Y.Z).
 
 on:
   push:
