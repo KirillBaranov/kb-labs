@@ -73,53 +73,8 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, PR diff + workspace dependencies)
-        # A clean runner has no prebuilt workspace dependency artifacts. Resolve
-        # the PR closure explicitly, then let the build DAG materialize only its
-        # ^build prerequisites (SDK/contracts) before emitting DTS/manifests.
-        run: |
-          affected=$(./tools/kb-devkit/kb-devkit affected --json | jq -r '.packages | join(",")')
-          # kb-create E2E installs the published CLI entrypoint directly;
-          # keep it in the immutable dist bundle even when the PR only edits
-          # installer/scaffold internals.
-          affected="${affected:+$affected,}@kb-labs/cli-bin"
-          if [ -z "$affected" ]; then
-            echo "No affected packages — nothing to build"
-            exit 0
-          fi
-          pnpm list --recursive --depth -1 --json > /tmp/workspace-packages.json
-          build_packages=$(AFFECTED="$affected" node - <<'NODE'
-          const fs = require('node:fs');
-          const packages = JSON.parse(fs.readFileSync('/tmp/workspace-packages.json', 'utf8'))
-            .filter((pkg) => pkg.name && pkg.path);
-          const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
-          const selected = new Set(process.env.AFFECTED.split(','));
-          const queue = [...selected];
-          while (queue.length > 0) {
-            const name = queue.shift();
-            const pkg = byName.get(name);
-            if (!pkg) continue;
-            const manifest = JSON.parse(fs.readFileSync(`${pkg.path}/package.json`, 'utf8'));
-            // Build prerequisites are runtime/peer workspace packages. Dev
-            // tools (test runners, eslint, devkit) belong to quality jobs and
-            // must not turn an affected build into a repository rebuild.
-            const deps = {
-              ...manifest.dependencies,
-              ...manifest.peerDependencies,
-              ...manifest.optionalDependencies,
-            };
-            for (const dep of Object.keys(deps ?? {})) {
-              if (byName.has(dep) && !selected.has(dep)) {
-                selected.add(dep);
-                queue.push(dep);
-              }
-            }
-          }
-          process.stdout.write([...selected].join(','));
-          NODE
-          )
-          echo "Building affected packages and workspace prerequisites: $build_packages"
-          ./tools/kb-devkit/kb-devkit run build --packages "$build_packages"
+      - name: Build (devkit, complete workspace)
+        run: ./tools/kb-devkit/kb-devkit run build
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
