@@ -34,7 +34,7 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
     platform: {
       assemblyHook: makeAssemblyHook(),
     },
-    async setup({ platform, port, host, projectRoot }) {
+    async setup({ platform, port, host, projectRoot, platformRoot }) {
       // KB_PROJECT_ROOT injected by kb-dev when invoked from a project dir with separate platform.
       // Fall back to the resolved repoRoot (not raw cwd) so plugin/cron/workflow discovery is
       // correct even when the daemon is launched from a subdirectory.
@@ -106,6 +106,7 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
       bootstrapLogger.info("Loading plugin registry snapshot");
       const cliApi = await createRegistry({
         root: workspaceRoot,
+        platformRoot,
         cache: { ttlMs: 10 * 60 * 1000 },
       });
       await cliApi.initialize();
