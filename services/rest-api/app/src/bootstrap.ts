@@ -47,6 +47,7 @@ async function startRestApi({
   platform,
   projectRoot: repoRoot,
   platformRoot,
+  logger: serviceLogger,
 }: ServiceContext): Promise<() => Promise<void>> {
   // Platform launch has already loaded the layered environment.
   const { config, diagnostics } = await loadRestApiConfig(repoRoot);
@@ -55,16 +56,14 @@ async function startRestApi({
   const startupRequestId = `rest-startup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const startupTraceId = randomUUID();
   const startupSpanId = randomUUID();
-  const bootstrapLogger = platform.logger.child({
-    layer: "rest",
-    service: "bootstrap",
-    requestId: startupRequestId,
-    reqId: startupRequestId,
-    traceId: startupTraceId,
-    spanId: startupSpanId,
-    invocationId: startupSpanId,
-    executionId: startupSpanId,
-  });
+  const bootstrapLogger = serviceLogger
+    .forComponent("rest-bootstrap")
+    .forOperation("rest.bootstrap", {
+      requestId: startupRequestId,
+      traceId: startupTraceId,
+      spanId: startupSpanId,
+    })
+    .with({ invocationId: startupSpanId, executionId: startupSpanId });
 
   if (diagnostics.length > 0) {
     bootstrapLogger.warn("Configuration diagnostics", {

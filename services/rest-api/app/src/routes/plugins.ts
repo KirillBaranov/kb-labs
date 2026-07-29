@@ -5,27 +5,30 @@
  * Uses @kb-labs/plugin-execution for unified execution layer.
  */
 
-import type { FastifyInstance } from 'fastify';
-import type { RestApiConfig } from '@kb-labs/rest-api-core';
-import type { IEntityRegistry, RegistrySnapshot } from '@kb-labs/core-registry';
-import type { ManifestV3 } from '@kb-labs/plugin-contracts';
-import { validateManifest } from '@kb-labs/plugin-contracts';
-import { mountRoutes } from '@kb-labs/plugin-execution/http';
-import { mountWebSocketChannels } from '@kb-labs/plugin-execution';
-import { InProcessBackend } from '@kb-labs/plugin-execution-factory';
-import { combineManifestsToRegistry } from '@kb-labs/rest-api-core';
-import { platform } from '@kb-labs/core-runtime';
+import type { FastifyInstance } from "fastify";
+import type { RestApiConfig } from "@kb-labs/rest-api-core";
+import type { IEntityRegistry, RegistrySnapshot } from "@kb-labs/core-registry";
+import type { ManifestV3 } from "@kb-labs/plugin-contracts";
+import { validateManifest } from "@kb-labs/plugin-contracts";
+import { mountRoutes } from "@kb-labs/plugin-execution/http";
+import { mountWebSocketChannels } from "@kb-labs/plugin-execution";
+import { InProcessBackend } from "@kb-labs/plugin-execution-factory";
+import { combineManifestsToRegistry } from "@kb-labs/rest-api-core";
+import { platform } from "@kb-labs/core-runtime";
 import {
   logDiagnosticEvent,
   type DiagnosticLogLevel,
-} from '@kb-labs/core-platform';
-import type { DiagnosticReasonCode } from '@kb-labs/core-contracts';
-import * as path from 'node:path';
-import * as fs from 'node:fs/promises';
-import type { ReadinessState } from './readiness';
-import { resolveWorkspaceRoot } from '@kb-labs/core-workspace';
-import { metricsCollector, restDomainOperationMetrics } from '../middleware/metrics.js';
-import { performance } from 'node:perf_hooks';
+} from "@kb-labs/core-platform";
+import type { DiagnosticReasonCode } from "@kb-labs/core-contracts";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
+import type { ReadinessState } from "./readiness";
+import { resolveWorkspaceRoot } from "@kb-labs/core-workspace";
+import {
+  metricsCollector,
+  restDomainOperationMetrics,
+} from "../middleware/metrics.js";
+import { performance } from "node:perf_hooks";
 
 interface SnapshotManifestEntry {
   pluginId: string;
@@ -33,8 +36,10 @@ interface SnapshotManifestEntry {
   pluginRoot: string;
 }
 
-function extractSnapshotManifests(snapshot: RegistrySnapshot): SnapshotManifestEntry[] {
-  return (snapshot.manifests || []).map(entry => ({
+function extractSnapshotManifests(
+  snapshot: RegistrySnapshot,
+): SnapshotManifestEntry[] {
+  return (snapshot.manifests || []).map((entry) => ({
     pluginId: entry.pluginId,
     manifest: entry.manifest,
     pluginRoot: entry.pluginRoot,
@@ -49,7 +54,7 @@ export async function registerPluginRoutes(
   config: RestApiConfig,
   repoRoot: string,
   registry: IEntityRegistry,
-  readiness?: ReadinessState
+  readiness?: ReadinessState,
 ): Promise<void> {
   const gatewayTimeoutMs = config.timeouts?.requestTimeout ?? 30_000;
   // Stats aggregated from sequential mount results
@@ -87,7 +92,7 @@ export async function registerPluginRoutes(
       },
     });
     const workspaceRoot = workspaceResolution.rootDir;
-    platform.logger.info('Resolved workspace root', {
+    platform.logger.info("Resolved workspace root", {
       repoRoot,
       workspaceRoot,
       source: workspaceResolution.source,
@@ -97,12 +102,12 @@ export async function registerPluginRoutes(
     const manifests = extractSnapshotManifests(snapshot);
 
     // Log discovery summary
-    platform.logger.info('Plugin discovery summary', {
+    platform.logger.info("Plugin discovery summary", {
       totalManifests: manifests.length,
       rev: snapshot.rev,
       partial: snapshot.partial,
       stale: snapshot.stale,
-      plugins: manifests.map(e => ({
+      plugins: manifests.map((e) => ({
         id: e.manifest.id,
         restRoutes: e.manifest.rest?.routes?.length ?? 0,
         wsChannels: e.manifest.ws?.channels?.length ?? 0,
@@ -112,13 +117,13 @@ export async function registerPluginRoutes(
     if (snapshot.partial || snapshot.stale) {
       if (snapshot.partial) {
         logDiagnosticEvent(platform.logger, {
-          domain: 'registry',
-          event: 'plugin.registry.snapshot',
-          level: 'warn',
-          reasonCode: 'snapshot_partial',
-          message: 'Registry snapshot is partial',
-          outcome: 'failed',
-          serviceId: 'rest',
+          domain: "registry",
+          event: "plugin.registry.snapshot",
+          level: "warn",
+          reasonCode: "snapshot_partial",
+          message: "Registry snapshot is partial",
+          outcome: "failed",
+          serviceId: "rest",
           evidence: {
             rev: snapshot.rev,
             generatedAt: snapshot.generatedAt,
@@ -128,13 +133,13 @@ export async function registerPluginRoutes(
 
       if (snapshot.stale) {
         logDiagnosticEvent(platform.logger, {
-          domain: 'registry',
-          event: 'plugin.registry.snapshot',
-          level: 'warn',
-          reasonCode: 'snapshot_stale',
-          message: 'Registry snapshot is stale',
-          outcome: 'failed',
-          serviceId: 'rest',
+          domain: "registry",
+          event: "plugin.registry.snapshot",
+          level: "warn",
+          reasonCode: "snapshot_stale",
+          message: "Registry snapshot is stale",
+          outcome: "failed",
+          serviceId: "rest",
           evidence: {
             rev: snapshot.rev,
             generatedAt: snapshot.generatedAt,
@@ -156,16 +161,17 @@ export async function registerPluginRoutes(
     const wsBackend = new InProcessBackend({ platform });
 
     // Filter plugins that have routes or channels to mount
-    const mountableManifests = manifests
-      .filter(entry =>
-        (entry.manifest.rest?.routes && entry.manifest.rest.routes.length > 0) ||
-        (entry.manifest.ws?.channels && entry.manifest.ws.channels.length > 0)
-      );
+    const mountableManifests = manifests.filter(
+      (entry) =>
+        (entry.manifest.rest?.routes &&
+          entry.manifest.rest.routes.length > 0) ||
+        (entry.manifest.ws?.channels && entry.manifest.ws.channels.length > 0),
+    );
 
-    platform.logger.info('Plugins selected for route mounting', {
+    platform.logger.info("Plugins selected for route mounting", {
       mountable: mountableManifests.length,
       skipped: manifests.length - mountableManifests.length,
-      mountablePlugins: mountableManifests.map(e => e.manifest.id),
+      mountablePlugins: mountableManifests.map((e) => e.manifest.id),
     });
 
     // ── Phase 1: Batch-validate all handler files in one I/O pass ──
@@ -179,9 +185,9 @@ export async function registerPluginRoutes(
     for (const entry of mountableManifests) {
       if (entry.manifest.rest?.routes) {
         for (const route of entry.manifest.rest.routes) {
-          const handlerFile = route.handler.split('#')[0];
+          const handlerFile = route.handler.split("#")[0];
           if (handlerFile) {
-            const pluginDistRoot = path.join(entry.pluginRoot, 'dist');
+            const pluginDistRoot = path.join(entry.pluginRoot, "dist");
             const handlerPath = path.resolve(pluginDistRoot, handlerFile);
             handlerChecks.push({
               key: `${entry.manifest.id}::${route.method} ${route.path}`,
@@ -200,19 +206,25 @@ export async function registerPluginRoutes(
         } catch {
           return { key: check.key, filePath: check.filePath, exists: false };
         }
-      })
+      }),
     );
 
     // Build lookup: "pluginId::METHOD /path" → { exists, filePath }
-    const handlerExistsMap = new Map<string, { exists: boolean; filePath: string }>();
+    const handlerExistsMap = new Map<
+      string,
+      { exists: boolean; filePath: string }
+    >();
     for (const result of handlerAccessResults) {
-      handlerExistsMap.set(result.key, { exists: result.exists, filePath: result.filePath });
+      handlerExistsMap.set(result.key, {
+        exists: result.exists,
+        filePath: result.filePath,
+      });
     }
 
-    platform.logger.debug('Batch handler file validation completed', {
+    platform.logger.debug("Batch handler file validation completed", {
       totalHandlers: handlerChecks.length,
-      validHandlers: handlerAccessResults.filter(r => r.exists).length,
-      invalidHandlers: handlerAccessResults.filter(r => !r.exists).length,
+      validHandlers: handlerAccessResults.filter((r) => r.exists).length,
+      invalidHandlers: handlerAccessResults.filter((r) => !r.exists).length,
     });
 
     // ── Phase 2: Sequential plugin mounting ──
@@ -227,16 +239,16 @@ export async function registerPluginRoutes(
 
     for (const entry of mountableManifests) {
       const { manifest, pluginRoot } = entry;
-      const pluginDistRoot = path.join(pluginRoot, 'dist');
+      const pluginDistRoot = path.join(pluginRoot, "dist");
 
       // Validate routes using pre-built handler map (no I/O here)
       const restValidationErrors: string[] = [];
       if (manifest.rest?.routes) {
         for (const route of manifest.rest.routes) {
-          const handlerFile = route.handler.split('#')[0];
+          const handlerFile = route.handler.split("#")[0];
           if (!handlerFile) {
             restValidationErrors.push(
-              `Route ${route.method} ${route.path}: Invalid handler reference "${route.handler}"`
+              `Route ${route.method} ${route.path}: Invalid handler reference "${route.handler}"`,
             );
             continue;
           }
@@ -244,7 +256,7 @@ export async function registerPluginRoutes(
           const check = handlerExistsMap.get(lookupKey);
           if (check && !check.exists) {
             restValidationErrors.push(
-              `Route ${route.method} ${route.path}: Handler file not found: ${check.filePath}`
+              `Route ${route.method} ${route.path}: Handler file not found: ${check.filePath}`,
             );
           }
         }
@@ -253,33 +265,43 @@ export async function registerPluginRoutes(
       if (restValidationErrors.length > 0) {
         const reasonCode = inferRouteValidationReasonCode(restValidationErrors);
         logDiagnosticEvent(platform.logger, {
-          event: 'plugin.routes.validation',
-          level: resolveRouteValidationLogLevel(restValidationErrors, manifest.rest?.routes?.length ?? 0),
+          event: "plugin.routes.validation",
+          level: resolveRouteValidationLogLevel(
+            restValidationErrors,
+            manifest.rest?.routes?.length ?? 0,
+          ),
           reasonCode,
-          message: 'Plugin route validation failed',
-          outcome: 'failed',
+          message: "Plugin route validation failed",
+          outcome: "failed",
           pluginId: manifest.id,
           pluginVersion: manifest.version,
-          serviceId: 'rest',
+          serviceId: "rest",
           issues: restValidationErrors,
-          remediation: 'Verify handler file paths, exports, and route schema.',
+          remediation: "Verify handler file paths, exports, and route schema.",
           evidence: {
             pluginRoot,
             totalRoutes: manifest.rest?.routes?.length ?? 0,
           },
         });
 
-        platform.logger.warn('REST validation errors found, will skip problematic routes but continue mounting others', {
-          plugin: `${manifest.id}@${manifest.version}`,
-          pluginRoot,
-          remediation: 'Verify REST handler file and export exist',
-          errors: restValidationErrors,
-        });
+        platform.logger.warn(
+          "REST validation errors found, will skip problematic routes but continue mounting others",
+          {
+            plugin: `${manifest.id}@${manifest.version}`,
+            pluginRoot,
+            remediation: "Verify REST handler file and export exist",
+            errors: restValidationErrors,
+          },
+        );
 
-        const errorPaths = new Set(restValidationErrors.map((error) => {
-          const match = error.match(/Route\s+(\w+)\s+([^\s:]+)/);
-          return match ? `${match[1]} ${match[2]}` : null;
-        }).filter(Boolean));
+        const errorPaths = new Set(
+          restValidationErrors
+            .map((error) => {
+              const match = error.match(/Route\s+(\w+)\s+([^\s:]+)/);
+              return match ? `${match[1]} ${match[2]}` : null;
+            })
+            .filter(Boolean),
+        );
 
         const validRoutes = manifest.rest!.routes!.filter((route) => {
           const routeKey = `${route.method} ${route.path}`;
@@ -287,16 +309,20 @@ export async function registerPluginRoutes(
         });
 
         if (validRoutes.length === 0) {
-          restDomainOperationMetrics.recordOperation('plugin.routes.mount', 0, 'error');
+          restDomainOperationMetrics.recordOperation(
+            "plugin.routes.mount",
+            0,
+            "error",
+          );
           logDiagnosticEvent(platform.logger, {
-            event: 'plugin.routes.validation',
-            level: 'error',
+            event: "plugin.routes.validation",
+            level: "error",
             reasonCode,
-            message: 'All plugin routes failed validation; skipping plugin',
-            outcome: 'failed',
+            message: "All plugin routes failed validation; skipping plugin",
+            outcome: "failed",
             pluginId: manifest.id,
             pluginVersion: manifest.version,
-            serviceId: 'rest',
+            serviceId: "rest",
             issues: restValidationErrors,
             evidence: {
               pluginRoot,
@@ -312,9 +338,10 @@ export async function registerPluginRoutes(
         }
 
         manifest.rest!.routes = validRoutes;
-        platform.logger.info('Filtered routes, mounting valid ones', {
+        platform.logger.info("Filtered routes, mounting valid ones", {
           plugin: `${manifest.id}@${manifest.version}`,
-          totalRoutes: manifest.rest!.routes.length + restValidationErrors.length,
+          totalRoutes:
+            manifest.rest!.routes.length + restValidationErrors.length,
           validRoutes: validRoutes.length,
           skippedRoutes: restValidationErrors.length,
         });
@@ -325,10 +352,13 @@ export async function registerPluginRoutes(
 
         let pluginBasePath: string;
         if (manifest.rest?.basePath) {
-          if (manifest.rest.basePath.startsWith('/api/')) {
+          if (manifest.rest.basePath.startsWith("/api/")) {
             pluginBasePath = manifest.rest.basePath;
-          } else if (manifest.rest.basePath.startsWith('/v1/')) {
-            pluginBasePath = manifest.rest.basePath.replace(/^\/v1/, config.basePath);
+          } else if (manifest.rest.basePath.startsWith("/v1/")) {
+            pluginBasePath = manifest.rest.basePath.replace(
+              /^\/v1/,
+              config.basePath,
+            );
           } else {
             pluginBasePath = `${config.basePath}${manifest.rest.basePath}`;
           }
@@ -336,7 +366,7 @@ export async function registerPluginRoutes(
           pluginBasePath = `${config.basePath}/plugins/${manifest.id}`;
         }
 
-        platform.logger.info('Mounting plugin routes', {
+        platform.logger.info("Mounting plugin routes", {
           plugin: `${manifest.id}@${manifest.version}`,
           configBasePath: config.basePath,
           manifestBasePath: manifest.rest?.basePath,
@@ -361,23 +391,27 @@ export async function registerPluginRoutes(
             route.method,
             `${pluginBasePath}${route.path}`,
             route.timeoutMs ?? gatewayTimeoutMs,
-            manifest.id
+            manifest.id,
           );
         }
 
         mountMetrics.recordSuccess(manifest.id, routesCount, duration);
-        restDomainOperationMetrics.recordOperation('plugin.routes.mount', duration, 'ok');
+        restDomainOperationMetrics.recordOperation(
+          "plugin.routes.mount",
+          duration,
+          "ok",
+        );
 
         for (const route of manifest.rest?.routes ?? []) {
-          platform.logger.info('Mounted route', {
-            plugin: manifest.id,
-            method: route.method,
-            path: `${pluginBasePath}${route.path}`,
-            handler: route.handler,
+          platform.logger.debug("Mounted route", {
+            pluginId: manifest.id,
+            "http.method": route.method,
+            "http.route": `${pluginBasePath}${route.path}`,
+            "plugin.handler": route.handler,
           });
         }
 
-        platform.logger.info('Successfully mounted plugin routes', {
+        platform.logger.info("Successfully mounted plugin routes", {
           plugin: `${manifest.id}@${manifest.version}`,
           pluginBasePath,
           routesCount,
@@ -389,14 +423,15 @@ export async function registerPluginRoutes(
         if (manifest.ws?.channels && manifest.ws.channels.length > 0) {
           try {
             const wsStart = performance.now();
-            let wsBasePath: string = manifest.ws.basePath || `/v1/ws/plugins/${manifest.id}`;
+            let wsBasePath: string =
+              manifest.ws.basePath || `/v1/ws/plugins/${manifest.id}`;
             // Normalize: /v1/ → config.basePath (same as REST routes) so gateway
             // can proxy both HTTP and WS under the same /api/v1 prefix.
-            if (wsBasePath.startsWith('/v1/')) {
+            if (wsBasePath.startsWith("/v1/")) {
               wsBasePath = wsBasePath.replace(/^\/v1/, config.basePath);
             }
 
-            platform.logger.info('Mounting WebSocket channels', {
+            platform.logger.info("Mounting WebSocket channels", {
               plugin: `${manifest.id}@${manifest.version}`,
               wsBasePath,
               channels: manifest.ws.channels.length,
@@ -407,7 +442,8 @@ export async function registerPluginRoutes(
               pluginRoot: pluginDistRoot,
               workspaceRoot,
               basePath: wsBasePath,
-              defaultTimeoutMs: manifest.ws.defaults?.timeoutMs ?? gatewayTimeoutMs,
+              defaultTimeoutMs:
+                manifest.ws.defaults?.timeoutMs ?? gatewayTimeoutMs,
               defaultMaxMessageSize: manifest.ws.defaults?.maxMessageSize,
             });
 
@@ -415,7 +451,7 @@ export async function registerPluginRoutes(
             channelsCount = wsResult.mounted;
 
             if (wsResult.mounted > 0) {
-              platform.logger.info('Successfully mounted WebSocket channels', {
+              platform.logger.info("Successfully mounted WebSocket channels", {
                 plugin: `${manifest.id}@${manifest.version}`,
                 channels: wsResult.mounted,
                 durationMs: Number(wsDuration.toFixed(2)),
@@ -423,27 +459,28 @@ export async function registerPluginRoutes(
             }
 
             if (wsResult.errors.length > 0) {
-              platform.logger.warn('WebSocket channel mounting had errors', {
+              platform.logger.warn("WebSocket channel mounting had errors", {
                 plugin: `${manifest.id}@${manifest.version}`,
                 errors: wsResult.errors,
               });
             }
-        } catch (wsError) {
-          logDiagnosticEvent(platform.logger, {
-            event: 'plugin.ws.mount',
-            level: 'error',
-            reasonCode: 'ws_mount_failed',
-            message: 'Failed to mount plugin WebSocket channels',
-            outcome: 'failed',
-            error: wsError instanceof Error ? wsError : new Error(String(wsError)),
-            pluginId: manifest.id,
-            pluginVersion: manifest.version,
-            serviceId: 'rest',
-          });
-          platform.logger.error(
-            'Failed to mount WebSocket channels',
-            wsError instanceof Error ? wsError : new Error(String(wsError)),
-              { plugin: manifest.id }
+          } catch (wsError) {
+            logDiagnosticEvent(platform.logger, {
+              event: "plugin.ws.mount",
+              level: "error",
+              reasonCode: "ws_mount_failed",
+              message: "Failed to mount plugin WebSocket channels",
+              outcome: "failed",
+              error:
+                wsError instanceof Error ? wsError : new Error(String(wsError)),
+              pluginId: manifest.id,
+              pluginVersion: manifest.version,
+              serviceId: "rest",
+            });
+            platform.logger.error(
+              "Failed to mount WebSocket channels",
+              wsError instanceof Error ? wsError : new Error(String(wsError)),
+              { plugin: manifest.id },
             );
           }
         }
@@ -453,22 +490,26 @@ export async function registerPluginRoutes(
         succeeded.push(manifest.id);
       } catch (error) {
         mountMetrics.recordFailure(manifest.id, shortErrorMessage(error));
-        restDomainOperationMetrics.recordOperation('plugin.routes.mount', 0, 'error');
+        restDomainOperationMetrics.recordOperation(
+          "plugin.routes.mount",
+          0,
+          "error",
+        );
         logDiagnosticEvent(platform.logger, {
-          event: 'plugin.routes.mount',
-          level: 'error',
-          reasonCode: 'route_mount_failed',
-          message: 'Failed to mount plugin routes',
-          outcome: 'failed',
+          event: "plugin.routes.mount",
+          level: "error",
+          reasonCode: "route_mount_failed",
+          message: "Failed to mount plugin routes",
+          outcome: "failed",
           error: error instanceof Error ? error : new Error(String(error)),
           pluginId: manifest.id,
           pluginVersion: manifest.version,
-          serviceId: 'rest',
+          serviceId: "rest",
         });
         platform.logger.error(
-          'Failed to mount plugin routes',
+          "Failed to mount plugin routes",
           error instanceof Error ? error : new Error(String(error)),
-          { plugin: manifest.id }
+          { plugin: manifest.id },
         );
         errors += 1;
         failed.push(manifest.id);
@@ -488,28 +529,31 @@ export async function registerPluginRoutes(
     }
 
     // Log summary
-    platform.logger.info('Sequential plugin route and WebSocket channel mounting completed', {
-      total: mountableManifests.length,
-      succeeded: succeeded.length,
-      failed: failed.length,
-      mountedRoutes,
-      mountedChannels,
-      errors,
-    });
+    platform.logger.info(
+      "Sequential plugin route and WebSocket channel mounting completed",
+      {
+        total: mountableManifests.length,
+        succeeded: succeeded.length,
+        failed: failed.length,
+        mountedRoutes,
+        mountedChannels,
+        errors,
+      },
+    );
   } catch (error) {
     logDiagnosticEvent(platform.logger, {
-      domain: 'registry',
-      event: 'plugin.discovery',
-      level: 'error',
-      reasonCode: 'plugin_discovery_failed',
-      message: 'Plugin discovery failed during route registration',
-      outcome: 'failed',
+      domain: "registry",
+      event: "plugin.discovery",
+      level: "error",
+      reasonCode: "plugin_discovery_failed",
+      message: "Plugin discovery failed during route registration",
+      outcome: "failed",
       error: error instanceof Error ? error : new Error(String(error)),
-      serviceId: 'rest',
+      serviceId: "rest",
     });
     platform.logger.error(
-      'Plugin discovery failed',
-      error instanceof Error ? error : new Error(String(error))
+      "Plugin discovery failed",
+      error instanceof Error ? error : new Error(String(error)),
     );
     stats.errors += 1;
     if (readiness) {
@@ -519,11 +563,16 @@ export async function registerPluginRoutes(
       readiness.pluginMountInProgress = false;
       readiness.pluginRoutesLastDurationMs = null;
       readiness.pluginRouteFailures.push({
-        id: 'discovery',
+        id: "discovery",
         error: `rest_discovery_failed ${shortErrorMessage(error)}`,
       });
     }
-    metricsCollector.completePluginMount(platform.logger as unknown as { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void });
+    metricsCollector.completePluginMount(
+      platform.logger as unknown as {
+        info: (...args: unknown[]) => void;
+        warn: (...args: unknown[]) => void;
+      },
+    );
     return;
   }
 
@@ -534,11 +583,16 @@ export async function registerPluginRoutes(
     readiness.pluginMountInProgress = false;
     readiness.lastPluginMountTs = new Date().toISOString();
     readiness.pluginRoutesLastDurationMs = Number(
-      (performance.now() - mountStart).toFixed(2)
+      (performance.now() - mountStart).toFixed(2),
     );
   }
 
-  metricsCollector.completePluginMount(platform.logger as unknown as { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void });
+  metricsCollector.completePluginMount(
+    platform.logger as unknown as {
+      info: (...args: unknown[]) => void;
+      warn: (...args: unknown[]) => void;
+    },
+  );
 }
 
 /**
@@ -547,21 +601,25 @@ export async function registerPluginRoutes(
 export async function registerPluginSnapshotRoutes(
   server: FastifyInstance,
   config: RestApiConfig,
-  registry: IEntityRegistry
+  registry: IEntityRegistry,
 ): Promise<void> {
   const basePath = config.basePath;
 
   server.post(`${basePath}/plugins/refresh`, async (_request, reply) => {
     try {
-      await restDomainOperationMetrics.observeOperation('plugin.registry.refresh', async () => {
-        await registry.refresh();
-      });
-      const snapshot = await restDomainOperationMetrics.observeOperation('plugin.registry.snapshot', async () =>
-        registry.snapshot(),
+      await restDomainOperationMetrics.observeOperation(
+        "plugin.registry.refresh",
+        async () => {
+          await registry.refresh();
+        },
+      );
+      const snapshot = await restDomainOperationMetrics.observeOperation(
+        "plugin.registry.snapshot",
+        async () => registry.snapshot(),
       );
       emitRegistrySnapshotDiagnostics(snapshot);
 
-      reply.type('application/json');
+      reply.type("application/json");
       return {
         ok: true,
         data: {
@@ -574,22 +632,22 @@ export async function registerPluginSnapshotRoutes(
       };
     } catch (error) {
       logDiagnosticEvent(platform.logger, {
-        domain: 'registry',
-        event: 'plugin.registry.refresh',
-        level: 'error',
-        reasonCode: 'registry_refresh_failed',
-        message: 'Failed to refresh plugin registry',
-        outcome: 'failed',
+        domain: "registry",
+        event: "plugin.registry.refresh",
+        level: "error",
+        reasonCode: "registry_refresh_failed",
+        message: "Failed to refresh plugin registry",
+        outcome: "failed",
         error: error instanceof Error ? error : new Error(String(error)),
-        serviceId: 'rest',
+        serviceId: "rest",
       });
       platform.logger.error(
-        'Failed to refresh plugin registry',
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to refresh plugin registry",
+        error instanceof Error ? error : new Error(String(error)),
       );
       reply.code(500).send({
         ok: false,
-        error: 'Failed to refresh plugin registry',
+        error: "Failed to refresh plugin registry",
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -598,8 +656,9 @@ export async function registerPluginSnapshotRoutes(
   // Raw manifests endpoint for Studio/debug consumers
   server.get(`${basePath}/plugins/registry`, async (_request, reply) => {
     try {
-      const snapshot = await restDomainOperationMetrics.observeOperation('plugin.registry.snapshot', async () =>
-        registry.snapshot(),
+      const snapshot = await restDomainOperationMetrics.observeOperation(
+        "plugin.registry.snapshot",
+        async () => registry.snapshot(),
       );
 
       // Get build timestamps and validate manifests
@@ -607,7 +666,7 @@ export async function registerPluginSnapshotRoutes(
         snapshot.manifests.map(async (entry) => {
           let buildTimestamp: string | undefined;
           try {
-            const distPath = path.join(entry.pluginRoot, 'dist');
+            const distPath = path.join(entry.pluginRoot, "dist");
             const stats = await fs.stat(distPath);
             buildTimestamp = stats.mtime.toISOString();
           } catch {
@@ -629,10 +688,10 @@ export async function registerPluginSnapshotRoutes(
               errors: validation.errors,
             },
           };
-        })
+        }),
       );
 
-      reply.type('application/json');
+      reply.type("application/json");
       return {
         manifests: manifestsWithTimestamps,
         apiBasePath: basePath,
@@ -652,11 +711,11 @@ export async function registerPluginSnapshotRoutes(
       };
     } catch (error) {
       platform.logger.error(
-        'Failed to get plugin registry',
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to get plugin registry",
+        error instanceof Error ? error : new Error(String(error)),
       );
       reply.code(500).send({
-        error: 'Failed to load plugin registry',
+        error: "Failed to load plugin registry",
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -665,172 +724,223 @@ export async function registerPluginSnapshotRoutes(
   // Plugin README — serves README.md from plugin root directory
   server.get<{
     Params: { scope: string; name: string };
-  }>(`${basePath}/plugins/@:scope/:name/readme`, {
-    schema: { hide: true },
-  }, async (request, reply) => {
-    const { scope, name } = request.params;
+  }>(
+    `${basePath}/plugins/@:scope/:name/readme`,
+    {
+      schema: { hide: true },
+    },
+    async (request, reply) => {
+      const { scope, name } = request.params;
 
-    if (!scope || !name) {
-      return reply.code(400).send({ error: 'Invalid plugin identifier' });
-    }
-
-    const pluginId = `@${scope}/${name}`;
-    const snapshot = registry.snapshot();
-    const manifests = extractSnapshotManifests(snapshot);
-    const entry = manifests.find(e => e.pluginId === pluginId);
-
-    if (!entry) {
-      return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
-    }
-
-    const readmePath = path.join(entry.pluginRoot, 'README.md');
-
-    if (!readmePath.startsWith(entry.pluginRoot)) {
-      return reply.code(400).send({ error: 'Invalid path' });
-    }
-
-    try {
-      const content = await fs.readFile(readmePath, 'utf-8');
-      return reply.code(200).header('Content-Type', 'text/plain; charset=utf-8').send(content);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return reply.code(404).send({ error: 'README.md not found' });
+      if (!scope || !name) {
+        return reply.code(400).send({ error: "Invalid plugin identifier" });
       }
-      return reply.code(500).send({ error: 'Failed to read README.md' });
-    }
-  });
+
+      const pluginId = `@${scope}/${name}`;
+      const snapshot = registry.snapshot();
+      const manifests = extractSnapshotManifests(snapshot);
+      const entry = manifests.find((e) => e.pluginId === pluginId);
+
+      if (!entry) {
+        return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
+      }
+
+      const readmePath = path.join(entry.pluginRoot, "README.md");
+
+      if (!readmePath.startsWith(entry.pluginRoot)) {
+        return reply.code(400).send({ error: "Invalid path" });
+      }
+
+      try {
+        const content = await fs.readFile(readmePath, "utf-8");
+        return reply
+          .code(200)
+          .header("Content-Type", "text/plain; charset=utf-8")
+          .send(content);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          return reply.code(404).send({ error: "README.md not found" });
+        }
+        return reply.code(500).send({ error: "Failed to read README.md" });
+      }
+    },
+  );
 
   // Plugin Changelog — serves CHANGELOG.md from plugin root directory
   server.get<{
     Params: { scope: string; name: string };
-  }>(`${basePath}/plugins/@:scope/:name/changelog`, {
-    schema: { hide: true },
-  }, async (request, reply) => {
-    const { scope, name } = request.params;
+  }>(
+    `${basePath}/plugins/@:scope/:name/changelog`,
+    {
+      schema: { hide: true },
+    },
+    async (request, reply) => {
+      const { scope, name } = request.params;
 
-    if (!scope || !name) {
-      return reply.code(400).send({ error: 'Invalid plugin identifier' });
-    }
-
-    const pluginId = `@${scope}/${name}`;
-    const snapshot = registry.snapshot();
-    const manifests = extractSnapshotManifests(snapshot);
-    const entry = manifests.find(e => e.pluginId === pluginId);
-
-    if (!entry) {
-      return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
-    }
-
-    const changelogPath = path.join(entry.pluginRoot, 'CHANGELOG.md');
-
-    if (!changelogPath.startsWith(entry.pluginRoot)) {
-      return reply.code(400).send({ error: 'Invalid path' });
-    }
-
-    try {
-      const content = await fs.readFile(changelogPath, 'utf-8');
-      return reply.code(200).header('Content-Type', 'text/plain; charset=utf-8').send(content);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return reply.code(404).send({ error: 'CHANGELOG.md not found' });
+      if (!scope || !name) {
+        return reply.code(400).send({ error: "Invalid plugin identifier" });
       }
-      return reply.code(500).send({ error: 'Failed to read CHANGELOG.md' });
-    }
-  });
+
+      const pluginId = `@${scope}/${name}`;
+      const snapshot = registry.snapshot();
+      const manifests = extractSnapshotManifests(snapshot);
+      const entry = manifests.find((e) => e.pluginId === pluginId);
+
+      if (!entry) {
+        return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
+      }
+
+      const changelogPath = path.join(entry.pluginRoot, "CHANGELOG.md");
+
+      if (!changelogPath.startsWith(entry.pluginRoot)) {
+        return reply.code(400).send({ error: "Invalid path" });
+      }
+
+      try {
+        const content = await fs.readFile(changelogPath, "utf-8");
+        return reply
+          .code(200)
+          .header("Content-Type", "text/plain; charset=utf-8")
+          .send(content);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          return reply.code(404).send({ error: "CHANGELOG.md not found" });
+        }
+        return reply.code(500).send({ error: "Failed to read CHANGELOG.md" });
+      }
+    },
+  );
 
   // Studio Registry V2 — returns plugin pages and menus for Module Federation
-  server.get(`${basePath}/studio/registry`, {
-    schema: { tags: ['Studio'], summary: 'Get Studio Registry V2 (plugin pages for Module Federation)' },
-  }, async (_request, reply) => {
-    try {
-      const snapshot = await restDomainOperationMetrics.observeOperation('plugin.studio.registry', async () =>
-        registry.snapshot(),
-      );
-      const manifests = extractSnapshotManifests(snapshot);
+  server.get(
+    `${basePath}/studio/registry`,
+    {
+      schema: {
+        tags: ["Studio"],
+        summary: "Get Studio Registry V2 (plugin pages for Module Federation)",
+      },
+    },
+    async (_request, reply) => {
+      try {
+        const snapshot = await restDomainOperationMetrics.observeOperation(
+          "plugin.studio.registry",
+          async () => registry.snapshot(),
+        );
+        const manifests = extractSnapshotManifests(snapshot);
 
-      // Only plugins with studio V2 config
-      const studioManifests = manifests
-        .filter(entry => entry.manifest.studio?.version === 2)
-        .map(entry => ({ manifest: entry.manifest, pluginRoot: entry.pluginRoot }));
+        // Only plugins with studio V2 config
+        const studioManifests = manifests
+          .filter((entry) => entry.manifest.studio?.version === 2)
+          .map((entry) => ({
+            manifest: entry.manifest,
+            pluginRoot: entry.pluginRoot,
+          }));
 
-      const studioRegistry = combineManifestsToRegistry(studioManifests);
+        const studioRegistry = combineManifestsToRegistry(studioManifests);
 
-      reply.type('application/json');
-      return studioRegistry;
-    } catch (error) {
-      platform.logger.error('Failed to generate studio registry', error instanceof Error ? error : new Error(String(error)));
-      reply.code(500).send({
-        error: 'Failed to generate studio registry',
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+        reply.type("application/json");
+        return studioRegistry;
+      } catch (error) {
+        platform.logger.error(
+          "Failed to generate studio registry",
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        reply.code(500).send({
+          error: "Failed to generate studio registry",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+  );
 
   // Widget bundle static files — serves dist/widgets/ from plugin packages
   server.get<{
-    Params: { scope: string; name: string; '*': string };
-  }>('/plugins/@:scope/:name/widgets/*', {
-    schema: { hide: true },
-  }, async (request, reply) => {
-    const { scope, name } = request.params;
-    const filePath = request.params['*'];
+    Params: { scope: string; name: string; "*": string };
+  }>(
+    "/plugins/@:scope/:name/widgets/*",
+    {
+      schema: { hide: true },
+    },
+    async (request, reply) => {
+      const { scope, name } = request.params;
+      const filePath = request.params["*"];
 
-    if (!scope || !name || !filePath || filePath.includes('..')) {
-      return reply.code(400).send({ error: 'Invalid path' });
-    }
+      if (!scope || !name || !filePath || filePath.includes("..")) {
+        return reply.code(400).send({ error: "Invalid path" });
+      }
 
-    const pluginId = `@${scope}/${name}`;
+      const pluginId = `@${scope}/${name}`;
 
-    // Find the plugin's widgetBundleDir from registry
-    const snapshot = registry.snapshot();
-    const manifests = extractSnapshotManifests(snapshot);
-    const entry = manifests.find(e => e.manifest.id === pluginId && e.manifest.studio?.version === 2);
+      // Find the plugin's widgetBundleDir from registry
+      const snapshot = registry.snapshot();
+      const manifests = extractSnapshotManifests(snapshot);
+      const entry = manifests.find(
+        (e) => e.manifest.id === pluginId && e.manifest.studio?.version === 2,
+      );
 
-    if (!entry) {
-      return reply.code(404).send({ error: `No widget bundle for ${pluginId}` });
-    }
+      if (!entry) {
+        return reply
+          .code(404)
+          .send({ error: `No widget bundle for ${pluginId}` });
+      }
 
-    const { join, extname } = await import('node:path');
-    const { createReadStream, existsSync, statSync } = await import('node:fs');
+      const { join, extname } = await import("node:path");
+      const { createReadStream, existsSync, statSync } =
+        await import("node:fs");
 
-    const bundleDir = join(entry.pluginRoot, 'dist', 'widgets');
-    const fullPath = join(bundleDir, filePath);
+      const bundleDir = join(entry.pluginRoot, "dist", "widgets");
+      const fullPath = join(bundleDir, filePath);
 
-    if (!fullPath.startsWith(bundleDir)) {
-      return reply.code(400).send({ error: 'Invalid path' });
-    }
+      if (!fullPath.startsWith(bundleDir)) {
+        return reply.code(400).send({ error: "Invalid path" });
+      }
 
-    if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
-      return reply.code(404).send({ error: `Widget file not found: ${pluginId}/widgets/${filePath}` });
-    }
+      if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
+        return reply
+          .code(404)
+          .send({
+            error: `Widget file not found: ${pluginId}/widgets/${filePath}`,
+          });
+      }
 
-    const MIME: Record<string, string> = {
-      '.js': 'application/javascript', '.mjs': 'application/javascript',
-      '.css': 'text/css', '.json': 'application/json', '.map': 'application/json',
-    };
+      const MIME: Record<string, string> = {
+        ".js": "application/javascript",
+        ".mjs": "application/javascript",
+        ".css": "text/css",
+        ".json": "application/json",
+        ".map": "application/json",
+      };
 
-    const ext = extname(filePath);
-    const isEntry = filePath === 'remoteEntry.js';
+      const ext = extname(filePath);
+      const isEntry = filePath === "remoteEntry.js";
 
-    return reply
-      .code(200)
-      .header('Content-Type', MIME[ext] ?? 'application/octet-stream')
-      .header('Content-Length', statSync(fullPath).size)
-      .header('Cache-Control', isEntry
-        ? 'public, max-age=10, must-revalidate'
-        : process.env.NODE_ENV === 'production' ? 'public, max-age=31536000, immutable' : 'no-cache')
-      .send(createReadStream(fullPath));
-  });
+      return reply
+        .code(200)
+        .header("Content-Type", MIME[ext] ?? "application/octet-stream")
+        .header("Content-Length", statSync(fullPath).size)
+        .header(
+          "Cache-Control",
+          isEntry
+            ? "public, max-age=10, must-revalidate"
+            : process.env.NODE_ENV === "production"
+              ? "public, max-age=31536000, immutable"
+              : "no-cache",
+        )
+        .send(createReadStream(fullPath));
+    },
+  );
 
   // Plugin registry health endpoint
   server.get(`${basePath}/plugins/health`, async (_request, reply) => {
     try {
-      const snapshot = await restDomainOperationMetrics.observeOperation('plugin.registry.health', async () =>
-        registry.snapshot(),
+      const snapshot = await restDomainOperationMetrics.observeOperation(
+        "plugin.registry.health",
+        async () => registry.snapshot(),
       );
 
       // Collect validation errors from all manifests
-      const validationIssues: Array<{ pluginId: string; errors: string[] }> = [];
+      const validationIssues: Array<{ pluginId: string; errors: string[] }> =
+        [];
       for (const entry of snapshot.manifests) {
         const validation = validateManifest(entry.manifest);
         if (!validation.valid) {
@@ -844,27 +954,34 @@ export async function registerPluginSnapshotRoutes(
       // Registry resolution errors (plugins that failed to load)
       const registryErrors = (snapshot as { errors?: unknown[] }).errors ?? [];
       const discoveryDiagnostics = snapshot.diagnostics ?? [];
-      const discoveryErrorCount = discoveryDiagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
+      const discoveryErrorCount = discoveryDiagnostics.filter(
+        (diagnostic) => diagnostic.severity === "error",
+      ).length;
 
       // Determine why registry is partial
       const partialReasons: string[] = [];
       if (snapshot.corrupted) {
-        partialReasons.push('snapshot_corrupted');
+        partialReasons.push("snapshot_corrupted");
       }
       if (registryErrors.length > 0) {
-        partialReasons.push('registry_errors');
+        partialReasons.push("registry_errors");
       }
       if (discoveryErrorCount > 0) {
-        partialReasons.push('discovery_diagnostics');
+        partialReasons.push("discovery_diagnostics");
       }
       // If partial but no clear reason, it's likely initialization
       if (snapshot.partial && partialReasons.length === 0) {
-        partialReasons.push('initialization_incomplete');
+        partialReasons.push("initialization_incomplete");
       }
 
-      reply.type('application/json');
+      reply.type("application/json");
       return {
-        healthy: !snapshot.partial && !snapshot.stale && validationIssues.length === 0 && registryErrors.length === 0 && discoveryErrorCount === 0,
+        healthy:
+          !snapshot.partial &&
+          !snapshot.stale &&
+          validationIssues.length === 0 &&
+          registryErrors.length === 0 &&
+          discoveryErrorCount === 0,
         snapshot: {
           partial: snapshot.partial,
           stale: snapshot.stale,
@@ -877,7 +994,12 @@ export async function registerPluginSnapshotRoutes(
         registryErrors: {
           total: registryErrors.length,
           items: registryErrors.map((err) => {
-            const e = err as { pluginPath?: string; pluginId?: string; error?: string; code?: string };
+            const e = err as {
+              pluginPath?: string;
+              pluginId?: string;
+              error?: string;
+              code?: string;
+            };
             return {
               pluginPath: e.pluginPath,
               pluginId: e.pluginId,
@@ -889,7 +1011,9 @@ export async function registerPluginSnapshotRoutes(
         diagnostics: {
           total: discoveryDiagnostics.length,
           errors: discoveryErrorCount,
-          warnings: discoveryDiagnostics.filter((diagnostic) => diagnostic.severity === 'warning').length,
+          warnings: discoveryDiagnostics.filter(
+            (diagnostic) => diagnostic.severity === "warning",
+          ).length,
           items: discoveryDiagnostics.map((diagnostic) => ({
             severity: diagnostic.severity,
             code: diagnostic.code,
@@ -910,20 +1034,24 @@ export async function registerPluginSnapshotRoutes(
             ? `Registry is partial - ${registryErrors.length} plugin(s) failed to load. Check registryErrors.items for details.`
             : discoveryErrorCount > 0
               ? `Registry has discovery diagnostics - ${discoveryErrorCount} blocking issue(s). Check diagnostics.items for details.`
-            : snapshot.partial && partialReasons.includes('initialization_incomplete')
-              ? 'Registry is partial - initialization incomplete. Try refreshing or wait for the snapshot rebuild to complete.'
-              : snapshot.partial
-                ? `Registry is partial - reasons: ${partialReasons.join(', ')}`
-                : snapshot.stale
-                  ? 'Registry is stale - plugin snapshot may be outdated.'
-                  : validationIssues.length > 0
-                    ? `${validationIssues.length} plugin(s) have validation errors.`
-                    : 'All plugins are healthy.',
+              : snapshot.partial &&
+                  partialReasons.includes("initialization_incomplete")
+                ? "Registry is partial - initialization incomplete. Try refreshing or wait for the snapshot rebuild to complete."
+                : snapshot.partial
+                  ? `Registry is partial - reasons: ${partialReasons.join(", ")}`
+                  : snapshot.stale
+                    ? "Registry is stale - plugin snapshot may be outdated."
+                    : validationIssues.length > 0
+                      ? `${validationIssues.length} plugin(s) have validation errors.`
+                      : "All plugins are healthy.",
       };
     } catch (error) {
-      platform.logger.error('Failed to get plugin health', error instanceof Error ? error : new Error(String(error)));
+      platform.logger.error(
+        "Failed to get plugin health",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       reply.code(500).send({
-        error: 'Failed to get plugin health',
+        error: "Failed to get plugin health",
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -935,23 +1063,26 @@ export async function registerPluginSnapshotRoutes(
       const { pluginId } = request.params as { pluginId: string };
       const { question } = request.body as { question: string };
 
-      if (!question || typeof question !== 'string') {
+      if (!question || typeof question !== "string") {
         reply.code(400).send({
-          error: 'Bad request',
-          message: 'Question is required and must be a string',
+          error: "Bad request",
+          message: "Question is required and must be a string",
         });
         return;
       }
 
       // Get plugin manifest
-      const snapshot = await restDomainOperationMetrics.observeOperation('plugin.registry.snapshot', async () =>
-        registry.snapshot(),
+      const snapshot = await restDomainOperationMetrics.observeOperation(
+        "plugin.registry.snapshot",
+        async () => registry.snapshot(),
       );
-      const pluginEntry = snapshot.manifests.find((entry) => entry.pluginId === pluginId);
+      const pluginEntry = snapshot.manifests.find(
+        (entry) => entry.pluginId === pluginId,
+      );
 
       if (!pluginEntry) {
         reply.code(404).send({
-          error: 'Plugin not found',
+          error: "Plugin not found",
           message: `Plugin ${pluginId} not found in registry`,
         });
         return;
@@ -970,23 +1101,28 @@ User Question: ${question}
 Please answer the question based on the plugin manifest above.`;
 
       // Call LLM
-      const response = await restDomainOperationMetrics.observeOperation('plugin.assistant.ask', () =>
-        platform.llm.complete(userPrompt, {
-          systemPrompt,
-          temperature: 0.3,
-          maxTokens: 1000,
-        }),
+      const response = await restDomainOperationMetrics.observeOperation(
+        "plugin.assistant.ask",
+        () =>
+          platform.llm.complete(userPrompt, {
+            systemPrompt,
+            temperature: 0.3,
+            maxTokens: 1000,
+          }),
       );
 
-      reply.type('application/json');
+      reply.type("application/json");
       return {
         answer: response.content,
         usage: response.usage,
       };
     } catch (error) {
-      platform.logger.error('Failed to get AI answer about plugin', error instanceof Error ? error : new Error(String(error)));
+      platform.logger.error(
+        "Failed to get AI answer about plugin",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       reply.code(500).send({
-        error: 'Failed to get AI answer',
+        error: "Failed to get AI answer",
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -1005,64 +1141,64 @@ export async function shutdownExecutionBackend(): Promise<void> {
 
 function summarizeValidationErrors(errors: string[]): string {
   if (errors.length === 0) {
-    return 'rest_validation_failed';
+    return "rest_validation_failed";
   }
-  const first = errors[0] || 'rest_validation_failed';
-  const prefix = first.split(':')[0]?.trim() ?? 'rest_validation_failed';
+  const first = errors[0] || "rest_validation_failed";
+  const prefix = first.split(":")[0]?.trim() ?? "rest_validation_failed";
   return `rest_validation_failed ${prefix}`.trim();
 }
 
 function shortErrorMessage(error: unknown): string {
   if (!error) {
-    return 'unknown_error';
+    return "unknown_error";
   }
   const message = error instanceof Error ? error.message : String(error);
-  const firstLine = message.trim().split('\n')[0] ?? message.trim();
+  const firstLine = message.trim().split("\n")[0] ?? message.trim();
   return firstLine.length > 120 ? `${firstLine.slice(0, 117)}...` : firstLine;
 }
 
 function mapDiagnosticSeverityToLogLevel(
-  severity: 'error' | 'warning' | 'info' | 'debug',
+  severity: "error" | "warning" | "info" | "debug",
 ): DiagnosticLogLevel {
   switch (severity) {
-    case 'error':
-      return 'error';
-    case 'warning':
-      return 'warn';
-    case 'debug':
-      return 'debug';
+    case "error":
+      return "error";
+    case "warning":
+      return "warn";
+    case "debug":
+      return "debug";
     default:
-      return 'info';
+      return "info";
   }
 }
 
 function mapRegistryDiagnosticReasonCode(code: string): DiagnosticReasonCode {
   switch (code) {
-    case 'MANIFEST_NOT_FOUND':
-      return 'manifest_missing';
-    case 'MANIFEST_VALIDATION_ERROR':
-    case 'MANIFEST_PARSE_ERROR':
-      return 'manifest_invalid';
-    case 'MANIFEST_LOAD_TIMEOUT':
-      return 'manifest_load_timeout';
-    case 'INTEGRITY_MISMATCH':
-      return 'integrity_mismatch';
+    case "MANIFEST_NOT_FOUND":
+      return "manifest_missing";
+    case "MANIFEST_VALIDATION_ERROR":
+    case "MANIFEST_PARSE_ERROR":
+      return "manifest_invalid";
+    case "MANIFEST_LOAD_TIMEOUT":
+      return "manifest_load_timeout";
+    case "INTEGRITY_MISMATCH":
+      return "integrity_mismatch";
     default:
-      return 'plugin_discovery_failed';
+      return "plugin_discovery_failed";
   }
 }
 
 function emitRegistrySnapshotDiagnostics(snapshot: RegistrySnapshot): void {
   for (const diagnostic of snapshot.diagnostics ?? []) {
     logDiagnosticEvent(platform.logger, {
-      domain: 'registry',
-      event: 'plugin.discovery.diagnostic',
+      domain: "registry",
+      event: "plugin.discovery.diagnostic",
       level: mapDiagnosticSeverityToLogLevel(diagnostic.severity),
       reasonCode: mapRegistryDiagnosticReasonCode(diagnostic.code),
       message: diagnostic.message,
-      outcome: diagnostic.severity === 'error' ? 'failed' : 'skipped',
+      outcome: diagnostic.severity === "error" ? "failed" : "skipped",
       pluginId: diagnostic.context?.pluginId,
-      serviceId: 'rest',
+      serviceId: "rest",
       manifestPath: diagnostic.context?.filePath,
       discoveryCode: diagnostic.code,
       remediation: diagnostic.remediation,
@@ -1076,16 +1212,18 @@ function emitRegistrySnapshotDiagnostics(snapshot: RegistrySnapshot): void {
   }
 }
 
-function inferRouteValidationReasonCode(errors: string[]): DiagnosticReasonCode {
-  if (errors.some((error) => error.includes('Handler file not found'))) {
-    return 'handler_not_found';
+function inferRouteValidationReasonCode(
+  errors: string[],
+): DiagnosticReasonCode {
+  if (errors.some((error) => error.includes("Handler file not found"))) {
+    return "handler_not_found";
   }
-  return 'route_validation_failed';
+  return "route_validation_failed";
 }
 
 function resolveRouteValidationLogLevel(
   errors: string[],
   totalRoutes: number,
 ): DiagnosticLogLevel {
-  return errors.length >= totalRoutes ? 'error' : 'warn';
+  return errors.length >= totalRoutes ? "error" : "warn";
 }

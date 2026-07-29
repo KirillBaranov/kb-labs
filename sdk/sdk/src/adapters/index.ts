@@ -132,7 +132,8 @@ export type {
   LogSearchResult,
   LogStats,
 } from '@kb-labs/core-platform/adapters';
-export { generateLogId } from '@kb-labs/core-platform/adapters';
+export { generateLogId, LOG_CONTEXT_FIELDS } from '@kb-labs/core-platform/adapters';
+export type { LogContextField } from '@kb-labs/core-platform/adapters';
 
 // Event Bus, Invoke, Artifacts
 export type {

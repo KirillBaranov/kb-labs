@@ -11,6 +11,25 @@ import { ulid } from "ulid";
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 
 /**
+ * Canonical structured context available on every platform-owned log record.
+ * This is the single vocabulary shared by the platform, SDK, and adapters.
+ */
+export const LOG_CONTEXT_FIELDS = [
+  "applicationId",
+  "serviceId",
+  "instanceId",
+  "layer",
+  "pluginId",
+  "component",
+  "operation",
+  "requestId",
+  "traceId",
+  "executionId",
+] as const;
+
+export type LogContextField = (typeof LOG_CONTEXT_FIELDS)[number];
+
+/**
  * Generate unique log ID using ULID.
  *
  * ULIDs are:
@@ -54,7 +73,7 @@ export interface LogRecord {
 /**
  * Query filters for log retrieval
  */
-export interface LogQuery {
+export interface LogQuery extends Partial<Record<LogContextField, string>> {
   /** Minimum log level (inclusive) */
   level?: LogLevel;
   /** Filter by source */
@@ -180,5 +199,5 @@ export interface ILogger {
    * // Later: unsubscribe()
    * ```
    */
-  onLog?(callback: (record: LogRecord) => void): () => void;
+  onLog?(callback: (record: LogRecord) => void | Promise<void>): () => void;
 }

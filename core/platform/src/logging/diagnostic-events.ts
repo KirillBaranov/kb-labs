@@ -1,8 +1,9 @@
-import type { ILogger } from '../adapters/logger.js';
+import type { ILogger } from "../adapters/logger.js";
+import type { IContextLogger, LogEvent } from "./context.js";
 
-export type DiagnosticLogLevel = 'debug' | 'info' | 'warn' | 'error';
-export type DiagnosticDomain = 'plugin' | 'registry' | 'workflow' | 'service';
-export type DiagnosticOutcome = 'started' | 'succeeded' | 'failed' | 'skipped';
+export type DiagnosticLogLevel = "debug" | "info" | "warn" | "error";
+export type DiagnosticDomain = "plugin" | "registry" | "workflow" | "service";
+export type DiagnosticOutcome = "started" | "succeeded" | "failed" | "skipped";
 
 export interface DiagnosticLogEvent {
   event: string;
@@ -27,9 +28,16 @@ export interface DiagnosticLogEvent {
   evidence?: Record<string, unknown>;
 }
 
-export function logDiagnosticEvent(logger: ILogger, event: DiagnosticLogEvent): void {
+function isContextLogger(logger: ILogger): logger is IContextLogger {
+  return typeof (logger as Partial<IContextLogger>).event === "function";
+}
+
+export function logDiagnosticEvent(
+  logger: ILogger,
+  event: DiagnosticLogEvent,
+): void {
   const attributes: Record<string, unknown> = {
-    diagnosticDomain: event.domain ?? 'plugin',
+    diagnosticDomain: event.domain ?? "plugin",
     diagnosticEvent: event.event,
     reasonCode: event.reasonCode,
     ...(event.outcome ? { outcome: event.outcome } : {}),
@@ -48,14 +56,33 @@ export function logDiagnosticEvent(logger: ILogger, event: DiagnosticLogEvent): 
     ...(event.evidence ? { evidence: event.evidence } : {}),
   };
 
-  switch (event.level ?? 'info') {
-    case 'debug':
+  if (isContextLogger(logger)) {
+    logger.event(event.level ?? "info", {
+      event: event.event as LogEvent["event"],
+      message: event.message,
+      error: event.error,
+      fields: attributes,
+      diagnostic: {
+        summary: event.reasonCode,
+        causes: event.issues?.map((issue) => ({ kind: issue })),
+        state: event.outcome ? { observed: event.outcome } : undefined,
+        remediation: event.remediation
+          ? [{ action: event.remediation }]
+          : undefined,
+        confidence: "medium",
+      },
+    });
+    return;
+  }
+
+  switch (event.level ?? "info") {
+    case "debug":
       logger.debug(event.message, attributes);
       return;
-    case 'warn':
+    case "warn":
       logger.warn(event.message, attributes);
       return;
-    case 'error':
+    case "error":
       logger.error(event.message, event.error, attributes);
       return;
     default:

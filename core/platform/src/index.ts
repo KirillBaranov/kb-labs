@@ -24,18 +24,18 @@
 // ERRORS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { AdapterUnavailableError } from './errors.js';
+export { AdapterUnavailableError } from "./errors.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ADAPTER DEFAULTS — per-slot fallback policy (consulted by the loader)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { ADAPTER_DEFAULTS } from './adapter-defaults.js';
+export { ADAPTER_DEFAULTS } from "./adapter-defaults.js";
 export type {
   AdapterSlot,
   AdapterDefault,
   DefaultFallbackMode,
-} from './adapter-defaults.js';
+} from "./adapter-defaults.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ADAPTER INTERFACES (replaceable implementations via kb.config.json)
@@ -50,16 +50,16 @@ export type {
   AdapterFactory,
   AdapterMiddlewareDecl,
   RawMiddlewareDecl,
-} from './adapters/adapter-manifest.js';
+} from "./adapters/adapter-manifest.js";
 
-export type { IAnalytics } from './adapters/analytics.js';
+export type { IAnalytics } from "./adapters/analytics.js";
 
 export type {
   IVectorStore,
   VectorRecord,
   VectorSearchResult,
   VectorFilter,
-} from './adapters/vector-store.js';
+} from "./adapters/vector-store.js";
 
 export type {
   ILLM,
@@ -81,7 +81,7 @@ export type {
   LLMToolCallOptions,
   LLMToolCallResponse,
   LLMRequestMetadata,
-} from './adapters/llm.js';
+} from "./adapters/llm.js";
 
 // LLM Types (tiers, capabilities, routing)
 export type {
@@ -91,24 +91,35 @@ export type {
   LLMResolution,
   LLMAdapterBinding,
   ILLMRouter,
-} from './adapters/llm-types.js';
-export { TIER_ORDER, isTierHigher, isTierLower } from './adapters/llm-types.js';
+} from "./adapters/llm-types.js";
+export { TIER_ORDER, isTierHigher, isTierLower } from "./adapters/llm-types.js";
 
 // PII wrapper
-export { PIIRedactionLLM, createPIIRedactionLLM } from './wrappers/pii-redaction-llm.js';
-export type { PIIRedactionConfig, PIIRedactionMode } from './wrappers/pii-redaction-llm.js';
+export {
+  PIIRedactionLLM,
+  createPIIRedactionLLM,
+} from "./wrappers/pii-redaction-llm.js";
+export type {
+  PIIRedactionConfig,
+  PIIRedactionMode,
+} from "./wrappers/pii-redaction-llm.js";
 
 // Analytics wrappers
-export { AnalyticsLLM } from './wrappers/analytics-llm.js';
-export { AnalyticsEmbeddings } from './wrappers/analytics-embeddings.js';
-export { AnalyticsVectorStore } from './wrappers/analytics-vector-store.js';
-export { AnalyticsCache } from './wrappers/analytics-cache.js';
-export { AnalyticsStorage } from './wrappers/analytics-storage.js';
-export { ScopedAnalytics, createScopedAnalytics, isScopedAnalytics, unwrapScopedAnalytics } from './wrappers/scoped-analytics.js';
+export { AnalyticsLLM } from "./wrappers/analytics-llm.js";
+export { AnalyticsEmbeddings } from "./wrappers/analytics-embeddings.js";
+export { AnalyticsVectorStore } from "./wrappers/analytics-vector-store.js";
+export { AnalyticsCache } from "./wrappers/analytics-cache.js";
+export { AnalyticsStorage } from "./wrappers/analytics-storage.js";
+export {
+  ScopedAnalytics,
+  createScopedAnalytics,
+  isScopedAnalytics,
+  unwrapScopedAnalytics,
+} from "./wrappers/scoped-analytics.js";
 
-export type { IEmbeddings } from './adapters/embeddings.js';
+export type { IEmbeddings } from "./adapters/embeddings.js";
 
-export type { ICache } from './adapters/cache.js';
+export type { ICache } from "./adapters/cache.js";
 
 export type {
   IDocumentDatabase,
@@ -126,29 +137,48 @@ export type {
   BulkResult,
   IKVStore,
   SetOpts,
-} from './adapters/database.js';
+} from "./adapters/database.js";
 
-export type { IConfig } from './adapters/config.js';
+export type { IConfig } from "./adapters/config.js";
 
-export type { IStorage } from './adapters/storage.js';
+export type { IStorage } from "./adapters/storage.js";
 
-export type { ILogger, ILogBuffer, LogRecord, LogQuery, LogLevel } from './adapters/logger.js';
+export type {
+  ILogger,
+  ILogBuffer,
+  LogRecord,
+  LogQuery,
+  LogLevel,
+  LogContextField,
+} from "./adapters/logger.js";
+export { LOG_CONTEXT_FIELDS } from "./adapters/logger.js";
 
 export type {
   ILogPersistence,
   LogPersistenceConfig,
   LogRetentionPolicy,
-} from './adapters/log-persistence.js';
+} from "./adapters/log-persistence.js";
 
-// Logging utilities
-export { createPrefixedLogger, SYSTEM_LOG_FIELDS } from './logging/prefixed-logger.js';
+// Context-aware logging contract
+export {
+  createContextLogger,
+  isAgentDiagnosticsEnabled,
+  PLATFORM_LOG_FIELDS,
+  type IContextLogger,
+  type LogContext,
+  type LogCorrelationContext,
+  type LogDiagnostic,
+  type LogEvent,
+  type PlatformLogContext,
+  type PluginLogContext,
+} from "./logging/context.js";
 export {
   logDiagnosticEvent,
   type DiagnosticLogEvent,
   type DiagnosticLogLevel,
   type DiagnosticDomain,
   type DiagnosticOutcome,
-} from './logging/diagnostic-events.js';
+} from "./logging/diagnostic-events.js";
 
 // Log reader adapter (read-only interface for querying logs)
 export type {
@@ -159,43 +189,49 @@ export type {
   LogSearchResult,
   LogStats,
   LogCapabilities,
-} from './adapters/log-reader.js';
+} from "./adapters/log-reader.js";
 
 export type {
   IEventBus,
   EventHandler,
   Unsubscribe,
-} from './adapters/event-bus.js';
+} from "./adapters/event-bus.js";
 
 export type {
   IInvoke,
   InvokeRequest,
   InvokeResponse,
-} from './adapters/invoke.js';
+} from "./adapters/invoke.js";
 
 // Learning / feedback stores
 export type {
   IHistoryStore,
   HistoryRecord,
   HistoryFindOptions,
-} from './learning/history-store.js';
+} from "./learning/history-store.js";
 
 export type {
   IFeedbackStore,
   FeedbackRecord,
   FeedbackType,
-} from './learning/feedback-store.js';
+} from "./learning/feedback-store.js";
 
-export { MemoryHistoryStore } from './learning/memory-history-store.js';
-export { MemoryFeedbackStore } from './learning/memory-feedback-store.js';
-export { FileHistoryStore, type FileHistoryStoreOptions } from './learning/file-history-store.js';
-export { FileFeedbackStore, type FileFeedbackStoreOptions } from './learning/file-feedback-store.js';
+export { MemoryHistoryStore } from "./learning/memory-history-store.js";
+export { MemoryFeedbackStore } from "./learning/memory-feedback-store.js";
+export {
+  FileHistoryStore,
+  type FileHistoryStoreOptions,
+} from "./learning/file-history-store.js";
+export {
+  FileFeedbackStore,
+  type FileFeedbackStoreOptions,
+} from "./learning/file-feedback-store.js";
 
 export type {
   IArtifacts,
   ArtifactMeta,
   ArtifactWriteOptions,
-} from './adapters/artifacts.js';
+} from "./adapters/artifacts.js";
 
 // Environment lifecycle abstraction (long-lived runtime environments)
 export type {
@@ -211,7 +247,7 @@ export type {
   EnvironmentDescriptor,
   EnvironmentStatusResult,
   EnvironmentProviderCapabilities,
-} from './environment/environment-provider.js';
+} from "./environment/environment-provider.js";
 
 // Workspace lifecycle abstraction
 export type {
@@ -224,7 +260,7 @@ export type {
   WorkspaceAttachment,
   WorkspaceStatusResult,
   WorkspaceProviderCapabilities,
-} from './workspace/workspace-provider.js';
+} from "./workspace/workspace-provider.js";
 
 // Snapshot lifecycle abstraction
 export type {
@@ -239,7 +275,7 @@ export type {
   SnapshotGarbageCollectRequest,
   SnapshotGarbageCollectResult,
   SnapshotProviderCapabilities,
-} from './snapshot/snapshot-provider.js';
+} from "./snapshot/snapshot-provider.js";
 
 // Full-cycle run state model and event schema
 export type {
@@ -251,8 +287,8 @@ export type {
   RunStepRecord,
   RunEventType,
   RunEvent,
-} from './runs/run-types.js';
-export { TERMINAL_RUN_STATUSES } from './runs/run-types.js';
+} from "./runs/run-types.js";
+export { TERMINAL_RUN_STATUSES } from "./runs/run-types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CORE FEATURE INTERFACES (built-in, not replaceable)
@@ -265,7 +301,7 @@ export type {
   WorkflowStepRun,
   WorkflowFilter,
   RetryPolicy,
-} from './core/workflow.js';
+} from "./core/workflow.js";
 
 export type {
   IJobScheduler,
@@ -274,14 +310,14 @@ export type {
   JobStatus,
   JobFilter,
   CronExpression,
-} from './core/jobs.js';
+} from "./core/jobs.js";
 
 export type {
   ICronManager,
   CronJob,
   CronContext,
   CronHandler,
-} from './core/cron.js';
+} from "./core/cron.js";
 
 export type {
   IResourceManager,
@@ -289,8 +325,11 @@ export type {
   ResourceSlot,
   ResourceAvailability,
   TenantQuotas,
-} from './core/resources.js';
-export type { IPlatformAdapters, IPluginAdapters } from './platform-adapters.js';
+} from "./core/resources.js";
+export type {
+  IPlatformAdapters,
+  IPluginAdapters,
+} from "./platform-adapters.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DISPOSABLE (graceful shutdown lifecycle)
@@ -302,8 +341,8 @@ export type { IPlatformAdapters, IPluginAdapters } from './platform-adapters.js'
 // IDisposable is exported as `export type` (interface — type-only).
 // isDisposable is exported as a plain `export` (runtime function — must survive to JS),
 // following the same pattern as TIER_ORDER and TERMINAL_RUN_STATUSES above.
-export type { IDisposable } from './adapters/disposable.js';
-export { isDisposable } from './adapters/disposable.js';
+export type { IDisposable } from "./adapters/disposable.js";
+export { isDisposable } from "./adapters/disposable.js";
 
 // Notifier
 export type {
@@ -315,7 +354,7 @@ export type {
   INotifierChannel,
   INotifier,
   NotifierDeliveryEvent,
-} from './adapters/notifier.js';
+} from "./adapters/notifier.js";
 
 // Service transport (platform-only — not in ADAPTER_REGISTRY, never reaches plugin context)
 export type {
@@ -326,4 +365,4 @@ export type {
   ServiceTransportResponse,
   ServiceTransportStream,
   ServiceTransportHealth,
-} from './adapters/service-transport.js';
+} from "./adapters/service-transport.js";

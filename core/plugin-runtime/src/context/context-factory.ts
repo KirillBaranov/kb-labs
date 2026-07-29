@@ -11,18 +11,23 @@ import type {
   PluginServices,
   UIFacade,
   CleanupFn,
-} from '@kb-labs/plugin-contracts';
-import { getLoggerMetadataFromHost } from '@kb-labs/plugin-contracts';
-import { createPrefixedLogger } from '@kb-labs/core-platform';
+} from "@kb-labs/plugin-contracts";
+import { getLoggerMetadataFromHost } from "@kb-labs/plugin-contracts";
+import { createContextLogger } from "@kb-labs/core-platform";
 
-import { createId } from '../utils/index.js';
-import { createTraceContext } from './trace.js';
-import { createRuntimeAPI } from '../runtime/index.js';
-import { createPluginAPI, type EventEmitterFn, type PluginInvokerFn, type CreatePluginAPIOptions } from '../api/index.js';
-import { applyPluginGovernance } from '../platform/pipeline.js';
-import type { LoadedMiddleware } from '../platform/pipeline.js';
-import { createStreamingLogger } from './streaming-logger.js';
-import { createStreamingUI } from './streaming-ui.js';
+import { createId } from "../utils/index.js";
+import { createTraceContext } from "./trace.js";
+import { createRuntimeAPI } from "../runtime/index.js";
+import {
+  createPluginAPI,
+  type EventEmitterFn,
+  type PluginInvokerFn,
+  type CreatePluginAPIOptions,
+} from "../api/index.js";
+import { applyPluginGovernance } from "../platform/pipeline.js";
+import type { LoadedMiddleware } from "../platform/pipeline.js";
+import { createStreamingLogger } from "./streaming-logger.js";
+import { createStreamingUI } from "./streaming-ui.js";
 
 export interface CreateContextOptions {
   /**
@@ -103,29 +108,47 @@ export interface CreateContextResult<TConfig = unknown> {
  * Create a full PluginContextV3
  */
 export function createPluginContextV3<TConfig = unknown>(
-  options: CreateContextOptions
+  options: CreateContextOptions,
 ): CreateContextResult<TConfig> {
-  const { descriptor, platform, ui, signal, eventEmitter, pluginInvoker, cwd, outdir, adapterMiddlewares } = options;
+  const {
+    descriptor,
+    platform,
+    ui,
+    signal,
+    eventEmitter,
+    pluginInvoker,
+    cwd,
+    outdir,
+    adapterMiddlewares,
+  } = options;
 
   // 1. Build stable correlation IDs.
   // Preserve incoming request/trace when available to keep cross-node correlation intact.
   const requestId = descriptor.requestId || createId();
   const hostTraceId =
-    'traceId' in descriptor.hostContext && typeof descriptor.hostContext.traceId === 'string'
+    "traceId" in descriptor.hostContext &&
+    typeof descriptor.hostContext.traceId === "string"
       ? descriptor.hostContext.traceId
       : undefined;
   const descriptorMeta = descriptor as unknown as Record<string, unknown>;
   const traceId =
-    (typeof descriptorMeta.traceId === 'string' ? descriptorMeta.traceId : undefined) ||
+    (typeof descriptorMeta.traceId === "string"
+      ? descriptorMeta.traceId
+      : undefined) ||
     hostTraceId ||
     requestId;
   const spanId =
-    (typeof descriptorMeta.spanId === 'string' ? descriptorMeta.spanId : undefined) || createId();
+    (typeof descriptorMeta.spanId === "string"
+      ? descriptorMeta.spanId
+      : undefined) || createId();
   const invocationId =
-    (typeof descriptorMeta.invocationId === 'string' ? descriptorMeta.invocationId : undefined) ||
-    spanId;
+    (typeof descriptorMeta.invocationId === "string"
+      ? descriptorMeta.invocationId
+      : undefined) || spanId;
   const executionId =
-    typeof descriptorMeta.executionId === 'string' ? descriptorMeta.executionId : undefined;
+    typeof descriptorMeta.executionId === "string"
+      ? descriptorMeta.executionId
+      : undefined;
 
   // 2. Create cleanup stack
   const cleanupStack: Array<CleanupFn> = [];
@@ -157,27 +180,29 @@ export function createPluginContextV3<TConfig = unknown>(
 
   // 5.1. Enrich logger with host context (observability fields)
   const loggerMeta = getLoggerMetadataFromHost(descriptor.hostContext);
-  const enrichedLogger = governedPlatform.logger.child({
-    ...loggerMeta,
-    reqId: requestId,
-    requestId,
-    traceId,
-    spanId,
-    invocationId,
-    executionId,
-    pluginId: descriptor.pluginId,
-    handlerId: descriptor.handlerId,
-  });
+  const protectedLogger = createContextLogger(governedPlatform.logger, {
+    applicationId: String(loggerMeta.applicationId ?? "plugin-runtime"),
+    serviceId: String(loggerMeta.serviceId ?? "plugin-runtime"),
+    instanceId: String(loggerMeta.instanceId ?? `${process.pid}`),
+    layer: String(loggerMeta.layer ?? descriptor.hostContext.host),
+  })
+    .with({
+      ...loggerMeta,
+      requestId,
+      traceId,
+      spanId,
+      invocationId,
+      executionId,
+      handlerId: descriptor.handlerId,
+    })
+    .forPlugin({ pluginId: descriptor.pluginId });
 
-  // 5.2. Wrap logger with prefix protection to prevent plugins from overriding system fields
-  const protectedLogger = createPrefixedLogger(enrichedLogger);
-
-  // 5.3. If eventEmitter provided (workflow host), wrap logger to also stream log calls as events
+  // 5.2. If eventEmitter provided (workflow host), wrap logger to also stream log calls as events
   const finalLogger = eventEmitter
     ? createStreamingLogger(protectedLogger, eventEmitter)
     : protectedLogger;
 
-  // 5.4. If eventEmitter provided, also wrap UI to stream ui.info/warn/error/write calls
+  // 5.3. If eventEmitter provided, also wrap UI to stream ui.info/warn/error/write calls
   const finalUI = eventEmitter ? createStreamingUI(ui, eventEmitter) : ui;
 
   const enrichedPlatform: PluginServices = {
@@ -193,10 +218,10 @@ export function createPluginContextV3<TConfig = unknown>(
   // PlatformServices (IPlatformAdapters), which only covers core adapter fields.
   // We narrow via a local intersection using the exact types expected by CreatePluginAPIOptions.
   const extendedPlatform = platform as PlatformServices & {
-    workflows?: CreatePluginAPIOptions['workflowEngine'];
-    environmentManager?: CreatePluginAPIOptions['environmentManager'];
-    workspaceManager?: CreatePluginAPIOptions['workspaceManager'];
-    snapshotManager?: CreatePluginAPIOptions['snapshotManager'];
+    workflows?: CreatePluginAPIOptions["workflowEngine"];
+    environmentManager?: CreatePluginAPIOptions["environmentManager"];
+    workspaceManager?: CreatePluginAPIOptions["workspaceManager"];
+    snapshotManager?: CreatePluginAPIOptions["snapshotManager"];
   };
 
   const api = createPluginAPI({

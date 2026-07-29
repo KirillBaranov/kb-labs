@@ -110,8 +110,9 @@ export type {
   LogRecord,
   LogQuery,
   LogLevel,
+  LogContextField,
 } from "./logger.js";
-export { generateLogId } from "./logger.js";
+export { generateLogId, LOG_CONTEXT_FIELDS } from "./logger.js";
 
 // Log Ring Buffer
 export type { ILogRingBuffer, LogRingBufferConfig } from "./log-ring-buffer.js";

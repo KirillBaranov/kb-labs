@@ -6,11 +6,11 @@ import {
   type PlatformRuntime,
   type PlatformUiProvider,
 } from "@kb-labs/core-runtime";
-import type { ILogger, IServiceTransport } from "@kb-labs/core-platform";
+import type { IContextLogger, IServiceTransport } from "@kb-labs/core-platform";
 
 export interface ServiceContext {
   platform: PlatformContainer;
-  logger: ILogger;
+  logger: IContextLogger;
   port: number;
   host: string;
   runtime: PlatformRuntime;
@@ -52,7 +52,7 @@ export interface ServiceConfig extends NetworkServiceConfig {
 
 interface ManagedRuntime {
   platform: PlatformContainer;
-  logger: ILogger;
+  logger: IContextLogger;
   projectRoot: string;
   platformRoot: string;
   shutdown(reason?: string): Promise<void>;
@@ -90,12 +90,13 @@ async function runManagedService(
   setup: (context: ServiceContext) => Promise<() => Promise<void>>,
 ): Promise<void> {
   const { port, host } = resolveNetwork(config, managed.platform);
-  const logger = managed.logger.child({
-    serviceId: config.appId,
-    component: "service-bootstrap",
-  });
+  const logger = managed.logger.forComponent("service-bootstrap");
 
-  logger.info("Service starting", { port, host });
+  logger.event("info", {
+    event: "service.starting",
+    message: "Service starting",
+    fields: { port, host },
+  });
 
   let teardown: (() => Promise<void>) | undefined;
   try {
@@ -112,18 +113,29 @@ async function runManagedService(
     logger.error(
       "Service setup failed",
       error instanceof Error ? error : undefined,
-      { error: error instanceof Error ? error.message : String(error) },
+      {
+        event: "service.failed",
+        error: error instanceof Error ? error.message : String(error),
+      },
     );
     await managed.shutdown("service.setup-failed");
     throw error;
   }
 
-  logger.info("Service ready", { port, host });
+  logger.event("info", {
+    event: "service.ready",
+    message: "Service ready",
+    fields: { port, host, outcome: "success" },
+  });
 
   let shutdownPromise: Promise<void> | undefined;
   const shutdown = (signal: string): Promise<void> => {
     shutdownPromise ??= (async () => {
-      logger.warn("Service stopping", { signal });
+      logger.event("info", {
+        event: "service.stopping",
+        message: "Service stopping",
+        fields: { signal },
+      });
       let shutdownError: unknown;
 
       try {
@@ -133,6 +145,10 @@ async function runManagedService(
         logger.error(
           "Service teardown failed",
           error instanceof Error ? error : undefined,
+          {
+            event: "service.failed",
+            phase: "teardown",
+          },
         );
       }
 
@@ -143,10 +159,26 @@ async function runManagedService(
         logger.error(
           "Platform shutdown failed",
           error instanceof Error ? error : undefined,
+          {
+            event: "service.failed",
+            phase: "platform-shutdown",
+          },
         );
       }
 
-      process.exit(shutdownError ? 1 : 0);
+      const exitCode = shutdownError ? 1 : 0;
+      logger.event(shutdownError ? "error" : "info", {
+        event: shutdownError ? "service.failed" : "service.stopped",
+        message: shutdownError
+          ? "Service stopped with errors"
+          : "Service stopped",
+        fields: {
+          signal,
+          exitCode,
+          outcome: shutdownError ? "failure" : "success",
+        },
+      });
+      process.exit(exitCode);
     })();
     return shutdownPromise;
   };
@@ -164,6 +196,7 @@ async function runManagedService(
 export async function runService(config: ServiceConfig): Promise<void> {
   const runtime = await launchPlatform({
     applicationId: config.appId,
+    serviceId: config.serviceId ?? config.appId,
     kind: "service",
     startDir: config.startDir,
     moduleUrl: config.moduleUrl,

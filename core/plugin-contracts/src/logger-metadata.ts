@@ -3,7 +3,7 @@
  * Extract logger metadata from host context for observability
  */
 
-import type { HostContext } from './host-context';
+import type { HostContext } from "./host-context";
 
 /**
  * Extract logger metadata from host context
@@ -37,27 +37,29 @@ import type { HostContext } from './host-context';
  * platform.logger.child(meta).info('Request started');
  * ```
  */
-export function getLoggerMetadataFromHost(hostContext: HostContext): Record<string, unknown> {
+export function getLoggerMetadataFromHost(
+  hostContext: HostContext,
+): Record<string, unknown> {
   const base = { layer: hostContext.host };
 
   switch (hostContext.host) {
-    case 'rest':
+    case "rest":
       return {
         ...base,
-        reqId: hostContext.requestId,
+        requestId: hostContext.requestId,
         traceId: hostContext.traceId,
         tenantId: hostContext.tenantId,
-        method: hostContext.method,
-        url: hostContext.path,
+        "http.method": hostContext.method,
+        "http.url": hostContext.path,
       };
 
-    case 'cli':
+    case "cli":
       return {
         ...base,
         argv: hostContext.argv,
       };
 
-    case 'workflow':
+    case "workflow":
       return {
         ...base,
         workflowId: hostContext.workflowId,
@@ -67,14 +69,14 @@ export function getLoggerMetadataFromHost(hostContext: HostContext): Record<stri
         attempt: hostContext.attempt,
       };
 
-    case 'webhook':
+    case "webhook":
       return {
         ...base,
         event: hostContext.event,
         source: hostContext.source,
       };
 
-    case 'cron':
+    case "cron":
       return {
         ...base,
         cronId: hostContext.cronId,
@@ -83,14 +85,14 @@ export function getLoggerMetadataFromHost(hostContext: HostContext): Record<stri
         lastRunAt: hostContext.lastRunAt,
       };
 
-    case 'ws':
+    case "ws":
       return {
         ...base,
-        reqId: hostContext.requestId,
+        requestId: hostContext.requestId,
         traceId: hostContext.traceId,
         tenantId: hostContext.tenantId,
-        connectionId: hostContext.connectionId,
-        channelPath: hostContext.channelPath,
+        "http.connection_id": hostContext.connectionId,
+        "http.channel_path": hostContext.channelPath,
       };
   }
 }

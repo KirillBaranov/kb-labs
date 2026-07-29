@@ -1,37 +1,45 @@
-export { registerOpenAPI, type OpenAPIOptions } from './register-openapi.js';
-export { resolveSchemaRef, type SchemaRef, type ZodSchemaRef, type JsonSchemaRef } from './resolve-schema-ref.js';
-export { ErrorResponseSchema, OkResponseSchema, type ErrorResponse } from './schemas.js';
+export { registerOpenAPI, type OpenAPIOptions } from "./register-openapi.js";
+export {
+  resolveSchemaRef,
+  type SchemaRef,
+  type ZodSchemaRef,
+  type JsonSchemaRef,
+} from "./resolve-schema-ref.js";
+export {
+  ErrorResponseSchema,
+  OkResponseSchema,
+  type ErrorResponse,
+} from "./schemas.js";
 export {
   createServiceReadyResponse,
   createServiceObservabilityDescribe,
   createServiceObservabilityHealth,
   type ServiceReadyResponse,
   type VersionedObservabilityShape,
-} from './service-observability.js';
+} from "./service-observability.js";
 export {
   HttpObservabilityCollector,
   metricLine,
   normalizeObservabilityRoute,
   type HttpObservabilityCollectorOptions,
-} from './http-observability-collector.js';
+} from "./http-observability-collector.js";
 export {
-  createCorrelatedLogger,
-  createServiceLogBindings,
+  createHttpLogger,
   resolveObservabilityInstanceId,
-  type ServiceLogBindingInput,
-} from './log-correlation.js';
+  type HttpLogContextInput,
+} from "./log-context.js";
 export {
   OperationMetricsTracker,
   type OperationObserver,
   type OperationStatus,
-} from './operation-metrics-tracker.js';
+} from "./operation-metrics-tracker.js";
 
-export { getListenOptions } from './listen.js';
+export { getListenOptions } from "./listen.js";
 export {
   createDaemonServer,
   type ObservabilityCollectorLike,
   type DaemonServerOptions,
-} from './daemon-server.js';
+} from "./daemon-server.js";
 
 // Re-export fastify-type-provider-zod utilities so services don't need
 // a direct dependency on fastify-type-provider-zod for the common cases.
@@ -40,4 +48,4 @@ export {
   validatorCompiler,
   jsonSchemaTransform,
   type ZodTypeProvider,
-} from 'fastify-type-provider-zod';
+} from "fastify-type-provider-zod";

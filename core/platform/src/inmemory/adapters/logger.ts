@@ -49,15 +49,19 @@ export class ConsoleLogger implements ILogger {
     return ' ' + JSON.stringify(combined);
   }
 
+  private write(level: string, message: string, meta?: Record<string, unknown>): void {
+    process.stderr.write(`${level} ${message}${this.formatMeta(meta)}\n`);
+  }
+
   info(message: string, meta?: Record<string, unknown>): void {
     if (this.shouldLog('info')) {
-      console.log(`[INFO] ${message}${this.formatMeta(meta)}`);
+      this.write('[INFO]', message, meta);
     }
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
     if (this.shouldLog('warn')) {
-      console.warn(`[WARN] ${message}${this.formatMeta(meta)}`);
+      this.write('[WARN]', message, meta);
     }
   }
 
@@ -66,7 +70,7 @@ export class ConsoleLogger implements ILogger {
       const errorMeta = error
         ? { ...meta, error: { message: error.message, stack: error.stack } }
         : meta;
-      console.error(`[ERROR] ${message}${this.formatMeta(errorMeta)}`);
+      this.write('[ERROR]', message, errorMeta);
     }
   }
 
@@ -75,19 +79,19 @@ export class ConsoleLogger implements ILogger {
       const errorMeta = error
         ? { ...meta, error: { message: error.message, stack: error.stack } }
         : meta;
-      console.error(`[FATAL] ${message}${this.formatMeta(errorMeta)}`);
+      this.write('[FATAL]', message, errorMeta);
     }
   }
 
   debug(message: string, meta?: Record<string, unknown>): void {
     if (this.shouldLog('debug')) {
-      console.debug(`[DEBUG] ${message}${this.formatMeta(meta)}`);
+      this.write('[DEBUG]', message, meta);
     }
   }
 
   trace(message: string, meta?: Record<string, unknown>): void {
     if (this.shouldLog('trace')) {
-      console.debug(`[TRACE] ${message}${this.formatMeta(meta)}`);
+      this.write('[TRACE]', message, meta);
     }
   }
 
@@ -96,4 +100,3 @@ export class ConsoleLogger implements ILogger {
     return new ConsoleLogger({ ...this.bindings, ...bindings }, this.level);
   }
 }
-

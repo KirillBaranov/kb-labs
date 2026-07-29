@@ -13,11 +13,11 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
     platform: {
       assemblyHook: makeAssemblyHook(),
     },
-    async setup({ platform, port, host }) {
+    async setup({ port, host, logger }) {
       const server = new StateDaemonServer({
         port,
         host,
-        logger: platform.logger,
+        logger,
       });
       await server.start();
       return () => server.stop();
