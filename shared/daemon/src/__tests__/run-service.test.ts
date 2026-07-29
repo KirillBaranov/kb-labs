@@ -36,8 +36,11 @@ describe("runService", () => {
       error: vi.fn(),
       fatal: vi.fn(),
       child: vi.fn(),
+      forComponent: vi.fn(),
+      event: vi.fn(),
     };
     logger.child.mockReturnValue(logger);
+    logger.forComponent.mockReturnValue(logger);
     mocks.launchPlatform.mockResolvedValue({
       platform: { getAdapter: vi.fn().mockReturnValue(undefined) },
       logger,
@@ -103,8 +106,11 @@ describe("runService", () => {
       error: vi.fn(),
       fatal: vi.fn(),
       child: vi.fn(),
+      forComponent: vi.fn(),
+      event: vi.fn(),
     };
     logger.child.mockReturnValue(logger);
+    logger.forComponent.mockReturnValue(logger);
     mocks.launchPlatform.mockResolvedValueOnce({
       platform: { getAdapter: vi.fn().mockReturnValue(undefined) },
       logger,
