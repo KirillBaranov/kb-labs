@@ -49,7 +49,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('install');
   });
@@ -66,7 +66,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     expect(captured.json[0]).toMatchObject({ installed: expect.any(Array) });
   });
@@ -78,7 +78,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['bad-pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -87,7 +87,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -101,7 +101,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -116,7 +116,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['dev-plugin'], flags: { dev: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/install',
       expect.objectContaining({ dev: true, specs: ['dev-plugin'] }),
@@ -134,8 +134,8 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.result?.warnings).toContain('Peer dependency mismatch');
+    expect(result.ok).toBe(true);
+    expect((result.result as { warnings: string[] }).warnings).toContain('Peer dependency mismatch');
   });
 
   it('CI-08: --dry-run shows intent, HTTP post is NOT called', async () => {
@@ -143,7 +143,7 @@ describe('marketplace:install', () => {
     const ctx = createMockContext({ ui });
     const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('my-plugin');

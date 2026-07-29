@@ -1,8 +1,7 @@
-import { dirname, resolve, relative } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import {
   defineCommand,
   validationError,
@@ -25,6 +24,9 @@ import type {
   RenderContext,
 } from '@kb-labs/scaffold-contracts';
 import { formatCommandHelp } from '@kb-labs/shared-cli-ui';
+import { CredentialsManager, SessionManager } from '@kb-labs/cli-runtime/gateway';
+import { findProjectConfigRoot } from '@kb-labs/core-workspace';
+import type { GatewayCredentials, SessionCredentials } from '@kb-labs/cli-runtime/gateway';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_ROOT = resolve(here, '..', '..', 'templates');
@@ -228,12 +230,9 @@ async function runDefault(
       ? `${outRoot}/packages/${nameArg}-entry`
       : outRoot;
 
-  const linked = await linkWithMarketplace(entryPkgDir, ctx.cwd);
+  await linkWithMarketplace(entryPkgDir, ctx.cwd, result.manifest);
 
-  const registrationNote =
-    linked === 'ok'
-      ? 'Registered in .kb/marketplace.lock'
-      : `Not auto-registered — run: kb marketplace plugins link ${entryPkgDir}`;
+  const registrationNote = 'Registered in .kb/marketplace.lock';
 
   const timing = Date.now() - start;
 
@@ -265,50 +264,71 @@ async function runDefault(
   return { ok: true, result: { outRoot, files: result.files.length } };
 }
 
-type LinkOutcome = 'ok' | 'no-shell' | 'failed';
+type MarketplaceCredentials = GatewayCredentials | SessionCredentials;
+type MarketplaceAuth = {
+  credentials: MarketplaceCredentials;
+  refresh: () => Promise<MarketplaceAuth>;
+};
 
-/**
- * Register a scaffolded plugin in the project-scope marketplace.lock.
- * Uses projectRoot (ctx.cwd) so the lock lives alongside the project config.
- */
-async function linkWithMarketplace(entryPkgDir: string, projectRoot: string): Promise<LinkOutcome> {
-  try {
-    const lockPath = resolve(projectRoot, '.kb', 'marketplace.lock');
+function createMarketplaceAuth(
+  credentials: MarketplaceCredentials,
+  refresh: (credentials: MarketplaceCredentials) => Promise<MarketplaceCredentials>,
+): MarketplaceAuth {
+  return {
+    credentials,
+    refresh: async () => createMarketplaceAuth(await refresh(credentials), refresh),
+  };
+}
 
-    let lock: { schema: string; installed: Record<string, unknown> };
-    try {
-      lock = JSON.parse(await readFile(lockPath, 'utf8'));
-    } catch {
-      lock = { schema: 'kb.marketplace/2', installed: {} };
-    }
-
-    const pkgJsonPath = resolve(entryPkgDir, 'package.json');
-    const pkgRaw = await readFile(pkgJsonPath, 'utf8');
-    const pkg = JSON.parse(pkgRaw) as { name?: string; version?: string; kb?: { manifest?: string } };
-    if (!pkg.name) { return 'failed'; }
-
-    const hash = createHash('sha256').update(pkgRaw).digest('base64');
-    const provides: string[] = ['plugin', 'cli-command'];
-    const resolvedPath = relative(projectRoot, resolve(entryPkgDir));
-    const pluginId = pkg.name.replace(/-entry$/, '');
-
-    lock.installed[pluginId] = {
-      version: pkg.version ?? '0.1.0',
-      integrity: `sha256-${hash}`,
-      resolvedPath: `./${resolvedPath}`,
-      installedAt: new Date().toISOString(),
-      source: 'local',
-      primaryKind: 'plugin',
-      provides,
-      enabled: true,
-    };
-
-    await mkdir(dirname(lockPath), { recursive: true });
-    await writeFile(lockPath, JSON.stringify(lock, null, 2));
-    return 'ok';
-  } catch {
-    return 'failed';
+async function loadMarketplaceCredentials(): Promise<MarketplaceAuth | null> {
+  const sessions = new SessionManager();
+  const session = await sessions.load();
+  if (session) {
+    const current = sessions.isExpired(session) ? await sessions.refresh(session) : session;
+    return createMarketplaceAuth(current, (value) => sessions.refresh(value as SessionCredentials));
   }
+  const manager = new CredentialsManager();
+  const credentials = await manager.load();
+  if (!credentials) {
+    return null;
+  }
+  const current = manager.isExpired(credentials) ? await manager.refresh(credentials) : credentials;
+  return createMarketplaceAuth(current, (value) => manager.refresh(value as GatewayCredentials));
+}
+
+/** Register through the canonical marketplace API; the daemon owns lock format and integrity. */
+async function linkWithMarketplace(entryPkgDir: string, cwd: string, manifest: Record<string, unknown>): Promise<void> {
+  const projectRoot = await findProjectConfigRoot(cwd);
+  if (!projectRoot) {
+    throw new Error(`Cannot register scaffolded plugin: no project config found from ${cwd}`);
+  }
+
+  let auth = await loadMarketplaceCredentials();
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const marketplaceUrl = process.env.KB_MARKETPLACE_URL;
+    const gatewayUrl = auth?.credentials.gatewayUrl ?? process.env.KB_GATEWAY_URL ?? 'http://127.0.0.1:4000';
+    const endpoint = marketplaceUrl
+      ? `${marketplaceUrl.replace(/\/+$/, '')}/api/v1/marketplace/packages/link`
+      : `${gatewayUrl.replace(/\/+$/, '')}/api/v1/marketplace/packages/link`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(auth ? { Authorization: `Bearer ${auth.credentials.accessToken}` } : {}),
+      },
+      body: JSON.stringify({ path: resolve(entryPkgDir), scope: 'project', projectRoot, manifest }),
+    });
+    if (response.status === 401 && auth && attempt === 0) {
+      auth = await auth.refresh();
+      continue;
+    }
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Marketplace registration failed (${response.status}): ${detail}`);
+    }
+    return;
+  }
+  throw new Error('Marketplace registration failed after refreshing authentication');
 }
 
 export default defineCommand({

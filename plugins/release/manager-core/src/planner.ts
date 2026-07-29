@@ -60,26 +60,6 @@ async function getCommitsSinceTag(
   }
 }
 
-/**
- * Check if there are any file changes since last release tag.
- * Covers: uncommitted, committed-not-pushed, committed-and-pushed.
- */
-async function hasChangesSinceTag(
-  git: ReturnType<typeof simpleGit>,
-  pkgName: string,
-  pkgRelPath: string,
-): Promise<boolean> {
-  // 1. Uncommitted changes (working tree + index)
-  const status = await git.status();
-  const uncommitted = status.files.map(f => f.path);
-  const hasUncommitted = uncommitted.some(p => p === pkgRelPath || p.startsWith(pkgRelPath + '/'));
-  if (hasUncommitted) {return true;}
-
-  // 2. Committed changes since last tag
-  const commits = await getCommitsSinceTag(git, pkgName, pkgRelPath);
-  return commits.length > 0;
-}
-
 export interface PlannerOptions {
   cwd: string;
   config: ReleaseConfig;
@@ -496,23 +476,21 @@ async function detectModifiedPackages(
   packages: PackageVersion[],
   cwd: string,
 ): Promise<PackageVersion[]> {
-  const modified: PackageVersion[] = [];
+  // `git status` is repository-wide. Running it once per package made planning
+  // scale linearly in process launches before we even inspected release tags.
+  const status = await git.status();
+  const changedPaths = status.files.map(file => file.path);
 
-  for (let i = 0; i < packages.length; i++) {
-    if (i % 10 === 0) {
-      await new Promise((res) => { setImmediate(res); });
-    }
-
-    const pkg = packages[i]!;
+  return (await Promise.all(packages.map(async (pkg) => {
     const pkgRel = relative(resolve(cwd), resolve(pkg.path));
-    const changed = await hasChangesSinceTag(git, pkg.name, pkgRel);
-
-    if (changed) {
-      modified.push(pkg);
+    const hasUncommitted = changedPaths.some(path => path === pkgRel || path.startsWith(pkgRel + '/'));
+    if (hasUncommitted) {
+      return pkg;
     }
-  }
 
-  return modified;
+    const commits = await getCommitsSinceTag(git, pkg.name, pkgRel);
+    return commits.length > 0 ? pkg : null;
+  }))).filter((pkg): pkg is PackageVersion => pkg !== null);
 }
 
 async function computeNextVersion(
@@ -587,4 +565,3 @@ export function matchesPackagePattern(pkgName: string, relativePath: string, pat
   }
   return false;
 }
-

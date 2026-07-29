@@ -62,6 +62,12 @@ const MOCK_BUILD_RESULT = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    text: vi.fn().mockResolvedValue(''),
+    json: vi.fn().mockResolvedValue({ id: 'demo', scope: 'project' }),
+  }));
 
   // Default happy-path mocks
   mockedListEntities.mockResolvedValue(['plugin', 'adapter']);
@@ -85,7 +91,7 @@ describe('scaffold:run', () => {
       mockCLIInput({ flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     // Command either writes help text or shows error
     const hasOutput = captured.writes.length > 0 || captured.errors.length > 0 || captured.infos.length > 0;
     expect(hasOutput).toBe(true);
@@ -100,7 +106,7 @@ describe('scaffold:run', () => {
       mockCLIInput({ flags: { 'dry-run': true }, argv: ['plugin', 'my-plugin'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedWriteFiles).not.toHaveBeenCalled();
   });
 
@@ -128,24 +134,28 @@ describe('scaffold:run', () => {
       mockCLIInput({ flags: {}, argv: ['plugin', 'my-plugin'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(mockedWriteFiles).toHaveBeenCalled();
   });
 
   it('SS-05: --dry-run with --json — captured.json contains result', async () => {
-    const { ui, captured } = createCapturedUI();
+    const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui });
 
     // json flag is not directly used by scaffold:run for dry-run output,
-    // but the command writes success output — verify exitCode and file count in result
+    // but the command writes success output — verify the result and file count
     const result = await scaffoldCommand.execute(
       ctx,
       mockCLIInput({ flags: { 'dry-run': true }, argv: ['plugin', 'my-plugin'] }),
     );
 
-    expect(result.exitCode).toBe(0);
-    expect(result.result?.files).toBe(MOCK_BUILD_RESULT.files.length);
-    expect(result.result?.outRoot).toBe(MOCK_BUILD_RESULT.outRoot);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(String(result.error));
+    }
+    const scaffoldResult = result.result as { files: number; outRoot: string };
+    expect(scaffoldResult.files).toBe(MOCK_BUILD_RESULT.files.length);
+    expect(scaffoldResult.outRoot).toBe(MOCK_BUILD_RESULT.outRoot);
   });
 });

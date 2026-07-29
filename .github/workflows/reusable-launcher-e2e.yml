@@ -168,7 +168,7 @@ jobs:
       - name: Confirm Verdaccio warm cache
         if: (inputs.gate == false || steps.gate.outputs.run == 'true') && steps.verdaccio-cache.outputs.cache-hit == 'true'
         run: |
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
           echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
           if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
@@ -181,6 +181,10 @@ jobs:
       # will point to local Verdaccio instead of npm.org.
       # NPM_CONFIG_REGISTRY is intentionally NOT set here: pm.Detect() only
       # falls back to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
+
+      - name: Test curl installer entrypoint
+        if: inputs.gate == false || steps.gate.outputs.run == 'true'
+        run: bash tools/kb-create/install_test.sh
 
       - name: Run kb-create e2e via devkit
         if: inputs.gate == false || steps.gate.outputs.run == 'true'

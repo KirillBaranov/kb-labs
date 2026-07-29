@@ -73,8 +73,8 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, PR diff)
-        run: ./tools/kb-devkit/kb-devkit run build --affected --diff-only
+      - name: Build (devkit, complete workspace)
+        run: ./tools/kb-devkit/kb-devkit run build
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4

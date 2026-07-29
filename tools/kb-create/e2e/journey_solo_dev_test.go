@@ -38,9 +38,19 @@ func TestSoloDeveloperJourney(t *testing.T) {
 		t.Fatalf("install exited %d:\n%s", code, out)
 	}
 
+	// The canonical marketplace API is served by the locally installed
+	// platform. Start it before scaffold: unlike the legacy direct lock-file
+	// write, registration is intentionally a real service operation.
+	if stdout, stderr, startCode := runKbDev(t, platformDir, "start"); startCode != 0 {
+		t.Fatalf("kb-dev start exited %d\nstdout:\n%s\nstderr:\n%s", startCode, stdout, stderr)
+	}
+	t.Cleanup(func() {
+		_, _, _ = runKbDev(t, platformDir, "stop")
+	})
+
 	// Phase 5, step 15: scaffold a plugin — "scaffold" ships enabled by
-	// default, so `kb scaffold run` must already be reachable right after a
-	// bare `--yes` install.
+	// default, after the platform has been started as required by the
+	// canonical marketplace registration API.
 	out, code = runKb(t, platformDir, projectDir, "scaffold", "run", "plugin", "demo", "--yes")
 	if code != 0 {
 		t.Fatalf("kb scaffold run plugin demo exited %d:\n%s", code, out)
@@ -87,6 +97,13 @@ func TestSoloDeveloperJourney(t *testing.T) {
 	}
 	if out, code := runPM(t, pluginRoot, "run", "build"); code != 0 {
 		t.Fatalf("pnpm run build (scaffolded plugin) exited %d:\n%s", code, out)
+	}
+	// The command must remain discoverable when invoked from the generated
+	// plugin directory, not only from the project root. Project scope is
+	// resolved by walking up to the project's .kb/kb.config.json.
+	out, code = runKbIn(t, platformDir, projectDir, pluginRoot, "demo", "ping")
+	if code != 0 || !strings.Contains(out, "pong") {
+		t.Fatalf("kb demo ping from generated plugin directory exited %d:\n%s", code, out)
 	}
 
 	manifestJS := filepath.Join(entryDir, "dist", "manifest.js")

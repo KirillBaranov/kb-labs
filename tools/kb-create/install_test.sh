@@ -69,7 +69,10 @@ for ((i = 0; i < n; i++)); do
 done
 case "$url" in
   *api.github.com*)
-    out='  "tag_name": "'"${FAKE_TAG:-v9.9.9}"'",'
+    out='[
+  { "tag_name": "platform-v9.9.9" },
+  { "tag_name": "'"${FAKE_TAG:-v9.9.9-binaries}"'" }
+]'
     ;;
   *checksums.txt)
     out="$FAKE_CHECKSUM_LINE"
@@ -146,6 +149,10 @@ test_success_path() {
   case "$RUN_OUT" in
     *"Checksum verified"*) ;;
     *) fail "success path" "expected 'Checksum verified' in output:\n$RUN_OUT"; return ;;
+  esac
+  case "$RUN_OUT" in
+    *"Version: v9.9.9-binaries"*) ;;
+    *) fail "success path" "installer did not resolve the dedicated binary release tag:\n$RUN_OUT"; return ;;
   esac
   pass "success path: binary installed, executable, checksum verified"
 }

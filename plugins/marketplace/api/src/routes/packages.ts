@@ -185,16 +185,17 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         required: ['path'],
         properties: {
           path: { type: 'string', description: 'Absolute path to local package' },
+          manifest: { type: 'object', description: 'Validated source manifest for packages generated before build' },
           ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const body = request.body as { path: string } & Record<string, unknown>;
+    const body = request.body as { path: string; manifest?: unknown } & Record<string, unknown>;
     const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.link',
-      () => app.marketplace.link(ctx, body.path),
+      () => app.marketplace.link(ctx, body.path, body.manifest),
     );
     return reply.send(result);
   });

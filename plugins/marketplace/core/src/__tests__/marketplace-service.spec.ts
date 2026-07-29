@@ -262,6 +262,40 @@ describe('MarketplaceService', () => {
       expect(lock!.installed['@kb-labs/local-plugin']!.source).toBe('local');
     });
 
+    it('links an unbuilt scaffold package from its validated source manifest', async () => {
+      const dir = path.join(tmpDir, 'local-plugin-entry');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, 'package.json'),
+        JSON.stringify({
+          name: '@kb-labs/local-plugin-entry',
+          version: '0.1.0',
+          kb: { manifest: './dist/manifest.js' },
+        }),
+      );
+      const source = createMockSource(new Map());
+      const manifest = {
+        schema: 'kb.plugin/3',
+        id: '@kb-labs/local-plugin',
+        version: '0.1.0',
+        display: { name: 'local-plugin', description: 'source manifest' },
+        cli: { commands: [{ path: 'local-plugin ping', handler: './ping.js' }] },
+      };
+
+      const service = new MarketplaceService({ platformRoot: tmpDir, source });
+      const result = await service.link(
+        { scope: 'platform' },
+        path.relative(tmpDir, dir),
+        manifest,
+      );
+
+      expect(result.id).toBe('@kb-labs/local-plugin');
+      expect(result.primaryKind).toBe('plugin');
+      const lock = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
+      expect(lock!.installed['@kb-labs/local-plugin']).toBeDefined();
+      expect(lock!.installed['@kb-labs/local-plugin-entry']).toBeUndefined();
+    });
+
     it('rejects path outside workspace root (path traversal)', async () => {
       const source = createMockSource(new Map());
       const service = new MarketplaceService({ platformRoot: tmpDir, source });

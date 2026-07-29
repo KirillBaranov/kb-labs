@@ -3995,6 +3995,9 @@ importers:
 
   plugins/marketplace/entry:
     dependencies:
+      '@kb-labs/cli-runtime':
+        specifier: workspace:*
+        version: link:../../../cli/runtime
       '@kb-labs/core-workspace':
         specifier: workspace:*
         version: link:../../../core/workspace
@@ -4903,6 +4906,12 @@ importers:
 
   plugins/scaffold/entry:
     dependencies:
+      '@kb-labs/cli-runtime':
+        specifier: workspace:*
+        version: link:../../../cli/runtime
+      '@kb-labs/core-workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
       '@kb-labs/scaffold-contracts':
         specifier: workspace:*
         version: link:../contracts

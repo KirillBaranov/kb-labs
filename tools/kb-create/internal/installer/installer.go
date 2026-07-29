@@ -208,11 +208,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		var binErr error
 		installedBinaries, binErr = ins.installBinaries(sel.PlatformDir, selectedBins)
 		if binErr != nil {
-			// Non-fatal: log warning but continue. Services can be installed later.
-			ins.Log.Printf("  [WARN] binary install failed: %v", binErr)
-			if ins.OnLine != nil {
-				ins.OnLine(fmt.Sprintf("WARN: binary install failed: %v (services can be started manually)", binErr))
-			}
+			return nil, fmt.Errorf("install required binaries: %w", binErr)
 		}
 	}
 

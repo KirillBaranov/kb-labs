@@ -785,14 +785,22 @@ jobs:
     runsOn: local
     steps:
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          if [ -f package.json ]; then
+            if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+          else
+            echo "No package.json — dependency installation skipped"
+          fi
       - name: Build
-        run: pnpm build
+        run: |
+          if [ -f package.json ]; then pnpm run build --if-present; else echo "No package.json — build skipped"; fi
       - name: Lint
-        run: pnpm lint
+        run: |
+          if [ -f package.json ]; then pnpm run lint --if-present; else echo "No package.json — lint skipped"; fi
         continueOnError: true
       - name: Test
-        run: pnpm test
+        run: |
+          if [ -f package.json ]; then pnpm run test --if-present; else echo "No package.json — tests skipped"; fi
 `,
 		"deploy-with-approval.yaml": `# Deploy with approval gate — human sign-off before deploy.
 # Run:  kb workflow run --workflow-id deploy-with-approval
@@ -844,7 +852,8 @@ name: scheduled-report
 version: 1.0.0
 description: "Daily project health check (cron)"
 on:
-  schedule: "0 9 * * 1-5"
+  schedule:
+    cron: "0 9 * * 1-5"
   manual: true
 
 jobs:

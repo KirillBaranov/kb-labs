@@ -52,7 +52,7 @@ describe('marketplace:plugins:enable', () => {
 
     const result = await enableCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -62,7 +62,7 @@ describe('marketplace:plugins:enable', () => {
 
     const result = await enableCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('my-plugin');
@@ -77,7 +77,7 @@ describe('marketplace:plugins:disable', () => {
 
     const result = await disableCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -87,7 +87,7 @@ describe('marketplace:plugins:disable', () => {
 
     const result = await disableCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });
@@ -101,7 +101,7 @@ describe('marketplace:plugins:link', () => {
 
     const result = await linkCommand.execute(ctx, mockCLIInput({ argv: ['/path/to/plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -111,7 +111,7 @@ describe('marketplace:plugins:link', () => {
 
     const result = await linkCommand.execute(ctx, mockCLIInput({ argv: ['/path/to/plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });
@@ -125,7 +125,7 @@ describe('marketplace:plugins:unlink', () => {
 
     const result = await unlinkCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -135,7 +135,7 @@ describe('marketplace:plugins:unlink', () => {
 
     const result = await unlinkCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });
@@ -150,7 +150,7 @@ describe('marketplace:plugins:refresh', () => {
 
     const result = await refreshCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -161,7 +161,7 @@ describe('marketplace:plugins:refresh', () => {
 
     const result = await refreshCommand.execute(ctx, mockCLIInput({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(unlink)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

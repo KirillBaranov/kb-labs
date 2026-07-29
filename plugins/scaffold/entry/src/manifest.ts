@@ -11,11 +11,7 @@ const permissions = combinePermissions()
       'adapters/**',
     ],
   })
-  .withShell({
-    // Needed to call `kb marketplace plugins link` after scaffolding,
-    // so the generated plugin lands in .kb/marketplace.lock automatically.
-    allow: ['kb'],
-  })
+  .withEnv(['KB_MARKETPLACE_URL', 'KB_GATEWAY_URL'])
   .withQuotas({ timeoutMs: 120000, memoryMb: 256 })
   .build();
 

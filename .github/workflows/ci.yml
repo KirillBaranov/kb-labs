@@ -358,6 +358,9 @@ jobs:
             docker compose run --rm publisher
           fi
 
+      - name: Test curl installer entrypoint
+        run: bash tools/kb-create/install_test.sh
+
       - name: Run kb-create e2e via devkit
         run: |
           ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache \
