@@ -170,6 +170,14 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	// Step 1: npm/pnpm packages.
 	allPkgs := m.CorePackageSpecs()
 	allPkgs = append(allPkgs, m.AdapterPackageSpecs()...)
+	// Explicit adapter selections are allowed to extend or replace the
+	// manifest defaults. They must be installed as real package artifacts, not
+	// merely written into the generated runtime config.
+	for _, adapter := range sel.Adapters {
+		if adapter != "" {
+			allPkgs = append(allPkgs, adapter)
+		}
+	}
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Services, sel.Services, sel.ServiceVersions)...)
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Plugins, sel.Plugins, sel.PluginVersions)...)
 

@@ -4,7 +4,7 @@
 # Runs test.sh which installs KB Labs from kblabs.ru and exercises
 # the full user journey.
 #
-# Build:  docker build -t kb-e2e -f e2e/install-flow/Dockerfile .
+# Build:  docker build -t kb-e2e -f e2e/install-flow/Dockerfile e2e/install-flow
 # Run:    docker run --rm kb-e2e
 
 FROM node:22-bullseye
@@ -18,7 +18,7 @@ RUN git config --global user.email "e2e@kblabs.test" && \
     git config --global user.name "KB Labs E2E"
 
 WORKDIR /e2e
-COPY e2e/install-flow/test.sh /e2e/test.sh
+COPY test.sh /e2e/test.sh
 RUN chmod +x /e2e/test.sh
 
 CMD ["/e2e/test.sh"]

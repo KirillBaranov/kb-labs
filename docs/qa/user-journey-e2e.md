@@ -1,0 +1,84 @@
+# User-journey E2E contract
+
+The normative scenarios are documented in
+[`user-journey-scenarios.md`](./user-journey-scenarios.md). This document
+describes their automation layers and release wiring.
+
+KB Labs E2E has two layers:
+
+1. **Technical suites** — endpoint, schema, adapter, and service tests. They
+   answer whether one subsystem behaves correctly.
+2. **User journeys** — release gates that answer whether a user can install
+   KB Labs, configure it, start it, and reach a useful result.
+
+Technical suites are useful diagnostics, but they are not a substitute for a
+user journey. A user-journey test must fail when any step is unavailable,
+silently skipped, or reports success without leaving the next required
+artifact.
+
+## Canonical first-value journey
+
+The main source/CI E2E runs this journey against packages published to local
+Verdaccio. The separate `e2e/install-flow/test.sh` repeats the install-to-first
+value path against public artifacts as a post-publish smoke:
+
+```text
+official installer
+  → fresh project bootstrap
+  → required artifacts and install manifest
+  → kb CLI and kb-dev
+  → all services alive and reachable
+  → human login + service-account registration
+  → marketplace list/install through the CLI
+  → scaffold a plugin
+  → install/build/run the plugin
+  → lint shipped workflow templates
+  → submit workflow
+  → observe terminal status and logs
+  → update without losing plugins or credentials
+```
+
+The journey is intentionally outcome-oriented. Every arrow is a required
+transition. A missing binary, a missing auth header, an invalid shipped
+workflow, a non-discoverable command, or a run that never reaches a terminal
+state is a failure.
+
+The release suite is not limited to this first-value path. The full scenario
+catalog also covers:
+
+- safe platform update and confirmed platform removal without deleting project
+  artifacts;
+- installing, switching, exercising, and removing adapters;
+- adding, editing, running, inspecting, and removing workflows;
+- isolated platform/project directories and clean CI installation.
+
+## Test layers and responsibilities
+
+| Layer | Purpose | Example command |
+|---|---|---|
+| Unit/integration | Diagnose a subsystem quickly | `pnpm --filter ... test` |
+| Domain E2E | Exercise a running service or plugin domain | `kb-devkit run e2e --packages @kb-labs/e2e-workflows` |
+| Launcher journey | Exercise install/bootstrap/user CLI flow from Verdaccio | `kb-devkit run e2e --packages kb-create` |
+| Domain user journeys | Exercise services, marketplace, adapters and workflow examples | `kb-devkit run e2e --packages @kb-labs/e2e-workflows` |
+| Post-publish smoke | Exercise published installer and public artifacts | Docker job running `e2e/install-flow/test.sh` |
+
+## No silent skips
+
+Domain E2E may skip a suite when the domain is not part of that platform
+fixture. The canonical user journey may not skip prerequisites. In particular:
+
+- missing `kb-create`, `kb`, `kb-dev`, or install manifest is a failure;
+- failed service startup or unreachable health endpoint is a failure;
+- auth login succeeding while marketplace returns 401 is a failure;
+- an incomplete install must have a non-zero exit code;
+- workflow lint and workflow execution must be checked explicitly;
+- a command is not considered available until it runs from the documented
+  user project context.
+
+## Release gate policy
+
+The release journey must run against published artifacts, not only local
+source builds. It is required after binary/npm delivery and on a scheduled
+cadence. The job must upload its complete step log on failure and must fail the
+workflow when the journey itself fails; a green health check or a green domain
+suite cannot override a red user journey.

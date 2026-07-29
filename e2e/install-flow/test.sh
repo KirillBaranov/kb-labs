@@ -8,7 +8,7 @@
 # Designed to run inside Docker (node:20-bullseye or similar).
 #
 # Usage:
-#   docker build -t kb-e2e -f e2e/install-flow/Dockerfile .
+#   docker build -t kb-e2e -f e2e/install-flow/Dockerfile e2e/install-flow
 #   docker run --rm kb-e2e
 
 set -eu
@@ -23,6 +23,25 @@ STEPS=""
 
 pass() { PASS=$((PASS + 1)); STEPS="$STEPS\n  ✅ $1"; echo "✅ $1"; }
 fail() { FAIL=$((FAIL + 1)); STEPS="$STEPS\n  ❌ $1: $2"; echo "❌ $1: $2"; }
+summary() {
+  echo ""
+  echo "════════════════════════════════════════"
+  echo "  KB Labs E2E: $PASS passed, $FAIL failed"
+  printf "$STEPS\n"
+  echo "════════════════════════════════════════"
+}
+
+# A user journey must never turn an unavailable prerequisite into a green
+# test.  Technical suites may skip when their optional service is absent;
+# this release journey is the contract for a fresh install and therefore
+# records every missing prerequisite as a failure.
+require_file() {
+  if [ -f "$1" ]; then
+    pass "$2"
+  else
+    fail "$2" "missing file: $1"
+  fi
+}
 
 # ── Step 1: Install kb-create ──────────────────────────────────────────
 echo "── Step 1: Install kb-create"
@@ -48,6 +67,22 @@ else
   INSTALL_OUT=$(cat /tmp/bootstrap.log)
   fail "kb-create" "bootstrap failed (exit $?)"
   tail -20 /tmp/bootstrap.log
+fi
+
+# This is the first user-value gate: a zero exit code is not enough if the
+# launcher did not leave behind the artifacts needed for the next command.
+require_file "/tmp/work/my-project/.kb/install.json" "install manifest written"
+require_file "/tmp/work/my-project/.kb/devservices.yaml" "service manifest written"
+require_file "$LLM_PLATFORM_DIR/node_modules/@kb-labs/cli-bin/dist/bin.js" "kb CLI artifact installed"
+require_file "$LLM_PLATFORM_DIR/bin/kb-dev" "kb-dev artifact installed"
+
+# Do not let a missing first-value project turn the rest of the release gate
+# into an opaque `cd`/set -e error. Stop at the failed user transition and
+# print the aggregated evidence.
+if [ ! -d "/tmp/work/my-project" ]; then
+  fail "fresh project directory" "bootstrap did not create /tmp/work/my-project"
+  summary
+  exit 1
 fi
 
 # ── Step 1b: --yes installs with no LLM provider configured (B-001) ──────────
@@ -119,6 +154,24 @@ else
   pass "install --plugins=release did not pull in unselected services"
 fi
 
+# Reinstalling a second plugin must extend the user's installation. A scoped
+# install that silently replaces the first plugin destroys the user's setup.
+echo "── Step 1g: custom plugin install preserves an existing plugin"
+export PRESERVE_PLATFORM_DIR=/tmp/kb-e2e-preserve/kb-platform
+mkdir -p /tmp/work-preserve && cd /tmp/work-preserve
+if kb-create install --plugins=commit --platform "$PRESERVE_PLATFORM_DIR" > /tmp/install-preserve-first.log 2>&1 && \
+   kb-create install --plugins=release --platform "$PRESERVE_PLATFORM_DIR" > /tmp/install-preserve-second.log 2>&1; then
+  if [ -d "$PRESERVE_PLATFORM_DIR/node_modules/@kb-labs/commit-cli" ] && \
+     [ -d "$PRESERVE_PLATFORM_DIR/node_modules/@kb-labs/release-manager-cli" ]; then
+    pass "custom plugin install preserves the existing plugin"
+  else
+    fail "custom plugin preservation" "second install replaced the first plugin"
+  fi
+else
+  fail "custom plugin preservation" "one of the sequential custom installs failed"
+  tail -20 /tmp/install-preserve-first.log /tmp/install-preserve-second.log 2>/dev/null || true
+fi
+
 if kb-create install --plugins=this-plugin-does-not-exist --platform /tmp/kb-e2e-bad-plugin > /tmp/install-bad-plugin.log 2>&1; then
   fail "unknown plugin validation" "install with an unknown plugin id should have failed"
 else
@@ -168,9 +221,13 @@ fi
 # (08-register-authz, 09-cli-session), but only a real process invocation
 # here catches argv/flag parsing and on-disk file handling that a mocked
 # unit test can't see.
-echo "── Step 4c: kb-dev start gateway + CLI session login"
+echo "── Step 4c: kb-dev start all services + CLI session login"
 cd /tmp/work/my-project
-kb-dev start gateway > /tmp/kb-dev-start.log 2>&1 || true
+if kb-dev start > /tmp/kb-dev-start.log 2>&1; then
+  pass "kb-dev start all services"
+else
+  fail "kb-dev start all services" "command failed: $(tail -20 /tmp/kb-dev-start.log)"
+fi
 
 GW_UP=0
 for i in $(seq 1 30); do
@@ -185,6 +242,20 @@ if [ "$GW_UP" = "1" ]; then
 else
   fail "kb-dev start gateway" "gateway /health never became reachable: $(tail -20 /tmp/kb-dev-start.log)"
 fi
+
+for service_url in \
+  http://127.0.0.1:7777/health \
+  http://127.0.0.1:4000/health \
+  http://127.0.0.1:5070/health \
+  http://127.0.0.1:5050/api/v1/health \
+  http://127.0.0.1:7778/health \
+  http://127.0.0.1:3000/; do
+  if curl -fsS "$service_url" > /dev/null 2>&1; then
+    pass "service reachable: $service_url"
+  else
+    fail "service reachable: $service_url" "health endpoint did not return 2xx"
+  fi
+done
 
 BOOTSTRAP_PASSWORD=""
 if [ -f .env ]; then
@@ -221,6 +292,23 @@ if [ "$GW_UP" = "1" ] && [ -n "$BOOTSTRAP_PASSWORD" ]; then
     fail "kb auth register" "unexpected output: $REG_OUT"
   fi
 
+  # Marketplace is deliberately exercised through the user-facing CLI after
+  # login. Direct HTTP marketplace tests cannot catch a missing Authorization
+  # header in the CLI transport layer.
+  MARKETPLACE_LIST=$(kb marketplace plugins list --json 2>&1 || true)
+  if echo "$MARKETPLACE_LIST" | jq -e '.ok == true' > /dev/null 2>&1; then
+    pass "marketplace list authenticated through CLI"
+  else
+    fail "marketplace list authenticated through CLI" "$MARKETPLACE_LIST"
+  fi
+
+  MARKETPLACE_INSTALL=$(kb marketplace install @kb-labs/release-manager-cli --yes --json 2>&1 || true)
+  if echo "$MARKETPLACE_INSTALL" | jq -e '.ok == true' > /dev/null 2>&1; then
+    pass "marketplace install authenticated through CLI"
+  else
+    fail "marketplace install authenticated through CLI" "$MARKETPLACE_INSTALL"
+  fi
+
   kb auth logout > /tmp/auth-logout.log 2>&1 || true
   CRED_FILE="$HOME/.kb/credentials.json"
   if [ ! -f "$SESSION_FILE" ] && [ ! -f "$CRED_FILE" ]; then
@@ -228,8 +316,17 @@ if [ "$GW_UP" = "1" ] && [ -n "$BOOTSTRAP_PASSWORD" ]; then
   else
     fail "kb auth logout" "session.json or credentials.json still present after logout"
   fi
+
+  # Continue the journey as an authenticated user after explicitly testing
+  # logout. Workflow commands below are user-facing authenticated operations,
+  # so they must not accidentally pass through an anonymous local shortcut.
+  if kb auth login --gateway-url http://127.0.0.1:4000 --email admin@bootstrap.local --password "$BOOTSTRAP_PASSWORD" > /tmp/auth-relogin-cli.log 2>&1; then
+    pass "kb auth re-login for authenticated user journey"
+  else
+    fail "kb auth re-login" "command failed: $(tail -10 /tmp/auth-relogin-cli.log)"
+  fi
 else
-  pass "CLI session auth journey: skipped (gateway not reachable or bootstrap password missing)"
+  fail "CLI session auth journey" "gateway not reachable or bootstrap password missing"
 fi
 
 # ── Step 5: Check CLI shows plugins ────────────────────────────────────
@@ -500,6 +597,146 @@ else
   fail "plugin run" "unexpected output: $HELLO_OUT"
 fi
 
+# ── Step 9b: Workflow first value ─────────────────────────────────────
+# Make the freshly bootstrapped project runnable before invoking the shipped
+# healthcheck workflow. This keeps the assertion about the workflow engine,
+# rather than failing early because the test fixture has no package manifest.
+echo "── Step 9b: Workflow first value"
+cd /tmp/work/my-project
+WORKFLOW_LINT=$(kb workflow lint --json 2>&1 || true)
+if echo "$WORKFLOW_LINT" | jq -e '.ok == true' > /dev/null 2>&1; then
+  pass "all shipped workflow templates pass lint"
+else
+  fail "all shipped workflow templates pass lint" "$WORKFLOW_LINT"
+fi
+
+cat > package.json <<'TSEOF'
+{
+  "name": "kb-e2e-project",
+  "private": true,
+  "scripts": {
+    "build": "node -e \"console.log('build ok')\"",
+    "lint": "node -e \"console.log('lint ok')\"",
+    "test": "node -e \"console.log('test ok')\""
+  }
+}
+TSEOF
+if pnpm install --lockfile-only > /tmp/project-pnpm-install.log 2>&1; then
+  pass "user project dependencies initialized"
+else
+  fail "user project dependencies initialized" "$(tail -20 /tmp/project-pnpm-install.log)"
+fi
+
+WORKFLOW_RUN=$(kb workflow run --workflow-id healthcheck --json 2>&1 || true)
+RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.data.runId // empty' 2>/dev/null || true)
+if [ -z "$RUN_ID" ]; then
+  fail "workflow healthcheck submitted" "$WORKFLOW_RUN"
+else
+  pass "workflow healthcheck submitted"
+  RUN_STATUS="queued"
+  for _ in $(seq 1 30); do
+    STATUS_JSON=$(kb workflow runs status --run-id "$RUN_ID" --json 2>&1 || true)
+    RUN_STATUS=$(echo "$STATUS_JSON" | jq -r '.data.status // .status // "unknown"' 2>/dev/null || echo unknown)
+    case "$RUN_STATUS" in
+      completed|failed|cancelled) break ;;
+    esac
+    sleep 1
+  done
+  if [ "$RUN_STATUS" = "completed" ]; then
+    pass "workflow healthcheck completed"
+  else
+    fail "workflow healthcheck completed" "final status: $RUN_STATUS"
+  fi
+  WORKFLOW_LOGS=$(kb workflow runs logs --run-id "$RUN_ID" --json 2>&1 || true)
+  if echo "$WORKFLOW_LOGS" | jq -e '.ok == true' > /dev/null 2>&1; then
+    pass "workflow run logs available"
+  else
+    fail "workflow run logs available" "$WORKFLOW_LOGS"
+  fi
+fi
+
+# The user journey also owns a workflow, changes it, and executes the changed
+# version. A catalog entry or a successful submit is not enough: both versions
+# must lint and reach a completed run.
+CUSTOM_WORKFLOW=".kb/workflows/e2e-user-value.yaml"
+cat > "$CUSTOM_WORKFLOW" <<'YAMLEOF'
+name: e2e-user-value
+version: 1.0.0
+on:
+  manual: true
+jobs:
+  verify:
+    runsOn: local
+    steps:
+      - name: User value
+        run: echo "user-value-v1"
+YAMLEOF
+
+CUSTOM_LINT=$(kb workflow lint --json 2>&1 || true)
+if echo "$CUSTOM_LINT" | jq -e '.ok == true' > /dev/null 2>&1; then
+  pass "user workflow added and linted"
+else
+  fail "user workflow added and linted" "$CUSTOM_LINT"
+fi
+
+CUSTOM_RUN=$(kb workflow run --workflow-id e2e-user-value --json 2>&1 || true)
+CUSTOM_RUN_ID=$(echo "$CUSTOM_RUN" | jq -r '.data.runId // empty' 2>/dev/null || true)
+if [ -z "$CUSTOM_RUN_ID" ]; then
+  fail "user workflow v1 submitted" "$CUSTOM_RUN"
+else
+  CUSTOM_STATUS="queued"
+  for _ in $(seq 1 30); do
+    CUSTOM_STATUS_JSON=$(kb workflow runs status --run-id "$CUSTOM_RUN_ID" --json 2>&1 || true)
+    CUSTOM_STATUS=$(echo "$CUSTOM_STATUS_JSON" | jq -r '.data.status // .status // "unknown"' 2>/dev/null || echo unknown)
+    case "$CUSTOM_STATUS" in completed|failed|cancelled) break ;; esac
+    sleep 1
+  done
+  if [ "$CUSTOM_STATUS" = "completed" ]; then
+    pass "user workflow v1 completed"
+  else
+    fail "user workflow v1 completed" "final status: $CUSTOM_STATUS"
+  fi
+fi
+
+cat > "$CUSTOM_WORKFLOW" <<'YAMLEOF'
+name: e2e-user-value
+version: 1.0.0
+on:
+  manual: true
+jobs:
+  verify:
+    runsOn: local
+    steps:
+      - name: User value changed
+        run: echo "user-value-v2"
+YAMLEOF
+
+CUSTOM_LINT_V2=$(kb workflow lint --json 2>&1 || true)
+if echo "$CUSTOM_LINT_V2" | jq -e '.ok == true' > /dev/null 2>&1; then
+  pass "user workflow edited and linted"
+else
+  fail "user workflow edited and linted" "$CUSTOM_LINT_V2"
+fi
+
+CUSTOM_RUN_V2=$(kb workflow run --workflow-id e2e-user-value --json 2>&1 || true)
+CUSTOM_RUN_ID_V2=$(echo "$CUSTOM_RUN_V2" | jq -r '.data.runId // empty' 2>/dev/null || true)
+if [ -z "$CUSTOM_RUN_ID_V2" ]; then
+  fail "user workflow v2 submitted" "$CUSTOM_RUN_V2"
+else
+  CUSTOM_STATUS_V2="queued"
+  for _ in $(seq 1 30); do
+    CUSTOM_STATUS_JSON_V2=$(kb workflow runs status --run-id "$CUSTOM_RUN_ID_V2" --json 2>&1 || true)
+    CUSTOM_STATUS_V2=$(echo "$CUSTOM_STATUS_JSON_V2" | jq -r '.data.status // .status // "unknown"' 2>/dev/null || echo unknown)
+    case "$CUSTOM_STATUS_V2" in completed|failed|cancelled) break ;; esac
+    sleep 1
+  done
+  if [ "$CUSTOM_STATUS_V2" = "completed" ]; then
+    pass "user workflow v2 completed after edit"
+  else
+    fail "user workflow v2 completed after edit" "final status: $CUSTOM_STATUS_V2"
+  fi
+fi
+
 # ── Step 10: Update platform ──────────────────────────────────────────
 echo "── Step 10: Update platform"
 cd /tmp/work/my-project
@@ -513,6 +750,12 @@ if kb-create update --yes > /tmp/update.log 2>&1; then
 else
   fail "kb-create update" "command failed"
   tail -20 /tmp/update.log
+fi
+
+if [ -f "$CUSTOM_WORKFLOW" ] && grep -q "user-value-v2" "$CUSTOM_WORKFLOW"; then
+  pass "user workflow preserved after platform update"
+else
+  fail "user workflow after update" "edited workflow was removed or overwritten"
 fi
 
 # Verify core plugins still discoverable after update
@@ -567,11 +810,7 @@ else
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────
-echo ""
-echo "════════════════════════════════════════"
-echo "  KB Labs E2E: $PASS passed, $FAIL failed"
-printf "$STEPS\n"
-echo "════════════════════════════════════════"
+summary
 
 if [ "$FAIL" -gt 0 ]; then
   exit 1
