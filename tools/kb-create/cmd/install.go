@@ -105,6 +105,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 	sel.Services = services
 	sel.Plugins = plugins
+	sel.Adapters = adapters
 	sel.ServiceVersions = serviceVersions
 	sel.PluginVersions = pluginVersions
 	sel.DevMode = flagInstallDevManifest != ""
