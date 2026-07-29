@@ -40,6 +40,16 @@ export {
   getPlatformRuntime,
   resetPlatformRuntime,
 } from "./platform-launch.js";
+
+// Legacy service bootstrap compatibility for installed packages during rollout.
+export {
+  createServiceBootstrap,
+  resetServiceBootstrap,
+  getPlatformRoot,
+  getProjectRoot,
+  loadEnvFromRoot,
+} from "./service-bootstrap-compat.js";
+export type { ServiceBootstrapOptions } from "./service-bootstrap-compat.js";
 export type {
   PlatformApplicationKind,
   PlatformFailurePolicy,
