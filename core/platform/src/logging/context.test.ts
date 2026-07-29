@@ -81,8 +81,11 @@ describe("createContextLogger", () => {
       event: "adapter.degraded",
       diagnostic: { summary: "Redis is unavailable", confidence: "high" },
     });
-    if (original === undefined) delete process.env.KB_DIAGNOSTICS;
-    else process.env.KB_DIAGNOSTICS = original;
+    if (original === undefined) {
+      delete process.env.KB_DIAGNOSTICS;
+    } else {
+      process.env.KB_DIAGNOSTICS = original;
+    }
 
     expect(records[0]).not.toHaveProperty("diagnostic");
     expect(records[1]).toMatchObject({

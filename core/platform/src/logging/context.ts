@@ -107,7 +107,9 @@ function mergeContext(
   const next: Record<string, unknown> = { ...parent };
 
   for (const [key, value] of Object.entries(additions)) {
-    if (value === undefined) continue;
+    if (value === undefined) {
+      continue;
+    }
     if (
       INHERITED_FIELDS.has(key as keyof LogContext) &&
       next[key] !== undefined
@@ -129,8 +131,9 @@ function mergeRecord(
     if (
       INHERITED_FIELDS.has(key as keyof LogContext) &&
       record[key] !== undefined
-    )
+    ) {
       continue;
+    }
     record[key] = value;
   }
   return record;

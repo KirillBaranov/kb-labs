@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import type { ILogger } from "@kb-labs/core-platform";
 import { createHttpLogger } from "../log-context.js";
 
