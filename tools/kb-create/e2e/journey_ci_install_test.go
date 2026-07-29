@@ -146,3 +146,39 @@ func TestCIInstallJourney_UnconfiguredRequiredCapabilityWarns(t *testing.T) {
 		t.Errorf("storage has a default adapter and should not be flagged as unconfigured:\n%s", out)
 	}
 }
+
+// TestCIInstallJourney_ExecutesInstalledPlugin continues the CI install past
+// package resolution. A green install is not useful if the installed CLI
+// cannot actually dispatch one of the requested plugins from the checked-out
+// project directory.
+func TestCIInstallJourney_ExecutesInstalledPlugin(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := runInDir(t, bin, projectDir,
+		"install",
+		"--plugins", "scaffold",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("CI install exited %d:\n%s", code, out)
+	}
+
+	// This is a real plugin command from the installed platform, invoked from
+	// the project checkout exactly as a CI step would invoke it.
+	out, code = runKb(t, platformDir, projectDir, "scaffold", "doctor")
+	if code != 0 {
+		t.Fatalf("installed scaffold plugin exited %d:\n%s", code, out)
+	}
+	if !strings.Contains(strings.ToLower(out), "no issues found") {
+		t.Errorf("installed plugin did not produce its user-facing result:\n%s", out)
+	}
+}

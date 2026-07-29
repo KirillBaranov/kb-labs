@@ -25,13 +25,13 @@ what it checks, and how to see the current state.
 │                      └──────►  CodeQL              (every push)  │
 │                                                                 │
 │  Tag v*-binaries   ──┬──────►  Release Binaries                 │
-│                      └──────►  E2E Install Flow    (after build) │
+│                      └──────►  Post-publish Smoke (after delivery)│
 │                      └──────►  E2E Platform Tests  (after build) │
 │                                                                 │
 │  Manual dispatch   ─────────►  Release             (full publish)│
 │                                                                 │
 │  Weekly cron       ──┬──────►  E2E Platform Tests  (Mon 9am UTC) │
-│                      └──────►  E2E Install Flow    (Mon 8am UTC) │
+│                      └──────►  Post-publish Smoke (Mon 8am UTC) │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -45,7 +45,7 @@ what it checks, and how to see the current state.
 | **CI** (`ci.yml`) | ✅ paths-ignore | — | — | — | — | ✅ |
 | **CI (PR)** (`ci-pr.yml`) | — | ✅ open/sync/reopen | — | — | — | — |
 | **E2E Platform Tests** (`e2e-platform.yml`) | ✅ paths-ignore | ✅ open/sync/reopen, paths-ignore | — | ✅ after Release Binaries | ✅ Mon 9:00 UTC | ✅ |
-| **E2E Install Flow** (`e2e-install.yml`) | — | — | — | ✅ after Release Binaries | ✅ Mon 8:00 UTC | ✅ |
+| **Post-publish Smoke** (`e2e-user-journey.yml`) | — | — | — | ✅ after binary/npm delivery | ✅ Mon 8:00 UTC | ✅ |
 | **Deploy** (`deploy.yml`) | ✅ paths-only | — | — | — | — | ✅ |
 | **Release Binaries** (`release-binaries.yml`) | — | — | ✅ `v*-binaries` | — | — | ✅ |
 | **Release** (`release.yml`) | — | — | — | — | — | ✅ manual |
@@ -82,10 +82,14 @@ what it checks, and how to see the current state.
 **Structure:** 8-shard matrix (one per `@kb-labs/e2e-<suite>`) + aggregator. Branch protection points at the aggregator's `Platform E2E` check.
 **Typical duration:** ~8 min wall-clock; per shard ~5–8 min.
 
-### E2E Install Flow (`e2e-install.yml`)
-**Purpose:** simulates the full user journey in a clean Docker container — `curl install.sh → bootstrap → verify → kb commit → scaffold → build → run`. Catches install / scaffold regressions that platform tests don't cover.
-**When:** after "Release Binaries", weekly Monday 08:00 UTC, manual dispatch.
-**Typical duration:** ~5–10 min.
+### Post-publish Smoke (`e2e-user-journey.yml`)
+**Purpose:** verify delivery of the public installer and published artifacts in
+a clean container. Full source/CI user journeys run against Verdaccio in
+`e2e-platform.yml` and the launcher E2E workflow; this job is the final public
+artifact smoke and intentionally catches npm/GitHub Release packaging errors.
+**When:** after successful binary or npm delivery, weekly Monday 08:00 UTC,
+or manual dispatch.
+**Typical duration:** ~5–15 min.
 
 ### Deploy (`deploy.yml`)
 **Purpose:** declarative delivery to staging/prod via `kb-deploy`. See [ADR-0014](./adr/0014-declarative-delivery-and-fleet-distribution.md).
@@ -101,7 +105,7 @@ what it checks, and how to see the current state.
 ### Release Binaries (`release-binaries.yml`)
 **Purpose:** build and publish all KB Labs Go binaries (`kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor`) as a single GitHub Release.
 **When:** tag matching `v*-binaries` (e.g. `v0.4.0-binaries`); manual dispatch.
-**Trigger pattern:** push a tag → release built → triggers `E2E Install Flow` and `E2E Platform Tests` (via `workflow_run`) to validate.
+**Trigger pattern:** push a tag → public artifacts delivered → triggers Post-publish Smoke and E2E Platform Tests (via `workflow_run`) to validate.
 
 ### Release (`release.yml`)
 **Purpose:** full release workflow — cross-compile binaries for 5 OS/arch combos, publish npm packages, create GitHub Release. Use for major releases that need cross-platform binaries.
@@ -159,7 +163,7 @@ With these required, a PR cannot merge until both `CI (PR)` and the PR-triggered
 | `.github/workflows/e2e-platform.yml` (to main) | CI + E2E Platform Tests + CodeQL (the workflow file itself isn't in `paths-ignore`) |
 | Any non-doc/-site code in a **PR** | CI (PR) + E2E Platform Tests (full matrix, branch protection required) |
 | Doc-only / sites-only in a **PR** | CI (PR) only — E2E skipped by `paths-ignore` |
-| `v0.5.0-binaries` tag pushed | Release Binaries → triggers E2E Install Flow + E2E Platform Tests |
+| `v0.5.0-binaries` tag pushed | Release Binaries → triggers Post-publish Smoke + E2E Platform Tests |
 | `kb commit` / `git commit` on a release | Whatever the diff matches above |
 | Three commits in 30 seconds (PR or main) | Only the last one's CI + E2E run fully; earlier two are cancelled (visible in UI) |
 
