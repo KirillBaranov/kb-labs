@@ -1,8 +1,13 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { InMemoryStateBroker } from "@kb-labs/core-state-broker";
-import type { ILogger } from "@kb-labs/core-platform";
 import {
-  createCorrelatedLogger,
+  createContextLogger,
+  type IContextLogger,
+  type ILogger,
+} from "@kb-labs/core-platform";
+import { ConsoleLogger } from "@kb-labs/core-platform/inmemory";
+import {
+  createHttpLogger,
   HttpObservabilityCollector,
   createServiceReadyResponse,
   getListenOptions,
@@ -21,94 +26,13 @@ export interface StateDaemonConfig {
   logger?: ILogger;
 }
 
-function createFallbackLogger(): ILogger {
-  const bindings: Record<string, unknown> = {};
-
-  const formatMeta = (meta?: Record<string, unknown>) => {
-    const combined = { ...bindings, ...(meta ?? {}) };
-    return Object.keys(combined).length > 0
-      ? ` ${JSON.stringify(combined)}`
-      : "";
-  };
-
-  return {
-    info(message: string, meta?: Record<string, unknown>) {
-      console.log(`[INFO] ${message}${formatMeta(meta)}`);
-    },
-    warn(message: string, meta?: Record<string, unknown>) {
-      console.warn(`[WARN] ${message}${formatMeta(meta)}`);
-    },
-    error(message: string, error?: Error, meta?: Record<string, unknown>) {
-      const merged = error
-        ? {
-            ...(meta ?? {}),
-            error: { message: error.message, stack: error.stack },
-          }
-        : meta;
-      console.error(`[ERROR] ${message}${formatMeta(merged)}`);
-    },
-    fatal(message: string, error?: Error, meta?: Record<string, unknown>) {
-      const merged = error
-        ? {
-            ...(meta ?? {}),
-            error: { message: error.message, stack: error.stack },
-          }
-        : meta;
-      console.error(`[FATAL] ${message}${formatMeta(merged)}`);
-    },
-    debug(message: string, meta?: Record<string, unknown>) {
-      console.debug(`[DEBUG] ${message}${formatMeta(meta)}`);
-    },
-    trace(message: string, meta?: Record<string, unknown>) {
-      console.debug(`[TRACE] ${message}${formatMeta(meta)}`);
-    },
-    child(childBindings: Record<string, unknown>) {
-      const childLogger = createFallbackLogger();
-      return {
-        ...childLogger,
-        info(message: string, meta?: Record<string, unknown>) {
-          console.log(
-            `[INFO] ${message}${formatMeta({ ...childBindings, ...(meta ?? {}) })}`,
-          );
-        },
-        warn(message: string, meta?: Record<string, unknown>) {
-          console.warn(
-            `[WARN] ${message}${formatMeta({ ...childBindings, ...(meta ?? {}) })}`,
-          );
-        },
-        error(message: string, error?: Error, meta?: Record<string, unknown>) {
-          const merged = error
-            ? {
-                ...childBindings,
-                ...(meta ?? {}),
-                error: { message: error.message, stack: error.stack },
-              }
-            : { ...childBindings, ...(meta ?? {}) };
-          console.error(`[ERROR] ${message}${formatMeta(merged)}`);
-        },
-        fatal(message: string, error?: Error, meta?: Record<string, unknown>) {
-          const merged = error
-            ? {
-                ...childBindings,
-                ...(meta ?? {}),
-                error: { message: error.message, stack: error.stack },
-              }
-            : { ...childBindings, ...(meta ?? {}) };
-          console.error(`[FATAL] ${message}${formatMeta(merged)}`);
-        },
-        debug(message: string, meta?: Record<string, unknown>) {
-          console.debug(
-            `[DEBUG] ${message}${formatMeta({ ...childBindings, ...(meta ?? {}) })}`,
-          );
-        },
-        trace(message: string, meta?: Record<string, unknown>) {
-          console.debug(
-            `[TRACE] ${message}${formatMeta({ ...childBindings, ...(meta ?? {}) })}`,
-          );
-        },
-      };
-    },
-  };
+function createFallbackLogger(): IContextLogger {
+  return createContextLogger(new ConsoleLogger(), {
+    applicationId: "kb-labs",
+    serviceId: "state-daemon",
+    instanceId: `local:${process.pid}`,
+    layer: "service",
+  });
 }
 
 export class StateDaemonServer {
@@ -119,11 +43,16 @@ export class StateDaemonServer {
     version: "1.2.0",
     logsSource: "state-daemon",
   });
-  private readonly logger: ILogger;
+  private readonly logger: IContextLogger;
   private server: FastifyInstance | null = null;
 
   constructor(private readonly config: StateDaemonConfig = {}) {
-    this.logger = config.logger ?? createFallbackLogger();
+    this.logger = createContextLogger(config.logger ?? createFallbackLogger(), {
+      applicationId: "kb-labs",
+      serviceId: "state-daemon",
+      instanceId: `local:${process.pid}`,
+      layer: "service",
+    });
   }
 
   async start(): Promise<void> {
@@ -145,18 +74,17 @@ export class StateDaemonServer {
       reply.header("X-Request-Id", requestId);
       reply.header("X-Trace-Id", traceId);
 
-      request.kbLogger = createCorrelatedLogger(this.logger, {
+      request.kbLogger = createHttpLogger(this.logger, {
         serviceId: "state-daemon",
-        logsSource: "state-daemon",
-        layer: "state-daemon",
-        service: "request",
+        layer: "service",
+        component: "http-request",
         requestId,
         traceId,
         method: request.method,
         url: request.url,
         operation: "http.request",
       });
-      request.kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
+      request.kbLogger.debug("HTTP request started");
 
       if (request.method === "OPTIONS") {
         reply.code(204).send();
@@ -168,12 +96,9 @@ export class StateDaemonServer {
         return;
       }
 
-      logger.info(
-        `✓ ${request.method.toUpperCase()} ${request.url} ${reply.statusCode}`,
-        {
-          statusCode: reply.statusCode,
-        },
-      );
+      logger.info("HTTP request completed", {
+        "http.status_code": reply.statusCode,
+      });
     });
     server.addHook("onSend", async (_request, reply, payload) => {
       reply.header("Access-Control-Allow-Origin", "*");

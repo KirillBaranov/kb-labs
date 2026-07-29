@@ -6,14 +6,57 @@
  * These tests prevent API drift by ensuring type definitions match runtime.
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { createPluginContextV3 } from '../context/index.js';
-import type { PluginContextDescriptor, UIFacade, PlatformServices } from '@kb-labs/plugin-contracts';
+import { describe, it, expect, vi } from "vitest";
+import { createPluginContextV3 } from "../context/index.js";
+import type {
+  PluginContextDescriptor,
+  UIFacade,
+  PlatformServices,
+} from "@kb-labs/plugin-contracts";
 
-describe('Context Structure (Runtime Verification)', () => {
+describe("Context Structure (Runtime Verification)", () => {
   const mockUI: UIFacade = {
-    colors: { success: (t: string) => t, error: (t: string) => t, warning: (t: string) => t, info: (t: string) => t, primary: (t: string) => t, accent: (t: string) => t, highlight: (t: string) => t, secondary: (t: string) => t, emphasis: (t: string) => t, muted: (t: string) => t, foreground: (t: string) => t, dim: (t: string) => t, bold: (t: string) => t, underline: (t: string) => t, inverse: (t: string) => t },
-    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤', step: '○', stepDone: '●', arrow: '→', diamond: '◆' },
+    colors: {
+      success: (t: string) => t,
+      error: (t: string) => t,
+      warning: (t: string) => t,
+      info: (t: string) => t,
+      primary: (t: string) => t,
+      accent: (t: string) => t,
+      highlight: (t: string) => t,
+      secondary: (t: string) => t,
+      emphasis: (t: string) => t,
+      muted: (t: string) => t,
+      foreground: (t: string) => t,
+      dim: (t: string) => t,
+      bold: (t: string) => t,
+      underline: (t: string) => t,
+      inverse: (t: string) => t,
+    },
+    symbols: {
+      success: "✓",
+      error: "✗",
+      warning: "⚠",
+      info: "ℹ",
+      bullet: "•",
+      clock: "◷",
+      folder: "📁",
+      package: "📦",
+      pointer: "›",
+      section: "§",
+      separator: "─",
+      border: "│",
+      topLeft: "┌",
+      topRight: "┐",
+      bottomLeft: "└",
+      bottomRight: "┘",
+      leftT: "├",
+      rightT: "┤",
+      step: "○",
+      stepDone: "●",
+      arrow: "→",
+      diamond: "◆",
+    },
     write: vi.fn(),
     info: vi.fn(),
     success: vi.fn(),
@@ -29,9 +72,9 @@ describe('Context Structure (Runtime Verification)', () => {
     sideBox: vi.fn(),
     chain: vi.fn(),
     confirm: vi.fn(async () => true),
-    prompt: vi.fn(async () => 'test'),
-    select: vi.fn(async () => undefined) as UIFacade['select'],
-    multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+    prompt: vi.fn(async () => "test"),
+    select: vi.fn(async () => undefined) as UIFacade["select"],
+    multiSelect: vi.fn(async () => []) as UIFacade["multiSelect"],
     log: vi.fn(),
   };
 
@@ -42,7 +85,9 @@ describe('Context Structure (Runtime Verification)', () => {
     warn: vi.fn(),
     error: vi.fn(),
     fatal: vi.fn(),
-    child: vi.fn(function(this: any) { return this; }),
+    child: vi.fn(function (this: any) {
+      return this;
+    }),
   };
 
   const mockPlatform: PlatformServices = {
@@ -54,14 +99,26 @@ describe('Context Structure (Runtime Verification)', () => {
     storage: {} as any,
     analytics: {} as any,
     eventBus: {} as any,
-    config: { getConfig: vi.fn(async () => ({})), getRawConfig: vi.fn(async () => ({})) },
-    invoke: { call: vi.fn(async () => ({ success: true })), isAvailable: vi.fn(async () => false) } as PlatformServices['invoke'],
+    config: {
+      getConfig: vi.fn(async () => ({})),
+      getRawConfig: vi.fn(async () => ({})),
+    },
+    invoke: {
+      call: vi.fn(async () => ({ success: true })),
+      isAvailable: vi.fn(async () => false),
+    } as PlatformServices["invoke"],
     documentDatabase: {
       find: vi.fn(async () => []),
-      findStream: vi.fn(async function* () { /* empty */ }),
+      findStream: vi.fn(async function* () {
+        /* empty */
+      }),
       findById: vi.fn(async () => null),
       count: vi.fn(async () => 0),
-      insertOne: vi.fn(async () => ({ id: 'mock', createdAt: 0, updatedAt: 0 })),
+      insertOne: vi.fn(async () => ({
+        id: "mock",
+        createdAt: 0,
+        updatedAt: 0,
+      })),
       insertMany: vi.fn(async () => []),
       updateOne: vi.fn(async () => null),
       updateMany: vi.fn(async () => 0),
@@ -73,7 +130,7 @@ describe('Context Structure (Runtime Verification)', () => {
       ensureCollection: vi.fn(async () => undefined),
       ping: vi.fn(async () => ({ ok: true, latencyMs: 0 })),
       close: vi.fn(async () => {}),
-    } as unknown as PlatformServices['documentDatabase'],
+    } as unknown as PlatformServices["documentDatabase"],
     kvStore: {
       get: vi.fn(async () => null),
       getMany: vi.fn(async () => []),
@@ -87,37 +144,39 @@ describe('Context Structure (Runtime Verification)', () => {
       ttl: vi.fn(async () => null),
       expire: vi.fn(async () => false),
       persist: vi.fn(async () => false),
-      scan: vi.fn(async function* () { /* empty */ }),
+      scan: vi.fn(async function* () {
+        /* empty */
+      }),
       ping: vi.fn(async () => ({ ok: true, latencyMs: 0 })),
       close: vi.fn(async () => {}),
-    } as unknown as PlatformServices['kvStore'],
+    } as unknown as PlatformServices["kvStore"],
     logs: {} as any,
   };
 
   const descriptor: PluginContextDescriptor = {
-    hostType: 'cli',
-    pluginId: '@kb-labs/test',
-    pluginVersion: '1.0.0',
-    requestId: 'test-req-123',
+    hostType: "cli",
+    pluginId: "@kb-labs/test",
+    pluginVersion: "1.0.0",
+    requestId: "test-req-123",
     permissions: {},
-    hostContext: { host: 'cli', argv: [], flags: {} },
+    hostContext: { host: "cli", argv: [], flags: {} },
   };
 
-  it('should provide complete context structure to handlers', () => {
+  it("should provide complete context structure to handlers", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     // Top-level fields
-    expect(context.host).toBe('cli');
-    expect(typeof context.requestId).toBe('string');
+    expect(context.host).toBe("cli");
+    expect(typeof context.requestId).toBe("string");
     expect(context.requestId.length).toBeGreaterThan(0);
-    expect(context.pluginId).toBe('@kb-labs/test');
-    expect(context.pluginVersion).toBe('1.0.0');
-    expect(context.cwd).toBe('/test/cwd');
+    expect(context.pluginId).toBe("@kb-labs/test");
+    expect(context.pluginVersion).toBe("1.0.0");
+    expect(context.cwd).toBe("/test/cwd");
 
     // Services
     expect(context.ui).toBeDefined();
@@ -130,36 +189,98 @@ describe('Context Structure (Runtime Verification)', () => {
     expect(context.signal).toBeUndefined(); // Optional field
   });
 
-  it('should provide UI facade with all 13 methods', () => {
+  it("inherits host request context into the plugin logger without allowing replacement", () => {
+    const records: Array<Record<string, unknown>> = [];
+    const logger = {
+      trace: vi.fn((_message: string, meta?: Record<string, unknown>) =>
+        records.push(meta ?? {}),
+      ),
+      debug: vi.fn((_message: string, meta?: Record<string, unknown>) =>
+        records.push(meta ?? {}),
+      ),
+      info: vi.fn((_message: string, meta?: Record<string, unknown>) =>
+        records.push(meta ?? {}),
+      ),
+      warn: vi.fn((_message: string, meta?: Record<string, unknown>) =>
+        records.push(meta ?? {}),
+      ),
+      error: vi.fn(
+        (_message: string, _error?: Error, meta?: Record<string, unknown>) =>
+          records.push(meta ?? {}),
+      ),
+      fatal: vi.fn(
+        (_message: string, _error?: Error, meta?: Record<string, unknown>) =>
+          records.push(meta ?? {}),
+      ),
+      child: vi.fn(function (this: typeof logger) {
+        return this;
+      }),
+    };
+    const restDescriptor: PluginContextDescriptor = {
+      ...descriptor,
+      hostType: "rest",
+      requestId: "request-from-host",
+      pluginId: "@kb-labs/release",
+      hostContext: {
+        host: "rest",
+        requestId: "request-from-host",
+        traceId: "trace-from-host",
+        method: "POST",
+        path: "/api/v1/plugins/release/status",
+      },
+    };
+
+    const { context } = createPluginContextV3({
+      descriptor: restDescriptor,
+      platform: { ...mockPlatform, logger } as PlatformServices,
+      ui: mockUI,
+      cwd: "/test/cwd",
+    });
+    context.platform.logger
+      .child({ requestId: "plugin-override" })
+      .info("plugin completed");
+
+    expect(records).toContainEqual(
+      expect.objectContaining({
+        requestId: "request-from-host",
+        traceId: "trace-from-host",
+        pluginId: "@kb-labs/release",
+        "http.method": "POST",
+        "http.url": "/api/v1/plugins/release/status",
+      }),
+    );
+  });
+
+  it("should provide UI facade with all 13 methods", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     const uiMethods = Object.keys(context.ui);
-    expect(uiMethods).toContain('info');
-    expect(uiMethods).toContain('success');
-    expect(uiMethods).toContain('warn');
-    expect(uiMethods).toContain('error');
-    expect(uiMethods).toContain('debug');
-    expect(uiMethods).toContain('spinner');
-    expect(uiMethods).toContain('table');
-    expect(uiMethods).toContain('json');
-    expect(uiMethods).toContain('newline');
-    expect(uiMethods).toContain('divider');
-    expect(uiMethods).toContain('box');
-    expect(uiMethods).toContain('confirm');
-    expect(uiMethods).toContain('prompt');
+    expect(uiMethods).toContain("info");
+    expect(uiMethods).toContain("success");
+    expect(uiMethods).toContain("warn");
+    expect(uiMethods).toContain("error");
+    expect(uiMethods).toContain("debug");
+    expect(uiMethods).toContain("spinner");
+    expect(uiMethods).toContain("table");
+    expect(uiMethods).toContain("json");
+    expect(uiMethods).toContain("newline");
+    expect(uiMethods).toContain("divider");
+    expect(uiMethods).toContain("box");
+    expect(uiMethods).toContain("confirm");
+    expect(uiMethods).toContain("prompt");
   });
 
-  it('should provide Runtime API with fs, fetch, env', () => {
+  it("should provide Runtime API with fs, fetch, env", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     expect(context.runtime.fs).toBeDefined();
@@ -167,34 +288,34 @@ describe('Context Structure (Runtime Verification)', () => {
     expect(context.runtime.env).toBeDefined();
 
     // Verify fs has expected methods
-    expect(typeof context.runtime.fs.readFile).toBe('function');
-    expect(typeof context.runtime.fs.writeFile).toBe('function');
-    expect(typeof context.runtime.fs.exists).toBe('function');
-    expect(typeof context.runtime.fs.readdir).toBe('function');
-    expect(typeof context.runtime.fs.mkdir).toBe('function');
-    expect(typeof context.runtime.fs.rm).toBe('function');
+    expect(typeof context.runtime.fs.readFile).toBe("function");
+    expect(typeof context.runtime.fs.writeFile).toBe("function");
+    expect(typeof context.runtime.fs.exists).toBe("function");
+    expect(typeof context.runtime.fs.readdir).toBe("function");
+    expect(typeof context.runtime.fs.mkdir).toBe("function");
+    expect(typeof context.runtime.fs.rm).toBe("function");
   });
 
-  it('should provide Plugin API with lifecycle, state, etc.', () => {
+  it("should provide Plugin API with lifecycle, state, etc.", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     expect(context.api.lifecycle).toBeDefined();
     expect(context.api.state).toBeDefined();
     expect(context.api.environment).toBeDefined();
-    expect(typeof context.api.lifecycle.onCleanup).toBe('function');
+    expect(typeof context.api.lifecycle.onCleanup).toBe("function");
   });
 
-  it('should provide Platform services', () => {
+  it("should provide Platform services", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     expect(context.platform.logger).toBeDefined();
@@ -206,45 +327,45 @@ describe('Context Structure (Runtime Verification)', () => {
     expect(context.platform.analytics).toBeDefined();
   });
 
-  it('should provide trace context', () => {
+  it("should provide trace context", () => {
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
     });
 
     expect(context.trace).toBeDefined();
-    expect(typeof context.trace.traceId).toBe('string');
-    expect(typeof context.trace.spanId).toBe('string');
+    expect(typeof context.trace.traceId).toBe("string");
+    expect(typeof context.trace.spanId).toBe("string");
   });
 
-  it('should preserve optional fields (tenantId, outdir)', () => {
+  it("should preserve optional fields (tenantId, outdir)", () => {
     const descriptorWithOptionals: PluginContextDescriptor = {
       ...descriptor,
-      tenantId: 'test-tenant',
+      tenantId: "test-tenant",
     };
 
     const { context } = createPluginContextV3({
       descriptor: descriptorWithOptionals,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
-      outdir: '/test/outdir',
+      cwd: "/test/cwd",
+      outdir: "/test/outdir",
     });
 
-    expect(context.tenantId).toBe('test-tenant');
-    expect(context.outdir).toBe('/test/outdir');
+    expect(context.tenantId).toBe("test-tenant");
+    expect(context.outdir).toBe("/test/outdir");
   });
 
-  it('should pass signal if provided', () => {
+  it("should pass signal if provided", () => {
     const abortController = new AbortController();
 
     const { context } = createPluginContextV3({
       descriptor,
       platform: mockPlatform,
       ui: mockUI,
-      cwd: '/test/cwd',
+      cwd: "/test/cwd",
       signal: abortController.signal,
     });
 

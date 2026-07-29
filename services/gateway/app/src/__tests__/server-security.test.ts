@@ -24,6 +24,10 @@ function makeCache(): ICache {
 }
 
 const logMessages: Array<{ msg: string; meta: unknown }> = [];
+function stringifyLogEntry(entry: { msg: string; meta: unknown }): string {
+  return JSON.stringify(entry);
+}
+
 function makeLogger(): ILogger {
   const log = (msg: string, meta?: unknown) => logMessages.push({ msg, meta });
   const child = () => ({
@@ -74,8 +78,8 @@ describe('H11 — access_token query param redacted from logs', () => {
     });
 
     // No log message should contain the raw token
-    const rawTokenInLogs = logMessages.some(({ msg }) => {
-      const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    const rawTokenInLogs = logMessages.some((entry) => {
+      const msgStr = stringifyLogEntry(entry);
       return msgStr.includes(fakeToken);
     });
     expect(rawTokenInLogs).toBe(false);
@@ -90,8 +94,8 @@ describe('H11 — access_token query param redacted from logs', () => {
       url: `/health?access_token=${fakeToken}`,
     });
 
-    const hasRedacted = logMessages.some(({ msg }) => {
-      const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    const hasRedacted = logMessages.some((entry) => {
+      const msgStr = stringifyLogEntry(entry);
       return msgStr.includes('[REDACTED]');
     });
     expect(hasRedacted).toBe(true);
@@ -105,8 +109,8 @@ describe('H11 — access_token query param redacted from logs', () => {
       url: '/health?foo=bar&baz=qux',
     });
 
-    const hasOtherParams = logMessages.some(({ msg }) => {
-      const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    const hasOtherParams = logMessages.some((entry) => {
+      const msgStr = stringifyLogEntry(entry);
       return msgStr.includes('foo=bar');
     });
     expect(hasOtherParams).toBe(true);

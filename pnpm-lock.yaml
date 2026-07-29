@@ -45,6 +45,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@kb-labs/adapters-log-document':
+        specifier: workspace:*
+        version: link:adapters/log-document
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -970,6 +974,9 @@ importers:
       '@kb-labs/core-config':
         specifier: workspace:*
         version: link:../../core/config
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../core/platform
       '@kb-labs/core-runtime':
         specifier: workspace:*
         version: link:../../core/runtime
@@ -2537,10 +2544,10 @@ importers:
         version: link:../../../studio/plugin-tools
       '@rspack/cli':
         specifier: latest
-        version: 2.1.5(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
+        version: 2.1.7(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
       '@rspack/core':
         specifier: latest
-        version: 2.1.5(@module-federation/runtime-tools@2.3.3)
+        version: 2.1.7(@module-federation/runtime-tools@2.3.3)
       '@types/node':
         specifier: ^24.3.3
         version: 24.12.2
@@ -4295,10 +4302,10 @@ importers:
         version: link:../../../studio/plugin-tools
       '@rspack/cli':
         specifier: latest
-        version: 2.1.5(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
+        version: 2.1.7(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
       '@rspack/core':
         specifier: latest
-        version: 2.1.5(@module-federation/runtime-tools@2.3.3)
+        version: 2.1.7(@module-federation/runtime-tools@2.3.3)
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -4583,10 +4590,10 @@ importers:
         version: link:../../../infra/devkit
       '@rspack/cli':
         specifier: latest
-        version: 2.1.5(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
+        version: 2.1.7(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))
       '@rspack/core':
         specifier: latest
-        version: 2.1.5(@module-federation/runtime-tools@2.3.3)
+        version: 2.1.7(@module-federation/runtime-tools@2.3.3)
       '@types/node':
         specifier: ^24.3.3
         version: 24.12.2
@@ -5634,9 +5641,6 @@ importers:
       '@kb-labs/adapters-analytics-file':
         specifier: workspace:*
         version: link:../../../adapters/analytics-file
-      '@kb-labs/data-store':
-        specifier: workspace:*
-        version: link:../../../adapters/diskio
       '@kb-labs/adapters-eventbus-cache':
         specifier: workspace:*
         version: link:../../../adapters/eventbus-cache
@@ -5685,6 +5689,9 @@ importers:
       '@kb-labs/core-sys':
         specifier: workspace:*
         version: link:../../../core/sys
+      '@kb-labs/data-store':
+        specifier: workspace:*
+        version: link:../../../adapters/diskio
       '@kb-labs/gateway-auth':
         specifier: workspace:*
         version: link:../auth
@@ -9802,8 +9809,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@rspack/binding-darwin-arm64@2.1.5':
-    resolution: {integrity: sha512-XLAN6YSU36qkciJtV9DY9z57pdHOjKy/f1HyoqpZenRg8p46jnXPziV45lfrTZpG+FF6g/jtTUc4dKbeyoWqPw==}
+  '@rspack/binding-darwin-arm64@2.1.7':
+    resolution: {integrity: sha512-DwxzrXRctueP/3Pyom9JHcIsRShuEAlHb+mrE5OPT+4cdHI1UnJpbzEvEDLTo4IKJhDb3vjXdHLtjqtL0SYbeA==}
     cpu: [arm64]
     os: [darwin]
 
@@ -9812,8 +9819,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@rspack/binding-darwin-x64@2.1.5':
-    resolution: {integrity: sha512-KLW7PV86jyCOyqJSqrkZdvYUWYCFX/Q4LsGmVc8tyDA8jBYLMHJDewC/lNf9ot3rU2SoLDZKhDUh7q7dX0FRmg==}
+  '@rspack/binding-darwin-x64@2.1.7':
+    resolution: {integrity: sha512-kPbrYvR/XUHfAMgRVq3QnC71DW/qjwsPj+3hEUuEnRmlploPNy9u8Szf1IHKSVUSrVZBTgDyMoZQdxYLfhResw==}
     cpu: [x64]
     os: [darwin]
 
@@ -9822,8 +9829,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@rspack/binding-linux-arm64-gnu@2.1.5':
-    resolution: {integrity: sha512-KOooAC8L+Ljx5sY7ZuMeaXCQ310FNWaPWXcYQJpFPApF3qyLeSfuOftUGwxcxeo5U0mS5OY3zxp7/5CaHWKYjg==}
+  '@rspack/binding-linux-arm64-gnu@2.1.7':
+    resolution: {integrity: sha512-VFB+YXM3kZ6IIuLV64H3vgnwqvQIIaqfR/aeGwuxYvwcZsrgblSBmXMeDULdgDjqP8Yr0VaFMBBiD9OtG5KdFw==}
     cpu: [arm64]
     os: [linux]
 
@@ -9832,8 +9839,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@rspack/binding-linux-arm64-musl@2.1.5':
-    resolution: {integrity: sha512-0GFc07gT71+uRbHtejDecBfSL0fs7dQAwCtXYieXboACauL7UvS3Hwr6v8A91aGtAcvLotnCaIa3CWWYwtYlYQ==}
+  '@rspack/binding-linux-arm64-musl@2.1.7':
+    resolution: {integrity: sha512-Mzbxyg0aJ+ITj526Iuz0enEDYY6WxhFIwEKXqwjQh+Vpd5v/+aPzPo83sSQVX/3puBV1sbmviTURbh6N9e1fvA==}
     cpu: [arm64]
     os: [linux]
 
@@ -9842,8 +9849,8 @@ packages:
     cpu: [riscv64]
     os: [linux]
 
-  '@rspack/binding-linux-riscv64-gnu@2.1.5':
-    resolution: {integrity: sha512-isQQDp3fBzPSZpLVFzPqVXIVA4I9b9mKs58TfUgOzDP/1g1582YSV3iFopgFogvEliihXDuuXvM6aAkP+w8Z+Q==}
+  '@rspack/binding-linux-riscv64-gnu@2.1.7':
+    resolution: {integrity: sha512-mpazwgT/Pse1720mvEJsoXfPkJ+enj0xUqpbe/wL6aedwjGT+9jJNB8HTJXE4XBX0UO7umGqcJMeKA6YsD2CDA==}
     cpu: [riscv64]
     os: [linux]
 
@@ -9852,8 +9859,8 @@ packages:
     cpu: [riscv64]
     os: [linux]
 
-  '@rspack/binding-linux-riscv64-musl@2.1.5':
-    resolution: {integrity: sha512-/SP6VknY4kH60BYplI2FDNAJCo4U4DUszLxhKsgVlgA5ImgHC8Ew2AsKgidk7ceiYV9OcKzYuWYe9tVpysBYVA==}
+  '@rspack/binding-linux-riscv64-musl@2.1.7':
+    resolution: {integrity: sha512-oU/l3soPRsDEWn7KZic+npyTMM2N1kRdHjoJ+L5IUBXs8bjdTXPLoyTbTdIOza5ZSoT4+UeEiEryj4BB0tQE5w==}
     cpu: [riscv64]
     os: [linux]
 
@@ -9862,8 +9869,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@rspack/binding-linux-x64-gnu@2.1.5':
-    resolution: {integrity: sha512-/GJmS+buA4pilT10gs5mfAhAZxSHXpDD8veZ3QpYvNUuoU9gvempAq9TgjbyNN/vc5pf76GdXPXKFMiehudYSA==}
+  '@rspack/binding-linux-x64-gnu@2.1.7':
+    resolution: {integrity: sha512-7Gtpl3h3jtnOpk1mYQE8mRndXAO2ibI8mnAbs7klevdKey+ZHneWMoMi2yOMQhhI/ifWEFxDzyGJ8bdxo0XTsA==}
     cpu: [x64]
     os: [linux]
 
@@ -9872,8 +9879,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@rspack/binding-linux-x64-musl@2.1.5':
-    resolution: {integrity: sha512-iwS3t75nZ2TnUjB05KtvpvjpdkOy/nLxbaOnwjbdnNZZXpUaMadLbllGAWayHPGCMsL2yKBEhVEESZpR7tK3SA==}
+  '@rspack/binding-linux-x64-musl@2.1.7':
+    resolution: {integrity: sha512-w+whI2Uy+DYkGN+MVkzMFWweL7B/s1gMqX+nvTE1vhOy3hGV0VyA9H6lqWjSD3I+eGkpYhN9Pr244cYnLpZOUQ==}
     cpu: [x64]
     os: [linux]
 
@@ -9881,8 +9888,8 @@ packages:
     resolution: {integrity: sha512-EB4SqH8DW/E/OmqssNQvnIVGQiVUyYNlA/pcc6Ia4MlTNwu6eNDppcNLrToH+kSZpL4CpHSFfSM3eIsSuar2Rw==}
     cpu: [wasm32]
 
-  '@rspack/binding-wasm32-wasi@2.1.5':
-    resolution: {integrity: sha512-jOhW69t1H/jcRaSMB5U8jVzWP18j0YQIlo0nT8W+KvNVScJeyOze4FFc+5RIS7VmuT8/jid7hUyydZOfm6UgqA==}
+  '@rspack/binding-wasm32-wasi@2.1.7':
+    resolution: {integrity: sha512-cDVgvzRdTgxaeM+a5Lx0+7/VAvunvwO0wNtQ3ATQGOtFCW5b7cUzhNPcytH5ZSJTnFWuxinlGwtar5yfcnkdZQ==}
     cpu: [wasm32]
 
   '@rspack/binding-win32-arm64-msvc@2.1.2':
@@ -9890,8 +9897,8 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@rspack/binding-win32-arm64-msvc@2.1.5':
-    resolution: {integrity: sha512-OLfMXmtFBcrWr9BRGKXJYrWgYR0JSaoAWr3EVFDjKGi/YR5aUwQSGc3AJPBph9g0YsdSqRuUhtQGtCk84DeeEA==}
+  '@rspack/binding-win32-arm64-msvc@2.1.7':
+    resolution: {integrity: sha512-JDd85+iYwUvaG9Zrt5X7oIxRZRiTW+76FwkRakoXNy/5VAWQW32Jq4ESjSVz6l6mh0KnZxPq3TLMugacCPnLjw==}
     cpu: [arm64]
     os: [win32]
 
@@ -9900,8 +9907,8 @@ packages:
     cpu: [ia32]
     os: [win32]
 
-  '@rspack/binding-win32-ia32-msvc@2.1.5':
-    resolution: {integrity: sha512-p4OSmnj21+AY8vpIADveLEBXfXJRXonOTYim2VLVWV4TbXfhYNMLiX3qESHCdNnn6lVJM0q6zxxzEUfTyAKydw==}
+  '@rspack/binding-win32-ia32-msvc@2.1.7':
+    resolution: {integrity: sha512-y9PKEs6v9BLHV0i/4eaIRtxpATvSgcf/VYQkMT8mp+qWlPjUwDQNwU2ueWVGpff6INO+YAa7zobzziNFRgO7Lg==}
     cpu: [ia32]
     os: [win32]
 
@@ -9910,19 +9917,29 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rspack/binding-win32-x64-msvc@2.1.5':
-    resolution: {integrity: sha512-YCkLLDGMkHsw5CpcsFtFhzCu+JZEsNrcH9O1GpWMkyxR2ku2Fq1i2wEHYSm26HyW+PJ3+Fv347MPWMFZIz9q2g==}
+  '@rspack/binding-win32-x64-msvc@2.1.7':
+    resolution: {integrity: sha512-BjkOzcPY/K8YlRRvyywz0mDWk89MMxqAMhDmgBXCWorh1IjgKTsWDJ2lCGIM8M9CZXUG3khom8AfrOGwRT2I+g==}
     cpu: [x64]
     os: [win32]
 
   '@rspack/binding@2.1.2':
     resolution: {integrity: sha512-/mFcRSUW7Pl19KeaBIujJvZYNJQu0wD5D3aa5h+Qcph26v7nmLYlX7eajIHGi8tt2qTZX1lXifw2KLIXKwYaRQ==}
 
-  '@rspack/binding@2.1.5':
-    resolution: {integrity: sha512-lF3ZLeeyV0AN3BL0m2jAmNZD5pP9IHsQ8gUXN7mo0g4xsW6nf6hsN7o9CnEHECz5uUZb+EoWsuWzAAmnA9Ip8Q==}
+  '@rspack/binding@2.1.7':
+    resolution: {integrity: sha512-wYqi8TY30hsIzLry503o/Uqu7y9Ec7pEwN5TVmB7Pb3xHrR2eHsQPzdpF/GkCLUjQSgD2Es3CDVV1mr6zO/78g==}
 
   '@rspack/cli@2.1.5':
     resolution: {integrity: sha512-N6Bm8sxHwatNoiZR68+/VKvVMDh19ya39t2Nfxu1/fBmGCrQX1ct8uPooVSysLtUF2Qx31sSRl1DX1SS0eYt2A==}
+    hasBin: true
+    peerDependencies:
+      '@rspack/core': ^2.0.0-0
+      '@rspack/dev-server': ^2.0.0-0
+    peerDependenciesMeta:
+      '@rspack/dev-server':
+        optional: true
+
+  '@rspack/cli@2.1.7':
+    resolution: {integrity: sha512-1hmCC6OsJM4zJC7gWi122/kbl2h7lxZl4Wi1kdPYak0pqth6FGTmyHV+bwB+3yzAb6e/B2ttNqvXU1Zbj+Z+gQ==}
     hasBin: true
     peerDependencies:
       '@rspack/core': ^2.0.0-0
@@ -9943,8 +9960,8 @@ packages:
       '@swc/helpers':
         optional: true
 
-  '@rspack/core@2.1.5':
-    resolution: {integrity: sha512-YHjL7xVXycAWsjJtF39cRZ2u+ddiNFxY+FcNgEBe6Y8OaLeUfMfjba3gK+B1Oj32UcKD6BmXGsPfu9p+OII/Yw==}
+  '@rspack/core@2.1.7':
+    resolution: {integrity: sha512-d5Ju3zXzGgbqQWvlMlLUtek2eFPIzsFe2QOF4nwTAknxo/4OZ64t+kPT9nM6fr3aZX93VK0R3v02/kZYIRrV9Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       '@module-federation/runtime-tools': ^0.24.1 || ^2.0.0
@@ -18265,49 +18282,49 @@ snapshots:
   '@rspack/binding-darwin-arm64@2.1.2':
     optional: true
 
-  '@rspack/binding-darwin-arm64@2.1.5':
+  '@rspack/binding-darwin-arm64@2.1.7':
     optional: true
 
   '@rspack/binding-darwin-x64@2.1.2':
     optional: true
 
-  '@rspack/binding-darwin-x64@2.1.5':
+  '@rspack/binding-darwin-x64@2.1.7':
     optional: true
 
   '@rspack/binding-linux-arm64-gnu@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-arm64-gnu@2.1.5':
+  '@rspack/binding-linux-arm64-gnu@2.1.7':
     optional: true
 
   '@rspack/binding-linux-arm64-musl@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-arm64-musl@2.1.5':
+  '@rspack/binding-linux-arm64-musl@2.1.7':
     optional: true
 
   '@rspack/binding-linux-riscv64-gnu@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-riscv64-gnu@2.1.5':
+  '@rspack/binding-linux-riscv64-gnu@2.1.7':
     optional: true
 
   '@rspack/binding-linux-riscv64-musl@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-riscv64-musl@2.1.5':
+  '@rspack/binding-linux-riscv64-musl@2.1.7':
     optional: true
 
   '@rspack/binding-linux-x64-gnu@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-x64-gnu@2.1.5':
+  '@rspack/binding-linux-x64-gnu@2.1.7':
     optional: true
 
   '@rspack/binding-linux-x64-musl@2.1.2':
     optional: true
 
-  '@rspack/binding-linux-x64-musl@2.1.5':
+  '@rspack/binding-linux-x64-musl@2.1.7':
     optional: true
 
   '@rspack/binding-wasm32-wasi@2.1.2':
@@ -18317,7 +18334,7 @@ snapshots:
       '@napi-rs/wasm-runtime': 1.1.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
     optional: true
 
-  '@rspack/binding-wasm32-wasi@2.1.5':
+  '@rspack/binding-wasm32-wasi@2.1.7':
     dependencies:
       '@emnapi/core': 1.11.2
       '@emnapi/runtime': 1.11.2
@@ -18327,19 +18344,19 @@ snapshots:
   '@rspack/binding-win32-arm64-msvc@2.1.2':
     optional: true
 
-  '@rspack/binding-win32-arm64-msvc@2.1.5':
+  '@rspack/binding-win32-arm64-msvc@2.1.7':
     optional: true
 
   '@rspack/binding-win32-ia32-msvc@2.1.2':
     optional: true
 
-  '@rspack/binding-win32-ia32-msvc@2.1.5':
+  '@rspack/binding-win32-ia32-msvc@2.1.7':
     optional: true
 
   '@rspack/binding-win32-x64-msvc@2.1.2':
     optional: true
 
-  '@rspack/binding-win32-x64-msvc@2.1.5':
+  '@rspack/binding-win32-x64-msvc@2.1.7':
     optional: true
 
   '@rspack/binding@2.1.2':
@@ -18357,20 +18374,20 @@ snapshots:
       '@rspack/binding-win32-ia32-msvc': 2.1.2
       '@rspack/binding-win32-x64-msvc': 2.1.2
 
-  '@rspack/binding@2.1.5':
+  '@rspack/binding@2.1.7':
     optionalDependencies:
-      '@rspack/binding-darwin-arm64': 2.1.5
-      '@rspack/binding-darwin-x64': 2.1.5
-      '@rspack/binding-linux-arm64-gnu': 2.1.5
-      '@rspack/binding-linux-arm64-musl': 2.1.5
-      '@rspack/binding-linux-riscv64-gnu': 2.1.5
-      '@rspack/binding-linux-riscv64-musl': 2.1.5
-      '@rspack/binding-linux-x64-gnu': 2.1.5
-      '@rspack/binding-linux-x64-musl': 2.1.5
-      '@rspack/binding-wasm32-wasi': 2.1.5
-      '@rspack/binding-win32-arm64-msvc': 2.1.5
-      '@rspack/binding-win32-ia32-msvc': 2.1.5
-      '@rspack/binding-win32-x64-msvc': 2.1.5
+      '@rspack/binding-darwin-arm64': 2.1.7
+      '@rspack/binding-darwin-x64': 2.1.7
+      '@rspack/binding-linux-arm64-gnu': 2.1.7
+      '@rspack/binding-linux-arm64-musl': 2.1.7
+      '@rspack/binding-linux-riscv64-gnu': 2.1.7
+      '@rspack/binding-linux-riscv64-musl': 2.1.7
+      '@rspack/binding-linux-x64-gnu': 2.1.7
+      '@rspack/binding-linux-x64-musl': 2.1.7
+      '@rspack/binding-wasm32-wasi': 2.1.7
+      '@rspack/binding-win32-arm64-msvc': 2.1.7
+      '@rspack/binding-win32-ia32-msvc': 2.1.7
+      '@rspack/binding-win32-x64-msvc': 2.1.7
 
   '@rspack/cli@2.1.5(@rspack/core@2.1.2(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.2(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))':
     dependencies:
@@ -18378,11 +18395,11 @@ snapshots:
     optionalDependencies:
       '@rspack/dev-server': 2.1.0(@rspack/core@2.1.2(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)
 
-  '@rspack/cli@2.1.5(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))':
+  '@rspack/cli@2.1.7(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(@rspack/dev-server@2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0))':
     dependencies:
-      '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.3.3)
+      '@rspack/core': 2.1.7(@module-federation/runtime-tools@2.3.3)
     optionalDependencies:
-      '@rspack/dev-server': 2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)
+      '@rspack/dev-server': 2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)
 
   '@rspack/core@2.1.2(@module-federation/runtime-tools@2.3.3)':
     dependencies:
@@ -18390,9 +18407,9 @@ snapshots:
     optionalDependencies:
       '@module-federation/runtime-tools': 2.3.3
 
-  '@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3)':
+  '@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3)':
     dependencies:
-      '@rspack/binding': 2.1.5
+      '@rspack/binding': 2.1.7
     optionalDependencies:
       '@module-federation/runtime-tools': 2.3.3
 
@@ -18400,9 +18417,9 @@ snapshots:
     optionalDependencies:
       '@rspack/core': 2.1.2(@module-federation/runtime-tools@2.3.3)
 
-  '@rspack/dev-middleware@2.0.3(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))':
+  '@rspack/dev-middleware@2.0.3(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))':
     optionalDependencies:
-      '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.3.3)
+      '@rspack/core': 2.1.7(@module-federation/runtime-tools@2.3.3)
     optional: true
 
   '@rspack/dev-server@2.1.0(@rspack/core@2.1.2(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)':
@@ -18412,10 +18429,10 @@ snapshots:
     optionalDependencies:
       selfsigned: 5.5.0
 
-  '@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)':
+  '@rspack/dev-server@2.1.0(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))(selfsigned@5.5.0)':
     dependencies:
-      '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.3.3)
-      '@rspack/dev-middleware': 2.0.3(@rspack/core@2.1.5(@module-federation/runtime-tools@2.3.3))
+      '@rspack/core': 2.1.7(@module-federation/runtime-tools@2.3.3)
+      '@rspack/dev-middleware': 2.0.3(@rspack/core@2.1.7(@module-federation/runtime-tools@2.3.3))
     optionalDependencies:
       selfsigned: 5.5.0
     optional: true

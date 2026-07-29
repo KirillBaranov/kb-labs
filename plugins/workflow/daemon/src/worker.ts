@@ -7,24 +7,35 @@
  * environments, or workspace provisioning — that's the platform's responsibility.
  */
 
-import type { WorkflowEngine } from '@kb-labs/workflow-engine';
-import type { IEntityRegistry } from '@kb-labs/core-registry';
-import { logDiagnosticEvent } from '@kb-labs/core-platform';
-import type { ILogger, IAnalytics, IWorkspaceProvider } from '@kb-labs/core-platform';
-import type { IExecutionBackend } from '@kb-labs/core-contracts';
-import type { ExecutionTarget, ExpressionContext, StepSpec, WorkflowRun, JobRun, StepRun } from '@kb-labs/workflow-contracts';
-import type { ExecutionBackend } from '@kb-labs/plugin-execution';
-import { createCorrelatedLogger } from '@kb-labs/shared-http';
+import type { WorkflowEngine } from "@kb-labs/workflow-engine";
+import type { IEntityRegistry } from "@kb-labs/core-registry";
+import { logDiagnosticEvent } from "@kb-labs/core-platform";
+import type {
+  ILogger,
+  IAnalytics,
+  IWorkspaceProvider,
+} from "@kb-labs/core-platform";
+import type { IExecutionBackend } from "@kb-labs/core-contracts";
+import type {
+  ExecutionTarget,
+  ExpressionContext,
+  StepSpec,
+  WorkflowRun,
+  JobRun,
+  StepRun,
+} from "@kb-labs/workflow-contracts";
+import type { ExecutionBackend } from "@kb-labs/plugin-execution";
+import { createContextLogger } from "@kb-labs/core-platform";
 import {
   buildShellSafeCommand,
   interpolateObject,
   interpolateString,
   evaluateExpression,
   coerceToString,
-} from '@kb-labs/workflow-contracts';
-import type { GateInput } from '@kb-labs/workflow-steps';
-import { GateHandler, type GateDecision } from '@kb-labs/workflow-steps';
-import { SandboxRunner } from '@kb-labs/workflow-runtime';
+} from "@kb-labs/workflow-contracts";
+import type { GateInput } from "@kb-labs/workflow-steps";
+import { GateHandler, type GateDecision } from "@kb-labs/workflow-steps";
+import { SandboxRunner } from "@kb-labs/workflow-runtime";
 
 interface StepSpecRaw {
   run?: string;
@@ -76,7 +87,7 @@ export interface WorkflowWorker {
  * execution plane transparently — the worker doesn't know or care.
  */
 export async function createWorkflowWorker(
-  options: CreateWorkflowWorkerOptions
+  options: CreateWorkflowWorkerOptions,
 ): Promise<WorkflowWorker> {
   const {
     engine,
@@ -87,13 +98,19 @@ export async function createWorkflowWorker(
     concurrency = 5,
     defaultTimeout = 120000,
     analytics,
-    debugMode = process.env['WORKFLOW_DEBUG'] === 'true',
+    debugMode = process.env["WORKFLOW_DEBUG"] === "true",
   } = options;
 
   // Clean up stale worktrees from previous daemon runs on startup.
-  const wsProvider = platform.getAdapter<IWorkspaceProvider>('workspace');
-  if (wsProvider && typeof (wsProvider as { startupCleanup?: () => Promise<void> }).startupCleanup === 'function') {
-    (wsProvider as unknown as { startupCleanup: () => Promise<void> }).startupCleanup().catch(() => {});
+  const wsProvider = platform.getAdapter<IWorkspaceProvider>("workspace");
+  if (
+    wsProvider &&
+    typeof (wsProvider as { startupCleanup?: () => Promise<void> })
+      .startupCleanup === "function"
+  ) {
+    (wsProvider as unknown as { startupCleanup: () => Promise<void> })
+      .startupCleanup()
+      .catch(() => {});
   }
 
   let isRunning = false;
@@ -132,18 +149,22 @@ export async function createWorkflowWorker(
     // Get run and job from state store using IDs from queue entry
     const run = await engine.getRun(entry.runId);
     if (!run) {
-      logger.error('Data inconsistency: Run not found for job entry', undefined, {
-        runId: entry.runId,
-        jobId: entry.jobId
-      });
+      logger.error(
+        "Data inconsistency: Run not found for job entry",
+        undefined,
+        {
+          runId: entry.runId,
+          jobId: entry.jobId,
+        },
+      );
       return true; // Entry was processed (but run missing - data corruption)
     }
 
-    const job = run.jobs.find(j => j.id === entry.jobId);
+    const job = run.jobs.find((j) => j.id === entry.jobId);
     if (!job) {
-      logger.error('Data inconsistency: Job not found in run', undefined, {
+      logger.error("Data inconsistency: Job not found in run", undefined, {
         runId: run.id,
-        jobId: entry.jobId
+        jobId: entry.jobId,
       });
       return true; // Entry was processed (but job missing - data corruption)
     }
@@ -157,8 +178,10 @@ export async function createWorkflowWorker(
     }
     claimedJobs.add(jobKey);
 
-    const waitMs = job.queuedAt ? Date.now() - new Date(job.queuedAt).getTime() : undefined;
-    logger.info('Job picked from queue', {
+    const waitMs = job.queuedAt
+      ? Date.now() - new Date(job.queuedAt).getTime()
+      : undefined;
+    logger.info("Job picked from queue", {
       runId: run.id,
       jobId: job.id,
       jobName: job.jobName,
@@ -167,23 +190,25 @@ export async function createWorkflowWorker(
     });
 
     const jobStartTime = Date.now();
-    const jobLogger = createCorrelatedLogger(logger, {
-      serviceId: 'workflow',
-      logsSource: 'workflow',
-      layer: 'workflow',
-      service: 'worker',
-      requestId: run.id,
-      traceId: run.id,
-      operation: 'workflow.job',
-      bindings: {
-        workflowId: run.id,
-        runId: run.id,
-        jobId: job.id,
-        jobName: job.jobName,
-      },
-    });
+    const jobLogger = createContextLogger(logger, {
+      applicationId: "workflow-daemon",
+      serviceId: "workflow",
+      instanceId: `${process.pid}`,
+      layer: "service",
+    })
+      .forComponent("workflow-worker")
+      .forOperation("workflow.job", {
+        requestId: run.id,
+        traceId: run.id,
+      })
+      .with({
+        "workflow.id": run.id,
+        "workflow.run_id": run.id,
+        "workflow.job_id": job.id,
+        "workflow.job_name": job.jobName,
+      });
 
-    jobLogger.info('Processing job', {
+    jobLogger.info("Processing job", {
       runId: run.id,
       jobId: job.id,
       jobName: job.jobName,
@@ -193,28 +218,31 @@ export async function createWorkflowWorker(
     await engine.markJobStarted(run.id, job.id);
 
     // Track job processing started
-    analytics?.track('workflow.worker.job.started', {
-      runId: run.id,
-      jobId: job.id,
-      jobName: job.jobName,
-      stepCount: job.steps.length,
-    }).catch(() => {});
+    analytics
+      ?.track("workflow.worker.job.started", {
+        runId: run.id,
+        jobId: job.id,
+        jobName: job.jobName,
+        stepCount: job.steps.length,
+      })
+      .catch(() => {});
 
     // Resolve target hint from workflow spec (explicit override for execution plane)
-    const runTarget = (run.metadata as Record<string, unknown> | undefined)?.target as ExecutionTarget | undefined;
+    const runTarget = (run.metadata as Record<string, unknown> | undefined)
+      ?.target as ExecutionTarget | undefined;
     const jobTarget = job.target as ExecutionTarget | undefined;
     const target = jobTarget ?? runTarget;
 
     // ── Workspace provisioning (worktree/container/remote) ──
     // If platform has a workspace provider, create an isolated workspace for this run.
     // All steps will execute in the provisioned workspace instead of the host workspace.
-    const wsProvider = platform.getAdapter<IWorkspaceProvider>('workspace');
+    const wsProvider = platform.getAdapter<IWorkspaceProvider>("workspace");
     // Without a workspace adapter, run steps in the project directory.
     // KB_PROJECT_ROOT is injected by kb-dev; fall back to workspaceRoot (platform dir) only
     // when running outside of kb-dev (e.g. tests or direct node invocation).
     let runWorkspace = wsProvider
       ? workspaceRoot
-      : (process.env['KB_PROJECT_ROOT'] ?? workspaceRoot);
+      : (process.env["KB_PROJECT_ROOT"] ?? workspaceRoot);
     let provisionedWorkspaceId: string | undefined;
 
     if (wsProvider) {
@@ -223,7 +251,7 @@ export async function createWorkflowWorker(
         // Deterministic workspaceId per run — retries reuse the same worktree
         const ws = await wsProvider.materialize({
           workspaceId: wsId,
-          sourceRef: 'main',
+          sourceRef: "main",
           metadata: { runId: run.id, jobId: job.id },
           onProgress: (event) => {
             jobLogger.info(`[workspace] ${event.stage}: ${event.message}`, {
@@ -235,24 +263,26 @@ export async function createWorkflowWorker(
         if (ws.rootPath) {
           runWorkspace = ws.rootPath;
           provisionedWorkspaceId = ws.workspaceId;
-          jobLogger.info('Workspace provisioned', {
+          jobLogger.info("Workspace provisioned", {
             workspaceId: ws.workspaceId,
             provider: ws.provider,
             rootPath: ws.rootPath,
           });
         }
       } catch (wsError) {
-        const msg = wsError instanceof Error ? wsError.message : String(wsError);
+        const msg =
+          wsError instanceof Error ? wsError.message : String(wsError);
         logDiagnosticEvent(jobLogger, {
-          domain: 'workflow',
-          event: 'workflow.workspace.provision',
-          level: 'error',
+          domain: "workflow",
+          event: "workflow.workspace.provision",
+          level: "error",
           reasonCode: inferWorkspaceProvisionReasonCode(msg),
-          message: 'Workspace provisioning failed',
-          outcome: 'failed',
-          error: wsError instanceof Error ? wsError : new Error(String(wsError)),
-          serviceId: 'workflow',
-          stage: 'materialize',
+          message: "Workspace provisioning failed",
+          outcome: "failed",
+          error:
+            wsError instanceof Error ? wsError : new Error(String(wsError)),
+          serviceId: "workflow",
+          stage: "materialize",
           evidence: {
             runId: run.id,
             jobId: job.id,
@@ -268,8 +298,12 @@ export async function createWorkflowWorker(
 
     // Create job execution promise for graceful shutdown tracking
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Step execution loop: handles data flow, spec.if, builtin:approval polling, builtin:gate routing with restart-from
-    let failedStepFailure: import('@kb-labs/core-contracts').ClassifiedFailure | undefined;
-    let failedStepRetry: typeof job.steps[number]['spec']['retry'] | undefined;
+    let failedStepFailure:
+      | import("@kb-labs/core-contracts").ClassifiedFailure
+      | undefined;
+    let failedStepRetry:
+      | (typeof job.steps)[number]["spec"]["retry"]
+      | undefined;
 
     const jobPromise = (async () => {
       try {
@@ -280,15 +314,15 @@ export async function createWorkflowWorker(
         // - Workflow semantics require sequential execution
         let wasCancelled = false;
         for (const step of job.steps) {
-          if (step.status === 'success') {
+          if (step.status === "success") {
             continue; // Skip already completed steps
           }
 
           // --- Build ExpressionContext from fresh run state ---
           const freshRun = await engine.getRun(run.id);
 
-          if (freshRun?.status === 'cancelled') {
-            jobLogger.info('[worker] Run cancelled — stopping step execution', {
+          if (freshRun?.status === "cancelled") {
+            jobLogger.info("[worker] Run cancelled — stopping step execution", {
               runId: run.id,
               jobId: job.id,
             });
@@ -298,7 +332,7 @@ export async function createWorkflowWorker(
 
           const exprCtx: ExpressionContext = {
             env: freshRun?.env ?? {},
-            trigger: freshRun?.trigger ?? { type: 'manual' },
+            trigger: freshRun?.trigger ?? { type: "manual" },
             inputs: freshRun?.inputs ?? {},
             steps: {},
           };
@@ -309,13 +343,13 @@ export async function createWorkflowWorker(
           if (freshRun) {
             for (const j of freshRun.jobs) {
               for (const s of j.steps) {
-                if (s.status === 'success' && s.spec.id) {
+                if (s.status === "success" && s.spec.id) {
                   exprCtx.steps[s.spec.id] = {
                     outputs: (s.outputs ?? {}) as Record<string, unknown>,
                   };
                 } else if (
-                  s.status === 'failed' &&
-                  s.spec.uses === 'builtin:approval' &&
+                  s.status === "failed" &&
+                  s.spec.uses === "builtin:approval" &&
                   s.spec.id &&
                   s.outputs
                 ) {
@@ -332,10 +366,13 @@ export async function createWorkflowWorker(
           if (step.spec.if) {
             const condition = step.spec.if;
             // Strip ${{ }} wrapper if present
-            const rawExpr = condition.trim().replace(/^\$\{\{\s*/, '').replace(/\s*\}\}$/, '');
+            const rawExpr = condition
+              .trim()
+              .replace(/^\$\{\{\s*/, "")
+              .replace(/\s*\}\}$/, "");
             const shouldRun = evaluateExpression(rawExpr, exprCtx);
             if (!shouldRun) {
-              jobLogger.info('[step] Skipped: condition evaluated to false', {
+              jobLogger.info("[step] Skipped: condition evaluated to false", {
                 runId: run.id,
                 jobId: job.id,
                 stepId: step.id,
@@ -348,14 +385,16 @@ export async function createWorkflowWorker(
                   env: exprCtx.env,
                 },
               });
-              await engine.markStepCompleted(run.id, job.id, step.id, { skipped: true });
+              await engine.markStepCompleted(run.id, job.id, step.id, {
+                skipped: true,
+              });
               continue;
             }
           }
 
           // Debug: dump expression context (available to all ${{ }} expressions in this step)
           if (debugMode) {
-            jobLogger.info('[debug] Expression context for step', {
+            jobLogger.info("[debug] Expression context for step", {
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
@@ -374,18 +413,28 @@ export async function createWorkflowWorker(
           // (_WF_* prefix) rather than substituted directly into the script string.
           // Shell expansion of ${VAR} does NOT re-evaluate backticks or $() in the value.
           let interpolatedWith = step.spec.with
-            ? interpolateObject(step.spec.with as Record<string, unknown>, exprCtx)
+            ? interpolateObject(
+                step.spec.with as Record<string, unknown>,
+                exprCtx,
+              )
             : undefined;
-          if (step.spec.uses === 'builtin:shell' && typeof step.spec.with?.['command'] === 'string') {
-            const rawCommand = step.spec.with['command'] as string;
-            const { command: safeCommand, shellEnvVars } = buildShellSafeCommand(rawCommand, exprCtx);
+          if (
+            step.spec.uses === "builtin:shell" &&
+            typeof step.spec.with?.["command"] === "string"
+          ) {
+            const rawCommand = step.spec.with["command"] as string;
+            const { command: safeCommand, shellEnvVars } =
+              buildShellSafeCommand(rawCommand, exprCtx);
             interpolatedWith = {
               ...(interpolatedWith ?? {}),
               command: safeCommand,
               env: {
                 ...Object.fromEntries(
-                  Object.entries((interpolatedWith?.['env'] as Record<string, unknown> | undefined) ?? {})
-                    .map(([k, v]) => [k, coerceToString(v)])
+                  Object.entries(
+                    (interpolatedWith?.["env"] as
+                      | Record<string, unknown>
+                      | undefined) ?? {},
+                  ).map(([k, v]) => [k, coerceToString(v)]),
                 ),
                 ...shellEnvVars,
               },
@@ -398,17 +447,24 @@ export async function createWorkflowWorker(
           // coerceToString ensures object/array inputs become valid JSON strings
           // rather than "[object Object]" when assigned to env vars.
           const interpolatedEnvRaw = step.spec.env
-            ? interpolateObject(step.spec.env as Record<string, unknown>, exprCtx)
-            : undefined;
-          const interpolatedEnv: Record<string, string> | undefined = interpolatedEnvRaw
-            ? Object.fromEntries(
-                Object.entries(interpolatedEnvRaw).map(([k, v]) => [k, coerceToString(v)])
+            ? interpolateObject(
+                step.spec.env as Record<string, unknown>,
+                exprCtx,
               )
             : undefined;
+          const interpolatedEnv: Record<string, string> | undefined =
+            interpolatedEnvRaw
+              ? Object.fromEntries(
+                  Object.entries(interpolatedEnvRaw).map(([k, v]) => [
+                    k,
+                    coerceToString(v),
+                  ]),
+                )
+              : undefined;
 
           // Debug: show raw spec.with vs resolved interpolatedWith
           if (debugMode && step.spec.with) {
-            jobLogger.info('[debug] Step input interpolation', {
+            jobLogger.info("[debug] Step input interpolation", {
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
@@ -419,7 +475,7 @@ export async function createWorkflowWorker(
 
           const stepExecutionId = `wf-${run.id}-${job.id}-${step.id}-${Date.now()}`;
           const stepLogger = jobLogger.child({
-            operation: 'workflow.step',
+            operation: "workflow.step",
             stepId: step.id,
             stepName: step.name,
             stepIndex: step.index,
@@ -439,7 +495,7 @@ export async function createWorkflowWorker(
             });
           }
 
-          stepLogger.info('Executing step', {
+          stepLogger.info("Executing step", {
             runId: run.id,
             jobId: job.id,
             stepId: step.id,
@@ -451,30 +507,41 @@ export async function createWorkflowWorker(
           });
 
           // --- Handle builtin:approval ---
-          if (step.spec.uses === 'builtin:approval') {
-            if (step.status === 'failed') {
+          if (step.spec.uses === "builtin:approval") {
+            if (step.status === "failed") {
               // Already rejected (daemon restarted after resolution) — let gate route.
-              stepLogger.info('Approval already rejected — skipping to gate', { runId: run.id, stepId: step.id });
+              stepLogger.info("Approval already rejected — skipping to gate", {
+                runId: run.id,
+                stepId: step.id,
+              });
               continue;
             }
-            if (step.status !== 'waiting_approval') {
+            if (step.status !== "waiting_approval") {
               await engine.markStepWaitingApproval(run.id, job.id, step.id);
             }
             const approvalResult = await waitForApproval(
-              engine, run.id, job.id, step, interpolatedWith as Record<string, unknown> | undefined,
-              () => stopRequested, stepLogger,
+              engine,
+              run.id,
+              job.id,
+              step,
+              interpolatedWith as Record<string, unknown> | undefined,
+              () => stopRequested,
+              stepLogger,
             );
-            if (approvalResult === 'interrupted') { return; }
+            if (approvalResult === "interrupted") {
+              return;
+            }
             continue; // Outputs already set by resolveApproval
           }
 
           // --- Handle builtin:gate ---
-          if (step.spec.uses === 'builtin:gate') {
+          if (step.spec.uses === "builtin:gate") {
             const gateInput = (interpolatedWith ?? {}) as unknown as GateInput;
             // Iteration counter lives in step.metadata so it survives restarts without
             // polluting run.metadata. Runs started before this change lose their counter
             // (reset to 0) — extra iterations are safer than silent skips.
-            const currentIteration = (step.metadata?.['iterations'] as number) ?? 0;
+            const currentIteration =
+              (step.metadata?.["iterations"] as number) ?? 0;
 
             // Valid restart targets: steps within this job (same-job restart)
             // OR another job by name (cross-job restart — e.g. quality gate
@@ -482,13 +549,20 @@ export async function createWorkflowWorker(
             // honestly on a target that matches neither, instead of silently
             // completing (false green).
             const sameJobStepIds = job.steps.flatMap((s) =>
-              [s.id, s.spec.id].filter((v): v is string => typeof v === 'string'),
+              [s.id, s.spec.id].filter(
+                (v): v is string => typeof v === "string",
+              ),
             );
             const jobNames = (freshRun?.jobs ?? run.jobs).map((j) => j.jobName);
             const validRestartTargets = [...sameJobStepIds, ...jobNames];
 
-            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration, validRestartTargets);
-            stepLogger.info('[gate] Evaluating gate decision', {
+            const decision = new GateHandler().handle(
+              gateInput,
+              exprCtx,
+              currentIteration,
+              validRestartTargets,
+            );
+            stepLogger.info("[gate] Evaluating gate decision", {
               runId: run.id,
               stepId: step.id,
               stepName: step.name,
@@ -497,25 +571,47 @@ export async function createWorkflowWorker(
               iteration: currentIteration,
             });
 
-            if (decision.action === 'continue') {
-              await engine.markStepCompleted(run.id, job.id, step.id, decision.outputs);
+            if (decision.action === "continue") {
+              await engine.markStepCompleted(
+                run.id,
+                job.id,
+                step.id,
+                decision.outputs,
+              );
               continue;
             }
-            if (decision.action === 'fail') {
-              stepLogger.error('[gate] Gate condition failed, aborting job', decision.error, {
-                runId: run.id,
-                stepId: step.id,
-                stepName: step.name,
-              });
-              await engine.markStepFailed(run.id, job.id, step.id, decision.error, decision.outputs);
+            if (decision.action === "fail") {
+              stepLogger.error(
+                "[gate] Gate condition failed, aborting job",
+                decision.error,
+                {
+                  runId: run.id,
+                  stepId: step.id,
+                  stepName: step.name,
+                },
+              );
+              await engine.markStepFailed(
+                run.id,
+                job.id,
+                step.id,
+                decision.error,
+                decision.outputs,
+              );
               throw decision.error;
             }
-            if (decision.action === 'skip') {
+            if (decision.action === "skip") {
               await applyGateSkip(engine, run, job, step, decision, stepLogger);
               return;
             }
             // restart
-            await applyGateRestart(engine, run, job, step, decision, stepLogger);
+            await applyGateRestart(
+              engine,
+              run,
+              job,
+              step,
+              decision,
+              stepLogger,
+            );
             return;
           }
 
@@ -537,22 +633,42 @@ export async function createWorkflowWorker(
             // Legacy path: step.spec was not normalized (should not happen after schema v2+)
             const { run: rawRun, with: existingWith, ...rest } = baseSpec;
             const { command, shellEnvVars } =
-              typeof rawRun === 'string'
+              typeof rawRun === "string"
                 ? buildShellSafeCommand(rawRun, exprCtx)
                 : { command: rawRun, shellEnvVars: {} };
             baseSpec = {
               ...rest,
-              uses: 'builtin:shell',
-              with: { ...existingWith, command, env: { ...(existingWith?.['env'] as Record<string, string> | undefined ?? {}), ...shellEnvVars } },
+              uses: "builtin:shell",
+              with: {
+                ...existingWith,
+                command,
+                env: {
+                  ...((existingWith?.["env"] as
+                    | Record<string, string>
+                    | undefined) ?? {}),
+                  ...shellEnvVars,
+                },
+              },
             };
           }
           // Interpolate the summary field so ${{ inputs.* }} resolves in step descriptions shown in Studio.
-          if (typeof baseSpec.summary === 'string') {
+          if (typeof baseSpec.summary === "string") {
             baseSpec.summary = interpolateString(baseSpec.summary, exprCtx);
           }
           // Merge interpolated env into with.env for builtin:shell (ShellInput.env).
           const specWithEnv = interpolatedEnv
-            ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), env: { ...(baseSpec.with?.['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } } }
+            ? {
+                ...baseSpec,
+                with: {
+                  ...(baseSpec.with ?? {}),
+                  env: {
+                    ...((baseSpec.with?.["env"] as
+                      | Record<string, string>
+                      | undefined) ?? {}),
+                    ...interpolatedEnv,
+                  },
+                },
+              }
             : baseSpec;
           const interpolatedSpec = interpolatedWith
             ? {
@@ -562,7 +678,14 @@ export async function createWorkflowWorker(
                   ...interpolatedWith,
                   // spec.env (interpolatedEnv) must survive the spread of interpolatedWith.env
                   ...(interpolatedEnv
-                    ? { env: { ...(interpolatedWith['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } }
+                    ? {
+                        env: {
+                          ...((interpolatedWith["env"] as
+                            | Record<string, string>
+                            | undefined) ?? {}),
+                          ...interpolatedEnv,
+                        },
+                      }
                     : {}),
                 },
               }
@@ -590,17 +713,24 @@ export async function createWorkflowWorker(
               // Secrets resolution not yet implemented: run.secrets contains names only.
               // When a platform secrets store is available, resolve names → values here.
               secrets: ((): Record<string, string> => {
-                const names = freshRun?.secrets ?? []
+                const names = freshRun?.secrets ?? [];
                 if (names.length > 0) {
-                  stepLogger.warn('Step declares secrets but secret resolution is not implemented', { secrets: names })
+                  stepLogger.warn(
+                    "Step declares secrets but secret resolution is not implemented",
+                    { secrets: names },
+                  );
                 }
-                return {}
+                return {};
               })(),
               logger: {
-                debug: (message: string, meta?: Record<string, unknown>) => stepLogger.debug(message, meta),
-                info: (message: string, meta?: Record<string, unknown>) => stepLogger.info(message, meta),
-                warn: (message: string, meta?: Record<string, unknown>) => stepLogger.warn(message, meta),
-                error: (message: string, meta?: Record<string, unknown>) => stepLogger.error(message, undefined, meta),
+                debug: (message: string, meta?: Record<string, unknown>) =>
+                  stepLogger.debug(message, meta),
+                info: (message: string, meta?: Record<string, unknown>) =>
+                  stepLogger.info(message, meta),
+                warn: (message: string, meta?: Record<string, unknown>) =>
+                  stepLogger.warn(message, meta),
+                error: (message: string, meta?: Record<string, unknown>) =>
+                  stepLogger.error(message, undefined, meta),
               },
               trace: {
                 traceId: run.id,
@@ -617,14 +747,26 @@ export async function createWorkflowWorker(
                 stepLogger.info(entry.message, {
                   stream: entry.stream,
                   lineNo: entry.lineNo,
-                  logSource: entry.stream === 'stderr' ? 'stderr' : 'stdout',
+                  logSource: entry.stream === "stderr" ? "stderr" : "stdout",
                 });
-                void engine.publishLog(run.id, job.id, step.id, entry, step.name);
+                void engine.publishLog(
+                  run.id,
+                  job.id,
+                  step.id,
+                  entry,
+                  step.name,
+                );
               },
               // ctx.logger.* entries: stepLogger base already wrote to SQLite. Only publish for SSE.
               // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
               onLoggerLog: (entry) => {
-                void engine.publishLog(run.id, job.id, step.id, entry, step.name);
+                void engine.publishLog(
+                  run.id,
+                  job.id,
+                  step.id,
+                  entry,
+                  step.name,
+                );
               },
             },
             // Scripts (.kb/workflows/scripts/*.sh) live in the project root, not the worktree.
@@ -635,16 +777,18 @@ export async function createWorkflowWorker(
             target,
           });
 
-          if (result.status === 'failed') {
+          if (result.status === "failed") {
             const stepDurationMs = Date.now() - stepStartTime;
-            const error = new Error(result.error?.message ?? 'Step execution failed');
+            const error = new Error(
+              result.error?.message ?? "Step execution failed",
+            );
 
             // Mark step as failed (sets finishedAt timestamp + error)
             await engine.markStepFailed(run.id, job.id, step.id, error);
             failedStepFailure = result.failure;
             failedStepRetry = step.spec.retry;
 
-            stepLogger.error('Step failed', error, {
+            stepLogger.error("Step failed", error, {
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
@@ -656,22 +800,26 @@ export async function createWorkflowWorker(
             });
 
             if (step.continueOnError) {
-              stepLogger.warn('[step] continueOnError=true — continuing despite failure', {
-                runId: run.id,
-                jobId: job.id,
-                stepId: step.id,
-              });
+              stepLogger.warn(
+                "[step] continueOnError=true — continuing despite failure",
+                {
+                  runId: run.id,
+                  jobId: job.id,
+                  stepId: step.id,
+                },
+              );
               continue;
             }
             throw error;
           }
 
-          const stepOutputs = result.status === 'success' ? result.outputs : undefined;
+          const stepOutputs =
+            result.status === "success" ? result.outputs : undefined;
 
           // Mark step as completed (sets finishedAt timestamp + outputs)
           await engine.markStepCompleted(run.id, job.id, step.id, stepOutputs);
 
-          stepLogger.info('Step completed', {
+          stepLogger.info("Step completed", {
             runId: run.id,
             jobId: job.id,
             stepId: step.id,
@@ -679,7 +827,7 @@ export async function createWorkflowWorker(
 
           // Debug: show what outputs are now available to downstream steps
           if (debugMode && stepOutputs) {
-            stepLogger.info('[debug] Step outputs', {
+            stepLogger.info("[debug] Step outputs", {
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
@@ -687,12 +835,11 @@ export async function createWorkflowWorker(
             });
           }
         }
-         
 
         // Mark job terminal state: interrupted if run was cancelled, completed otherwise.
         if (wasCancelled) {
           await engine.markJobInterrupted(run.id, job.id);
-          jobLogger.info('Job interrupted due to run cancellation', {
+          jobLogger.info("Job interrupted due to run cancellation", {
             runId: run.id,
             jobId: job.id,
           });
@@ -702,29 +849,36 @@ export async function createWorkflowWorker(
         await engine.markJobCompleted(run.id, job.id);
 
         const jobDuration = Date.now() - jobStartTime;
-        jobLogger.info('Job completed successfully', {
+        jobLogger.info("Job completed successfully", {
           runId: run.id,
           jobId: job.id,
         });
 
         // Track job processing completed
-        analytics?.track('workflow.worker.job.completed', {
-          runId: run.id,
-          jobId: job.id,
-          jobName: job.jobName,
-          durationMs: jobDuration,
-          stepCount: job.steps.length,
-        }).catch(() => {});
+        analytics
+          ?.track("workflow.worker.job.completed", {
+            runId: run.id,
+            jobId: job.id,
+            jobName: job.jobName,
+            durationMs: jobDuration,
+            stepCount: job.steps.length,
+          })
+          .catch(() => {});
 
         // Release workspace on success (cleanup worktree)
         if (provisionedWorkspaceId && wsProvider) {
           try {
             await wsProvider.release(provisionedWorkspaceId);
-            jobLogger.info('Workspace released', { workspaceId: provisionedWorkspaceId });
-          } catch (releaseErr) {
-            jobLogger.warn('Workspace release failed', {
+            jobLogger.info("Workspace released", {
               workspaceId: provisionedWorkspaceId,
-              error: releaseErr instanceof Error ? releaseErr.message : String(releaseErr),
+            });
+          } catch (releaseErr) {
+            jobLogger.warn("Workspace release failed", {
+              workspaceId: provisionedWorkspaceId,
+              error:
+                releaseErr instanceof Error
+                  ? releaseErr.message
+                  : String(releaseErr),
             });
           }
         }
@@ -733,20 +887,28 @@ export async function createWorkflowWorker(
         const jobDuration = Date.now() - jobStartTime;
 
         const retryPolicy = failedStepRetry ?? job.retries;
-        await engine.markJobFailed(run.id, job.id, err, failedStepFailure, retryPolicy);
+        await engine.markJobFailed(
+          run.id,
+          job.id,
+          err,
+          failedStepFailure,
+          retryPolicy,
+        );
 
         // Track job processing failed
-        analytics?.track('workflow.worker.job.failed', {
-          runId: run.id,
-          jobId: job.id,
-          jobName: job.jobName,
-          errorMessage: err.message,
-          durationMs: jobDuration,
-        }).catch(() => {});
+        analytics
+          ?.track("workflow.worker.job.failed", {
+            runId: run.id,
+            jobId: job.id,
+            jobName: job.jobName,
+            errorMessage: err.message,
+            durationMs: jobDuration,
+          })
+          .catch(() => {});
 
         // Keep workspace on failure for debugging
         if (provisionedWorkspaceId) {
-          jobLogger.warn('Workspace kept for debugging', {
+          jobLogger.warn("Workspace kept for debugging", {
             workspaceId: provisionedWorkspaceId,
             path: runWorkspace,
           });
@@ -783,16 +945,17 @@ export async function createWorkflowWorker(
         }
       } catch (error) {
         logDiagnosticEvent(logger, {
-          domain: 'workflow',
-          event: 'workflow.worker.loop',
-          level: 'error',
-          reasonCode: 'worker_loop_error',
-          message: 'Worker loop error',
-          outcome: 'failed',
+          domain: "workflow",
+          event: "workflow.worker.loop",
+          level: "error",
+          reasonCode: "worker_loop_error",
+          message: "Worker loop error",
+          outcome: "failed",
           error: error instanceof Error ? error : new Error(String(error)),
-          serviceId: 'workflow',
+          serviceId: "workflow",
           evidence: {
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
             errorStack: error instanceof Error ? error.stack : undefined,
           },
         });
@@ -800,25 +963,26 @@ export async function createWorkflowWorker(
       }
     }
 
-
-    logger.info('Worker loop stopped');
+    logger.info("Worker loop stopped");
   }
 
   return {
     async start() {
       if (isRunning) {
-        logger.warn('Worker already running');
+        logger.warn("Worker already running");
         return;
       }
 
-      logger.info('Starting workflow worker', { concurrency });
+      logger.info("Starting workflow worker", { concurrency });
       isRunning = true;
       stopRequested = false;
 
       // Track worker start
-      analytics?.track('workflow.worker.started', {
-        concurrency,
-      }).catch(() => {});
+      analytics
+        ?.track("workflow.worker.started", {
+          concurrency,
+        })
+        .catch(() => {});
 
       // Start multiple worker loops for concurrency
       const promises: Promise<void>[] = [];
@@ -834,7 +998,7 @@ export async function createWorkflowWorker(
         return;
       }
 
-      logger.info('Stopping workflow worker', {
+      logger.info("Stopping workflow worker", {
         runningJobsCount: runningJobs.size,
       });
 
@@ -844,13 +1008,13 @@ export async function createWorkflowWorker(
 
       // Wait for in-flight jobs to complete (graceful shutdown)
       if (runningJobs.size > 0) {
-        logger.info('Waiting for in-flight jobs to complete', {
+        logger.info("Waiting for in-flight jobs to complete", {
           count: runningJobs.size,
         });
 
         const shutdownTimeoutMs = parseInt(
-          process.env.WORKFLOW_SHUTDOWN_TIMEOUT_MS || '120000',
-          10
+          process.env.WORKFLOW_SHUTDOWN_TIMEOUT_MS || "120000",
+          10,
         );
 
         try {
@@ -861,42 +1025,51 @@ export async function createWorkflowWorker(
           ]);
 
           if (runningJobs.size > 0) {
-            logger.warn('Shutdown timeout reached, marking jobs as interrupted', {
-              count: runningJobs.size,
-            });
+            logger.warn(
+              "Shutdown timeout reached, marking jobs as interrupted",
+              {
+                count: runningJobs.size,
+              },
+            );
 
             // Mark unfinished jobs as interrupted (parallel for speed)
             await Promise.all(
               Array.from(runningJobs.keys()).map(async (jobKey) => {
-                const [runId, jobId] = jobKey.split(':');
+                const [runId, jobId] = jobKey.split(":");
                 if (runId && jobId) {
                   await engine.markJobInterrupted(runId, jobId);
                 }
-              })
+              }),
             );
           } else {
-            logger.info('All in-flight jobs completed gracefully');
+            logger.info("All in-flight jobs completed gracefully");
           }
         } catch (error) {
-          logger.error('Error during graceful shutdown', error instanceof Error ? error : undefined, {
-            runningJobsCount: runningJobs.size,
-          });
+          logger.error(
+            "Error during graceful shutdown",
+            error instanceof Error ? error : undefined,
+            {
+              runningJobsCount: runningJobs.size,
+            },
+          );
         }
       }
 
-      logger.info('Workflow worker stopped');
+      logger.info("Workflow worker stopped");
 
       // Track worker stop
-      analytics?.track('workflow.worker.stopped', {
-        gracefulShutdown: runningJobs.size === 0,
-        interruptedJobs: runningJobs.size,
-      }).catch(() => {});
+      analytics
+        ?.track("workflow.worker.stopped", {
+          gracefulShutdown: runningJobs.size === 0,
+          interruptedJobs: runningJobs.size,
+        })
+        .catch(() => {});
     },
   };
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 }
@@ -909,22 +1082,25 @@ async function waitForApproval(
   engine: WorkflowEngine,
   runId: string,
   jobId: string,
-  step: Pick<StepRun, 'id' | 'name'>,
+  step: Pick<StepRun, "id" | "name">,
   interpolatedWith: Record<string, unknown> | undefined,
   isStopRequested: () => boolean,
   stepLogger: ILogger,
-): Promise<'done' | 'interrupted'> {
-  const approvalTimeoutMs = interpolatedWith?.['timeoutMs'];
+): Promise<"done" | "interrupted"> {
+  const approvalTimeoutMs = interpolatedWith?.["timeoutMs"];
   if (!approvalTimeoutMs) {
-    stepLogger.warn('[approval] No timeout configured — approval may wait indefinitely', {
-      runId,
-      jobId,
-      stepId: step.id,
-      stepName: step.name,
-    });
+    stepLogger.warn(
+      "[approval] No timeout configured — approval may wait indefinitely",
+      {
+        runId,
+        jobId,
+        stepId: step.id,
+        stepName: step.name,
+      },
+    );
   }
 
-  stepLogger.info('[approval] Waiting for approval', {
+  stepLogger.info("[approval] Waiting for approval", {
     runId,
     jobId,
     stepId: step.id,
@@ -942,21 +1118,24 @@ async function waitForApproval(
 
     // If the run is cancelled, treat it as an interruption — do NOT proceed as
     // if the approval was granted. A cancelled run must never bypass human gates.
-    if (currentRun?.status === 'cancelled') {
-      stepLogger.info('[approval] Run cancelled — treating as interrupted, NOT approved', {
-        runId,
-        stepId: step.id,
-        stepName: step.name,
-        waitedMs: Date.now() - approvalStartMs,
-      });
-      return 'interrupted';
+    if (currentRun?.status === "cancelled") {
+      stepLogger.info(
+        "[approval] Run cancelled — treating as interrupted, NOT approved",
+        {
+          runId,
+          stepId: step.id,
+          stepName: step.name,
+          waitedMs: Date.now() - approvalStartMs,
+        },
+      );
+      return "interrupted";
     }
 
-    const currentJob = currentRun?.jobs.find(j => j.id === jobId);
-    const currentStep = currentJob?.steps.find(s => s.id === step.id);
+    const currentJob = currentRun?.jobs.find((j) => j.id === jobId);
+    const currentStep = currentJob?.steps.find((s) => s.id === step.id);
 
-    if (!currentStep || currentStep.status === 'success') {
-      stepLogger.info('[approval] Approval granted', {
+    if (!currentStep || currentStep.status === "success") {
+      stepLogger.info("[approval] Approval granted", {
         runId,
         stepId: step.id,
         stepName: step.name,
@@ -965,9 +1144,9 @@ async function waitForApproval(
       break;
     }
 
-    if (currentStep.status === 'failed') {
+    if (currentStep.status === "failed") {
       // Approval was rejected — break so the following builtin:gate step can route.
-      stepLogger.info('[approval] Approval rejected', {
+      stepLogger.info("[approval] Approval rejected", {
         runId,
         stepId: step.id,
         stepName: step.name,
@@ -977,7 +1156,7 @@ async function waitForApproval(
     }
 
     if (pollCount % 10 === 0) {
-      stepLogger.info('[approval] Still waiting for approval', {
+      stepLogger.info("[approval] Still waiting for approval", {
         runId,
         stepId: step.id,
         stepName: step.name,
@@ -988,14 +1167,16 @@ async function waitForApproval(
   }
 
   if (isStopRequested()) {
-    stepLogger.info('Approval wait interrupted by shutdown', { stepId: step.id });
-    return 'interrupted';
+    stepLogger.info("Approval wait interrupted by shutdown", {
+      stepId: step.id,
+    });
+    return "interrupted";
   }
-  return 'done';
+  return "done";
 }
 
-type GateRestartDecision = Extract<GateDecision, { action: 'restart' }>;
-type GateSkipDecision = Extract<GateDecision, { action: 'skip' }>;
+type GateRestartDecision = Extract<GateDecision, { action: "restart" }>;
+type GateSkipDecision = Extract<GateDecision, { action: "skip" }>;
 
 /**
  * Apply gate skip: mark the gate and all intermediate steps as skipped, then re-enqueue the job.
@@ -1006,13 +1187,13 @@ async function applyGateSkip(
   engine: WorkflowEngine,
   run: WorkflowRun,
   job: JobRun,
-  step: Pick<StepRun, 'id' | 'name'>,
+  step: Pick<StepRun, "id" | "name">,
   decision: GateSkipDecision,
   stepLogger: ILogger,
 ): Promise<void> {
   const { skipTo, outputs } = decision;
 
-  stepLogger.info('[gate] Gate triggered skip-forward', {
+  stepLogger.info("[gate] Gate triggered skip-forward", {
     runId: run.id,
     stepId: step.id,
     stepName: step.name,
@@ -1032,10 +1213,14 @@ async function applyGateSkip(
       pastGate = true;
       continue; // gate is already marked completed above
     }
-    if (!pastGate) {continue;}
-    if (s.spec.id === skipTo || s.id === skipTo) {break;} // stop at target (inclusive — don't skip it)
+    if (!pastGate) {
+      continue;
+    }
+    if (s.spec.id === skipTo || s.id === skipTo) {
+      break;
+    } // stop at target (inclusive — don't skip it)
     await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
-      draft.status = 'success';
+      draft.status = "success";
       draft.outputs = { skipped: true };
       draft.startedAt = new Date().toISOString();
       draft.finishedAt = new Date().toISOString();
@@ -1046,10 +1231,10 @@ async function applyGateSkip(
   const freshRun = await engine.getRun(run.id);
   const freshJob = freshRun?.jobs.find((j) => j.id === job.id);
   if (freshJob) {
-    await scheduler.enqueueJob(run.id, freshJob, freshJob.priority ?? 'normal');
+    await scheduler.enqueueJob(run.id, freshJob, freshJob.priority ?? "normal");
   }
 
-  stepLogger.info('[gate] Skip applied — re-enqueued job at skipTo target', {
+  stepLogger.info("[gate] Skip applied — re-enqueued job at skipTo target", {
     runId: run.id,
     skipTo,
   });
@@ -1063,7 +1248,7 @@ async function applyGateRestart(
   engine: WorkflowEngine,
   run: WorkflowRun,
   job: JobRun,
-  step: Pick<StepRun, 'id' | 'name'>,
+  step: Pick<StepRun, "id" | "name">,
   decision: GateRestartDecision,
   stepLogger: ILogger,
 ): Promise<void> {
@@ -1079,7 +1264,7 @@ async function applyGateRestart(
     }
   }
 
-  stepLogger.warn('[gate] Gate triggered restart', {
+  stepLogger.warn("[gate] Gate triggered restart", {
     runId: run.id,
     stepId: step.id,
     stepName: step.name,
@@ -1110,7 +1295,9 @@ async function applyGateRestart(
   }
 
   // Is restartFrom a step in THIS job (same-job) or another job by name (cross-job)?
-  const sameJobTarget = job.steps.some((s) => s.spec.id === restartFrom || s.id === restartFrom);
+  const sameJobTarget = job.steps.some(
+    (s) => s.spec.id === restartFrom || s.id === restartFrom,
+  );
 
   if (!sameJobTarget) {
     // ── Cross-job restart (e.g. quality gate → agent-execute) ────────────────
@@ -1143,7 +1330,7 @@ async function applyGateRestart(
       const pending = (rj.needs ?? []).filter((n) => resetNames.has(n));
       for (const s of rj.steps) {
         await stateStore.updateStep(run.id, rj.id, s.id, (draft) => {
-          draft.status = 'queued';
+          draft.status = "queued";
           draft.startedAt = undefined;
           draft.finishedAt = undefined;
           draft.error = undefined;
@@ -1151,7 +1338,7 @@ async function applyGateRestart(
         });
       }
       await stateStore.updateJob(run.id, rj.id, (draft) => {
-        draft.status = 'queued';
+        draft.status = "queued";
         draft.startedAt = undefined;
         draft.finishedAt = undefined;
         draft.pendingDependencies = [...pending];
@@ -1162,9 +1349,13 @@ async function applyGateRestart(
     const refreshed = await engine.getRun(run.id);
     const targetJob = refreshed?.jobs.find((j) => j.jobName === restartFrom);
     if (targetJob && !targetJob.blocked) {
-      await scheduler.enqueueJob(run.id, targetJob, targetJob.priority ?? 'normal');
+      await scheduler.enqueueJob(
+        run.id,
+        targetJob,
+        targetJob.priority ?? "normal",
+      );
     }
-    stepLogger.warn('[gate] Cross-job restart re-enqueued target', {
+    stepLogger.warn("[gate] Cross-job restart re-enqueued target", {
       runId: run.id,
       restartFrom,
       iteration: nextIteration,
@@ -1183,7 +1374,7 @@ async function applyGateRestart(
     }
     if (foundTarget) {
       await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
-        draft.status = 'queued';
+        draft.status = "queued";
         draft.startedAt = undefined;
         draft.finishedAt = undefined;
         draft.error = undefined;
@@ -1193,7 +1384,7 @@ async function applyGateRestart(
   }
 
   await stateStore.updateJob(run.id, job.id, (draft) => {
-    draft.status = 'queued';
+    draft.status = "queued";
     draft.startedAt = undefined;
     draft.finishedAt = undefined;
   });
@@ -1201,8 +1392,12 @@ async function applyGateRestart(
   const updatedRun = await engine.getRun(run.id);
   const updatedJob = updatedRun?.jobs.find((j) => j.id === job.id);
   if (updatedJob) {
-    await scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal');
-    stepLogger.info('[gate] Job re-enqueued for restart', {
+    await scheduler.enqueueJob(
+      run.id,
+      updatedJob,
+      updatedJob.priority ?? "normal",
+    );
+    stepLogger.info("[gate] Job re-enqueued for restart", {
       runId: run.id,
       jobId: job.id,
       jobName: job.jobName,
@@ -1214,6 +1409,6 @@ async function applyGateRestart(
 
 function inferWorkspaceProvisionReasonCode(message: string) {
   return /ETIMEDOUT|timeout/iu.test(message)
-    ? 'workspace_provision_timeout'
-    : 'workspace_provision_failed';
+    ? "workspace_provision_timeout"
+    : "workspace_provision_failed";
 }

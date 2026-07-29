@@ -90,6 +90,20 @@ describe('DocumentLogPersistence (sqlite-backed)', () => {
     expect(result.logs.map((l) => l.id).sort()).toEqual(['1', '2']);
   });
 
+  it('search combines text and structured context filters', async () => {
+    await persistence.writeBatch([
+      record({ id: 'state', message: 'Service ready', fields: { serviceId: 'state-daemon' } }),
+      record({ id: 'rest', message: 'Service ready', fields: { serviceId: 'rest' } }),
+    ]);
+    await new Promise((r) => setTimeout(r, 120));
+
+    const result = await persistence.search('Service ready', {
+      filters: { serviceId: 'state-daemon' },
+    });
+
+    expect(result.logs.map((log) => log.id)).toEqual(['state']);
+  });
+
   it('deleteOlderThan removes ancient logs', async () => {
     const old = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const fresh = Date.now();

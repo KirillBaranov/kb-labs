@@ -53,32 +53,38 @@ Dependencies flow **strictly downward**. Never import from a higher layer.
 ## Key Conventions
 
 ### Dependencies
+
 - **All internal deps use `workspace:*`** — never `link:`, never pinned versions
 - pnpm resolves `workspace:*` locally; replaces with `^version` on `pnpm publish`
 - No DevLink, no mode switching, no submodules
 
 ### Building
+
 - Use `kb-devkit run build` (or `pnpm build`) — respects topological order
 - Use `kb-devkit run build --affected` for incremental builds
 - CLI discovery cache auto-invalidates on rebuild (content hash check)
 - Force-reset if needed: `pnpm kb marketplace plugins refresh`
 
 ### Plugin = Duck Typing
+
 Everything in `plugins/` is a plugin. If it uses SDK, registers commands, has a manifest — it's a plugin.
 Some have daemons (HTTP ports) — that's an implementation detail, not an architectural boundary.
 
 ### Services
+
 - `kb-dev start` — starts all services via Go binary
 - Services with HTTP require `gateway` plugin (auth, routing)
 - Ports: gateway :4000, rest-api :5050, workflow :7778, marketplace :5070, state :7777
 
 ### Config Files — DO NOT MODIFY (without explicit reason)
+
 - `devservices.yaml` — port assignments (change scripts, not ports)
 - `devkit.yaml` — `categories` and `presets` sections are load-bearing; change carefully.
   `tasks` and `custom_checks` sections are safe to extend (adding new entries does not break existing behaviour).
 - `pnpm-workspace.yaml` — workspace package globs
 
 ### Code Style
+
 - Always use `ILogger`/`ICache` from `@kb-labs/core-platform`
 - Use `platform.logger` for noop logger instances
 - Never use `as any`, `@ts-ignore`, or duplicate types — fix root causes
@@ -98,6 +104,7 @@ Platform adapters go through a named slot pipeline: `raw → router → post-rou
 See [ADR-0001](core/plugin-runtime/docs/adr/ADR-0001-adapter-pipeline.md) and [plugin-runtime README](core/plugin-runtime/README.md#platform-adapter-pipeline).
 
 ### Git
+
 - Never `git push` without explicit permission
 - Never amend commits — create new ones
 - Build with `kb-devkit` build-order, NOT `pnpm -r` (DTS ordering matters)
@@ -123,11 +130,11 @@ Parse the JSON: read files from `sources`, trust code over `kind: "adr"`. If `co
 
 Three-level pyramid (see `.claude/skills/testing.md` for decision tree and templates):
 
-| Level | What | Where | Run |
-|---|---|---|---|
+| Level   | What                                | Where                                | Run                                |
+| ------- | ----------------------------------- | ------------------------------------ | ---------------------------------- |
 | Handler | CLI command logic, mock HTTP client | `plugins/*/entry/src/__tests__/cli/` | `pnpm --filter <pkg> run test:cli` |
-| SSE/WS | Streaming behaviour, real daemon | `e2e/<domain>/specs/sse/`, `.../ws/` | `cd e2e/<domain> && pnpm e2e` |
-| Journey | Multi-step user scenarios | `e2e/<domain>/specs/cli/` | `kb-devkit run e2e` |
+| SSE/WS  | Streaming behaviour, real daemon    | `e2e/<domain>/specs/sse/`, `.../ws/` | `cd e2e/<domain> && pnpm e2e`      |
+| Journey | Multi-step user scenarios           | `e2e/<domain>/specs/cli/`            | `kb-devkit run e2e`                |
 
 ```bash
 # Handler tests — fast, no daemon needed
@@ -141,6 +148,7 @@ kb-dev start && cd e2e/workflows && pnpm e2e
 ```
 
 Key helpers in `@kb-labs/shared-testing-e2e`:
+
 - `mockCLIInput<F>()`, `createCapturedUI()`, `createMockContext()` — handler tests
 - `collectSseEvents()`, `expectSseTerminates()`, `assertSseOrder()` — SSE tests
 - `withWs()`, `expectWsMessage()`, `expectWsClose()` — WS tests
@@ -205,11 +213,11 @@ Config loader reads `~/kb-platform/.kb/kb.config.jsonc` as base (kblabs-gateway,
 
 ### Config files
 
-| File | Owner | Purpose |
-|------|-------|---------|
-| `.kb/kb.config.json` | You | Dev config: rich adapters, profiles, release, marketplace, gateway |
-| `~/kb-platform/.kb/kb.config.jsonc` | kb-create | Installed platform defaults (basic adapters) |
-| `.kb/kb.config.jsonc` | kb-create | Pointer-only (written only if no json exists). Gitignored. |
+| File                                | Owner     | Purpose                                                            |
+| ----------------------------------- | --------- | ------------------------------------------------------------------ |
+| `.kb/kb.config.json`                | You       | Dev config: rich adapters, profiles, release, marketplace, gateway |
+| `~/kb-platform/.kb/kb.config.jsonc` | kb-create | Installed platform defaults (basic adapters)                       |
+| `.kb/kb.config.jsonc`               | kb-create | Pointer-only (written only if no json exists). Gitignored.         |
 
 ## Skills
 
@@ -217,45 +225,71 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 
 ### User-invocable (folder-based)
 
-| Skill | Path | Trigger |
-|---|---|---|
-| Create plugin | `.claude/skills/kb-labs-create-plugin/` | "create a kb-labs plugin called X" |
-| Create product | `.claude/skills/kb-labs-create-product/` | "create a kb-labs service called X" |
-| Update platform | `.claude/skills/kb-labs-update/` | "update kb-labs to latest" |
-| Troubleshoot | `.claude/skills/kb-labs-troubleshoot/` | "kb-labs is not starting" / "kb-dev failed" |
-| Explore | `.claude/skills/kb-labs-explore/` | "what plugins are installed?" |
-| Quickstart | `.claude/skills/kb-labs-quickstart/` | "is kb-labs working?" |
+| Skill           | Path                                     | Trigger                                     |
+| --------------- | ---------------------------------------- | ------------------------------------------- |
+| Create plugin   | `.claude/skills/kb-labs-create-plugin/`  | "create a kb-labs plugin called X"          |
+| Create product  | `.claude/skills/kb-labs-create-product/` | "create a kb-labs service called X"         |
+| Update platform | `.claude/skills/kb-labs-update/`         | "update kb-labs to latest"                  |
+| Troubleshoot    | `.claude/skills/kb-labs-troubleshoot/`   | "kb-labs is not starting" / "kb-dev failed" |
+| Explore         | `.claude/skills/kb-labs-explore/`        | "what plugins are installed?"               |
+| Quickstart      | `.claude/skills/kb-labs-quickstart/`     | "is kb-labs working?"                       |
 
 > Managed by `kb-create update` — do not edit by hand.
 
 ### Context skills (flat `.md`, auto-loaded by glob)
 
-| Skill | Path | Activates when |
-|---|---|---|
-| **Task research (RAG)** | `.claude/skills/task-rag.md` | any implementation task |
-| **Testing strategy** | `.claude/skills/testing.md` | editing `**/*.test.ts`, `**/*.spec.ts`, `**/e2e/**`, `**/__tests__/**`, `**/commands/**` |
-| Plugin development | `.claude/skills/dev-plugin.md` | editing `plugins/**` |
-| Core development | `.claude/skills/dev-core.md` | editing `core/**`, `sdk/**` |
-| Monorepo patterns | `.claude/skills/dev-monorepo.md` | cross-package work |
-| **Workflow investigation** | `.claude/skills/workflow.md` | editing `plugins/workflow/**` |
-| **Quality plugin** | `.claude/skills/quality.md` | editing `plugins/quality/**` or architecture/coupling tasks |
-| **ClickUp plugin** | `.claude/skills/clickup.md` | editing `plugins/clickup/**` or any clickup task |
-| Release pipeline | `.claude/skills/tool-release.md` | release / changelog tasks |
-| kb-devkit usage | `.claude/skills/tool-kb-devkit.md` | build / task runner questions |
-| kb-dev usage | `.claude/skills/tool-kb-dev.md` | service management |
-| kb-deploy usage | `.claude/skills/tool-kb-deploy.md` | deploy tasks |
-| kb-monitor usage | `.claude/skills/tool-kb-monitor.md` | monitoring tasks |
-| Code generation | `.claude/skills/tool-generate.md` | generate / scaffold tasks |
-| Add new route | `.claude/skills/new-route.md` | adding HTTP routes |
-| Dependency hygiene | `.claude/skills/deps-hygiene.md` | dependency / lockfile tasks |
-| Commit style | `.claude/skills/commit.md` | git commit messages |
-| Config mode switching | `.claude/skills/config-mode.md` | switching dev/prod config, `.kb/kb.config.json` |
-| Site voice | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**` |
-| **Broken link checker** | `.claude/skills/check-links.md` | editing `sites/web/**`, broken links, `check-links.mjs` |
-| Aeza proxy | `.claude/skills/aeza-proxy.md` | proxy / VPS tasks |
-| **Marketplace rehash** | `.claude/skills/marketplace-rehash.md` | stale lock hashes, NoOp/MockLLM fallback, `.kb/marketplace.lock`, `adapters/**` |
+| Skill                      | Path                                   | Activates when                                                                           |
+| -------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Task research (RAG)**    | `.claude/skills/task-rag.md`           | any implementation task                                                                  |
+| **Testing strategy**       | `.claude/skills/testing.md`            | editing `**/*.test.ts`, `**/*.spec.ts`, `**/e2e/**`, `**/__tests__/**`, `**/commands/**` |
+| Plugin development         | `.claude/skills/dev-plugin.md`         | editing `plugins/**`                                                                     |
+| Core development           | `.claude/skills/dev-core.md`           | editing `core/**`, `sdk/**`                                                              |
+| Monorepo patterns          | `.claude/skills/dev-monorepo.md`       | cross-package work                                                                       |
+| **Workflow investigation** | `.claude/skills/workflow.md`           | editing `plugins/workflow/**`                                                            |
+| **Quality plugin**         | `.claude/skills/quality.md`            | editing `plugins/quality/**` or architecture/coupling tasks                              |
+| **ClickUp plugin**         | `.claude/skills/clickup.md`            | editing `plugins/clickup/**` or any clickup task                                         |
+| Release pipeline           | `.claude/skills/tool-release.md`       | release / changelog tasks                                                                |
+| kb-devkit usage            | `.claude/skills/tool-kb-devkit.md`     | build / task runner questions                                                            |
+| kb-dev usage               | `.claude/skills/tool-kb-dev.md`        | service management                                                                       |
+| kb-deploy usage            | `.claude/skills/tool-kb-deploy.md`     | deploy tasks                                                                             |
+| kb-monitor usage           | `.claude/skills/tool-kb-monitor.md`    | monitoring tasks                                                                         |
+| Code generation            | `.claude/skills/tool-generate.md`      | generate / scaffold tasks                                                                |
+| Add new route              | `.claude/skills/new-route.md`          | adding HTTP routes                                                                       |
+| Dependency hygiene         | `.claude/skills/deps-hygiene.md`       | dependency / lockfile tasks                                                              |
+| Commit style               | `.claude/skills/commit.md`             | git commit messages                                                                      |
+| Config mode switching      | `.claude/skills/config-mode.md`        | switching dev/prod config, `.kb/kb.config.json`                                          |
+| Site voice                 | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**`                                                                       |
+| **Broken link checker**    | `.claude/skills/check-links.md`        | editing `sites/web/**`, broken links, `check-links.mjs`                                  |
+| Aeza proxy                 | `.claude/skills/aeza-proxy.md`         | proxy / VPS tasks                                                                        |
+| **Marketplace rehash**     | `.claude/skills/marketplace-rehash.md` | stale lock hashes, NoOp/MockLLM fallback, `.kb/marketplace.lock`, `adapters/**`          |
+
+## Logging contract
+
+All platform-backed processes use `IContextLogger` from `@kb-labs/core-platform`.
+Create the root context only in the platform launcher; derive scopes with
+`forComponent`, `forOperation`, and `forPlugin`. Do not construct correlation
+metadata by hand and do not use `logger.child()` to replace platform identity.
+
+Every platform record carries `applicationId`, `serviceId`, `instanceId`, and
+`layer`. A request adds `requestId`, `traceId`, and optional `spanId`/`tenantId`.
+Plugins inherit these values and can add `pluginId`, `pluginVersion`, and
+`pluginKind`; parent identity always wins. Domain attributes are namespaced,
+for example `http.method`, `http.route`, `workflow.run_id`, or `adapter.slot`.
+
+Use levels consistently: `fatal` only when the process cannot continue;
+`error` for failed operations; `warn` for a degraded actionable state; `info`
+for one lifecycle/result summary; `debug` for technical steps (including HTTP
+request start and route mounting); and `trace` for payload/transport detail.
+HTTP completion is `info` only for meaningful business requests; health and
+probe requests are `debug`. `KB_LOG_LEVEL=silent` suppresses all logs.
+
+Use canonical lifecycle events (`platform.*`, `service.*`) through
+`logger.event()`. Agent diagnostics are opt-in with `KB_DIAGNOSTICS=agent` and
+must be structured, actionable, and free of secrets, tokens, raw environment,
+or request payloads. See `docs/adr/0036-platform-log-context-contract.md`.
 
 <!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
+
 ## KB Labs Platform
 
 This project uses the [KB Labs](https://github.com/kb-labs-team/kb-labs) platform.
@@ -286,4 +320,5 @@ you work with the platform efficiently.
 - `.claude/skills/kb-labs-*` — managed skills (reinstalled by `kb-create update`)
 
 For full platform documentation see https://github.com/kb-labs-team/kb-labs.
+
 <!-- END: KB Labs (managed) -->

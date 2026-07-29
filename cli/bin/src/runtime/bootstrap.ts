@@ -34,6 +34,7 @@ import { initializePlatform } from "./platform-init";
 import { resolveVersion } from "./helpers/version";
 import { shouldShowLimits } from "./helpers/flags";
 import type { PlatformContainer, PlatformConfig } from "@kb-labs/core-runtime";
+import { createContextLogger } from "@kb-labs/core-platform";
 
 declare global {
   var __KB_PLATFORM_CONFIG__: PlatformConfig | undefined;
@@ -52,15 +53,20 @@ export interface CliRuntimeOptions {
   version?: string;
   cwd?: string;
   moduleUrl?: string;
-  registerBuiltinCommands?: (
-    input: { cwd: string; env: NodeJS.ProcessEnv; platformRoot?: string; projectRoot?: string },
-  ) => Promise<void> | void;
+  registerBuiltinCommands?: (input: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    platformRoot?: string;
+    projectRoot?: string;
+  }) => Promise<void> | void;
   parseArgs?: typeof parseArgs;
   registry?: typeof registry;
   createJsonPresenter?: typeof createJsonPresenter;
   createTextPresenter?: typeof createTextPresenter;
   createRuntime?: (options: RuntimeInitOptions) => Promise<CliRuntimeInstance>;
-  createRuntimeContext?: (options: RuntimeInitOptions) => Promise<CliExecutionContext>;
+  createRuntimeContext?: (
+    options: RuntimeInitOptions,
+  ) => Promise<CliExecutionContext>;
   runtimeExecutionLimits?: ExecutionLimits;
   runtimeMiddlewares?: MiddlewareConfig[];
   runtimeFormatters?: OutputFormatter[];
@@ -84,8 +90,12 @@ export async function executeCli(
     projectRoot,
   } = await initializePlatform(cwd, options.moduleUrl);
 
-  if (platformRoot) { loadEnvFile(platformRoot); }
-  if (projectRoot && projectRoot !== cwd) { loadEnvFile(projectRoot); }
+  if (platformRoot) {
+    loadEnvFile(platformRoot);
+  }
+  if (projectRoot && projectRoot !== cwd) {
+    loadEnvFile(projectRoot);
+  }
 
   globalThis.__KB_PLATFORM_CONFIG__ = platformConfig;
   globalThis.__KB_RAW_CONFIG__ = rawConfig;
@@ -99,8 +109,10 @@ export async function executeCli(
   const version = resolveVersion(options.version, env);
   const parse = options.parseArgs ?? parseArgs;
   const registryStore = options.registry ?? registry;
-  const jsonPresenterFactory = options.createJsonPresenter ?? createJsonPresenter;
-  const textPresenterFactory = options.createTextPresenter ?? createTextPresenter;
+  const jsonPresenterFactory =
+    options.createJsonPresenter ?? createJsonPresenter;
+  const textPresenterFactory =
+    options.createTextPresenter ?? createTextPresenter;
   const runtimeFactory =
     options.createRuntime ??
     (async (runtimeOptions: RuntimeInitOptions) => {
@@ -114,10 +126,24 @@ export async function executeCli(
 
   applyLogLevel(global.debug, global.logLevel, env.KB_LOG_LEVEL);
 
-  const cliLogger = createCliLogger(platform, cwd, version, argv, cmdPath, global);
+  const cliLogger = createCliLogger(
+    platform,
+    cwd,
+    version,
+    argv,
+    cmdPath,
+    global,
+  );
 
-  const registerCommands = options.registerBuiltinCommands ?? registerBuiltinCommands;
-  await registerCommands({ cwd, env, logger: cliLogger, platformRoot, projectRoot });
+  const registerCommands =
+    options.registerBuiltinCommands ?? registerBuiltinCommands;
+  await registerCommands({
+    cwd,
+    env,
+    logger: cliLogger,
+    platformRoot,
+    projectRoot,
+  });
 
   // ── Handle --version early ─────────────────────────────────────────────────
   if (global.version) {
@@ -134,7 +160,13 @@ export async function executeCli(
   if (global.help && cmdPath.length === 0) {
     const presenter = textPresenterFactory(global.quiet);
     if (global.json) {
-      presenter.json({ ok: false, error: { code: "CMD_NOT_FOUND", message: "Use text mode for help display" } });
+      presenter.json({
+        ok: false,
+        error: {
+          code: "CMD_NOT_FOUND",
+          message: "Use text mode for help display",
+        },
+      });
     } else {
       presenter.write(renderGlobalHelp(registryStore));
     }
@@ -142,11 +174,11 @@ export async function executeCli(
   }
 
   // ── Handle __complete (shell tab completion) ───────────────────────────────
-  if (cmdPath[0] === '__complete') {
+  if (cmdPath[0] === "__complete") {
     const completionTokens = cmdPath.slice(1);
     const completions = registryStore.complete(completionTokens);
     for (const c of completions) {
-      process.stdout.write(c + '\n');
+      process.stdout.write(c + "\n");
     }
     return 0;
   }
@@ -156,20 +188,28 @@ export async function executeCli(
     : textPresenterFactory(global.quiet);
 
   const output = createOutput({
-    verbosity: global.quiet ? 'quiet' : global.debug ? 'debug' : 'normal',
+    verbosity: global.quiet ? "quiet" : global.debug ? "debug" : "normal",
     json: global.json,
-    format: global.debug ? 'human' : 'human',
-    category: 'cli',
+    format: global.debug ? "human" : "human",
+    category: "cli",
   });
 
-  const logger = cliLogger.child({ category: "bootstrap", meta: { service: "runtime-bootstrap" } });
+  const logger = cliLogger.child({
+    category: "bootstrap",
+    meta: { service: "runtime-bootstrap" },
+  });
 
-  logger.debug('[bootstrap] rawConfig', { state: rawConfig ? 'EXISTS' : 'UNDEFINED' });
+  logger.debug("[bootstrap] rawConfig", {
+    state: rawConfig ? "EXISTS" : "UNDEFINED",
+  });
   if (rawConfig) {
-    logger.debug('[bootstrap] rawConfig keys', { keys: Object.keys(rawConfig) });
+    logger.debug("[bootstrap] rawConfig keys", {
+      keys: Object.keys(rawConfig),
+    });
   }
 
-  const runtimeMiddlewares = options.runtimeMiddlewares ?? getDefaultMiddlewares();
+  const runtimeMiddlewares =
+    options.runtimeMiddlewares ?? getDefaultMiddlewares();
 
   const cliContext = await createContext({
     presenter,
@@ -178,7 +218,7 @@ export async function executeCli(
     env,
     cwd,
     profileId: global.profile,
-    verbosity: global.quiet ? 'quiet' : (global.verbose ? 'verbose' : 'normal'),
+    verbosity: global.quiet ? "quiet" : global.verbose ? "verbose" : "normal",
     jsonMode: global.json || false,
   });
 
@@ -207,20 +247,37 @@ export async function executeCli(
   const routeResult = registryStore.resolve(cmdPath);
 
   switch (routeResult.type) {
-    case 'not-found': {
-      const input = routeResult.input.join(' ') || '(none)';
+    case "not-found": {
+      const input = routeResult.input.join(" ") || "(none)";
       const diagCmd = `kb diag --command "${input}"`;
       const diagHint = `\nTip: run  ${diagCmd}  to diagnose`;
       if (routeResult.suggestions.length > 0) {
-        const sugs = routeResult.suggestions.map((s) => `  kb ${s}`).join('\n');
+        const sugs = routeResult.suggestions.map((s) => `  kb ${s}`).join("\n");
         if (global.json) {
-          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}`, suggestions: routeResult.suggestions, diagCommand: diagCmd } });
+          presenter.json({
+            ok: false,
+            error: {
+              code: "CMD_NOT_FOUND",
+              message: `Unknown command: ${input}`,
+              suggestions: routeResult.suggestions,
+              diagCommand: diagCmd,
+            },
+          });
         } else {
-          presenter.error(`Unknown command: ${input}\nDid you mean:\n${sugs}${diagHint}`);
+          presenter.error(
+            `Unknown command: ${input}\nDid you mean:\n${sugs}${diagHint}`,
+          );
         }
       } else {
         if (global.json) {
-          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}`, diagCommand: diagCmd } });
+          presenter.json({
+            ok: false,
+            error: {
+              code: "CMD_NOT_FOUND",
+              message: `Unknown command: ${input}`,
+              diagCommand: diagCmd,
+            },
+          });
         } else {
           presenter.error(`Unknown command: ${input}${diagHint}`);
         }
@@ -228,33 +285,45 @@ export async function executeCli(
       return 1;
     }
 
-    case 'ambiguous': {
-      const candidates = routeResult.candidates.map((c) => `  kb ${c}`).join('\n');
+    case "ambiguous": {
+      const candidates = routeResult.candidates
+        .map((c) => `  kb ${c}`)
+        .join("\n");
       if (global.json) {
-        presenter.json({ ok: false, error: { code: 'CMD_AMBIGUOUS', message: 'Ambiguous command', candidates: routeResult.candidates } });
+        presenter.json({
+          ok: false,
+          error: {
+            code: "CMD_AMBIGUOUS",
+            message: "Ambiguous command",
+            candidates: routeResult.candidates,
+          },
+        });
       } else {
         presenter.error(`Ambiguous command. Did you mean:\n${candidates}`);
       }
       return 1;
     }
 
-    case 'group': {
+    case "group": {
       const { segments, describe, childKeys } = routeResult;
       if (global.json) {
-        presenter.json({ ok: true, group: { path: segments.join(' '), describe, children: childKeys } });
+        presenter.json({
+          ok: true,
+          group: { path: segments.join(" "), describe, children: childKeys },
+        });
         return 0;
       }
       // Try to get detailed commands for the group
       const groupCommands = registryStore.listCommandsUnder(segments);
       if (groupCommands.length > 0) {
-        presenter.write(renderProductHelp(segments.join(' '), groupCommands));
+        presenter.write(renderProductHelp(segments.join(" "), groupCommands));
       } else {
         presenter.write(renderGroupHelp({ segments, describe, childKeys }));
       }
       return 0;
     }
 
-    case 'system-group': {
+    case "system-group": {
       const group = routeResult.group;
       if (global.json) {
         presenter.json({
@@ -262,55 +331,71 @@ export async function executeCli(
           group: {
             name: group.name,
             describe: group.describe,
-            commands: group.commands.map((c) => ({ name: c.name, describe: c.describe })),
+            commands: group.commands.map((c) => ({
+              name: c.name,
+              describe: c.describe,
+            })),
           },
         });
         return 0;
       }
-      presenter.write(renderGroupHelp({
-        segments: [group.name],
-        describe: group.describe,
-        childKeys: group.commands.map((c) => c.name),
-      }));
+      presenter.write(
+        renderGroupHelp({
+          segments: [group.name],
+          describe: group.describe,
+          childKeys: group.commands.map((c) => c.name),
+        }),
+      );
       return 0;
     }
 
-    case 'system-cmd': {
+    case "system-cmd": {
       const cmd = routeResult.cmd;
       const actualRest = routeResult.rest;
 
       if (global.help) {
         const lines = [`${cmd.name}: ${cmd.describe}`];
-        if (cmd.longDescription) { lines.push('', cmd.longDescription); }
+        if (cmd.longDescription) {
+          lines.push("", cmd.longDescription);
+        }
         if (cmd.flags && cmd.flags.length > 0) {
-          lines.push('', 'Flags:');
+          lines.push("", "Flags:");
           for (const f of cmd.flags) {
-            lines.push(`  --${f.name}  ${f.description ?? ''}`);
+            lines.push(`  --${f.name}  ${f.description ?? ""}`);
           }
         }
-        presenter.write(lines.join('\n'));
+        presenter.write(lines.join("\n"));
         return 0;
       }
 
       try {
         const runtime = await runtimeFactory(runtimeInitOptions);
         const v3Context = createSystemCommandContext(cliContext, platform);
-        const exitCode = await runtime.middleware.execute(cliContext, async () => {
-          const code = await cmd.run(v3Context, actualRest, { ...global, ...flagsObj });
-          return typeof code === 'number' ? code : 0;
-        });
+        const exitCode = await runtime.middleware.execute(
+          cliContext,
+          async () => {
+            const code = await cmd.run(v3Context, actualRest, {
+              ...global,
+              ...flagsObj,
+            });
+            return typeof code === "number" ? code : 0;
+          },
+        );
         return exitCode;
       } catch (error: unknown) {
         return handleExecutionError(error, presenter);
       }
     }
 
-    case 'command': {
+    case "command": {
       const manifestCmd = routeResult.command;
       const actualRest = routeResult.rest;
 
-      if (flagsObj['schema'] && manifestCmd.manifest.operationType) {
-        process.stdout.write(JSON.stringify(generateCommandSchema(manifestCmd.manifest), null, 2) + '\n');
+      if (flagsObj["schema"] && manifestCmd.manifest.operationType) {
+        process.stdout.write(
+          JSON.stringify(generateCommandSchema(manifestCmd.manifest), null, 2) +
+            "\n",
+        );
         return 0;
       }
 
@@ -318,7 +403,7 @@ export async function executeCli(
         if (global.json) {
           presenter.json({
             ok: true,
-            command: manifestCmd.manifest.segments.join(' '),
+            command: manifestCmd.manifest.segments.join(" "),
             manifest: {
               describe: manifestCmd.manifest.describe,
               longDescription: manifestCmd.manifest.longDescription,
@@ -336,7 +421,15 @@ export async function executeCli(
       try {
         const runtime = await runtimeFactory(runtimeInitOptions);
         return runtime.middleware.execute(cliContext, () =>
-          dispatchPlugin({ manifestCmd, actualRest, global, flagsObj, cliContext, platform, presenter })
+          dispatchPlugin({
+            manifestCmd,
+            actualRest,
+            global,
+            flagsObj,
+            cliContext,
+            platform,
+            presenter,
+          }),
         );
       } catch (error: unknown) {
         return handleExecutionError(error, presenter);
@@ -348,21 +441,23 @@ export async function executeCli(
 interface DispatchPluginParams {
   manifestCmd: RegisteredCommand;
   actualRest: string[];
-  global: ReturnType<typeof parseArgs>['global'];
-  flagsObj: ReturnType<typeof parseArgs>['flagsObj'];
+  global: ReturnType<typeof parseArgs>["global"];
+  flagsObj: ReturnType<typeof parseArgs>["flagsObj"];
   cliContext: CliExecutionContext;
   platform: PlatformContainer;
   presenter: Presenter;
 }
 
 async function dispatchPlugin(p: DispatchPluginParams): Promise<number> {
-  const commandPath = p.manifestCmd.manifest.segments.join(' ');
-  const commandId = p.manifestCmd.manifest.segments.join(':');
+  const commandPath = p.manifestCmd.manifest.segments.join(" ");
+  const commandId = p.manifestCmd.manifest.segments.join(":");
 
   const rawConfig = globalThis.__KB_RAW_CONFIG__;
-  const executionMode = (rawConfig?.execution as Record<string, unknown> | undefined)?.mode;
+  const executionMode = (
+    rawConfig?.execution as Record<string, unknown> | undefined
+  )?.mode;
 
-  if (executionMode !== 'in-process') {
+  if (executionMode !== "in-process") {
     const gatewayClient = await tryResolveGateway();
     if (gatewayClient) {
       return executeViaGateway(gatewayClient, {
@@ -383,26 +478,51 @@ async function dispatchPlugin(p: DispatchPluginParams): Promise<number> {
     platform: p.platform,
   });
 
-  if (pluginExitCode !== undefined) { return pluginExitCode; }
+  if (pluginExitCode !== undefined) {
+    return pluginExitCode;
+  }
 
-  throw new Error(`Plugin command "${commandPath}" is not available for execution. Ensure the command has a handler in its manifest.`);
+  throw new Error(
+    `Plugin command "${commandPath}" is not available for execution. Ensure the command has a handler in its manifest.`,
+  );
 }
 
-type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
-const VALID_LOG_LEVELS: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error', 'silent'];
+type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "silent";
+const VALID_LOG_LEVELS: LogLevel[] = [
+  "trace",
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "silent",
+];
 
-function resolveLogLevel(debug: unknown, logLevelFlag: unknown, envLevel: string | undefined): LogLevel {
-  if (debug) { return 'debug'; }
-  const raw = String(logLevelFlag ?? envLevel ?? 'silent').toLowerCase();
-  return (VALID_LOG_LEVELS.includes(raw as LogLevel) ? raw as LogLevel : 'silent');
+function resolveLogLevel(
+  debug: unknown,
+  logLevelFlag: unknown,
+  envLevel: string | undefined,
+): LogLevel {
+  if (debug) {
+    return "debug";
+  }
+  const raw = String(logLevelFlag ?? envLevel ?? "silent").toLowerCase();
+  return VALID_LOG_LEVELS.includes(raw as LogLevel)
+    ? (raw as LogLevel)
+    : "silent";
 }
 
-function applyLogLevel(debug: unknown, logLevelFlag: unknown, envLevel: string | undefined): void {
+function applyLogLevel(
+  debug: unknown,
+  logLevelFlag: unknown,
+  envLevel: string | undefined,
+): void {
   const logLevel = resolveLogLevel(debug, logLevelFlag, envLevel);
   if (!process.env.LOG_LEVEL && !process.env.KB_LOG_LEVEL) {
     process.env.KB_LOG_LEVEL = logLevel;
   }
-  if (debug) { process.env.DEBUG_SANDBOX = '1'; }
+  if (debug) {
+    process.env.DEBUG_SANDBOX = "1";
+  }
 }
 
 function createCliLogger(
@@ -414,19 +534,21 @@ function createCliLogger(
   global: { json?: unknown; quiet?: unknown; debug?: unknown },
 ): ILogger {
   const requestId = `cli-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const logger = platform.logger.child({
-    layer: 'cli',
-    cwd,
-    version,
-    requestId,
-    reqId: requestId,
-    traceId: `trace-${crypto.randomUUID()}`,
-    spanId: `span-${crypto.randomUUID()}`,
-    invocationId: `inv-${crypto.randomUUID()}`,
-    argv,
-  });
-  logger.info('CLI invocation started', {
-    commandPath: cmdPath.join(' '),
+  const logger = createContextLogger(platform.logger, {
+    applicationId: "kb",
+    serviceId: "kb",
+    instanceId: `${process.pid}`,
+    layer: "cli",
+  })
+    .forComponent("cli-command")
+    .forOperation("cli.invocation", {
+      requestId,
+      traceId: `trace-${crypto.randomUUID()}`,
+      spanId: `span-${crypto.randomUUID()}`,
+    })
+    .with({ cwd, version, invocationId: `inv-${crypto.randomUUID()}`, argv });
+  logger.info("CLI invocation started", {
+    commandPath: cmdPath.join(" "),
     argsCount: argv.length,
     jsonMode: Boolean(global.json),
     quietMode: Boolean(global.quiet),

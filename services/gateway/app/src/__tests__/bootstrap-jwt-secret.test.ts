@@ -31,6 +31,9 @@ vi.mock("@kb-labs/core-runtime", () => ({
         fatal: vi.fn(),
         child: vi.fn(),
       }),
+      forComponent: () => ({
+        forOperation: () => ({ info: vi.fn(), warn: vi.fn() }),
+      }),
     },
     cache: { get: vi.fn(), set: vi.fn(), delete: vi.fn(), clear: vi.fn() },
     getAdapter: vi.fn().mockImplementation((name: string) => {
@@ -45,26 +48,25 @@ vi.mock("@kb-labs/core-runtime", () => ({
 }));
 
 vi.mock("@kb-labs/shared-daemon", () => ({
-  runService: vi.fn().mockImplementation(async (config) =>
-    config.setup({
+  runService: vi.fn().mockImplementation(async (config) => {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      trace: vi.fn(),
+      fatal: vi.fn(),
+      child: vi.fn(),
+      forComponent: vi.fn(),
+      forOperation: vi.fn(),
+    };
+    logger.child.mockReturnValue(logger);
+    logger.forComponent.mockReturnValue(logger);
+    logger.forOperation.mockReturnValue(logger);
+
+    return config.setup({
       platform: {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-          debug: vi.fn(),
-          trace: vi.fn(),
-          fatal: vi.fn(),
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-            trace: vi.fn(),
-            fatal: vi.fn(),
-            child: vi.fn(),
-          }),
-        },
+        logger,
         cache: { get: vi.fn(), set: vi.fn(), delete: vi.fn(), clear: vi.fn() },
         getAdapter: vi.fn().mockImplementation((name: string) => {
           if (name === "serviceTransport") {
@@ -78,8 +80,9 @@ vi.mock("@kb-labs/shared-daemon", () => ({
       platformRoot: "/tmp/kb-platform",
       port: 4000,
       host: "127.0.0.1",
-    }),
-  ),
+      logger,
+    });
+  }),
 }));
 
 vi.mock("../config.js", () => ({
@@ -105,14 +108,6 @@ vi.mock("../hosts/registry.js", () => ({
 
 vi.mock("@kb-labs/gateway-core", () => ({
   HostStore: vi.fn(),
-}));
-
-vi.mock("@kb-labs/shared-http", () => ({
-  createCorrelatedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
 }));
 
 describe("bootstrap — JWT secret validation (H6)", () => {

@@ -74,6 +74,8 @@ export interface LogSearchOptions {
   limit?: number;
   /** Number of logs to skip for pagination (default: 0) */
   offset?: number;
+  /** Structured filters combined with the text match. */
+  filters?: LogQuery;
 }
 
 /**

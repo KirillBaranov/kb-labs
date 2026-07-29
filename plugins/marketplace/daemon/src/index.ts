@@ -3,9 +3,10 @@
  * Marketplace service entry point.
  */
 
-import { bootstrap } from './bootstrap.js';
+import { bootstrap } from "./bootstrap.js";
 
-bootstrap(process.cwd()).catch((error) => {
-  console.error('Failed to start marketplace service:', error);
-  process.exit(1);
+bootstrap(process.cwd()).catch(() => {
+  // runService() already emitted the canonical platform/service failure event.
+  // Setting exitCode lets its logger flush without duplicating an unstructured stack.
+  process.exitCode = 1;
 });

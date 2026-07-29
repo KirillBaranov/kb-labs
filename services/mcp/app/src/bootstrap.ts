@@ -1,9 +1,5 @@
 import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
 import { resolvePolicy } from "@kb-labs/core-policy";
-import {
-  createCorrelatedLogger,
-  resolveObservabilityInstanceId,
-} from "@kb-labs/shared-http";
 import { noopUI } from "@kb-labs/plugin-contracts";
 import { runService } from "@kb-labs/shared-daemon";
 import { loadJwtConfig } from "./mcp/auth.js";
@@ -25,15 +21,17 @@ export async function bootstrap(): Promise<void> {
       },
       assemblyHook: makeAssemblyHook(),
     },
-    async setup({ platform, port, host, projectRoot, platformRoot }) {
-      const logger = createCorrelatedLogger(platform.logger, {
-        serviceId: "mcp-daemon",
-        instanceId: resolveObservabilityInstanceId(),
-        logsSource: "mcp-daemon",
-        layer: "mcp",
-        service: "bootstrap",
-        operation: "mcp-daemon.bootstrap",
-      });
+    async setup({
+      platform,
+      logger: serviceLogger,
+      port,
+      host,
+      projectRoot,
+      platformRoot,
+    }) {
+      const logger = serviceLogger
+        .forComponent("mcp-bootstrap")
+        .forOperation("mcp.bootstrap");
 
       logger.info("MCP daemon platform initialised");
 

@@ -5,7 +5,7 @@
 
 import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
 import { WorkflowEngine, WorkflowService } from "@kb-labs/workflow-engine";
-import { createCorrelatedLogger, getListenOptions } from "@kb-labs/shared-http";
+import { getListenOptions } from "@kb-labs/shared-http";
 import { runService } from "@kb-labs/shared-daemon";
 import { createWorkflowWorker } from "./worker.js";
 import { JobBroker } from "./job-broker.js";
@@ -34,7 +34,14 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
     platform: {
       assemblyHook: makeAssemblyHook(),
     },
-    async setup({ platform, port, host, projectRoot, platformRoot }) {
+    async setup({
+      platform,
+      port,
+      host,
+      projectRoot,
+      platformRoot,
+      logger: serviceLogger,
+    }) {
       // KB_PROJECT_ROOT injected by kb-dev when invoked from a project dir with separate platform.
       // Fall back to the resolved repoRoot (not raw cwd) so plugin/cron/workflow discovery is
       // correct even when the daemon is launched from a subdirectory.
@@ -43,20 +50,14 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
       const startupRequestId = `workflow-startup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const startupTraceId = randomUUID();
       const startupSpanId = randomUUID();
-      const bootstrapLogger = createCorrelatedLogger(platform.logger, {
-        serviceId: "workflow",
-        logsSource: "workflow",
-        layer: "workflow",
-        service: "bootstrap",
-        requestId: startupRequestId,
-        traceId: startupTraceId,
-        operation: "workflow.bootstrap",
-        bindings: {
+      const bootstrapLogger = serviceLogger
+        .forComponent("workflow-bootstrap")
+        .forOperation("workflow.bootstrap", {
+          requestId: startupRequestId,
+          traceId: startupTraceId,
           spanId: startupSpanId,
-          invocationId: startupSpanId,
-          executionId: startupSpanId,
-        },
-      });
+        })
+        .with({ invocationId: startupSpanId, executionId: startupSpanId });
 
       if (!platform.isConfigured("workspace")) {
         bootstrapLogger.warn("Workspace adapter is not configured", {
@@ -94,14 +95,10 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
         operation: string,
         bindings?: Record<string, unknown>,
       ) =>
-        createCorrelatedLogger(platform.logger, {
-          serviceId: "workflow",
-          logsSource: "workflow",
-          layer: "workflow",
-          service,
-          operation,
-          bindings,
-        });
+        serviceLogger
+          .forComponent(`workflow-${service}`)
+          .forOperation(operation)
+          .with(bindings ?? {});
 
       bootstrapLogger.info("Loading plugin registry snapshot");
       const cliApi = await createRegistry({

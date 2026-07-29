@@ -9,8 +9,11 @@ import type {
   LLMCapability,
   LLMExecutionPolicy,
   PIIRedactionConfig,
-} from '@kb-labs/core-platform';
-import type { RateLimitConfig, RateLimitPreset } from '@kb-labs/core-resource-broker';
+} from "@kb-labs/core-platform";
+import type {
+  RateLimitConfig,
+  RateLimitPreset,
+} from "@kb-labs/core-resource-broker";
 
 /**
  * Model entry in tier mapping.
@@ -101,6 +104,10 @@ export interface AdaptersConfig {
   storage?: AdapterValue;
   /** Logger adapter package(s) (e.g., "@kb-labs/adapters-pino") */
   logger?: AdapterValue;
+  /** Optional durable log store. Without it logs remain available only in configured ephemeral readers. */
+  logPersistence?: AdapterValue;
+  /** Optional in-process live log buffer. It is never a cross-process store. */
+  logRingBuffer?: AdapterValue;
   /** Event bus adapter package(s) */
   eventBus?: AdapterValue;
   /** Environment provider adapter package(s) (e.g., "@kb-labs/adapters-environment-docker") */
@@ -154,7 +161,7 @@ export interface ExecutionConfig {
    * - 'remote': Remote executor service (Phase 3, distributed fleet)
    * @default 'auto'
    */
-  mode?: 'auto' | 'in-process' | 'worker-pool' | 'remote' | 'container';
+  mode?: "auto" | "in-process" | "worker-pool" | "remote" | "container";
 
   /**
    * Container execution options (used when mode=container).
@@ -180,7 +187,7 @@ export interface ExecutionConfig {
     /** Internal secret for Gateway endpoints */
     internalSecret: string;
     /** Fallback when no agent available: 'local' (default) or 'error' */
-    fallback?: 'local' | 'error';
+    fallback?: "local" | "error";
   };
 
   /**
@@ -206,7 +213,7 @@ export interface ExecutionConfig {
        * - 'marked': Warmup handlers marked with warmup: true in manifest
        * @default 'none'
        */
-      mode?: 'none' | 'top-n' | 'marked';
+      mode?: "none" | "top-n" | "marked";
       /** Warmup top N most used handlers (for top-n mode) @default 5 */
       topN?: number;
       /** Max handlers to warmup (safety limit) @default 20 */
@@ -319,7 +326,7 @@ export interface NotifierChannelConfig {
 /** A single routing rule: match criteria → target channel IDs. Rules evaluated top-down (first match wins). */
 export interface NotifierRoutingRule {
   match: {
-    severity?: Array<'info' | 'warn' | 'critical'>;
+    severity?: Array<"info" | "warn" | "critical">;
     /** Match by source plugin ID. */
     source?: string;
     /** Match by notification code (e.g. 'workflow.failed'). */
@@ -366,12 +373,15 @@ export interface PlatformConfig {
  * - `mergeable`      — project overrides platform via deep merge.
  * - `project-only`   — only the project layer is honored.
  */
-export type ConfigFieldScope = 'platform-only' | 'mergeable' | 'project-only';
+export type ConfigFieldScope = "platform-only" | "mergeable" | "project-only";
 
-export const CONFIG_FIELD_SCOPE: Record<keyof PlatformConfig, ConfigFieldScope> = {
-  platform: 'project-only',
-  adapters: 'mergeable',
-  adapterOptions: 'mergeable',
-  core: 'platform-only',
-  execution: 'platform-only',
+export const CONFIG_FIELD_SCOPE: Record<
+  keyof PlatformConfig,
+  ConfigFieldScope
+> = {
+  platform: "project-only",
+  adapters: "mergeable",
+  adapterOptions: "mergeable",
+  core: "platform-only",
+  execution: "platform-only",
 };

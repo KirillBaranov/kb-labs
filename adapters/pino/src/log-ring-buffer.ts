@@ -3,6 +3,7 @@
  * Ring buffer for in-memory log storage with real-time streaming
  */
 
+import { LOG_CONTEXT_FIELDS } from "@kb-labs/sdk/adapters";
 import type {
   LogRecord,
   LogQuery,
@@ -92,6 +93,13 @@ export class LogRingBuffer implements ILogBuffer {
         const recordLevelIndex = levels.indexOf(r.level);
         return recordLevelIndex >= minLevelIndex;
       });
+    }
+
+    for (const field of LOG_CONTEXT_FIELDS) {
+      const value = query[field];
+      if (value !== undefined) {
+        results = results.filter((record) => record.fields[field] === value);
+      }
     }
 
     // Apply limit

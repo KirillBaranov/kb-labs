@@ -13,7 +13,7 @@
  */
 
 import type { LogRecord, LogQuery } from "./logger";
-import type { IDocumentDatabase } from './database.js';
+import type { IDocumentDatabase } from "./database.js";
 
 /**
  * Persistent log storage for historical queries.
@@ -138,6 +138,8 @@ export interface ILogPersistence {
       limit?: number;
       /** Number of logs to skip (default: 0) */
       offset?: number;
+      /** Structured filters combined with the text match. */
+      filters?: LogQuery;
     },
   ): Promise<{
     /** Logs matching search query */
@@ -210,31 +212,27 @@ export interface ILogPersistence {
  * Defaults are applied when retention is omitted — logs are never unbounded.
  */
 export interface LogRetentionPolicy {
-  /**
-   * Max age for warn/error/fatal logs in milliseconds.
-   * @default 604800000 (7 days)
-   */
-  maxAge?: number;
+  /** Max age for fatal records. @default 2592000000 (30 days) */
+  maxAgeFatal?: number;
+
+  /** Max age for error records. @default 1209600000 (14 days) */
+  maxAgeError?: number;
+
+  /** Max age for warning records. @default 604800000 (7 days) */
+  maxAgeWarn?: number;
 
   /**
    * Max age for debug/trace logs in milliseconds.
    * Set to 0 to disable debug/trace persistence entirely.
-   * @default 3600000 (1 hour)
+   * @default 1800000 (30 minutes)
    */
   maxAgeDebug?: number;
 
   /**
    * Max age for info logs in milliseconds.
-   * @default 86400000 (24 hours)
+   * @default 1800000 (30 minutes)
    */
   maxAgeInfo?: number;
-
-  /**
-   * Maximum database size in bytes.
-   * When exceeded, oldest logs are deleted until size is under limit.
-   * @default 524288000 (500 MB)
-   */
-  maxSizeBytes?: number;
 
   /**
    * How often to run retention cleanup in milliseconds.

@@ -11,9 +11,9 @@
  * inject a richer installer if they need one.
  */
 
-import { spawn } from 'node:child_process';
-import * as path from 'node:path';
-import * as fs from 'node:fs/promises';
+import { spawn } from "node:child_process";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
 
 // ---------------------------------------------------------------------------
 // Interface
@@ -65,8 +65,10 @@ export interface PnpmInstallerOptions {
  * (which is what we want for deploy bundles — pnpm will coalesce with
  * anything already declared).
  */
-export function createPnpmInstaller(options: PnpmInstallerOptions = {}): PackageInstaller {
-  const pnpmBin = options.pnpmBin ?? 'pnpm';
+export function createPnpmInstaller(
+  options: PnpmInstallerOptions = {},
+): PackageInstaller {
+  const pnpmBin = options.pnpmBin ?? "pnpm";
 
   return {
     async install({ root, name, version }) {
@@ -74,9 +76,12 @@ export function createPnpmInstaller(options: PnpmInstallerOptions = {}): Package
       const absRoot = path.resolve(root);
 
       // Fast path: already installed at the right version.
-      const targetPkgRoot = path.join(absRoot, 'node_modules', name);
+      const targetPkgRoot = path.join(absRoot, "node_modules", name);
       try {
-        const pkgJsonRaw = await fs.readFile(path.join(targetPkgRoot, 'package.json'), 'utf8');
+        const pkgJsonRaw = await fs.readFile(
+          path.join(targetPkgRoot, "package.json"),
+          "utf8",
+        );
         const pkgJson = JSON.parse(pkgJsonRaw) as { version?: string };
         if (pkgJson.version === version) {
           return { resolvedPath: targetPkgRoot };
@@ -85,11 +90,16 @@ export function createPnpmInstaller(options: PnpmInstallerOptions = {}): Package
         // Not installed — fall through and run pnpm.
       }
 
-      await runPnpm(pnpmBin, ['add', spec, '--prod'], absRoot, options.env);
+      await runPnpm(
+        pnpmBin,
+        ["add", spec, "--prod", "--reporter=silent"],
+        absRoot,
+        options.env,
+      );
 
       // Verify the install landed where we expect.
       try {
-        await fs.access(path.join(targetPkgRoot, 'package.json'));
+        await fs.access(path.join(targetPkgRoot, "package.json"));
       } catch {
         throw new Error(
           `pnpm add ${spec} completed but ${targetPkgRoot}/package.json is missing`,
@@ -111,32 +121,32 @@ function runPnpm(
     const child = spawn(pnpmBin, args, {
       cwd,
       env: { ...process.env, ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    child.stdout?.on('data', (chunk: Buffer) => {
+    child.stdout?.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
     });
-    child.stderr?.on('data', (chunk: Buffer) => {
+    child.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       reject(new Error(`Failed to spawn ${pnpmBin}: ${err.message}`));
     });
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       if (code === 0) {
         resolve();
         return;
       }
-      const tail = (stderr || stdout).trim().split('\n').slice(-20).join('\n');
+      const tail = (stderr || stdout).trim().split("\n").slice(-20).join("\n");
       reject(
         new Error(
-          `${pnpmBin} ${args.join(' ')} exited with code ${code} in ${cwd}\n${tail}`,
+          `${pnpmBin} ${args.join(" ")} exited with code ${code} in ${cwd}\n${tail}`,
         ),
       );
     });

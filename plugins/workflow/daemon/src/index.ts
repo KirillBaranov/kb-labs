@@ -5,13 +5,10 @@
  * Entry point for KB Workflow Daemon
  */
 
-import { bootstrap } from './bootstrap.js';
+import { bootstrap } from "./bootstrap.js";
 
-(async () => {
-  try {
-    await bootstrap(process.cwd());
-  } catch (error) {
-    process.stderr.write(`[workflow-daemon] FATAL: ${error instanceof Error ? error.message : String(error)}\n`);
-    process.exit(1);
-  }
-})();
+bootstrap(process.cwd()).catch(() => {
+  // runService() already emitted the canonical platform/service failure event.
+  // Setting exitCode lets its logger flush without duplicating an unstructured stack.
+  process.exitCode = 1;
+});

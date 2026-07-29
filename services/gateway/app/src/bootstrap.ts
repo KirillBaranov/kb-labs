@@ -8,7 +8,6 @@ import {
 } from "@kb-labs/core-platform/inmemory";
 import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
 import { runService, type ServiceContext } from "@kb-labs/shared-daemon";
-import { createCorrelatedLogger } from "@kb-labs/shared-http";
 import type { IHostStore, AuthConfig } from "@kb-labs/gateway-contracts";
 import type { IDocumentDatabase } from "@kb-labs/core-platform/adapters";
 import { HostStore } from "@kb-labs/gateway-core";
@@ -58,14 +57,11 @@ async function startGateway({
   platform,
   projectRoot,
   platformRoot,
+  logger: serviceLogger,
 }: ServiceContext): Promise<() => Promise<void>> {
-  const logger = createCorrelatedLogger(platform.logger, {
-    serviceId: "gateway",
-    logsSource: "gateway",
-    layer: "gateway",
-    service: "bootstrap",
-    operation: "gateway.bootstrap",
-  });
+  const logger = serviceLogger
+    .forComponent("gateway-bootstrap")
+    .forOperation("gateway.bootstrap");
   logger.info("Platform initialized", { projectRoot, platformRoot });
 
   // 2. Load gateway config — reads platform baseline + project layer +

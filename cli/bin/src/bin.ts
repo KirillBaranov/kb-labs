@@ -19,12 +19,26 @@
  * `process.exit()` so the shell receives the correct status.
  */
 
-// CRITICAL: Set default log level BEFORE any imports to prevent log spam
-// This must happen before auto-init in lazy-loaded loggers
+const rawCliArgs = process.argv.slice(2);
+
+function resolveBootstrapLogLevel(args: string[]): string | undefined {
+  if (args.includes('--debug')) { return 'debug'; }
+  const inline = args.find((arg) => arg.startsWith('--log-level='));
+  if (inline) { return inline.slice('--log-level='.length); }
+  const index = args.indexOf('--log-level');
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+// CRITICAL: Set default log level BEFORE any imports to prevent log spam.
+// ESM static imports execute before the module body and used to initialise
+// PlatformContainer with the fallback logger at the default `info` level.
 if (!process.env.LOG_LEVEL && !process.env.KB_LOG_LEVEL) {
-  // Default to 'silent' to show NO logs without --debug flag
-  // User can override with --debug flag or LOG_LEVEL/KB_LOG_LEVEL env var
-  process.env.KB_LOG_LEVEL = 'silent';
+  process.env.KB_LOG_LEVEL = resolveBootstrapLogLevel(rawCliArgs) ?? 'silent';
+}
+
+// CLI diagnostics belong on stderr. Command results and UI stay on stdout.
+if (!process.env.KB_LOG_STREAM) {
+  process.env.KB_LOG_STREAM = 'stderr';
 }
 
 // Check for --json flag BEFORE imports to ensure auto-init uses correct mode
@@ -34,23 +48,7 @@ if (process.argv.includes('--json')) {
 }
 
 
-import { run } from "./index";
-import { platform } from "@kb-labs/core-runtime";
 import { createRequire } from "module";
-import { createCLIUIFacade } from "./runtime/ui-facade";
-
-// Global handler — any uncaught exception renders as a formatted error box
-// instead of a raw Node.js stack dump
-process.on('uncaughtException', (err) => {
-  createCLIUIFacade().error(err);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason) => {
-  const err = reason instanceof Error ? reason : new Error(String(reason));
-  createCLIUIFacade().error(err);
-  process.exit(1);
-});
 
 // Captured at module load so that `resolvePlatformRoot` can walk up from the
 // physical location of this bin.js file — the most reliable way to locate
@@ -73,6 +71,26 @@ if (!process.env.CLI_VERSION) {
 }
 
 (async () => {
+  // Import the platform only after the logging environment is bootstrapped.
+  const [{ run }, { platform }, { createCLIUIFacade }] = await Promise.all([
+    import('./index.js'),
+    import('@kb-labs/core-runtime'),
+    import('./runtime/ui-facade.js'),
+  ]);
+
+  // Global handler — any uncaught exception renders as a formatted error box
+  // instead of a raw Node.js stack dump.
+  process.on('uncaughtException', (err) => {
+    createCLIUIFacade().error(err);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    createCLIUIFacade().error(err);
+    process.exit(1);
+  });
+
   let code: number | void;
   try {
     code = await run(process.argv.slice(2), { moduleUrl: BIN_MODULE_URL });

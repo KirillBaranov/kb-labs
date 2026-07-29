@@ -13,7 +13,12 @@
  * deliberately belong to the caller (for example @kb-labs/shared-daemon).
  */
 
-import type { ILogger, ILogReader } from "@kb-labs/core-platform";
+import { hostname } from "node:os";
+import {
+  createContextLogger,
+  type IContextLogger,
+  type ILogReader,
+} from "@kb-labs/core-platform";
 import { getAdapterStatus, type AdapterSlotStatus } from "./adapter-status.js";
 import {
   platform,
@@ -42,6 +47,8 @@ export type PlatformUiProvider = NonNullable<
 export interface PlatformLaunchOptions {
   /** Stable identity used for lifecycle and root logger bindings. */
   applicationId: string;
+  /** Service identity when one application exposes a differently named network service. */
+  serviceId?: string;
   /** Runtime surface. It affects policy, never the ILogger contract. */
   kind: PlatformApplicationKind;
   /** Directory used to resolve project and platform roots. */
@@ -83,7 +90,7 @@ export interface PlatformRuntime {
     kind: PlatformApplicationKind;
   };
   platform: PlatformContainer;
-  logger: ILogger;
+  logger: IContextLogger;
   /** Read side of the platform log system for diagnostics and tooling. */
   readonly logs: ILogReader;
   platformConfig: PlatformConfig;
@@ -99,7 +106,9 @@ let activeLaunch: Promise<PlatformRuntime> | undefined;
 
 function registerLifecycleLogging(
   applicationId: string,
+  serviceId: string,
   kind: PlatformApplicationKind,
+  instanceId: string,
 ): void {
   const hookId = `platform-launch:${applicationId}`;
   if (platform.listLifecycleHookIds().includes(hookId)) {
@@ -107,33 +116,43 @@ function registerLifecycleLogging(
   }
 
   const lifecycleLogger = () =>
-    platform.logger.child({
+    createContextLogger(platform.logger, {
       applicationId,
-      serviceId: applicationId,
+      serviceId,
+      instanceId,
       layer: kind,
-      component: "platform-lifecycle",
-    });
+    }).forComponent("platform-lifecycle");
 
   const hooks: PlatformLifecycleHooks = {
     onStart(context: PlatformLifecycleContext) {
-      lifecycleLogger().debug("Platform lifecycle start", {
-        cwd: context.cwd,
-        isChildProcess: context.isChildProcess,
+      lifecycleLogger().event("debug", {
+        event: "platform.starting",
+        message: "Platform lifecycle start",
+        fields: {
+          cwd: context.cwd,
+          isChildProcess: context.isChildProcess,
+        },
       });
     },
     onReady(context: PlatformLifecycleContext) {
-      lifecycleLogger().info("Platform lifecycle ready", {
-        durationMs: context.metadata?.durationMs,
+      lifecycleLogger().event("info", {
+        event: "platform.ready",
+        message: "Platform lifecycle ready",
+        fields: { durationMs: context.metadata?.durationMs },
       });
     },
     onBeforeShutdown(context: PlatformLifecycleContext) {
-      lifecycleLogger().debug("Platform lifecycle before shutdown", {
-        reason: context.reason,
+      lifecycleLogger().event("debug", {
+        event: "platform.stopping",
+        message: "Platform lifecycle before shutdown",
+        fields: { reason: context.reason },
       });
     },
     onShutdown(context: PlatformLifecycleContext) {
-      lifecycleLogger().info("Platform lifecycle shutdown", {
-        reason: context.reason,
+      lifecycleLogger().event("info", {
+        event: "platform.stopped",
+        message: "Platform lifecycle shutdown",
+        fields: { reason: context.reason },
       });
     },
     onError(error: unknown, phase: PlatformLifecyclePhase) {
@@ -141,6 +160,7 @@ function registerLifecycleLogging(
         "Platform lifecycle failed",
         error instanceof Error ? error : undefined,
         {
+          event: "platform.failed",
           phase,
           error: error instanceof Error ? error.message : String(error),
         },
@@ -171,6 +191,7 @@ async function launch(
 ): Promise<PlatformRuntime> {
   const {
     applicationId,
+    serviceId = applicationId,
     kind,
     startDir = process.cwd(),
     moduleUrl,
@@ -182,7 +203,8 @@ async function launch(
   } = options;
 
   const startedAt = Date.now();
-  registerLifecycleLogging(applicationId, kind);
+  const instanceId = `${hostname()}:${process.pid}`;
+  registerLifecycleLogging(applicationId, serviceId, kind, instanceId);
 
   const loadResult = await loadPlatformConfig({
     moduleUrl,
@@ -230,11 +252,16 @@ async function launch(
     );
   }
 
-  const logger = platform.logger.child({
+  const logger = createContextLogger(platform.logger, {
     applicationId,
-    serviceId: applicationId,
+    serviceId,
+    instanceId,
     layer: kind,
   });
+  // The process-wide container is the surface used by plugins and legacy
+  // platform modules. Installing the wrapper here makes their logs inherit the
+  // same identity as logs emitted through PlatformRuntime.logger.
+  platform.setAdapter("logger", logger);
   const configFound = Boolean(
     sources.platformDefaults || sources.projectConfig,
   );
@@ -250,17 +277,27 @@ async function launch(
   };
 
   if (status === "degraded") {
-    logger.warn("Platform launched in degraded mode", {
-      error: startupError,
-      platformRoot,
-      projectRoot,
+    logger.event("warn", {
+      event: "platform.ready",
+      message: "Platform launched in degraded mode",
+      fields: {
+        outcome: "degraded",
+        error: startupError,
+        platformRoot,
+        projectRoot,
+      },
     });
   } else {
-    logger.info("Platform launched", {
-      platformRoot,
-      projectRoot,
-      configFound,
-      durationMs: startupReport.durationMs,
+    logger.event("info", {
+      event: "platform.ready",
+      message: "Platform launched",
+      fields: {
+        outcome: "success",
+        platformRoot,
+        projectRoot,
+        configFound,
+        durationMs: startupReport.durationMs,
+      },
     });
   }
 
@@ -283,7 +320,11 @@ async function launch(
     startupReport,
     shutdown(reason = "platform-runtime.shutdown") {
       shutdownPromise ??= platform.shutdown().finally(() => {
-        logger.debug("Platform runtime stopped", { reason });
+        logger.event("info", {
+          event: "platform.stopped",
+          message: "Platform runtime stopped",
+          fields: { reason, outcome: "success" },
+        });
       });
       return shutdownPromise;
     },

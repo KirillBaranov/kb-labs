@@ -178,6 +178,7 @@ export class HybridLogReader implements ILogReader {
       return this.persistence.search(searchText, {
         limit: options.limit,
         offset: options.offset,
+        filters: options.filters,
       });
     }
 
@@ -319,7 +320,7 @@ export class HybridLogReader implements ILogReader {
     }
 
     // Get all logs from buffer
-    const allLogs = this.buffer.query({});
+    const allLogs = this.buffer.query(options.filters ?? {});
 
     // Simple case-insensitive text matching
     const searchLower = searchText.toLowerCase();

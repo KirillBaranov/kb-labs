@@ -4,7 +4,7 @@
  * Parsing, formatting, correlation, diagnostics.
  */
 
-import type { LogRecord, ILogReader } from '@kb-labs/core-platform';
+import type { LogRecord, ILogReader } from "@kb-labs/core-platform";
 
 // ─── Relative Time Parsing ──────────────────────────────────────────────────
 
@@ -56,25 +56,39 @@ export function parseRelativeTime(input: string): number {
 
 /** Map Pino numeric level to string (matches REST API) */
 function mapPinoLevel(level: unknown): string {
-  if (typeof level === 'string') {return level;}
-  if (typeof level !== 'number') {return 'info';}
-  if (level <= 10) {return 'trace';}
-  if (level <= 20) {return 'debug';}
-  if (level <= 30) {return 'info';}
-  if (level <= 40) {return 'warn';}
-  if (level <= 50) {return 'error';}
-  return 'fatal';
+  if (typeof level === "string") {
+    return level;
+  }
+  if (typeof level !== "number") {
+    return "info";
+  }
+  if (level <= 10) {
+    return "trace";
+  }
+  if (level <= 20) {
+    return "debug";
+  }
+  if (level <= 30) {
+    return "info";
+  }
+  if (level <= 40) {
+    return "warn";
+  }
+  if (level <= 50) {
+    return "error";
+  }
+  return "fatal";
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  trace: '\x1b[90m',  // gray
-  debug: '\x1b[36m',  // cyan
-  info: '\x1b[32m',   // green
-  warn: '\x1b[33m',   // yellow
-  error: '\x1b[31m',  // red
-  fatal: '\x1b[35m',  // magenta
+  trace: "\x1b[90m", // gray
+  debug: "\x1b[36m", // cyan
+  info: "\x1b[32m", // green
+  warn: "\x1b[33m", // yellow
+  error: "\x1b[31m", // red
+  fatal: "\x1b[35m", // magenta
 };
-const RESET = '\x1b[0m';
+const RESET = "\x1b[0m";
 
 /**
  * Format a LogRecord for human-readable CLI output.
@@ -82,12 +96,16 @@ const RESET = '\x1b[0m';
  */
 export function formatLogLine(record: LogRecord): string {
   const pinoLevel = record.fields.level;
-  const level = typeof pinoLevel === 'number' ? mapPinoLevel(pinoLevel) : record.level;
+  const level =
+    typeof pinoLevel === "number" ? mapPinoLevel(pinoLevel) : record.level;
   const time = new Date(record.timestamp).toISOString().slice(11, 19); // HH:mm:ss
   const levelPad = level.toUpperCase().padEnd(5);
-  const color = LEVEL_COLORS[level] ?? '';
-  const source = record.source ? ` [${record.source}]` : '';
-  const msg = typeof record.message === 'string' ? record.message : JSON.stringify(record.message);
+  const color = LEVEL_COLORS[level] ?? "";
+  const source = record.source ? ` [${record.source}]` : "";
+  const msg =
+    typeof record.message === "string"
+      ? record.message
+      : JSON.stringify(record.message);
 
   return `${color}[${time}] ${levelPad}${RESET}${source} ${msg}`;
 }
@@ -97,8 +115,12 @@ export function formatLogLine(record: LogRecord): string {
  */
 export function formatLogJson(record: LogRecord): object {
   const pinoLevel = record.fields.level;
-  const level = typeof pinoLevel === 'number' ? mapPinoLevel(pinoLevel) : record.level;
-  const msg = typeof record.message === 'string' ? record.message : JSON.stringify(record.message);
+  const level =
+    typeof pinoLevel === "number" ? mapPinoLevel(pinoLevel) : record.level;
+  const msg =
+    typeof record.message === "string"
+      ? record.message
+      : JSON.stringify(record.message);
   const { level: _level, time: _time, ...restFields } = record.fields;
 
   return {
@@ -123,7 +145,7 @@ export interface CorrelationKeys {
 /** Extract correlation keys from LogRecord.fields (matches REST API pattern) */
 export function extractCorrelationKeys(record: LogRecord): CorrelationKeys {
   return {
-    requestId: (record.fields.requestId ?? record.fields.reqId) as string | undefined,
+    requestId: record.fields.requestId as string | undefined,
     traceId: record.fields.traceId as string | undefined,
     executionId: record.fields.executionId as string | undefined,
     sessionId: record.fields.sessionId as string | undefined,
@@ -152,7 +174,9 @@ export async function findRelatedLogs(
     );
 
     const related = result.logs.filter((log) => {
-      if (log.id === target.id) {return false;}
+      if (log.id === target.id) {
+        return false;
+      }
       const logKeys = extractCorrelationKeys(log);
       return (
         (keys.requestId && logKeys.requestId === keys.requestId) ||
@@ -169,7 +193,11 @@ export async function findRelatedLogs(
 
   // Strategy 2: fallback to same source + time window
   const result = await reader.query(
-    { source: target.source, from: target.timestamp - windowMs, to: target.timestamp + windowMs },
+    {
+      source: target.source,
+      from: target.timestamp - windowMs,
+      to: target.timestamp + windowMs,
+    },
     { limit: 50 },
   );
 
@@ -210,32 +238,50 @@ export interface LogDiagnostics {
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export function computeLogStats(logs: LogRecord[]): LogDiagnostics {
   const bySource: Record<string, SourceBreakdown> = {};
-  const errorMessages = new Map<string, { count: number; source: string; firstSeen: number; lastSeen: number }>();
+  const errorMessages = new Map<
+    string,
+    { count: number; source: string; firstSeen: number; lastSeen: number }
+  >();
   let errors = 0;
   let warnings = 0;
 
   for (const log of logs) {
-    const level = typeof log.fields.level === 'number' ? mapPinoLevel(log.fields.level) : log.level;
-    const source = log.source || 'unknown';
+    const level =
+      typeof log.fields.level === "number"
+        ? mapPinoLevel(log.fields.level)
+        : log.level;
+    const source = log.source || "unknown";
 
     if (!bySource[source]) {
       bySource[source] = { errors: 0, warnings: 0 };
     }
 
-    if (level === 'error' || level === 'fatal') {
+    if (level === "error" || level === "fatal") {
       errors++;
       bySource[source]!.errors++;
 
-      const msg = typeof log.message === 'string' ? log.message : JSON.stringify(log.message);
+      const msg =
+        typeof log.message === "string"
+          ? log.message
+          : JSON.stringify(log.message);
       const existing = errorMessages.get(msg);
       if (existing) {
         existing.count++;
-        if (log.timestamp < existing.firstSeen) {existing.firstSeen = log.timestamp;}
-        if (log.timestamp > existing.lastSeen) {existing.lastSeen = log.timestamp;}
+        if (log.timestamp < existing.firstSeen) {
+          existing.firstSeen = log.timestamp;
+        }
+        if (log.timestamp > existing.lastSeen) {
+          existing.lastSeen = log.timestamp;
+        }
       } else {
-        errorMessages.set(msg, { count: 1, source, firstSeen: log.timestamp, lastSeen: log.timestamp });
+        errorMessages.set(msg, {
+          count: 1,
+          source,
+          firstSeen: log.timestamp,
+          lastSeen: log.timestamp,
+        });
       }
-    } else if (level === 'warn') {
+    } else if (level === "warn") {
       warnings++;
       bySource[source]!.warnings++;
     }
@@ -255,8 +301,11 @@ export function computeLogStats(logs: LogRecord[]): LogDiagnostics {
   // Get last 10 error logs
   const recentErrors = logs
     .filter((l) => {
-      const level = typeof l.fields.level === 'number' ? mapPinoLevel(l.fields.level) : l.level;
-      return level === 'error' || level === 'fatal';
+      const level =
+        typeof l.fields.level === "number"
+          ? mapPinoLevel(l.fields.level)
+          : l.level;
+      return level === "error" || level === "fatal";
     })
     .slice(-10)
     .map(formatLogJson);

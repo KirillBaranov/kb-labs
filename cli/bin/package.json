@@ -35,6 +35,7 @@
     "@kb-labs/cli-commands": "workspace:*",
     "@kb-labs/cli-runtime": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/core-sandbox": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
