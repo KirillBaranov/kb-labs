@@ -7,7 +7,7 @@ order: 4
 
 The marketplace service is how plugins, adapters, and other entities get installed into a KB Labs workspace. It wraps npm (today — a native registry is on the roadmap) behind a unified HTTP API and writes the resolved installations into `.kb/marketplace.lock`, which is then read by the discovery layer at CLI and service startup.
 
-It's a small Fastify service. Source: [plugins/marketplace/apps/marketplace/](plugins/marketplace/apps/marketplace/).
+It's a small Fastify service. Source: [plugins/marketplace/daemon/](plugins/marketplace/daemon/).
 
 ## Service manifest
 
@@ -30,7 +30,7 @@ It's a small Fastify service. Source: [plugins/marketplace/apps/marketplace/](pl
 }
 ```
 
-Source: [apps/marketplace/src/manifest.ts](plugins/marketplace/apps/marketplace/src/manifest.ts).
+Source: [plugins/marketplace/daemon/src/manifest.ts](plugins/marketplace/daemon/src/manifest.ts).
 
 ## Why a service?
 
@@ -66,13 +66,13 @@ Doing all that from inside every consumer (CLI, REST, Studio) would mean duplica
           .kb/marketplace.lock
 ```
 
-From [`bootstrap.ts`](plugins/marketplace/apps/marketplace/src/bootstrap.ts):
+From [`bootstrap.ts`](plugins/marketplace/daemon/src/bootstrap.ts):
 
 1. Call `runService()` with the marketplace app ID, assembly hook, and service setup.
 2. `runService()` resolves roots, loads layered `.env`, and initializes the platform singleton.
-4. Construct `MarketplaceService` with an `NpmPackageSource`.
-5. Create a Fastify server via `@kb-labs/marketplace-api`.
-6. Listen on `port` (default 5070).
+3. Construct `MarketplaceService` with an `NpmPackageSource`.
+4. Create a Fastify server via `@kb-labs/marketplace-api`.
+5. Listen on `port` (default 5070).
 6. Return teardown from setup; `runService()` owns graceful shutdown.
 
 The service is deliberately thin. `MarketplaceService` holds the business logic; the Fastify layer is pure HTTP wrapping.
@@ -187,7 +187,7 @@ kb-dev start marketplace
 Or directly:
 
 ```bash
-cd plugins/marketplace/apps/marketplace
+cd plugins/marketplace/daemon
 node ./dist/index.js
 ```
 
