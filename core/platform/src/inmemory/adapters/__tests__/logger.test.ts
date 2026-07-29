@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { ConsoleLogger } from '../logger.js';
 
 describe('ConsoleLogger', () => {
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: MockInstance<typeof process.stderr.write>;
   const prevEnv = process.env.KB_LOG_LEVEL;
 
   beforeEach(() => {
