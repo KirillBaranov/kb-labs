@@ -1,120 +1,189 @@
-import { createHash } from 'node:crypto';
-import { findRepoRoot } from '@kb-labs/core-sys';
-import { loadEnvFromRoot } from '@kb-labs/core-runtime';
-import type { PlatformContainer } from '@kb-labs/core-runtime';
-import type { ILogger, IServiceTransport } from '@kb-labs/core-platform';
+import {
+  launchPlatform,
+  type PlatformAssemblyHook,
+  type PlatformContainer,
+  type PlatformFailurePolicy,
+  type PlatformRuntime,
+  type PlatformUiProvider,
+} from "@kb-labs/core-runtime";
+import type { ILogger, IServiceTransport } from "@kb-labs/core-platform";
 
-export interface DaemonContext {
+export interface ServiceContext {
   platform: PlatformContainer;
   logger: ILogger;
   port: number;
   host: string;
-  /**
-   * Repository root resolved via findRepoRoot(process.cwd()). Services should
-   * use this (not process.cwd()) for plugin/workflow discovery so they behave
-   * correctly when launched from a subdirectory.
-   */
-  repoRoot: string;
+  runtime: PlatformRuntime;
+  platformRoot: string;
+  projectRoot: string;
 }
 
-export interface DaemonConfig {
+interface NetworkServiceConfig {
   appId: string;
   /**
-   * serviceId in the transport map (declarative network). Defaults to appId.
-   * Set explicitly when they differ. The daemon binds the port the transport
-   * publishes for this serviceId — keeping bind and route consistent (incl.
-   * any KB_NET_OFFSET shift).
+   * serviceId in the declarative transport map. Defaults to appId.
+   * Edge services that are not in the map use defaultPort + KB_NET_OFFSET.
    */
   serviceId?: string;
   defaultPort: number;
   portEnvVar: string;
   defaultHost?: string;
   hostEnvVar?: string;
+}
+
+export interface ServiceConfig extends NetworkServiceConfig {
+  /** Starting directory for project/platform root resolution. */
+  startDir?: string;
+  /** Entrypoint import.meta.url for installed-mode platform discovery. */
+  moduleUrl?: string;
+  platform: {
+    assemblyHook: PlatformAssemblyHook;
+    failurePolicy?: PlatformFailurePolicy;
+    loadEnv?: boolean;
+    storeRawConfig?: boolean;
+    uiProvider?: PlatformUiProvider;
+  };
   /**
-   * Called after platform is ready. Returns a teardown callback.
-   * The callback is invoked before platform.shutdown() on SIGTERM/SIGINT.
+   * Runs after the platform is ready. The returned teardown is always called
+   * before PlatformRuntime.shutdown().
    */
-  setup(ctx: DaemonContext): Promise<() => Promise<void>>;
+  setup(ctx: ServiceContext): Promise<() => Promise<void>>;
+}
+
+interface ManagedRuntime {
+  platform: PlatformContainer;
+  logger: ILogger;
+  projectRoot: string;
+  platformRoot: string;
+  shutdown(reason?: string): Promise<void>;
+  runtime: PlatformRuntime;
+}
+
+function resolveNetwork(
+  config: NetworkServiceConfig,
+  platform: PlatformContainer,
+): { port: number; host: string } {
+  const serviceId = config.serviceId ?? config.appId;
+  const transport = platform.getAdapter<IServiceTransport>("serviceTransport");
+  const address = transport?.listenAddress?.(serviceId);
+  const netOffset = Number(process.env.KB_NET_OFFSET) || 0;
+
+  const port =
+    address && "port" in address
+      ? address.port
+      : (process.env[config.portEnvVar]
+          ? parseInt(process.env[config.portEnvVar]!, 10)
+          : config.defaultPort) + netOffset;
+
+  const transportHost = address && "host" in address ? address.host : undefined;
+  const host =
+    config.hostEnvVar && process.env[config.hostEnvVar]
+      ? process.env[config.hostEnvVar]!
+      : (transportHost ?? config.defaultHost ?? "0.0.0.0");
+
+  return { port, host };
+}
+
+async function runManagedService(
+  config: NetworkServiceConfig,
+  managed: ManagedRuntime,
+  setup: (context: ServiceContext) => Promise<() => Promise<void>>,
+): Promise<void> {
+  const { port, host } = resolveNetwork(config, managed.platform);
+  const logger = managed.logger.child({
+    serviceId: config.appId,
+    component: "service-bootstrap",
+  });
+
+  logger.info("Service starting", { port, host });
+
+  let teardown: (() => Promise<void>) | undefined;
+  try {
+    teardown = await setup({
+      runtime: managed.runtime as PlatformRuntime,
+      platform: managed.platform,
+      logger,
+      port,
+      host,
+      projectRoot: managed.projectRoot,
+      platformRoot: managed.platformRoot,
+    });
+  } catch (error) {
+    logger.error(
+      "Service setup failed",
+      error instanceof Error ? error : undefined,
+      { error: error instanceof Error ? error.message : String(error) },
+    );
+    await managed.shutdown("service.setup-failed");
+    throw error;
+  }
+
+  logger.info("Service ready", { port, host });
+
+  let shutdownPromise: Promise<void> | undefined;
+  const shutdown = (signal: string): Promise<void> => {
+    shutdownPromise ??= (async () => {
+      logger.warn("Service stopping", { signal });
+      let shutdownError: unknown;
+
+      try {
+        await teardown?.();
+      } catch (error) {
+        shutdownError = error;
+        logger.error(
+          "Service teardown failed",
+          error instanceof Error ? error : undefined,
+        );
+      }
+
+      try {
+        await managed.shutdown(`signal:${signal}`);
+      } catch (error) {
+        shutdownError ??= error;
+        logger.error(
+          "Platform shutdown failed",
+          error instanceof Error ? error : undefined,
+        );
+      }
+
+      process.exit(shutdownError ? 1 : 0);
+    })();
+    return shutdownPromise;
+  };
+
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
 
 /**
- * Universal process-lifecycle runner for KB Labs daemon services.
+ * Canonical service process launcher.
  *
- * Handles: env loading, platform init, port/host resolution,
- * setup invocation, and graceful SIGTERM/SIGINT shutdown.
- *
- * @param config - Service-specific configuration
- * @param platformBootstrap - DI factory for platform (keeps makeAssemblyHook out of this package)
- *   Example: (appId, repoRoot) => createServiceBootstrap({ appId, repoRoot, assemblyHook: makeAssemblyHook() })
+ * Every service gets the same roots/env/config/platform lifecycle. Service code
+ * starts only inside setup(), after PlatformRuntime is ready.
  */
-export async function runDaemon(
-  config: DaemonConfig,
-  platformBootstrap: (appId: string, repoRoot: string) => Promise<PlatformContainer>,
-): Promise<void> {
-  const repoRoot = await findRepoRoot(process.cwd());
-  loadEnvFromRoot(repoRoot);
-
-  // Ensure KB_SOCKET_HASH is set before interpolateConfig() runs inside platformBootstrap.
-  // kb-dev sets it via spawnEnv() for all managed services (including gateway, rest-api).
-  // For manual starts (dev scripts, local testing), derive it the same way kb-dev does —
-  // from the project dir (KB_PROJECT_ROOT), falling back to repoRoot — so a manually
-  // started service lands in the same /tmp/kb-<hash>/ dir as kb-dev-managed peers.
-  if (!process.env.KB_SOCKET_HASH) {
-    const hashRoot = process.env.KB_PROJECT_ROOT ?? repoRoot;
-    process.env.KB_SOCKET_HASH = createHash('md5').update(hashRoot).digest('hex').slice(0, 8);
-  }
-
-  const platform = await platformBootstrap(config.appId, repoRoot);
-  const logger = platform.logger.child({
-    serviceId: config.appId,
-    service: 'bootstrap',
+export async function runService(config: ServiceConfig): Promise<void> {
+  const runtime = await launchPlatform({
+    applicationId: config.appId,
+    kind: "service",
+    startDir: config.startDir,
+    moduleUrl: config.moduleUrl,
+    assemblyHook: config.platform.assemblyHook,
+    failurePolicy: config.platform.failurePolicy,
+    loadEnv: config.platform.loadEnv,
+    storeRawConfig: config.platform.storeRawConfig,
+    uiProvider: config.platform.uiProvider,
   });
 
-  // Bind port from the transport (the single declarative network source): the
-  // daemon listens on exactly the port the transport publishes for its
-  // serviceId, so bind and route stay consistent — including any KB_NET_OFFSET
-  // shift. Socket services resolve their bind via KB_SOCKET_PATH (setup →
-  // getListenOptions), so listenAddress returns socketPath and we keep the
-  // fallback port. Services NOT in the transport map (e.g. state-daemon — not
-  // gateway-routed) are treated as edges: the fallback applies KB_NET_OFFSET
-  // directly, so the one offset knob still shifts their bind. Host stays the
-  // daemon's own concern (offset never affects host).
-  const serviceId = config.serviceId ?? config.appId;
-  const transport = platform.getAdapter<IServiceTransport>('serviceTransport');
-  const addr = transport?.listenAddress?.(serviceId);
-  const netOffset = Number(process.env.KB_NET_OFFSET) || 0;
-  const port = addr && 'port' in addr
-    ? addr.port
-    : (process.env[config.portEnvVar]
-        ? parseInt(process.env[config.portEnvVar]!, 10)
-        : config.defaultPort) + netOffset;
-
-  // Host precedence: explicit env override > transport's advisory host (set only
-  // by adapters that own the bind host, e.g. k8s) > daemon default.
-  const addrHost = addr && 'host' in addr ? addr.host : undefined;
-  const host = (config.hostEnvVar && process.env[config.hostEnvVar])
-    ? process.env[config.hostEnvVar]!
-    : (addrHost ?? config.defaultHost ?? '0.0.0.0');
-
-  logger.info(`${config.appId}: starting`, { port, host } as Record<string, unknown>);
-
-  const teardown = await config.setup({ platform, logger, port, host, repoRoot });
-
-  // Guard against a second signal (e.g. SIGTERM then Ctrl-C) re-running teardown
-  // against already-closed resources.
-  let shuttingDown = false;
-  const shutdown = async (signal: string) => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-    logger.warn(`${config.appId}: received ${signal}`);
-    await teardown();
-    await platform.shutdown();
-    logger.info(`${config.appId}: stopped`);
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', async () => { await shutdown('SIGTERM'); });
-  process.on('SIGINT', async () => { await shutdown('SIGINT'); });
+  await runManagedService(
+    config,
+    {
+      runtime,
+      platform: runtime.platform,
+      logger: runtime.logger,
+      projectRoot: runtime.roots.projectRoot,
+      platformRoot: runtime.roots.platformRoot,
+      shutdown: (reason) => runtime.shutdown(reason),
+    },
+    config.setup,
+  );
 }

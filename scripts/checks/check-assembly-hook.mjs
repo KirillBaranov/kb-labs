@@ -8,7 +8,7 @@
  *   Output: { issues: [{ check, severity, message, file }] }
  *
  * Rule: any bootstrap.ts in services/<pkg>/app/src/ or plugins/<pkg>/daemon/src/ that
- * calls createServiceBootstrap MUST also import from @kb-labs/plugin-runtime.
+ * calls runService MUST also import from @kb-labs/plugin-runtime.
  * TypeScript already enforces this at compile time (assemblyHook is a required
  * field); this check provides a human-readable CI gate with clear error messages.
  *
@@ -82,8 +82,8 @@ function validate() {
   for (const file of bootstrapFiles) {
     const content = readFileSync(file, 'utf-8');
 
-    // Only check files that call createServiceBootstrap
-    if (!content.includes('createServiceBootstrap')) continue;
+    // Only check files that call the canonical service runner.
+    if (!content.includes('runService')) continue;
 
     // Must import from @kb-labs/plugin-runtime (makeAssemblyHook lives there)
     if (!content.includes("'@kb-labs/plugin-runtime'") && !content.includes('"@kb-labs/plugin-runtime"')) {
@@ -91,7 +91,7 @@ function validate() {
         check: CHECK_NAME,
         severity: 'error',
         message:
-          `${rel(file)}: calls createServiceBootstrap but does not import from @kb-labs/plugin-runtime. ` +
+          `${rel(file)}: calls runService but does not import from @kb-labs/plugin-runtime. ` +
           'Add: import { makeAssemblyHook } from \'@kb-labs/plugin-runtime\' and pass assemblyHook: makeAssemblyHook().',
         file: rel(file),
       });

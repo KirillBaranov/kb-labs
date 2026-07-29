@@ -3,22 +3,38 @@
  * Bootstrap is otherwise hard to unit-test (requires full platform),
  * so we test the validation logic through environment variable behaviour.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Capture original env
 const originalEnv = { ...process.env };
 
 // Mock all heavy bootstrap deps before importing bootstrap
-vi.mock('@kb-labs/core-platform', () => ({
+vi.mock("@kb-labs/core-platform", () => ({
   logDiagnosticEvent: vi.fn(),
 }));
 
-vi.mock('@kb-labs/core-runtime', () => ({
+vi.mock("@kb-labs/core-runtime", () => ({
   platform: {
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn(), fatal: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn(), fatal: vi.fn(), child: vi.fn() }) },
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      trace: vi.fn(),
+      fatal: vi.fn(),
+      child: () => ({
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        trace: vi.fn(),
+        fatal: vi.fn(),
+        child: vi.fn(),
+      }),
+    },
     cache: { get: vi.fn(), set: vi.fn(), delete: vi.fn(), clear: vi.fn() },
     getAdapter: vi.fn().mockImplementation((name: string) => {
-      if (name === 'serviceTransport') {
+      if (name === "serviceTransport") {
         return { connectionInfo: vi.fn(), call: vi.fn(), stream: vi.fn() };
       }
       return null;
@@ -26,12 +42,47 @@ vi.mock('@kb-labs/core-runtime', () => ({
     hasResourceBroker: false,
     shutdown: vi.fn().mockResolvedValue(undefined),
   },
-  createServiceBootstrap: vi.fn().mockResolvedValue(undefined),
-  getPlatformRoot: vi.fn().mockReturnValue('/tmp/kb-platform'),
-  getProjectRoot: vi.fn().mockReturnValue('/tmp/kb-project'),
 }));
 
-vi.mock('../config.js', () => ({
+vi.mock("@kb-labs/shared-daemon", () => ({
+  runService: vi.fn().mockImplementation(async (config) =>
+    config.setup({
+      platform: {
+        logger: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+          debug: vi.fn(),
+          trace: vi.fn(),
+          fatal: vi.fn(),
+          child: () => ({
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
+            debug: vi.fn(),
+            trace: vi.fn(),
+            fatal: vi.fn(),
+            child: vi.fn(),
+          }),
+        },
+        cache: { get: vi.fn(), set: vi.fn(), delete: vi.fn(), clear: vi.fn() },
+        getAdapter: vi.fn().mockImplementation((name: string) => {
+          if (name === "serviceTransport") {
+            return { connectionInfo: vi.fn(), call: vi.fn(), stream: vi.fn() };
+          }
+          return undefined;
+        }),
+        hasResourceBroker: false,
+      },
+      projectRoot: "/tmp/kb-project",
+      platformRoot: "/tmp/kb-platform",
+      port: 4000,
+      host: "127.0.0.1",
+    }),
+  ),
+}));
+
+vi.mock("../config.js", () => ({
   loadGatewayConfig: vi.fn().mockResolvedValue({
     port: 4000,
     upstreams: {},
@@ -39,30 +90,32 @@ vi.mock('../config.js', () => ({
   }),
 }));
 
-vi.mock('../server.js', () => ({
+vi.mock("../server.js", () => ({
   createServer: vi.fn().mockResolvedValue({
-    listen: vi.fn().mockResolvedValue('http://localhost:4000'),
+    listen: vi.fn().mockResolvedValue("http://localhost:4000"),
     close: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
-vi.mock('../hosts/registry.js', () => ({
+vi.mock("../hosts/registry.js", () => ({
   HostRegistry: vi.fn().mockImplementation(() => ({
     restore: vi.fn().mockResolvedValue(0),
   })),
 }));
 
-vi.mock('@kb-labs/gateway-core', () => ({
+vi.mock("@kb-labs/gateway-core", () => ({
   HostStore: vi.fn(),
 }));
 
-vi.mock('@kb-labs/shared-http', () => ({
+vi.mock("@kb-labs/shared-http", () => ({
   createCorrelatedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(), warn: vi.fn(), error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 
-describe('bootstrap — JWT secret validation (H6)', () => {
+describe("bootstrap — JWT secret validation (H6)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset env to original state before each test
@@ -74,27 +127,27 @@ describe('bootstrap — JWT secret validation (H6)', () => {
     process.env = originalEnv;
   });
 
-  it('throws when NODE_ENV=production and GATEWAY_JWT_SECRET is not set', async () => {
-    process.env.NODE_ENV = 'production';
+  it("throws when NODE_ENV=production and GATEWAY_JWT_SECRET is not set", async () => {
+    process.env.NODE_ENV = "production";
     delete process.env.GATEWAY_JWT_SECRET;
 
-    const { bootstrap } = await import('../bootstrap.js');
-    await expect(bootstrap('/tmp/test')).rejects.toThrow('GATEWAY_JWT_SECRET');
+    const { bootstrap } = await import("../bootstrap.js");
+    await expect(bootstrap("/tmp/test")).rejects.toThrow("GATEWAY_JWT_SECRET");
   });
 
-  it('does not throw in dev mode when GATEWAY_JWT_SECRET is not set', async () => {
-    process.env.NODE_ENV = 'development';
+  it("does not throw in dev mode when GATEWAY_JWT_SECRET is not set", async () => {
+    process.env.NODE_ENV = "development";
     delete process.env.GATEWAY_JWT_SECRET;
 
-    const { bootstrap } = await import('../bootstrap.js');
-    await expect(bootstrap('/tmp/test')).resolves.not.toThrow();
+    const { bootstrap } = await import("../bootstrap.js");
+    await expect(bootstrap("/tmp/test")).resolves.not.toThrow();
   });
 
-  it('does not throw in production when GATEWAY_JWT_SECRET is set', async () => {
-    process.env.NODE_ENV = 'production';
-    process.env.GATEWAY_JWT_SECRET = 'a'.repeat(64);
+  it("does not throw in production when GATEWAY_JWT_SECRET is set", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.GATEWAY_JWT_SECRET = "a".repeat(64);
 
-    const { bootstrap } = await import('../bootstrap.js');
-    await expect(bootstrap('/tmp/test')).resolves.not.toThrow();
+    const { bootstrap } = await import("../bootstrap.js");
+    await expect(bootstrap("/tmp/test")).resolves.not.toThrow();
   });
 });

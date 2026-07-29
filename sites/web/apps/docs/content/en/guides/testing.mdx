@@ -274,13 +274,16 @@ Test config:
 Run your handler against this workspace from your test file:
 
 ```ts
-import { createServiceBootstrap } from '@kb-labs/core-runtime';
+import { launchPlatform } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { join } from 'path';
 
 beforeAll(async () => {
-  await createServiceBootstrap({
-    appId: 'test',
-    repoRoot: join(__dirname, 'fixtures/workspace'),
+  await launchPlatform({
+    applicationId: 'test',
+    kind: 'test',
+    startDir: join(__dirname, 'fixtures/workspace'),
+    assemblyHook: makeAssemblyHook(),
   });
 });
 ```

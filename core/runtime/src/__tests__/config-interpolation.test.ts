@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { interpolateString, interpolateConfig } from '../config-interpolation.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -55,6 +55,38 @@ describe('interpolateString', () => {
     delete process.env['__MISSING_VAR__'];
     const result = interpolateString('value-${__MISSING_VAR__}', false);
     expect(result).toBe('value-${__MISSING_VAR__}');
+  });
+
+  it('does not leak bootstrap warnings at silent log level', () => {
+    delete process.env['__MISSING_VAR__'];
+    const previousLevel = process.env.KB_LOG_LEVEL;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env.KB_LOG_LEVEL = 'silent';
+
+    try {
+      interpolateString('${__MISSING_VAR__}', false);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      if (previousLevel === undefined) {delete process.env.KB_LOG_LEVEL;}
+      else {process.env.KB_LOG_LEVEL = previousLevel;}
+    }
+  });
+
+  it('emits bootstrap warnings at warn log level', () => {
+    delete process.env['__MISSING_VAR__'];
+    const previousLevel = process.env.KB_LOG_LEVEL;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env.KB_LOG_LEVEL = 'warn';
+
+    try {
+      interpolateString('${__MISSING_VAR__}', false);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('unresolved placeholder'));
+    } finally {
+      warn.mockRestore();
+      if (previousLevel === undefined) {delete process.env.KB_LOG_LEVEL;}
+      else {process.env.KB_LOG_LEVEL = previousLevel;}
+    }
   });
 
   it('handles empty string', () => {

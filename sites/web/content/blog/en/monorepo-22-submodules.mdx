@@ -73,7 +73,7 @@ Hoisted packages in `node_modules` sometimes contain generated shims with hardco
 
 ### Services must run with `node ./path`, not `pnpm --filter`
 
-`pnpm --filter @kb-labs/rest-api start` sets `cwd` to the package directory but doesn't resolve dotenv from the repo root. Services that load config via `loadEnvFromRoot(repoRoot)` need to be started with an explicit path so the root resolution works correctly.
+`pnpm --filter @kb-labs/rest-api start` sets `cwd` to the package directory. The canonical service launcher now resolves the project root before loading `.env`, so service config is independent of that package-local working directory.
 
 ### The build is actually faster
 

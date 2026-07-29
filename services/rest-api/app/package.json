@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/rest-api-app",
   "description": "REST API application for KB Labs, providing HTTP endpoints for plugin functionality",
-  "version": "2.112.0",
+  "version": "2.113.0",
   "type": "module",
   "main": "./dist/index.js",
   "files": [
@@ -39,6 +39,7 @@
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/rest-api-contracts": "workspace:*",
     "@kb-labs/rest-api-core": "workspace:*",
+    "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
     "@kb-labs/workflow-constants": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*",

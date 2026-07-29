@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/shared-daemon",
   "description": "Universal process-lifecycle bootstrapper for KB Labs daemon services",
-  "version": "2.112.0",
+  "version": "2.113.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,8 +27,7 @@
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
-    "@kb-labs/core-runtime": "workspace:*",
-    "@kb-labs/core-sys": "workspace:*"
+    "@kb-labs/core-runtime": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

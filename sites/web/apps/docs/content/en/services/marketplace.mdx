@@ -68,13 +68,12 @@ Doing all that from inside every consumer (CLI, REST, Studio) would mean duplica
 
 From [`bootstrap.ts`](plugins/marketplace/apps/marketplace/src/bootstrap.ts):
 
-1. Detect repo root via `findRepoRoot(cwd)`.
-2. Load env from `.env` in the repo root.
-3. `createServiceBootstrap({ appId: 'marketplace', repoRoot })` — init the platform singleton.
+1. Call `runService()` with the marketplace app ID, assembly hook, and service setup.
+2. `runService()` resolves roots, loads layered `.env`, and initializes the platform singleton.
 4. Construct `MarketplaceService` with an `NpmPackageSource`.
 5. Create a Fastify server via `@kb-labs/marketplace-api`.
 6. Listen on `port` (default 5070).
-7. Wire `SIGTERM` / `SIGINT` for graceful shutdown.
+6. Return teardown from setup; `runService()` owns graceful shutdown.
 
 The service is deliberately thin. `MarketplaceService` holds the business logic; the Fastify layer is pure HTTP wrapping.
 
