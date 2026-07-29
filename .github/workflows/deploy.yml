@@ -92,6 +92,9 @@ jobs:
       - name: Build
         run: ./tools/kb-devkit/kb-devkit run build
 
+      - name: Sync adapter deps from kb.config.prod.json
+        run: node scripts/sync-adapter-deps.mjs services/gateway/app plugins/marketplace-registry/app
+
       - name: Deploy gateway-app (pnpm deploy)
         run: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
 

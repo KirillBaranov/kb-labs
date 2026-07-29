@@ -7,7 +7,7 @@
       "cache": "@kb-labs/adapters-redis",
       "documentDatabase": "@kb-labs/adapters-sqlite",
       "kvStore": "@kb-labs/adapters-sqlite/kv",
-      "storage": "@kb-labs/adapters-diskio",
+      "storage": "@kb-labs/data-store",
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "logPersistence": "@kb-labs/adapters-log-document",
       "eventBus": "@kb-labs/adapters-eventbus-cache",
