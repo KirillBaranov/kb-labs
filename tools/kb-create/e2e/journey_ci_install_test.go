@@ -171,6 +171,12 @@ func TestCIInstallJourney_ExecutesInstalledPlugin(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("CI install exited %d:\n%s", code, out)
 	}
+	// A clean checkout has no scan root until the project creates its plugin
+	// workspace. Keep the CI journey realistic while giving the installed
+	// plugin a valid, empty root to inspect.
+	if err := os.MkdirAll(filepath.Join(projectDir, ".kb", "plugins"), 0o750); err != nil {
+		t.Fatalf("create clean plugin workspace: %v", err)
+	}
 
 	// This is a real plugin command from the installed platform, invoked from
 	// the project checkout exactly as a CI step would invoke it.

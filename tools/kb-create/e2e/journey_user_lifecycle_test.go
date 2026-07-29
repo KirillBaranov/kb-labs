@@ -28,6 +28,12 @@ func TestPlatformUpdateAndUninstallPreservesUserArtifacts(t *testing.T) {
 	userSource := filepath.Join(projectDir, "src", "user-file.ts")
 	userEnv := filepath.Join(projectDir, ".env")
 	userWorkflow := filepath.Join(projectDir, ".kb", "workflows", "user-value.yaml")
+	if err := os.MkdirAll(filepath.Dir(userSource), 0o750); err != nil {
+		t.Fatalf("create source directory: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(userWorkflow), 0o750); err != nil {
+		t.Fatalf("create workflow directory: %v", err)
+	}
 	write(t, userSource, "export const userValue = 'keep-me'\n")
 	write(t, userEnv, "USER_SECRET=keep-me\n")
 	write(t, userWorkflow, "name: user-value\nversion: 1.0.0\non:\n  manual: true\njobs:\n  verify:\n    runsOn: local\n    steps:\n      - name: Verify\n        run: echo keep-me\n")
