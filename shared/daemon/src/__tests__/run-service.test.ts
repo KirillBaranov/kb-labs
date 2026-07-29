@@ -363,11 +363,20 @@ describe("runService", () => {
       expect.objectContaining({ port: 6010, host: "192.168.1.1" }),
     );
 
-    if (originalPort === undefined) delete process.env.TEST_SERVICE_PORT;
-    else process.env.TEST_SERVICE_PORT = originalPort;
-    if (originalOffset === undefined) delete process.env.KB_NET_OFFSET;
-    else process.env.KB_NET_OFFSET = originalOffset;
-    if (originalHost === undefined) delete process.env.TEST_SERVICE_HOST;
-    else process.env.TEST_SERVICE_HOST = originalHost;
+    if (originalPort === undefined) {
+      delete process.env.TEST_SERVICE_PORT;
+    } else {
+      process.env.TEST_SERVICE_PORT = originalPort;
+    }
+    if (originalOffset === undefined) {
+      delete process.env.KB_NET_OFFSET;
+    } else {
+      process.env.KB_NET_OFFSET = originalOffset;
+    }
+    if (originalHost === undefined) {
+      delete process.env.TEST_SERVICE_HOST;
+    } else {
+      process.env.TEST_SERVICE_HOST = originalHost;
+    }
   });
 });
