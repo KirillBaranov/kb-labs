@@ -177,10 +177,11 @@ describe("LogRingBufferAdapter", () => {
         source: "test",
         from: now - 3500,
       });
-      expect(logs).toHaveLength(1);
-      expect(logs[0]!.level).toBe("info");
-      expect(logs[0]!.source).toBe("test");
-      expect(logs[0]!.timestamp).toBeGreaterThanOrEqual(now - 3500);
+      // `level` is a minimum threshold, consistent with durable persistence.
+      expect(logs).toHaveLength(2);
+      expect(logs.every((log) => ["info", "warn", "error", "fatal"].includes(log.level))).toBe(true);
+      expect(logs.every((log) => log.source === "test")).toBe(true);
+      expect(logs.every((log) => log.timestamp >= now - 3500)).toBe(true);
     });
   });
 

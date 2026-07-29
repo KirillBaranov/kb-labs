@@ -59,7 +59,7 @@ export interface PinoLoggerConfig {
 export class PinoLoggerAdapter implements ILogger {
   private pino: PinoLoggerInstance;
   private logBuffer?: LogRingBuffer;
-  private logCallbacks = new Set<(record: LogRecord) => void>();
+  private logCallbacks = new Set<(record: LogRecord) => void | Promise<void>>();
   private bindings: Record<string, unknown> = {};
 
   constructor(config: PinoLoggerConfig = {}) {
@@ -68,7 +68,7 @@ export class PinoLoggerAdapter implements ILogger {
     const resolvedLevel =
       (process.env.KB_LOG_LEVEL as PinoLoggerConfig["level"]) ??
       (process.env.LOG_LEVEL as PinoLoggerConfig["level"]) ??
-      (process.env.KB_DEBUG === 'true' ? 'debug' : undefined) ??
+      (process.env.KB_DEBUG === "true" ? "debug" : undefined) ??
       config.level ??
       "info";
 
@@ -94,13 +94,18 @@ export class PinoLoggerAdapter implements ILogger {
     // Merge options, but transport from config.options takes precedence
     const finalTransport = config.options?.transport ?? transport;
 
-    // Always use single pino instance (no multistream)
-    // LogRingBuffer is fed directly in log methods, not via Pino stream
-    this.pino = pino({
+    // Always use single pino instance (no multistream). The CLI sets the
+    // stream explicitly so diagnostics cannot contaminate command stdout.
+    const destination =
+      process.env.KB_LOG_STREAM === "stderr" ? process.stderr : undefined;
+    const pinoOptions = {
       level: resolvedLevel,
       ...config.options,
       transport: finalTransport,
-    });
+    };
+    this.pino = destination
+      ? pino(pinoOptions, destination)
+      : pino(pinoOptions);
   }
 
   /**
@@ -114,7 +119,13 @@ export class PinoLoggerAdapter implements ILogger {
 
     for (const callback of this.logCallbacks) {
       try {
-        callback(record);
+        void Promise.resolve(callback(record)).catch((error: unknown) => {
+          // Delivery extensions are optional. A failed durable sink must not
+          // take down the service or recurse through this logger.
+          process.stderr.write(
+            `[kb-logs] log delivery extension failed: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
+        });
       } catch (error) {
         console.error("[PinoLogger] Error in onLog callback:", error);
       }
@@ -124,7 +135,10 @@ export class PinoLoggerAdapter implements ILogger {
   /**
    * Internal constructor for child loggers.
    */
-  private constructor_child(pinoInstance: PinoLoggerInstance, bindings: Record<string, unknown>) {
+  private constructor_child(
+    pinoInstance: PinoLoggerInstance,
+    bindings: Record<string, unknown>,
+  ) {
     const instance = Object.create(PinoLoggerAdapter.prototype);
     instance.pino = pinoInstance;
     instance.logCallbacks = this.logCallbacks; // Share callbacks with parent
@@ -133,11 +147,18 @@ export class PinoLoggerAdapter implements ILogger {
     return instance;
   }
 
-  private mergeBindings(meta?: Record<string, unknown>): Record<string, unknown> {
+  private mergeBindings(
+    meta?: Record<string, unknown>,
+  ): Record<string, unknown> {
     if (!meta) {
       return { ...this.bindings };
     }
     return { ...this.bindings, ...meta };
+  }
+
+  private sourceOf(meta: Record<string, unknown>): string {
+    const source = meta.source ?? meta.serviceId ?? meta.applicationId;
+    return typeof source === "string" && source.length > 0 ? source : "unknown";
   }
 
   info(message: string, meta?: Record<string, unknown>): void {
@@ -153,7 +174,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "info",
       message,
       fields: mergedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -173,7 +194,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "warn",
       message,
       fields: mergedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -204,7 +225,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "error",
       message,
       fields: enrichedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -235,7 +256,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "fatal",
       message,
       fields: enrichedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -255,7 +276,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "debug",
       message,
       fields: mergedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -275,7 +296,7 @@ export class PinoLoggerAdapter implements ILogger {
       level: "trace",
       message,
       fields: mergedMeta,
-      source: (mergedMeta.source as string) ?? "unknown",
+      source: this.sourceOf(mergedMeta),
     };
 
     this.logBuffer?.append(record);
@@ -302,7 +323,7 @@ export class PinoLoggerAdapter implements ILogger {
    * @param callback - Function to call on each log event
    * @returns Unsubscribe function to remove the callback
    */
-  onLog(callback: (record: LogRecord) => void): () => void {
+  onLog(callback: (record: LogRecord) => void | Promise<void>): () => void {
     this.logCallbacks.add(callback);
     return () => this.logCallbacks.delete(callback);
   }

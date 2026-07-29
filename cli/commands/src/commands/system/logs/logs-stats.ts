@@ -2,12 +2,15 @@
  * logs stats — Show log storage statistics and capabilities
  */
 
-import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
-import { generateExamples } from '../../../utils/generate-examples';
-import { platform } from '@kb-labs/core-runtime';
+import {
+  defineSystemCommand,
+  type CommandResult,
+} from "@kb-labs/shared-command-kit";
+import { generateExamples } from "../../../utils/generate-examples";
+import { platform } from "@kb-labs/core-runtime";
 
 type Flags = {
-  json: { type: 'boolean'; description?: string };
+  json: { type: "boolean"; description?: string };
 };
 
 interface LogCapabilities {
@@ -39,20 +42,23 @@ type Result = CommandResult & {
 };
 
 export const logsStats = defineSystemCommand<Flags, Result>({
-  name: 'stats',
-  description: 'Show log storage statistics and capabilities',
-  category: 'logs',
-  examples: generateExamples('logs stats', 'kb', [
+  name: "stats",
+  description: "Show log storage statistics and capabilities",
+  category: "logs",
+  examples: generateExamples("logs stats", "kb", [
     { flags: {} },
     { flags: { json: true } },
   ]),
   flags: {
-    json: { type: 'boolean', description: 'Output in JSON format' },
+    json: { type: "boolean", description: "Output in JSON format" },
   },
   async handler() {
     const reader = platform.logs;
     if (!reader) {
-      return { ok: false, error: 'Log reader not available. Ensure platform is initialized.' };
+      return {
+        ok: false,
+        error: "Log reader not available. Ensure platform is initialized.",
+      };
     }
 
     const stats = await reader.getStats();
@@ -61,19 +67,33 @@ export const logsStats = defineSystemCommand<Flags, Result>({
     return {
       ok: true,
       capabilities: caps,
-      buffer: stats.buffer ? {
-        size: stats.buffer.size,
-        maxSize: stats.buffer.maxSize,
-        oldest: stats.buffer.oldestTimestamp ? new Date(stats.buffer.oldestTimestamp).toISOString() : null,
-        newest: stats.buffer.newestTimestamp ? new Date(stats.buffer.newestTimestamp).toISOString() : null,
-      } : undefined,
-      persistence: stats.persistence ? {
-        totalLogs: stats.persistence.totalLogs,
-        oldest: stats.persistence.oldestTimestamp ? new Date(stats.persistence.oldestTimestamp).toISOString() : null,
-        newest: stats.persistence.newestTimestamp ? new Date(stats.persistence.newestTimestamp).toISOString() : null,
-        sizeBytes: stats.persistence.sizeBytes,
-        sizeMB: Math.round(stats.persistence.sizeBytes / 1024 / 1024 * 100) / 100,
-      } : undefined,
+      buffer: stats.buffer
+        ? {
+            size: stats.buffer.size,
+            maxSize: stats.buffer.maxSize,
+            oldest: stats.buffer.oldestTimestamp
+              ? new Date(stats.buffer.oldestTimestamp).toISOString()
+              : null,
+            newest: stats.buffer.newestTimestamp
+              ? new Date(stats.buffer.newestTimestamp).toISOString()
+              : null,
+          }
+        : undefined,
+      persistence: stats.persistence
+        ? {
+            totalLogs: stats.persistence.totalLogs,
+            oldest: stats.persistence.oldestTimestamp
+              ? new Date(stats.persistence.oldestTimestamp).toISOString()
+              : null,
+            newest: stats.persistence.newestTimestamp
+              ? new Date(stats.persistence.newestTimestamp).toISOString()
+              : null,
+            sizeBytes: stats.persistence.sizeBytes,
+            sizeMB:
+              Math.round((stats.persistence.sizeBytes / 1024 / 1024) * 100) /
+              100,
+          }
+        : undefined,
     };
   },
   formatter(result, ctx, flags) {
@@ -83,8 +103,11 @@ export const logsStats = defineSystemCommand<Flags, Result>({
     }
 
     if (!result.ok) {
-      const error = typeof result.error === 'string' ? result.error : 'Unknown error';
-      ctx.ui.error('Log Stats', { sections: [{ header: 'Error', items: [error] }] });
+      const error =
+        typeof result.error === "string" ? result.error : "Unknown error";
+      ctx.ui.error("Log Stats", {
+        sections: [{ header: "Error", items: [error] }],
+      });
       return;
     }
 
@@ -93,24 +116,33 @@ export const logsStats = defineSystemCommand<Flags, Result>({
     const caps = result.capabilities;
     if (caps) {
       sections.push({
-        header: 'Capabilities',
+        header: "Capabilities",
         items: [
-          `Ring Buffer: ${caps.hasBuffer ? 'yes' : 'no'}`,
-          `Persistence (SQLite): ${caps.hasPersistence ? 'yes' : 'no'}`,
-          `Full-Text Search: ${caps.hasSearch ? 'yes' : 'no'}`,
-          `Real-Time Streaming: ${caps.hasStreaming ? 'yes' : 'no'}`,
+          `Ring Buffer: ${caps.hasBuffer ? "yes" : "no"}`,
+          `Persistence (SQLite): ${caps.hasPersistence ? "yes" : "no"}`,
+          `Full-Text Search: ${caps.hasSearch ? "yes" : "no"}`,
+          `Real-Time Streaming: ${caps.hasStreaming ? "yes" : "no"}`,
         ],
       });
+      if (!caps.hasPersistence) {
+        sections.push({
+          header: "Durable History",
+          items: [
+            "Not configured: only logs available to the current process can be queried.",
+            "Configure platform.adapters.logPersistence with an ILogPersistence adapter for cross-process history and retention.",
+          ],
+        });
+      }
     }
 
     const buf = result.buffer;
     if (buf) {
       sections.push({
-        header: 'Ring Buffer',
+        header: "Ring Buffer",
         items: [
           `Size: ${buf.size} / ${buf.maxSize}`,
-          `Oldest: ${buf.oldest ?? 'empty'}`,
-          `Newest: ${buf.newest ?? 'empty'}`,
+          `Oldest: ${buf.oldest ?? "empty"}`,
+          `Newest: ${buf.newest ?? "empty"}`,
         ],
       });
     }
@@ -118,16 +150,16 @@ export const logsStats = defineSystemCommand<Flags, Result>({
     const pers = result.persistence;
     if (pers) {
       sections.push({
-        header: 'Persistent Storage',
+        header: "Persistent Storage",
         items: [
           `Total Logs: ${pers.totalLogs}`,
           `Size: ${pers.sizeMB} MB`,
-          `Oldest: ${pers.oldest ?? 'empty'}`,
-          `Newest: ${pers.newest ?? 'empty'}`,
+          `Oldest: ${pers.oldest ?? "empty"}`,
+          `Newest: ${pers.newest ?? "empty"}`,
         ],
       });
     }
 
-    ctx.ui.success('Log Storage Statistics', { sections });
+    ctx.ui.success("Log Storage Statistics", { sections });
   },
 });

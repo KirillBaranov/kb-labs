@@ -4,17 +4,27 @@
  * Executes plugin commands via the V3 execution pipeline.
  */
 
-import type { SystemContext } from '@kb-labs/cli-runtime';
-import { executeCommandV3 } from '@kb-labs/cli-runtime/v3';
-import type { UIFacade, PlatformServices, FSShim, PluginAPI } from '@kb-labs/plugin-contracts';
-import { getHandlerPermissions, noopTraceContext, noopUI } from '@kb-labs/plugin-contracts';
-import type { PlatformContainer } from '@kb-labs/core-runtime';
-import { setJsonMode } from '@kb-labs/shared-cli-ui';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import type { RegisteredCommand } from '@kb-labs/cli-commands';
-import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
-import { createCLIUIFacade } from './ui-facade';
+import type { SystemContext } from "@kb-labs/cli-runtime";
+import { executeCommandV3 } from "@kb-labs/cli-runtime/v3";
+import type {
+  UIFacade,
+  PlatformServices,
+  FSShim,
+  PluginAPI,
+} from "@kb-labs/plugin-contracts";
+import {
+  getHandlerPermissions,
+  noopTraceContext,
+  noopUI,
+} from "@kb-labs/plugin-contracts";
+import type { PlatformContainer } from "@kb-labs/core-runtime";
+import { setJsonMode } from "@kb-labs/shared-cli-ui";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { createContextLogger } from "@kb-labs/core-platform";
+import type { RegisteredCommand } from "@kb-labs/cli-commands";
+import type { PluginContextV3 } from "@kb-labs/plugin-contracts";
+import { createCLIUIFacade } from "./ui-facade";
 
 export interface PluginExecutionOptions {
   context: SystemContext;
@@ -32,7 +42,7 @@ export interface PluginExecutionOptions {
  * (missing manifest, missing handlerPath, etc.).
  */
 export async function executePlugin(
-  options: PluginExecutionOptions
+  options: PluginExecutionOptions,
 ): Promise<number | undefined> {
   const { context, commandId, argv, flags, manifestCmd, platform } = options;
 
@@ -42,17 +52,20 @@ export async function executePlugin(
   }
 
   // Get plugin manifest (with fallback to legacy manifestV2 field)
-  const pluginManifest = manifestCmd.v3Manifest ?? manifestCmd.manifest.manifestV2;
+  const pluginManifest =
+    manifestCmd.v3Manifest ?? manifestCmd.manifest.manifestV2;
   if (!pluginManifest) {
     return undefined;
   }
 
   // Find CLI command definition by full path (e.g. 'clickup task search')
-  const commandPath = manifestCmd.manifest.segments.join(' ');
-  const cliCommand = pluginManifest.cli?.commands?.find((c) => c.path === commandPath);
+  const commandPath = manifestCmd.manifest.segments.join(" ");
+  const cliCommand = pluginManifest.cli?.commands?.find(
+    (c) => c.path === commandPath,
+  );
 
   // Resolve handler path from handler field
-  const handlerRelativePath = cliCommand?.handler?.split('#')[0];
+  const handlerRelativePath = cliCommand?.handler?.split("#")[0];
   if (!handlerRelativePath) {
     return undefined;
   }
@@ -63,13 +76,13 @@ export async function executePlugin(
   }
 
   // Handler path should point to dist/ (compiled output)
-  const handlerPath = handlerRelativePath.startsWith('dist/')
+  const handlerPath = handlerRelativePath.startsWith("dist/")
     ? path.resolve(pluginRoot, handlerRelativePath)
-    : path.resolve(pluginRoot, 'dist', handlerRelativePath);
+    : path.resolve(pluginRoot, "dist", handlerRelativePath);
 
   try {
     const pluginId = pluginManifest.id || manifestCmd.manifest.id;
-    const pluginVersion = pluginManifest.version || '0.0.0';
+    const pluginVersion = pluginManifest.version || "0.0.0";
 
     // When --json is active, suppress all UI output except json() to keep stdout clean.
     const jsonMode = Boolean(flags.json);
@@ -77,7 +90,9 @@ export async function executePlugin(
     // structurally compatible with PresenterDelegate at runtime even though
     // the static types differ (PresenterV1 exposes write/info/warn/error/json,
     // PresenterDelegate exposes debug/spinner/table — the runtime impl has all).
-    let ui = createCLIUIFacade(context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0]);
+    let ui = createCLIUIFacade(
+      context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0],
+    );
     if (jsonMode) {
       setJsonMode(true);
       ui = createJsonModeUI(ui);
@@ -85,7 +100,11 @@ export async function executePlugin(
 
     const platformServices = createPlatformServices(platform);
     const socketPath = platform.getSocketPath();
-    const permissions = getHandlerPermissions(pluginManifest, 'cli', commandPath);
+    const permissions = getHandlerPermissions(
+      pluginManifest,
+      "cli",
+      commandPath,
+    );
     const quotas = permissions?.quotas;
 
     // Execute plugin. Pass the discovered `pkgRoot` explicitly so project-
@@ -105,27 +124,35 @@ export async function executePlugin(
         platformContainer: platform,
         socketPath,
         cwd: context.cwd || process.cwd(),
-        devMode: process.env.NODE_ENV === 'development',
+        devMode: process.env.NODE_ENV === "development",
         permissions,
         quotas,
         configSection: pluginManifest.configSection,
       });
 
-      context.logger?.debug('[plugin-executor] Command executed via platform.executionBackend', {
-        pluginId,
-        exitCode,
-        hasBackend: !!platform.executionBackend,
-      });
+      context.logger?.debug(
+        "[plugin-executor] Command executed via platform.executionBackend",
+        {
+          pluginId,
+          exitCode,
+          hasBackend: !!platform.executionBackend,
+        },
+      );
 
       return exitCode;
     } finally {
-      if (jsonMode) {setJsonMode(false);}
+      if (jsonMode) {
+        setJsonMode(false);
+      }
     }
-
   } catch (error) {
-    context.logger?.error('[plugin-executor] Plugin execution failed', undefined, {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    context.logger?.error(
+      "[plugin-executor] Plugin execution failed",
+      undefined,
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     return undefined;
   }
 }
@@ -146,7 +173,9 @@ function createJsonModeUI(base: UIFacade): UIFacade {
 /**
  * Create PlatformServices from platform container.
  */
-function createPlatformServices(platformContainer: PlatformContainer): PlatformServices {
+function createPlatformServices(
+  platformContainer: PlatformContainer,
+): PlatformServices {
   return {
     logger: platformContainer.logger,
     llm: platformContainer.llm,
@@ -172,9 +201,11 @@ function createPlatformServices(platformContainer: PlatformContainer): PlatformS
  */
 export function createSystemCommandContext(
   context: SystemContext,
-  platform: PlatformContainer
+  platform: PlatformContainer,
 ): PluginContextV3 {
-  const ui = createCLIUIFacade(context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0]);
+  const ui = createCLIUIFacade(
+    context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0],
+  );
   const requestId = `cli-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const traceId = `trace-${randomUUID()}`;
   const spanId = `span-${randomUUID()}`;
@@ -184,22 +215,26 @@ export function createSystemCommandContext(
   const platformServices = createPlatformServices(platform);
   const scopedPlatformServices: PlatformServices = {
     ...platformServices,
-    logger: platformServices.logger.child({
-      layer: 'cli',
-      requestId,
-      reqId: requestId,
-      traceId,
-      spanId,
-      invocationId,
-      executionId,
-      pluginId: '@kb-labs/system',
-    }),
+    logger: createContextLogger(platformServices.logger, {
+      applicationId: "kb",
+      serviceId: "kb",
+      instanceId: `${process.pid}`,
+      layer: "cli",
+    })
+      .forComponent("plugin-executor")
+      .forOperation("plugin.execute", {
+        requestId,
+        traceId,
+        spanId,
+      })
+      .with({ invocationId, executionId })
+      .forPlugin({ pluginId: "@kb-labs/system" }),
   };
 
   return {
-    host: 'cli',
+    host: "cli",
     requestId,
-    pluginId: '@kb-labs/system',
+    pluginId: "@kb-labs/system",
     cwd: context.cwd || process.cwd(),
     ui,
     platform: scopedPlatformServices,
@@ -212,13 +247,13 @@ export function createSystemCommandContext(
     },
     api: {} as unknown as PluginAPI,
     hostContext: {
-      host: 'cli' as const,
+      host: "cli" as const,
       argv: process.argv.slice(2),
       flags: {},
       // CLI_VERSION is injected from package.json in bin.ts at startup.
-      cliVersion: process.env.CLI_VERSION ?? '0.0.0',
+      cliVersion: process.env.CLI_VERSION ?? "0.0.0",
     },
-    pluginVersion: '1.0.0',
+    pluginVersion: "1.0.0",
     trace: {
       ...noopTraceContext,
       traceId,

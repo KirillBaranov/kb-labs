@@ -4,6 +4,7 @@
  */
 
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -32,6 +33,50 @@ import { ADAPTER_DEFAULTS, type AdapterSlot } from '@kb-labs/core-platform';
 import { inmemoryFactories } from '@kb-labs/core-platform/inmemory';
 import { noopFactories } from '@kb-labs/core-platform/noop';
 import { WorkflowEngine } from './core/workflow-engine.js';
+
+const OPTIONAL_ADAPTER_SLOTS = new Set(['logPersistence', 'logRingBuffer']);
+
+function selectPackageExport(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const conditions = value as Record<string, unknown>;
+  for (const condition of ['import', 'default', 'require']) {
+    const entry = conditions[condition];
+    if (typeof entry === 'string') {
+      return entry;
+    }
+  }
+  return undefined;
+}
+
+async function resolveFromPlatformPackage(
+  modulePath: string,
+  basePkgName: string,
+  platformRoot: string,
+): Promise<{ modulePath: string; pkgRoot: string }> {
+  const packageRoot = path.join(platformRoot, 'node_modules', basePkgName);
+  const packageJson = JSON.parse(
+    await fs.readFile(path.join(packageRoot, 'package.json'), 'utf-8'),
+  ) as { main?: string; exports?: unknown };
+  const subpath = modulePath.slice(basePkgName.length);
+  const exportKey = subpath ? `.${subpath}` : '.';
+  const exportsMap = packageJson.exports;
+  const exported =
+    exportsMap && typeof exportsMap === 'object' && !Array.isArray(exportsMap)
+      ? (exportsMap as Record<string, unknown>)[exportKey]
+      : undefined;
+  const entry = selectPackageExport(exported) ?? (!subpath ? packageJson.main : undefined);
+
+  if (!entry) {
+    throw new Error(`Package ${basePkgName} does not export ${exportKey}`);
+  }
+
+  return { modulePath: path.resolve(packageRoot, entry), pkgRoot: packageRoot };
+}
 
 import { AnalyticsLLM } from '@kb-labs/core-platform';
 import type {
@@ -682,8 +727,27 @@ export async function initPlatform(
 
           return { createAdapter: factory, manifest, pkgRoot: adapter.pkgRoot };
         } else {
-          // Fallback to node_modules — resolve pkgRoot via package.json
-          const module = await import(modulePath);
+          // Built-in adapters belong to the platform distribution, not to an
+          // individual service bundle. Resolve from the platform root so every
+          // launched service sees the same installed adapter set.
+          const resolutionRoot = platformRoot ?? cwd;
+          const platformRequire = createRequire(
+            path.join(resolutionRoot, 'package.json'),
+          );
+          let resolvedModulePath: string;
+          let pkgRoot: string | undefined;
+          try {
+            resolvedModulePath = platformRequire.resolve(modulePath);
+          } catch {
+            const resolved = await resolveFromPlatformPackage(
+              modulePath,
+              basePkgName,
+              resolutionRoot,
+            );
+            resolvedModulePath = resolved.modulePath;
+            pkgRoot = resolved.pkgRoot;
+          }
+          const module = await import(pathToFileURL(resolvedModulePath).href);
 
           const factory = module.createAdapter || module.default;
           const manifest = module.manifest;
@@ -700,11 +764,24 @@ export async function initPlatform(
             );
           }
 
-          // Resolve pkgRoot for npm packages via package.json resolution
-          let pkgRoot: string | undefined;
+          // Find the package root from the resolved ESM entrypoint. This avoids
+          // CommonJS resolution, which cannot resolve ESM-only `import` exports.
           try {
-            const pkgJsonPath = import.meta.resolve(`${basePkgName}/package.json`);
-            pkgRoot = path.dirname(new URL(pkgJsonPath).pathname);
+            let candidate = path.dirname(resolvedModulePath);
+            while (candidate !== path.dirname(candidate)) {
+              try {
+                const packageJson = JSON.parse(
+                  await fs.readFile(path.join(candidate, 'package.json'), 'utf-8'),
+                ) as { name?: string };
+                if (packageJson.name === basePkgName) {
+                  pkgRoot = candidate;
+                  break;
+                }
+              } catch {
+                // Keep walking up until the adapter package root is found.
+              }
+              candidate = path.dirname(candidate);
+            }
           } catch {
             // pkgRoot unavailable for this adapter — middleware handler files won't be loadable
           }
@@ -774,6 +851,14 @@ export async function initPlatform(
           });
         }
       } catch (error) {
+        if (OPTIONAL_ADAPTER_SLOTS.has(name)) {
+          platform.logger.warn('Optional platform adapter unavailable; capability disabled', {
+            adapterSlot: name,
+            adapter: primaryAdapter,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          continue;
+        }
         throw error;
       }
     }

@@ -3,71 +3,76 @@
  * Agent-first: "What happened in this workflow run?"
  */
 
-import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
-import { generateExamples } from '../../../utils/generate-examples';
-import { platform } from '@kb-labs/core-runtime';
-import { formatLogLine, formatLogJson, extractCorrelationKeys } from './logs-utils';
-import type { LogRecord } from '@kb-labs/core-platform';
+import {
+  defineSystemCommand,
+  type CommandResult,
+} from "@kb-labs/shared-command-kit";
+import { generateExamples } from "../../../utils/generate-examples";
+import { platform } from "@kb-labs/core-runtime";
+import { formatLogLine, formatLogJson } from "./logs-utils";
+import type { LogRecord } from "@kb-labs/core-platform";
 
 type Flags = {
-  'execution-id': { type: 'string'; description?: string };
-  'trace-id': { type: 'string'; description?: string };
-  'request-id': { type: 'string'; description?: string };
-  limit: { type: 'number'; description?: string };
-  json: { type: 'boolean'; description?: string };
+  "execution-id": { type: "string"; description?: string };
+  "trace-id": { type: "string"; description?: string };
+  "request-id": { type: "string"; description?: string };
+  limit: { type: "number"; description?: string };
+  json: { type: "boolean"; description?: string };
 };
 
 export const logsContext = defineSystemCommand<Flags, CommandResult>({
-  name: 'context',
-  description: 'Show full timeline for an execution, trace, or request',
-  category: 'logs',
-  examples: generateExamples('logs context', 'kb', [
-    { flags: { 'execution-id': '"exec-abc123"', json: true }, description: 'Workflow execution timeline' },
-    { flags: { 'trace-id': '"trace-xyz"' }, description: 'Distributed trace timeline' },
+  name: "context",
+  description: "Show full timeline for an execution, trace, or request",
+  category: "logs",
+  examples: generateExamples("logs context", "kb", [
+    {
+      flags: { "execution-id": '"exec-abc123"', json: true },
+      description: "Workflow execution timeline",
+    },
+    {
+      flags: { "trace-id": '"trace-xyz"' },
+      description: "Distributed trace timeline",
+    },
   ]),
   flags: {
-    'execution-id': { type: 'string', description: 'Filter by execution ID' },
-    'trace-id': { type: 'string', description: 'Filter by trace ID' },
-    'request-id': { type: 'string', description: 'Filter by request ID' },
-    limit: { type: 'number', description: 'Max records (default: 200)' },
-    json: { type: 'boolean', description: 'Output in JSON format' },
+    "execution-id": { type: "string", description: "Filter by execution ID" },
+    "trace-id": { type: "string", description: "Filter by trace ID" },
+    "request-id": { type: "string", description: "Filter by request ID" },
+    limit: { type: "number", description: "Max records (default: 200)" },
+    json: { type: "boolean", description: "Output in JSON format" },
   },
   async handler(_ctx, _argv, flags) {
     const reader = platform.logs;
     if (!reader) {
-      return { ok: false, error: 'Log reader not available. Ensure platform is initialized.' };
+      return {
+        ok: false,
+        error: "Log reader not available. Ensure platform is initialized.",
+      };
     }
 
-    const executionId = flags['execution-id'];
-    const traceId = flags['trace-id'];
-    const requestId = flags['request-id'];
+    const executionId = flags["execution-id"];
+    const traceId = flags["trace-id"];
+    const requestId = flags["request-id"];
 
     if (!executionId && !traceId && !requestId) {
       return {
         ok: false,
-        error: 'At least one correlation key required: --execution-id, --trace-id, or --request-id',
+        error:
+          "At least one correlation key required: --execution-id, --trace-id, or --request-id",
       };
     }
 
-    // Fetch a broad set of recent logs (last 24h, up to 5000)
     const maxLogs = flags.limit ?? 200;
     const result = await reader.query(
-      { from: Date.now() - 86_400_000 },
-      { limit: 5000, sortOrder: 'asc' },
+      { executionId, traceId, requestId },
+      { limit: maxLogs, sortOrder: "asc" },
     );
-
-    // Filter by correlation key in memory
-    const matched = result.logs.filter((log) => {
-      const keys = extractCorrelationKeys(log);
-      if (executionId && keys.executionId === executionId) {return true;}
-      if (traceId && keys.traceId === traceId) {return true;}
-      if (requestId && keys.requestId === requestId) {return true;}
-      return false;
-    }).slice(0, maxLogs);
+    const matched = result.logs;
 
     // Compute timeline metadata
     const firstTs = matched.length > 0 ? matched[0]!.timestamp : 0;
-    const lastTs = matched.length > 0 ? matched[matched.length - 1]!.timestamp : 0;
+    const lastTs =
+      matched.length > 0 ? matched[matched.length - 1]!.timestamp : 0;
 
     const levelCounts: Record<string, number> = {};
     const sourceCounts: Record<string, number> = {};
@@ -78,7 +83,11 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
 
     return {
       ok: true,
-      correlationKey: executionId ? { executionId } : traceId ? { traceId } : { requestId },
+      correlationKey: executionId
+        ? { executionId }
+        : traceId
+          ? { traceId }
+          : { requestId },
       timeline: {
         total: matched.length,
         from: firstTs ? new Date(firstTs).toISOString() : null,
@@ -94,7 +103,12 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
   formatter(result, ctx, flags) {
     type LogContextResult = CommandResult & {
       correlationKey?: Record<string, unknown>;
-      timeline?: { total: number; from: string | null; to: string | null; durationMs: number };
+      timeline?: {
+        total: number;
+        from: string | null;
+        to: string | null;
+        durationMs: number;
+      };
       byLevel?: Record<string, number>;
       bySource?: Record<string, number>;
       logs?: unknown[];
@@ -110,8 +124,10 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
     }
 
     if (!result.ok) {
-      const error = typeof result.error === 'string' ? result.error : 'Unknown';
-      ctx.ui.error('Log Context', { sections: [{ header: 'Error', items: [error] }] });
+      const error = typeof result.error === "string" ? result.error : "Unknown";
+      ctx.ui.error("Log Context", {
+        sections: [{ header: "Error", items: [error] }],
+      });
       return;
     }
 
@@ -119,29 +135,44 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
     const raw = data._raw ?? [];
 
     // Header
-    const keyStr = correlationKey ? Object.entries(correlationKey).map(([k, v]) => `${k}=${v}`).join(', ') : '';
-    const durationStr = timeline && timeline.durationMs > 0 ? `${timeline.durationMs}ms` : 'instant';
+    const keyStr = correlationKey
+      ? Object.entries(correlationKey)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ")
+      : "";
+    const durationStr =
+      timeline && timeline.durationMs > 0
+        ? `${timeline.durationMs}ms`
+        : "instant";
 
-    ctx.ui.success('Execution Context', {
-      sections: [{
-        header: `${keyStr}`,
-        items: [
-          `Total events: ${timeline?.total ?? 0}`,
-          `Duration: ${durationStr}`,
-          `Time: ${timeline?.from ?? 'N/A'} → ${timeline?.to ?? 'N/A'}`,
-          `Levels: ${byLevel ? Object.entries(byLevel).map(([k, v]) => `${k}=${v}`).join(', ') : ''}`,
-        ],
-      }],
+    ctx.ui.success("Execution Context", {
+      sections: [
+        {
+          header: `${keyStr}`,
+          items: [
+            `Total events: ${timeline?.total ?? 0}`,
+            `Duration: ${durationStr}`,
+            `Time: ${timeline?.from ?? "N/A"} → ${timeline?.to ?? "N/A"}`,
+            `Levels: ${
+              byLevel
+                ? Object.entries(byLevel)
+                    .map(([k, v]) => `${k}=${v}`)
+                    .join(", ")
+                : ""
+            }`,
+          ],
+        },
+      ],
     });
 
     // Timeline
     if (raw.length > 0) {
-      ctx.ui.write('\nTimeline:\n');
+      ctx.ui.write("\nTimeline:\n");
       for (const log of raw) {
-        ctx.ui.write('  ' + formatLogLine(log) + '\n');
+        ctx.ui.write("  " + formatLogLine(log) + "\n");
       }
     } else {
-      ctx.ui.write('\nNo logs found for this correlation key.\n');
+      ctx.ui.write("\nNo logs found for this correlation key.\n");
     }
   },
 });

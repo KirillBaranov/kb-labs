@@ -40,6 +40,7 @@
  * ```
  */
 
+import { LOG_CONTEXT_FIELDS } from "@kb-labs/sdk/adapters";
 import type {
   ILogRingBuffer,
   LogRingBufferConfig,
@@ -104,7 +105,8 @@ export class LogRingBufferAdapter implements ILogRingBuffer {
 
     // Apply filters
     if (query?.level) {
-      results = results.filter((r) => r.level === query.level);
+      const minimum = LEVEL_ORDER[query.level];
+      results = results.filter((r) => LEVEL_ORDER[r.level] >= minimum);
     }
 
     if (query?.from !== undefined) {
@@ -117,6 +119,13 @@ export class LogRingBufferAdapter implements ILogRingBuffer {
 
     if (query?.source) {
       results = results.filter((r) => r.source === query.source);
+    }
+
+    for (const field of LOG_CONTEXT_FIELDS) {
+      const value = query?.[field];
+      if (value !== undefined) {
+        results = results.filter((record) => record.fields[field] === value);
+      }
     }
 
     // Apply limit
@@ -194,6 +203,15 @@ export class LogRingBufferAdapter implements ILogRingBuffer {
     });
   }
 }
+
+const LEVEL_ORDER = {
+  trace: 0,
+  debug: 1,
+  info: 2,
+  warn: 3,
+  error: 4,
+  fatal: 5,
+} as const;
 
 /**
  * Factory function for creating ring buffer adapter.

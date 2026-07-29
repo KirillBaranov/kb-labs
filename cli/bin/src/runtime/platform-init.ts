@@ -9,7 +9,7 @@
  * NoOp fallback on failure.
  */
 
-import { createHash } from 'node:crypto';
+import { createHash } from "node:crypto";
 import {
   initPlatform,
   loadPlatformConfig,
@@ -19,22 +19,25 @@ import {
   type PlatformLifecycleContext,
   type PlatformLifecycleHooks,
   type PlatformLifecyclePhase,
-} from '@kb-labs/core-runtime';
-import { findRepoRoot } from '@kb-labs/core-sys';
-import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
-import { noopUI } from '@kb-labs/plugin-contracts';
-import type { UIFacade } from '@kb-labs/plugin-contracts';
-import { createCLIUIFacade } from './ui-facade';
+} from "@kb-labs/core-runtime";
+import { findRepoRoot } from "@kb-labs/core-sys";
+import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
+import { noopUI } from "@kb-labs/plugin-contracts";
+import type { UIFacade } from "@kb-labs/plugin-contracts";
+import { createCLIUIFacade } from "./ui-facade";
+import { createContextLogger } from "@kb-labs/core-platform";
 
-const CLI_LIFECYCLE_HOOK_ID = 'cli-runtime';
-const LOG_SERVICE = 'platform-init';
+const CLI_LIFECYCLE_HOOK_ID = "cli-runtime";
+const LOG_SERVICE = "platform-init";
 let lifecycleHooksRegistered = false;
 
 function lifecycleLogger() {
-  return platform.logger.child({
-    layer: 'cli',
-    service: 'platform-lifecycle',
-  });
+  return createContextLogger(platform.logger, {
+    applicationId: "kb",
+    serviceId: "kb",
+    instanceId: `${process.pid}`,
+    layer: "cli",
+  }).forComponent("platform-lifecycle");
 }
 
 function ensureLifecycleHooksRegistered(): void {
@@ -44,24 +47,24 @@ function ensureLifecycleHooksRegistered(): void {
 
   const hooks: PlatformLifecycleHooks = {
     onStart: (ctx: PlatformLifecycleContext) => {
-      lifecycleLogger().debug('Platform lifecycle: start', {
-        app: 'cli',
+      lifecycleLogger().debug("Platform lifecycle: start", {
+        app: "cli",
         cwd: ctx.cwd,
         isChildProcess: ctx.isChildProcess,
       });
     },
     onReady: (ctx: PlatformLifecycleContext) => {
-      lifecycleLogger().debug('Platform lifecycle: ready', {
-        app: 'cli',
+      lifecycleLogger().debug("Platform lifecycle: ready", {
+        app: "cli",
         durationMs: ctx.metadata?.durationMs,
       });
     },
     onShutdown: () => {
-      lifecycleLogger().debug('Platform lifecycle: shutdown', { app: 'cli' });
+      lifecycleLogger().debug("Platform lifecycle: shutdown", { app: "cli" });
     },
     onError: (error: unknown, phase: PlatformLifecyclePhase) => {
-      lifecycleLogger().warn('Platform lifecycle hook error', {
-        app: 'cli',
+      lifecycleLogger().warn("Platform lifecycle hook error", {
+        app: "cli",
         phase,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -78,13 +81,12 @@ function ensureLifecycleHooksRegistered(): void {
  */
 function createCLIUIProvider(): (hostType: string) => UIFacade {
   return (hostType: string): UIFacade => {
-    if (hostType !== 'cli') {
+    if (hostType !== "cli") {
       return noopUI;
     }
     return createCLIUIFacade();
   };
 }
-
 
 export interface PlatformInitResult {
   /** The initialized platform singleton. */
@@ -120,10 +122,13 @@ export async function initializePlatform(
   // ${KB_SOCKET_HASH} placeholders in socket paths resolve without warnings.
   // kb-dev sets it as a real env var for managed services; the CLI derives the
   // same value from KB_PROJECT_ROOT (or the repo root) when running standalone.
-  if (!process.env['KB_SOCKET_HASH']) {
+  if (!process.env["KB_SOCKET_HASH"]) {
     const repoRoot = await findRepoRoot(cwd).catch(() => cwd);
-    const hashRoot = process.env['KB_PROJECT_ROOT'] ?? repoRoot;
-    process.env['KB_SOCKET_HASH'] = createHash('md5').update(hashRoot).digest('hex').slice(0, 8);
+    const hashRoot = process.env["KB_PROJECT_ROOT"] ?? repoRoot;
+    process.env["KB_SOCKET_HASH"] = createHash("md5")
+      .update(hashRoot)
+      .digest("hex")
+      .slice(0, 8);
   }
 
   const uiProvider = createCLIUIProvider();
@@ -141,8 +146,14 @@ export async function initializePlatform(
   }
 
   if (loadResult) {
-    const { platformConfig, rawConfig, effectiveConfig, platformRoot, projectRoot, sources } =
-      loadResult;
+    const {
+      platformConfig,
+      rawConfig,
+      effectiveConfig,
+      platformRoot,
+      projectRoot,
+      sources,
+    } = loadResult;
     try {
       // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
       // against the project root — this is where the user's .kb/ lives.
@@ -153,11 +164,13 @@ export async function initializePlatform(
         projectRoot,
         uiProvider,
         platformRoot !== projectRoot ? platformRoot : undefined,
-        makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined),
+        makeAssemblyHook(() =>
+          process.env.KB_DEBUG === "true" ? platform.logger : undefined,
+        ),
       );
 
-      platformInstance.logger.info('Platform adapters initialized', {
-        layer: 'cli',
+      platformInstance.logger.info("Platform adapters initialized", {
+        layer: "cli",
         service: LOG_SERVICE,
         platformRoot,
         projectRoot,
@@ -166,9 +179,9 @@ export async function initializePlatform(
         hasAdapterOptions: !!platformConfig.adapterOptions,
       });
 
-      if (process.env.KB_DEBUG === 'true') {
-        platformInstance.logger.debug('kb.diag.config', {
-          event: 'kb.diag.config',
+      if (process.env.KB_DEBUG === "true") {
+        platformInstance.logger.debug("kb.diag.config", {
+          event: "kb.diag.config",
           v: 1,
           data: {
             platformConfigPath: sources.platformDefaults,
@@ -198,12 +211,14 @@ export async function initializePlatform(
         projectRoot,
         uiProvider,
         undefined,
-        makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined),
+        makeAssemblyHook(() =>
+          process.env.KB_DEBUG === "true" ? platform.logger : undefined,
+        ),
       );
       platformInstance.logger.warn(
-        'Platform adapters failed, using NoOp adapters',
+        "Platform adapters failed, using NoOp adapters",
         {
-          layer: 'cli',
+          layer: "cli",
           service: LOG_SERVICE,
           error: error instanceof Error ? error.message : String(error),
         },
@@ -221,10 +236,18 @@ export async function initializePlatform(
 
   // Full fallback: config could not be loaded at all.
   const fallbackConfig: PlatformConfig = { adapters: {} };
-  const platformInstance = await initPlatform(fallbackConfig, cwd, uiProvider, undefined, makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined));
+  const platformInstance = await initPlatform(
+    fallbackConfig,
+    cwd,
+    uiProvider,
+    undefined,
+    makeAssemblyHook(() =>
+      process.env.KB_DEBUG === "true" ? platform.logger : undefined,
+    ),
+  );
   platformInstance.logger.warn(
-    'Platform initialization failed, using NoOp adapters',
-    { layer: 'cli', service: LOG_SERVICE },
+    "Platform initialization failed, using NoOp adapters",
+    { layer: "cli", service: LOG_SERVICE },
   );
   return {
     platform: platformInstance,

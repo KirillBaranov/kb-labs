@@ -66,6 +66,9 @@
     "ws:check": "./tools/kb-devkit/kb-devkit check",
     "ws:fix": "./tools/kb-devkit/kb-devkit fix --safe"
   },
+  "dependencies": {
+    "@kb-labs/adapters-log-document": "workspace:*"
+  },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
