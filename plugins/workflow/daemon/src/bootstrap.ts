@@ -3,210 +3,239 @@
  * Bootstrap workflow daemon - initialize platform, engine, worker, and HTTP server
  */
 
-import { platform, createServiceBootstrap } from '@kb-labs/core-runtime';
-import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
-import { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
-import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
-import { runDaemon } from '@kb-labs/shared-daemon';
-import { createWorkflowWorker } from './worker.js';
-import { JobBroker } from './job-broker.js';
-import { CronScheduler } from './cron-scheduler.js';
-import { CronDiscovery } from './cron-discovery.js';
-import { WorkflowFileWatcher } from './file-watcher.js';
-import { createServer } from './server.js';
-import { createRegistry } from '@kb-labs/core-registry';
-import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
+import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
+import { WorkflowEngine, WorkflowService } from "@kb-labs/workflow-engine";
+import { createCorrelatedLogger, getListenOptions } from "@kb-labs/shared-http";
+import { runService } from "@kb-labs/shared-daemon";
+import { createWorkflowWorker } from "./worker.js";
+import { JobBroker } from "./job-broker.js";
+import { CronScheduler } from "./cron-scheduler.js";
+import { CronDiscovery } from "./cron-discovery.js";
+import { WorkflowFileWatcher } from "./file-watcher.js";
+import { createServer } from "./server.js";
+import { createRegistry } from "@kb-labs/core-registry";
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 
 /**
  * Bootstrap workflow daemon.
  * Initializes platform, engine, worker, and HTTP server.
  */
 export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
-  await runDaemon(
-    {
-      appId: 'workflow-daemon',
-      // serviceId in the transport map / devservices is 'workflow' (≠ appId).
-      serviceId: 'workflow',
-      defaultPort: 7778,
-      portEnvVar: 'WORKFLOW_PORT',
-      defaultHost: '0.0.0.0',
-      hostEnvVar: 'WORKFLOW_HOST',
-      async setup({ platform: _p, logger: _l, port, host, repoRoot }) {
-        // KB_PROJECT_ROOT injected by kb-dev when invoked from a project dir with separate platform.
-        // Fall back to the resolved repoRoot (not raw cwd) so plugin/cron/workflow discovery is
-        // correct even when the daemon is launched from a subdirectory.
-        const projectRoot = process.env['KB_PROJECT_ROOT'] ?? repoRoot;
-
-        if (!platform.isConfigured('workspace')) {
-          process.stderr.write(
-            '[workflow-daemon] WARNING: workspace adapter is not configured.\n' +
-            '[workflow-daemon] Workflows that use isolation: balanced (default) or isolation: strict will fail.\n' +
-            '[workflow-daemon] To fix: set platform.adapters.workspace in kb.config.json.\n' +
-            '[workflow-daemon] To run without a workspace: add "isolation: relaxed" to your workflow YAML.\n',
-          );
-        }
-
-        if (!platform.isConfigured('environment') && platform.isConfigured('workspace')) {
-          process.stderr.write(
-            '[workflow-daemon] WARNING: environment adapter is not configured.\n' +
-            '[workflow-daemon] Workflows that use isolation: strict will fail.\n' +
-            '[workflow-daemon] To fix: set platform.adapters.environment in kb.config.json.\n',
-          );
-        }
-
-        const startupRequestId = `workflow-startup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        const startupTraceId = randomUUID();
-        const startupSpanId = randomUUID();
-        const bootstrapLogger = createCorrelatedLogger(platform.logger, {
-          serviceId: 'workflow',
-          logsSource: 'workflow',
-          layer: 'workflow',
-          service: 'bootstrap',
-          requestId: startupRequestId,
-          traceId: startupTraceId,
-          operation: 'workflow.bootstrap',
-          bindings: { spanId: startupSpanId, invocationId: startupSpanId, executionId: startupSpanId },
-        });
-
-        const debugMode = process.env['WORKFLOW_DEBUG'] === 'true';
-        bootstrapLogger.info('Workflow daemon starting', { projectRoot, debugMode });
-
-        if (debugMode) {
-          bootstrapLogger.warn(
-            '[WORKFLOW_DEBUG=true] Verbose debug logging is ON — step inputs, outputs, and expr contexts will be logged. ' +
-            'Disable in production (unset WORKFLOW_DEBUG or set to false).',
-          );
-        }
-
-        const createWorkflowLogger = (service: string, operation: string, bindings?: Record<string, unknown>) =>
-          createCorrelatedLogger(platform.logger, {
-            serviceId: 'workflow',
-            logsSource: 'workflow',
-            layer: 'workflow',
-            service,
-            operation,
-            bindings,
-          });
-
-        bootstrapLogger.info('Loading plugin registry snapshot');
-        const cliApi = await createRegistry({ root: repoRoot, cache: { ttlMs: 10 * 60 * 1000 } });
-        await cliApi.initialize();
-        const plugins = await cliApi.listPlugins();
-        bootstrapLogger.info('Plugin registry snapshot loaded', {
-          pluginsFound: plugins.length,
-          pluginIds: plugins.map((p) => `${p.id}@${p.version}`),
-        });
-
-        bootstrapLogger.info('Creating WorkflowEngine');
-        const engine = new WorkflowEngine({
-          cache: platform.cache,
-          events: platform.eventBus,
-          logger: createWorkflowLogger('engine', 'workflow.engine'),
-          snapshotManager: platform.snapshotManager,
-          workspaceRoot: projectRoot,
-        });
-
-        bootstrapLogger.info('Cleaning up stale runs from previous daemon process');
-        await engine.cleanupStaleRuns();
-
-        bootstrapLogger.info('Resuming interrupted jobs');
-        await engine.resumeInterruptedJobs();
-
-        bootstrapLogger.info('Creating JobBroker');
-        const jobBroker = new JobBroker(
-          engine,
-          createWorkflowLogger('job-broker', 'workflow.job-broker'),
-          platform,
-        );
-
-        bootstrapLogger.info('Creating CronScheduler');
-        const cronScheduler = new CronScheduler({
-          jobBroker,
-          workflowEngine: engine,
-          logger: createWorkflowLogger('cron-scheduler', 'workflow.cron-scheduler'),
-          timezone: process.env.WORKFLOW_CRON_TIMEZONE,
-        });
-
-        bootstrapLogger.info('Discovering cron jobs');
-        const cronDiscovery = new CronDiscovery({
-          cliApi,
-          scheduler: cronScheduler,
-          logger: createWorkflowLogger('cron-discovery', 'workflow.cron-discovery'),
-          workspaceRoot: projectRoot,
-        });
-        const discovered = await cronDiscovery.discoverAll();
-        bootstrapLogger.info('Cron job discovery complete', discovered);
-
-        bootstrapLogger.info('Creating WorkflowService');
-        const workflowService = new WorkflowService({ cliApi, platform, workspaceRoot: projectRoot });
-        workflowService.listAll().catch((err: unknown) =>
-          bootstrapLogger.warn('Manifest scanner warmup failed', { err }),
-        );
-
-        bootstrapLogger.info('Starting WorkflowFileWatcher');
-        const fileWatcher = new WorkflowFileWatcher({
-          watchDirs: [
-            join(projectRoot, '.kb', 'workflows'),
-            join(projectRoot, '.kb', 'jobs'),
-          ],
-          workflowService,
-          cronDiscovery,
-          cronScheduler,
-          logger: createWorkflowLogger('file-watcher', 'workflow.file-watcher'),
-        });
-
-        bootstrapLogger.info('Creating HTTP server');
-        const server = await createServer({
-          engine,
-          jobBroker,
-          workflowService,
-          cronScheduler,
-          cronDiscovery,
-          logger: createWorkflowLogger('api', 'workflow.api'),
-        });
-
-        await server.listen(getListenOptions(port, host));
-        bootstrapLogger.info('HTTP API listening', { port });
-
-        bootstrapLogger.info('Creating WorkflowWorker');
-        const worker = await createWorkflowWorker({
-          engine,
-          cliApi,
-          logger: createWorkflowLogger('worker', 'workflow.worker'),
-          analytics: platform.analytics,
-          platform,
-          workspaceRoot: projectRoot,
-          concurrency: parseInt(process.env.WORKFLOW_CONCURRENCY ?? '5', 10),
-          debugMode,
-        });
-
-        bootstrapLogger.info('Starting WorkflowWorker');
-        worker.start().catch((error) => {
-          bootstrapLogger.error(
-            'Worker crashed - shutting down daemon',
-            error instanceof Error ? error : undefined,
-          );
-          process.kill(process.pid, 'SIGTERM');
-        });
-
-        bootstrapLogger.info('Starting CronScheduler');
-        await cronScheduler.start();
-
-        bootstrapLogger.info('Workflow daemon started successfully', { port });
-
-        return async () => {
-          bootstrapLogger.warn('Stopping workflow daemon components');
-          fileWatcher.close();
-          await cronScheduler.stop();
-          await worker.stop();
-          await server.close();
-          await cliApi.dispose();
-          // platform.shutdown() is called by runDaemon after this callback returns
-        };
-      },
+  await runService({
+    appId: "workflow-daemon",
+    startDir: _cwd,
+    // serviceId in the transport map / devservices is 'workflow' (≠ appId).
+    serviceId: "workflow",
+    defaultPort: 7778,
+    portEnvVar: "WORKFLOW_PORT",
+    defaultHost: "0.0.0.0",
+    hostEnvVar: "WORKFLOW_HOST",
+    platform: {
+      assemblyHook: makeAssemblyHook(),
     },
-    (appId, repoRoot) =>
-      createServiceBootstrap({ appId, repoRoot, assemblyHook: makeAssemblyHook() }),
-  );
+    async setup({ platform, port, host, projectRoot, platformRoot }) {
+      // KB_PROJECT_ROOT injected by kb-dev when invoked from a project dir with separate platform.
+      // Fall back to the resolved repoRoot (not raw cwd) so plugin/cron/workflow discovery is
+      // correct even when the daemon is launched from a subdirectory.
+      const workspaceRoot = process.env["KB_PROJECT_ROOT"] ?? projectRoot;
+
+      const startupRequestId = `workflow-startup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const startupTraceId = randomUUID();
+      const startupSpanId = randomUUID();
+      const bootstrapLogger = createCorrelatedLogger(platform.logger, {
+        serviceId: "workflow",
+        logsSource: "workflow",
+        layer: "workflow",
+        service: "bootstrap",
+        requestId: startupRequestId,
+        traceId: startupTraceId,
+        operation: "workflow.bootstrap",
+        bindings: {
+          spanId: startupSpanId,
+          invocationId: startupSpanId,
+          executionId: startupSpanId,
+        },
+      });
+
+      if (!platform.isConfigured("workspace")) {
+        bootstrapLogger.warn("Workspace adapter is not configured", {
+          impact: "Workflows using balanced or strict isolation will fail.",
+          remediation:
+            "Configure platform.adapters.workspace or use relaxed isolation.",
+        });
+      }
+
+      if (
+        !platform.isConfigured("environment") &&
+        platform.isConfigured("workspace")
+      ) {
+        bootstrapLogger.warn("Environment adapter is not configured", {
+          impact: "Workflows using strict isolation will fail.",
+          remediation: "Configure platform.adapters.environment.",
+        });
+      }
+
+      const debugMode = process.env["WORKFLOW_DEBUG"] === "true";
+      bootstrapLogger.info("Workflow daemon starting", {
+        projectRoot: workspaceRoot,
+        debugMode,
+      });
+
+      if (debugMode) {
+        bootstrapLogger.warn(
+          "[WORKFLOW_DEBUG=true] Verbose debug logging is ON — step inputs, outputs, and expr contexts will be logged. " +
+            "Disable in production (unset WORKFLOW_DEBUG or set to false).",
+        );
+      }
+
+      const createWorkflowLogger = (
+        service: string,
+        operation: string,
+        bindings?: Record<string, unknown>,
+      ) =>
+        createCorrelatedLogger(platform.logger, {
+          serviceId: "workflow",
+          logsSource: "workflow",
+          layer: "workflow",
+          service,
+          operation,
+          bindings,
+        });
+
+      bootstrapLogger.info("Loading plugin registry snapshot");
+      const cliApi = await createRegistry({
+        root: workspaceRoot,
+        platformRoot,
+        cache: { ttlMs: 10 * 60 * 1000 },
+      });
+      await cliApi.initialize();
+      const plugins = await cliApi.listPlugins();
+      bootstrapLogger.info("Plugin registry snapshot loaded", {
+        pluginsFound: plugins.length,
+        pluginIds: plugins.map((p) => `${p.id}@${p.version}`),
+      });
+
+      bootstrapLogger.info("Creating WorkflowEngine");
+      const engine = new WorkflowEngine({
+        cache: platform.cache,
+        events: platform.eventBus,
+        logger: createWorkflowLogger("engine", "workflow.engine"),
+        snapshotManager: platform.snapshotManager,
+        workspaceRoot,
+      });
+
+      bootstrapLogger.info(
+        "Cleaning up stale runs from previous daemon process",
+      );
+      await engine.cleanupStaleRuns();
+
+      bootstrapLogger.info("Resuming interrupted jobs");
+      await engine.resumeInterruptedJobs();
+
+      bootstrapLogger.info("Creating JobBroker");
+      const jobBroker = new JobBroker(
+        engine,
+        createWorkflowLogger("job-broker", "workflow.job-broker"),
+        platform,
+      );
+
+      bootstrapLogger.info("Creating CronScheduler");
+      const cronScheduler = new CronScheduler({
+        jobBroker,
+        workflowEngine: engine,
+        logger: createWorkflowLogger(
+          "cron-scheduler",
+          "workflow.cron-scheduler",
+        ),
+        timezone: process.env.WORKFLOW_CRON_TIMEZONE,
+      });
+
+      bootstrapLogger.info("Discovering cron jobs");
+      const cronDiscovery = new CronDiscovery({
+        cliApi,
+        scheduler: cronScheduler,
+        logger: createWorkflowLogger(
+          "cron-discovery",
+          "workflow.cron-discovery",
+        ),
+        workspaceRoot,
+      });
+      const discovered = await cronDiscovery.discoverAll();
+      bootstrapLogger.info("Cron job discovery complete", discovered);
+
+      bootstrapLogger.info("Creating WorkflowService");
+      const workflowService = new WorkflowService({
+        cliApi,
+        platform,
+        workspaceRoot,
+      });
+      workflowService
+        .listAll()
+        .catch((err: unknown) =>
+          bootstrapLogger.warn("Manifest scanner warmup failed", { err }),
+        );
+
+      bootstrapLogger.info("Starting WorkflowFileWatcher");
+      const fileWatcher = new WorkflowFileWatcher({
+        watchDirs: [
+          join(workspaceRoot, ".kb", "workflows"),
+          join(workspaceRoot, ".kb", "jobs"),
+        ],
+        workflowService,
+        cronDiscovery,
+        cronScheduler,
+        logger: createWorkflowLogger("file-watcher", "workflow.file-watcher"),
+      });
+
+      bootstrapLogger.info("Creating HTTP server");
+      const server = await createServer({
+        engine,
+        jobBroker,
+        workflowService,
+        cronScheduler,
+        cronDiscovery,
+        logger: createWorkflowLogger("api", "workflow.api"),
+      });
+
+      await server.listen(getListenOptions(port, host));
+      bootstrapLogger.info("HTTP API listening", { port });
+
+      bootstrapLogger.info("Creating WorkflowWorker");
+      const worker = await createWorkflowWorker({
+        engine,
+        cliApi,
+        logger: createWorkflowLogger("worker", "workflow.worker"),
+        analytics: platform.analytics,
+        platform,
+        workspaceRoot,
+        concurrency: parseInt(process.env.WORKFLOW_CONCURRENCY ?? "5", 10),
+        debugMode,
+      });
+
+      bootstrapLogger.info("Starting WorkflowWorker");
+      worker.start().catch((error) => {
+        bootstrapLogger.error(
+          "Worker crashed - shutting down daemon",
+          error instanceof Error ? error : undefined,
+        );
+        process.kill(process.pid, "SIGTERM");
+      });
+
+      bootstrapLogger.info("Starting CronScheduler");
+      await cronScheduler.start();
+
+      bootstrapLogger.info("Workflow daemon started successfully", { port });
+
+      return async () => {
+        bootstrapLogger.warn("Stopping workflow daemon components");
+        fileWatcher.close();
+        await cronScheduler.stop();
+        await worker.stop();
+        await server.close();
+        await cliApi.dispose();
+        // Platform shutdown is owned by runService after this callback returns.
+      };
+    },
+  });
 }

@@ -1,11 +1,17 @@
-import { logDiagnosticEvent, type IServiceTransport } from '@kb-labs/core-platform';
-import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/core-platform/inmemory';
-import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
-import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
-import { createCorrelatedLogger } from '@kb-labs/shared-http';
-import type { IHostStore, AuthConfig } from '@kb-labs/gateway-contracts';
-import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
-import { HostStore } from '@kb-labs/gateway-core';
+import {
+  logDiagnosticEvent,
+  type IServiceTransport,
+} from "@kb-labs/core-platform";
+import {
+  createInMemoryDocumentDatabase,
+  createInMemoryKVStore,
+} from "@kb-labs/core-platform/inmemory";
+import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
+import { runService, type ServiceContext } from "@kb-labs/shared-daemon";
+import { createCorrelatedLogger } from "@kb-labs/shared-http";
+import type { IHostStore, AuthConfig } from "@kb-labs/gateway-contracts";
+import type { IDocumentDatabase } from "@kb-labs/core-platform/adapters";
+import { HostStore } from "@kb-labs/gateway-core";
 import {
   UsersStore,
   CredentialsStore,
@@ -22,27 +28,45 @@ import {
   ensureBootstrapCliCredentials,
   AuthService,
   OAuthStateStore,
-} from '@kb-labs/gateway-auth';
-import type { IKVStore } from '@kb-labs/core-platform/adapters';
-import { createRegistry } from '@kb-labs/core-registry';
-import { loadGatewayConfig } from './config.js';
-import { createServer, type UserAuthServerDeps } from './server.js';
-import { HostRegistry } from './hosts/registry.js';
-import { registerPressureLimits } from './pressure/index.js';
-import type { WebhookManifestEntry } from './webhook/router.js';
+} from "@kb-labs/gateway-auth";
+import type { IKVStore } from "@kb-labs/core-platform/adapters";
+import { createRegistry } from "@kb-labs/core-registry";
+import { loadGatewayConfig } from "./config.js";
+import { createServer, type UserAuthServerDeps } from "./server.js";
+import { HostRegistry } from "./hosts/registry.js";
+import { registerPressureLimits } from "./pressure/index.js";
+import type { WebhookManifestEntry } from "./webhook/router.js";
 
-export async function bootstrap(repoRoot: string = process.cwd()): Promise<void> {
-  // 1. Initialize platform (loads .env + adapters from kb.config.json)
-  await createServiceBootstrap({ appId: 'gateway', repoRoot, assemblyHook: makeAssemblyHook() });
-
-  const logger = createCorrelatedLogger(platform.logger, {
-    serviceId: 'gateway',
-    logsSource: 'gateway',
-    layer: 'gateway',
-    service: 'bootstrap',
-    operation: 'gateway.bootstrap',
+export async function bootstrap(
+  repoRoot: string = process.cwd(),
+): Promise<void> {
+  await runService({
+    appId: "gateway",
+    startDir: repoRoot,
+    defaultPort: 4000,
+    portEnvVar: "GATEWAY_PORT",
+    defaultHost: "0.0.0.0",
+    hostEnvVar: "GATEWAY_HOST",
+    platform: {
+      assemblyHook: makeAssemblyHook(),
+    },
+    setup: startGateway,
   });
-  logger.info('Platform initialized', { repoRoot });
+}
+
+async function startGateway({
+  platform,
+  projectRoot,
+  platformRoot,
+}: ServiceContext): Promise<() => Promise<void>> {
+  const logger = createCorrelatedLogger(platform.logger, {
+    serviceId: "gateway",
+    logsSource: "gateway",
+    layer: "gateway",
+    service: "bootstrap",
+    operation: "gateway.bootstrap",
+  });
+  logger.info("Platform initialized", { projectRoot, platformRoot });
 
   // 2. Load gateway config — reads platform baseline + project layer +
   // `.kb/overlays/*.jsonc`. Use the resolved roots from core-runtime
@@ -50,13 +74,15 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   // than process.cwd() — in installed mode the gateway process is
   // spawned with cwd at the platform root, and we MUST not conflate
   // that with the project root.
-  const config = await loadGatewayConfig(getProjectRoot() ?? repoRoot, getPlatformRoot());
-  logger.info('Gateway config loaded', {
+  const config = await loadGatewayConfig(projectRoot, platformRoot);
+  logger.info("Gateway config loaded", {
     port: config.port,
     upstreams: Object.keys(config.upstreams),
-    projectRoot: getProjectRoot() ?? repoRoot,
-    platformRoot: getPlatformRoot(),
-    configProviderIds: config.auth?.providers ? Object.keys(config.auth.providers) : [],
+    projectRoot,
+    platformRoot,
+    configProviderIds: config.auth?.providers
+      ? Object.keys(config.auth.providers)
+      : [],
   });
 
   // 3. Create persistent host store backed by the platform document database.
@@ -65,28 +91,35 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   // The same code runs on sqlite locally and on postgres/mongo in prod — the
   // gateway has no business knowing which driver is wired underneath.
   let hostStore: IHostStore | undefined;
-  const configuredDocs = platform.getAdapter<IDocumentDatabase>('documentDatabase');
-  const docs: IDocumentDatabase = configuredDocs ?? createInMemoryDocumentDatabase();
+  const configuredDocs =
+    platform.getAdapter<IDocumentDatabase>("documentDatabase");
+  const docs: IDocumentDatabase =
+    configuredDocs ?? createInMemoryDocumentDatabase();
   if (configuredDocs) {
     hostStore = new HostStore(docs);
-    logger.info('Host store: documentDatabase-backed (persistent)');
+    logger.info("Host store: documentDatabase-backed (persistent)");
   } else {
     hostStore = new HostStore(docs);
-    logger.warn('documentDatabase: in-memory fallback (data lost on restart)');
-    logger.warn('Host store: in-memory (hosts will be lost on restart)');
+    logger.warn("documentDatabase: in-memory fallback (data lost on restart)");
+    logger.warn("Host store: in-memory (hosts will be lost on restart)");
   }
 
   // 3b. User auth infrastructure (ADR-0020). Always available — uses in-memory
   //     documentDatabase when no persistent adapter is configured.
   let userAuth: UserAuthServerDeps | undefined;
   {
-    const { accessTtlSec, refreshTtlSec, graceWindowMs, bcryptCost, cookieSecure } =
-      resolveAuthRuntimeConfig(config.auth, process.env);
-    const tenantPattern = config.tenants?.pattern ?? '{tenant}.kblabs.ru';
+    const {
+      accessTtlSec,
+      refreshTtlSec,
+      graceWindowMs,
+      bcryptCost,
+      cookieSecure,
+    } = resolveAuthRuntimeConfig(config.auth, process.env);
+    const tenantPattern = config.tenants?.pattern ?? "{tenant}.kblabs.ru";
     const bootstrapTenantId =
       config.auth?.bootstrap?.tenantId ??
       process.env.GATEWAY_BOOTSTRAP_TENANT_ID ??
-      'kblabs-cloud';
+      "kblabs-cloud";
 
     const users = new UsersStore(docs);
     const credentials = new CredentialsStore(docs);
@@ -127,7 +160,10 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       invites,
       providers,
       passwordPolicy,
-      jwtConfig: { secret: process.env.GATEWAY_JWT_SECRET ?? 'dev-insecure-secret-change-me' },
+      jwtConfig: {
+        secret:
+          process.env.GATEWAY_JWT_SECRET ?? "dev-insecure-secret-change-me",
+      },
       accessTtlSec,
       refreshTtlSec,
       bcryptCost,
@@ -135,7 +171,8 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
 
     // Seed bootstrap admin account (step 1.14). Idempotent.
     const adminEmail =
-      config.auth?.bootstrap?.adminEmail ?? process.env.GATEWAY_BOOTSTRAP_ADMIN_EMAIL;
+      config.auth?.bootstrap?.adminEmail ??
+      process.env.GATEWAY_BOOTSTRAP_ADMIN_EMAIL;
     const adminPassword = process.env.GATEWAY_BOOTSTRAP_ADMIN_PASSWORD;
     await ensureBootstrapAdmin({
       bootstrap:
@@ -148,7 +185,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       bcryptCost,
       logger,
     }).catch((err) => {
-      logger.warn('Bootstrap admin seed failed (non-fatal)', {
+      logger.warn("Bootstrap admin seed failed (non-fatal)", {
         error: err instanceof Error ? err.message : String(err),
       });
     });
@@ -162,10 +199,13 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     // In-memory is sufficient for single-process deployments (E2E, dev) and
     // ensures rate limiting is always active. Production deployments with a
     // persistent kvStore get cross-restart counters automatically.
-    const kv = platform.getAdapter<IKVStore>('kvStore') ?? createInMemoryKVStore();
+    const kv =
+      platform.getAdapter<IKVStore>("kvStore") ?? createInMemoryKVStore();
     const rateLimiter = createRateLimiter(kv);
-    if (!platform.getAdapter<IKVStore>('kvStore')) {
-      logger.warn('kvStore adapter not configured — auth rate limiting using in-memory KV (counters reset on restart)');
+    if (!platform.getAdapter<IKVStore>("kvStore")) {
+      logger.warn(
+        "kvStore adapter not configured — auth rate limiting using in-memory KV (counters reset on restart)",
+      );
     }
 
     // AUTH_LOGIN_RATE_LIMIT_PER_IP / AUTH_LOGIN_RATE_LIMIT_PER_EMAIL env vars override
@@ -187,10 +227,12 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     // callback may land on a different worker than the one that minted the
     // state, so an in-memory KV silently breaks OAuth. Warn when a redirect
     // provider is configured against a non-shared KV.
-    const hasRedirectProvider = providers.list().some((p) => p.kind === 'redirect');
-    if (hasRedirectProvider && !platform.getAdapter<IKVStore>('kvStore')) {
+    const hasRedirectProvider = providers
+      .list()
+      .some((p) => p.kind === "redirect");
+    if (hasRedirectProvider && !platform.getAdapter<IKVStore>("kvStore")) {
       logger.warn(
-        'OAuth requires a shared kvStore (Redis) in multi-process/HA; in-memory state is per-process and callbacks may land on a different worker',
+        "OAuth requires a shared kvStore (Redis) in multi-process/HA; in-memory state is per-process and callbacks may land on a different worker",
       );
     }
 
@@ -212,7 +254,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       oauthState,
     };
 
-    logger.info('User auth infrastructure initialised', {
+    logger.info("User auth infrastructure initialised", {
       tenantPattern,
       bootstrapTenantId,
       cookieSecure,
@@ -231,14 +273,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     restoredCount = await registry.restore();
   } catch (error) {
     logDiagnosticEvent(platform.logger, {
-      domain: 'registry',
-      event: 'gateway.hosts.restore',
-      level: 'error',
-      reasonCode: 'registry_restore_failed',
-      message: 'Failed to restore gateway host registry',
-      outcome: 'failed',
+      domain: "registry",
+      event: "gateway.hosts.restore",
+      level: "error",
+      reasonCode: "registry_restore_failed",
+      message: "Failed to restore gateway host registry",
+      outcome: "failed",
       error: error instanceof Error ? error : new Error(String(error)),
-      serviceId: 'gateway',
+      serviceId: "gateway",
       evidence: {
         persistentStore: !!hostStore,
       },
@@ -246,7 +288,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     // Non-fatal: gateway can start without restored state; hosts will re-register on reconnect
   }
   if (restoredCount > 0) {
-    logger.info('Restored hosts from store', { count: restoredCount });
+    logger.info("Restored hosts from store", { count: restoredCount });
   }
 
   // 5b. Discover plugin manifests for webhook route registration.
@@ -254,8 +296,6 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   //     Graceful: failure disables webhook routes but does not block gateway startup.
   let webhookManifests: WebhookManifestEntry[] = [];
   try {
-    const projectRoot = getProjectRoot() ?? repoRoot;
-    const platformRoot = getPlatformRoot();
     const pluginRegistry = await createRegistry({
       root: projectRoot,
       platformRoot: platformRoot !== projectRoot ? platformRoot : undefined,
@@ -270,27 +310,31 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
         pluginRoot: entry.pluginRoot,
       }));
     if (webhookManifests.length > 0) {
-      logger.info('Webhook manifests discovered', { count: webhookManifests.length });
+      logger.info("Webhook manifests discovered", {
+        count: webhookManifests.length,
+      });
     }
   } catch (err) {
-    logger.warn('Webhook manifest discovery failed — webhook routes disabled', {
+    logger.warn("Webhook manifest discovery failed — webhook routes disabled", {
       error: err instanceof Error ? err.message : String(err),
     });
     webhookManifests = [];
   }
 
   // 6. Build JWT config — secret required; no fallback in production.
-  const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
+  const DEV_JWT_SECRET = "dev-insecure-secret-change-me";
   const jwtSecret = process.env.GATEWAY_JWT_SECRET;
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === "production";
   if (!jwtSecret && isProduction) {
     throw new Error(
-      'GATEWAY_JWT_SECRET must be set in production. ' +
-      'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"',
+      "GATEWAY_JWT_SECRET must be set in production. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     );
   }
   if (!jwtSecret) {
-    logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)');
+    logger.warn(
+      "GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)",
+    );
   }
   const jwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
@@ -308,7 +352,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       gatewayUrl: `http://127.0.0.1:${config.port}`,
       logger,
     }).catch((err: unknown) => {
-      logger.warn('Bootstrap CLI credentials provisioning failed (non-fatal)', {
+      logger.warn("Bootstrap CLI credentials provisioning failed (non-fatal)", {
         error: err instanceof Error ? err.message : String(err),
       });
     });
@@ -317,30 +361,44 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   // 8. Register HTTP pressure-control limits (ADR-0056). No-op when
   //    `gateway.pressure` is absent or disabled in config.
   if (platform.hasResourceBroker) {
-    registerPressureLimits(platform.resourceBroker, config.pressure, platform.logger);
+    registerPressureLimits(
+      platform.resourceBroker,
+      config.pressure,
+      platform.logger,
+    );
   } else {
-    logger.warn('Resource broker unavailable — pressure control disabled');
+    logger.warn("Resource broker unavailable — pressure control disabled");
   }
 
   // 9. Get service transport from platform adapter.
   //    Configured via platform.adapters.serviceTransport in kb.config.json.
   //    kb-create installs @kb-labs/adapters-service-transport-http by default
   //    and writes adapterOptions.serviceTransport.services with TCP URLs.
-  const serviceTransport = platform.getAdapter<IServiceTransport>('serviceTransport');
+  const serviceTransport =
+    platform.getAdapter<IServiceTransport>("serviceTransport");
   if (!serviceTransport) {
     throw new Error(
-      'Gateway requires the serviceTransport adapter. ' +
-      'Configure it in kb.config.json:\n' +
-      '  "adapters": { "serviceTransport": "@kb-labs/adapters-service-transport-http" },\n' +
-      '  "adapterOptions": { "serviceTransport": { "services": { "rest": { "url": "http://127.0.0.1:5050" }, ... } } }',
+      "Gateway requires the serviceTransport adapter. " +
+        "Configure it in kb.config.json:\n" +
+        '  "adapters": { "serviceTransport": "@kb-labs/adapters-service-transport-http" },\n' +
+        '  "adapterOptions": { "serviceTransport": { "services": { "rest": { "url": "http://127.0.0.1:5050" }, ... } } }',
     );
   }
 
   // 10. Create server with injected registry, transport and optional user auth deps
-  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, serviceTransport, userAuth, webhookManifests);
+  const server = await createServer(
+    config,
+    cache,
+    platform.logger,
+    jwtConfig,
+    registry,
+    serviceTransport,
+    userAuth,
+    webhookManifests,
+  );
 
   // 11. Listen
-  const bindHost = config.host ?? '0.0.0.0';
+  const bindHost = config.host ?? "0.0.0.0";
 
   // Safety guardrail (B-023): a platform with auth disabled must never be
   // reachable off the local machine. If auth is off, the bind host MUST be a
@@ -348,9 +406,9 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   if (config.auth?.enabled === false && !isLoopbackHost(bindHost)) {
     throw new Error(
       `Refusing to start: auth is disabled but the gateway binds to "${bindHost}" ` +
-      `(not loopback). A no-auth platform reachable on the network grants full ` +
-      `access to anyone. Either set gateway.auth.enabled = true, or bind to ` +
-      `127.0.0.1 (gateway.host) for solo/local use.`,
+        `(not loopback). A no-auth platform reachable on the network grants full ` +
+        `access to anyone. Either set gateway.auth.enabled = true, or bind to ` +
+        `127.0.0.1 (gateway.host) for solo/local use.`,
     );
   }
 
@@ -361,19 +419,15 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   const netOffset = Number(process.env.KB_NET_OFFSET) || 0;
   const listenPort = config.port + netOffset;
   const address = await server.listen({ port: listenPort, host: bindHost });
-  logger.info('Gateway listening', { address, authEnabled: config.auth?.enabled !== false });
+  logger.info("Gateway listening", {
+    address,
+    authEnabled: config.auth?.enabled !== false,
+  });
 
-  // 10. Graceful shutdown
-  const shutdown = async (signal: string) => {
-    logger.warn('Received shutdown signal', { signal });
-    await platform.shutdown();
+  return async () => {
     await server.close();
-    logger.info('Gateway shutdown complete');
-    process.exit(0);
+    logger.info("Gateway service resources closed");
   };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 /**
@@ -414,11 +468,18 @@ export function resolveAuthRuntimeConfig(
   const bcryptCost = authConfig?.bcryptCost ?? 12;
   // AUTH_COOKIE_SECURE=false disables Secure flag for HTTP-only CI environments.
   // In production (HTTPS) leave unset or set to true.
-  const cookieSecure = env.AUTH_COOKIE_SECURE === 'false'
-    ? false
-    : (authConfig?.cookieSecure ?? true);
+  const cookieSecure =
+    env.AUTH_COOKIE_SECURE === "false"
+      ? false
+      : (authConfig?.cookieSecure ?? true);
 
-  return { accessTtlSec, refreshTtlSec, graceWindowMs, bcryptCost, cookieSecure };
+  return {
+    accessTtlSec,
+    refreshTtlSec,
+    graceWindowMs,
+    bcryptCost,
+    cookieSecure,
+  };
 }
 
 /**
@@ -428,10 +489,10 @@ export function resolveAuthRuntimeConfig(
 export function isLoopbackHost(host: string): boolean {
   const h = host.trim().toLowerCase();
   return (
-    h === '127.0.0.1' ||
-    h === 'localhost' ||
-    h === '::1' ||
-    h === '[::1]' ||
-    h.startsWith('127.')
+    h === "127.0.0.1" ||
+    h === "localhost" ||
+    h === "::1" ||
+    h === "[::1]" ||
+    h.startsWith("127.")
   );
 }

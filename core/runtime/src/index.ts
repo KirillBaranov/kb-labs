@@ -21,7 +21,7 @@
  */
 
 // Container
-export { PlatformContainer, platform } from './container.js';
+export { PlatformContainer, platform } from "./container.js";
 export type {
   CoreAdapterTypes,
   CoreAdapterName,
@@ -29,43 +29,70 @@ export type {
   PlatformLifecyclePhase,
   PlatformLifecycleContext,
   PlatformLifecycleHooks,
-} from './container.js';
+} from "./container.js";
 
 // Loader
-export { initPlatform, resetPlatform } from './loader.js';
+export { initPlatform, resetPlatform } from "./loader.js";
 
-// Service bootstrap (shared initialisation utility for service processes)
-export { createServiceBootstrap, resetServiceBootstrap, loadEnvFromRoot, getPlatformRoot, getProjectRoot } from './service-bootstrap.js';
-export type { ServiceBootstrapOptions } from './service-bootstrap.js';
+// Canonical platform launch path (all process surfaces).
+export {
+  launchPlatform,
+  getPlatformRuntime,
+  resetPlatformRuntime,
+} from "./platform-launch.js";
+
+// Legacy service bootstrap compatibility for installed packages during rollout.
+export {
+  createServiceBootstrap,
+  resetServiceBootstrap,
+  getPlatformRoot,
+  getProjectRoot,
+  loadEnvFromRoot,
+} from "./service-bootstrap-compat.js";
+export type { ServiceBootstrapOptions } from "./service-bootstrap-compat.js";
+export type {
+  PlatformApplicationKind,
+  PlatformFailurePolicy,
+  PlatformAssemblyHook,
+  PlatformUiProvider,
+  PlatformLaunchOptions,
+  PlatformRoots,
+  PlatformStartupReport,
+  PlatformRuntime,
+} from "./platform-launch.js";
 
 // Platform config loader (shared by CLI bootstrap and service bootstrap).
 // Resolves platformRoot/projectRoot and deep-merges platform defaults with
 // project overrides. See ./config-loader.ts for details.
-export { loadPlatformConfig } from './config-loader.js';
+export {
+  ensurePlatformEnvironment,
+  loadEnvFromDirectory,
+  loadPlatformConfig,
+} from "./config-loader.js";
 export type {
   LoadPlatformConfigOptions,
   LoadPlatformConfigResult,
-} from './config-loader.js';
+} from "./config-loader.js";
 
 // Adapter discovery (for testing/debugging)
-export { discoverAdapters, resolveAdapter } from './discover-adapters.js';
-export type { DiscoveredAdapter } from './discover-adapters.js';
+export { discoverAdapters, resolveAdapter } from "./discover-adapters.js";
+export type { DiscoveredAdapter } from "./discover-adapters.js";
 
 // Platform sync (reconcile .kb/marketplace.lock with filesystem)
-export { platformSync } from './platform-sync.js';
+export { platformSync } from "./platform-sync.js";
 export type {
   PlatformSyncMode,
   PlatformSyncOptions,
   PlatformSyncResult,
   PlatformSyncError,
-} from './platform-sync.js';
-export { createPnpmInstaller } from './platform-sync-installer.js';
+} from "./platform-sync.js";
+export { createPnpmInstaller } from "./platform-sync-installer.js";
 export type {
   PackageInstaller,
   PackageInstallRequest,
   PackageInstallResult,
   PnpmInstallerOptions,
-} from './platform-sync-installer.js';
+} from "./platform-sync-installer.js";
 
 // Config types
 export type {
@@ -80,10 +107,10 @@ export type {
   NotifierAdapterOptions,
   NotifierChannelConfig,
   NotifierRoutingRule,
-} from './config.js';
+} from "./config.js";
 
 // Analytics context
-export { createAnalyticsContext } from './analytics-context.js';
+export { createAnalyticsContext } from "./analytics-context.js";
 
 // Core feature implementations (for direct usage/extension)
 export {
@@ -91,14 +118,19 @@ export {
   JobScheduler,
   CronManager,
   WorkflowEngine,
-} from './core/index.js';
+} from "./core/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IPC & TRANSPORT (Re-exported from @kb-labs/core-ipc)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // IPC Servers (Parent Process Side)
-export { UnixSocketServer, type UnixSocketServerConfig, IPCServer, createIPCServer } from '@kb-labs/core-ipc';
+export {
+  UnixSocketServer,
+  type UnixSocketServerConfig,
+  IPCServer,
+  createIPCServer,
+} from "@kb-labs/core-ipc";
 
 // Transport Layer (Child Process Side)
 export {
@@ -114,29 +146,43 @@ export {
   UnixSocketTransport,
   createUnixSocketTransport,
   type UnixSocketConfig,
-} from '@kb-labs/core-ipc';
+} from "@kb-labs/core-ipc";
 
 // Bulk Transfer (Large Message Optimization)
-export { BulkTransferHelper, type BulkTransfer, type BulkTransferOptions } from '@kb-labs/core-ipc';
+export {
+  BulkTransferHelper,
+  type BulkTransfer,
+  type BulkTransferOptions,
+} from "@kb-labs/core-ipc";
 
 // Timeout Configuration
-export { selectTimeout, getOperationTimeout, OPERATION_TIMEOUTS } from '@kb-labs/core-ipc';
+export {
+  selectTimeout,
+  getOperationTimeout,
+  OPERATION_TIMEOUTS,
+} from "@kb-labs/core-ipc";
 
 // Proxy adapters (child process)
-export { RemoteAdapter } from './proxy/remote-adapter.js';
-export { VectorStoreProxy, createVectorStoreProxy } from './proxy/vector-store-proxy.js';
-export { CacheProxy, createCacheProxy } from './proxy/cache-proxy.js';
-export { LLMProxy } from './proxy/llm-proxy.js';
-export { EmbeddingsProxy } from './proxy/embeddings-proxy.js';
-export { StorageProxy, createStorageProxy } from './proxy/storage-proxy.js';
-export { DocumentDatabaseProxy, createDocumentDatabaseProxy } from './proxy/document-database-proxy.js';
-export { KVStoreProxy, createKVStoreProxy } from './proxy/kv-store-proxy.js';
+export { RemoteAdapter } from "./proxy/remote-adapter.js";
+export {
+  VectorStoreProxy,
+  createVectorStoreProxy,
+} from "./proxy/vector-store-proxy.js";
+export { CacheProxy, createCacheProxy } from "./proxy/cache-proxy.js";
+export { LLMProxy } from "./proxy/llm-proxy.js";
+export { EmbeddingsProxy } from "./proxy/embeddings-proxy.js";
+export { StorageProxy, createStorageProxy } from "./proxy/storage-proxy.js";
+export {
+  DocumentDatabaseProxy,
+  createDocumentDatabaseProxy,
+} from "./proxy/document-database-proxy.js";
+export { KVStoreProxy, createKVStoreProxy } from "./proxy/kv-store-proxy.js";
 export {
   createProxyPlatform,
   closeProxyPlatform,
-  type CreateProxyPlatformOptions
-} from './proxy/create-proxy-platform.js';
-export { createNoOpPlatform } from '@kb-labs/core-platform/noop';
+  type CreateProxyPlatformOptions,
+} from "./proxy/create-proxy-platform.js";
+export { createNoOpPlatform } from "@kb-labs/core-platform/noop";
 
 export type {
   ResourceManagerConfig,
@@ -146,7 +192,7 @@ export type {
   WorkflowDefinition,
   WorkflowStepDefinition,
   WorkflowStepContext,
-} from './core/index.js';
+} from "./core/index.js";
 
 // Monitoring helpers
 export {
@@ -157,7 +203,7 @@ export {
   type DegradedLevel,
   type DegradedStatus,
   type DegradedOptions,
-} from './monitoring.js';
+} from "./monitoring.js";
 
 // Adapter status registry — what's actually wired into each slot
 export {
@@ -169,16 +215,16 @@ export {
   type AdapterSlotStatus,
   type AdapterStatusRegistry,
   type AdapterStatusReason,
-} from './adapter-status.js';
+} from "./adapter-status.js";
 
 // Orchestration services
-export { EnvironmentManager } from './environment-manager.js';
-export { WorkspaceManager } from './workspace-manager.js';
-export { SnapshotManager } from './snapshot-manager.js';
-export { RunExecutor } from './run-executor.js';
-export type { RunStepExecutionRequest } from './run-executor.js';
-export { RunOrchestrator } from './run-orchestrator.js';
-export type { StartFullCycleRequest } from './run-orchestrator.js';
+export { EnvironmentManager } from "./environment-manager.js";
+export { WorkspaceManager } from "./workspace-manager.js";
+export { SnapshotManager } from "./snapshot-manager.js";
+export { RunExecutor } from "./run-executor.js";
+export type { RunStepExecutionRequest } from "./run-executor.js";
+export { RunOrchestrator } from "./run-orchestrator.js";
+export type { StartFullCycleRequest } from "./run-orchestrator.js";
 
 // Use-cases
-export { startFullCycle } from './use-cases/start-full-cycle.js';
+export { startFullCycle } from "./use-cases/start-full-cycle.js";

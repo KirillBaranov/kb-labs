@@ -797,7 +797,7 @@ custom_checks:
     on: [check]
 
   # Assembly hook enforcement.
-  # Blocks CI if any service bootstrap.ts calls createServiceBootstrap without
+  # Blocks CI if any service bootstrap.ts calls runService without
   # importing from @kb-labs/plugin-runtime (i.e. without makeAssemblyHook).
   # TypeScript enforces this at compile time (assemblyHook is a required field).
   # This check provides a human-readable CI gate with clear error messages.

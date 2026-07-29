@@ -39,8 +39,8 @@ Source: [plugins/rest-api/app/src/manifest.ts](plugins/rest-api/app/src/manifest
 
 On startup, the entrypoint ([`apps/rest-api/src/index.ts`](plugins/rest-api/app/src/index.ts)) calls `bootstrap(process.cwd())` from `src/bootstrap.ts`. The bootstrap:
 
-1. Finds the monorepo root by walking up for `pnpm-workspace.yaml` that includes `kb-*` patterns (fallback to any `.git` + `pnpm-workspace.yaml` directory).
-2. Calls `createServiceBootstrap()` from `@kb-labs/core-runtime` to init the global platform singleton — adapters, logger, cache, storage, everything declared in `kb.config.json`.
+1. Calls `runService()` from `@kb-labs/shared-daemon`, which resolves platform/project roots and loads layered `.env`.
+2. `runService()` initializes the global platform singleton — adapters, logger, cache, storage, everything declared in `kb.config.json`.
 3. Creates the `IEntityRegistry` from `@kb-labs/core-registry`, which walks `.kb/marketplace.lock` and loads plugin manifests.
 4. Constructs a Fastify instance with a Pino-compatible wrapper over `platform.logger` (the platform's logger is vendor-agnostic; Fastify 5 expects a Pino-shaped object, so the server builds a thin adapter).
 5. Registers middleware, plugins (the Fastify kind, not the KB Labs kind), and routes.

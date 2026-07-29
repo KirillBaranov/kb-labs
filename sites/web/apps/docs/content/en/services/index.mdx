@@ -65,15 +65,14 @@ KB Labs is not a monolith. It's a small collection of focused services that talk
 
 Every daemon in the platform follows the same bootstrap template:
 
-1. Detect the monorepo root (walk up from `cwd` looking for `pnpm-workspace.yaml`).
-2. Load `.env` from the repo root.
-3. Call `createServiceBootstrap({ appId, repoRoot })` from `@kb-labs/core-runtime` — this initializes the global platform singleton (adapters, logger, cache, storage, everything from `kb.config.json`).
+1. Call `runService({ appId, startDir, platform: { assemblyHook }, setup })` from `@kb-labs/shared-daemon`.
+2. It resolves platform/project roots, loads layered `.env`, and initializes the global platform singleton (adapters, logger, cache, storage, everything from `kb.config.json`).
 4. Build a correlated logger with `serviceId: '<name>'` bindings — every log line from the service has the same `serviceId`, `logsSource`, and `layer` fields.
 5. Construct whatever business logic the service owns (registry, engine, job broker, whatever).
 6. Create a Fastify instance with `@kb-labs/shared-http` helpers (OpenAPI, health, readiness, metrics).
 7. Register routes.
 8. Listen on the configured port.
-9. Wire `SIGTERM` / `SIGINT` for graceful shutdown.
+9. Return teardown from `setup`; `runService` owns `SIGTERM` / `SIGINT` and shuts down in the correct order.
 
 This sameness is deliberate. If you've read one service's bootstrap, you've read them all — the differences are in the routes and the business logic, not in the plumbing.
 

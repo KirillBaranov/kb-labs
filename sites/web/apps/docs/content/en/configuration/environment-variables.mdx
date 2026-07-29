@@ -175,7 +175,7 @@ All four `KB_*` flags read by [`core-sandbox/src/runner/initialization/observabi
 
 ## Loading `.env`
 
-Each service's bootstrap calls `loadEnvFromRoot(repoRoot)` before reading adapters or plugin config. This reads `<repoRoot>/.env` and populates `process.env` from it. Values already in the environment are not overwritten — an existing `OPENAI_API_KEY` in the parent shell wins over the one in `.env`.
+`runService()` loads `.env` from the project root and, when it is distinct, the platform root before reading adapters or product config. Values already in the environment are not overwritten — an existing `OPENAI_API_KEY` in the parent shell wins over the one in `.env`.
 
 The `.env` file is a dev-time convenience. In production, use a secret manager (Vault, AWS Secrets Manager, Kubernetes secrets) and set env vars on the service process directly.
 
@@ -184,8 +184,9 @@ The `.env` file is a dev-time convenience. In production, use a secret manager (
 When multiple sources set the same variable, precedence is:
 
 1. Explicit `process.env` from the parent shell (whatever's already set when the service starts).
-2. `.env` file at the project root (loaded by `loadEnvFromRoot`).
-3. Defaults hardcoded in the source.
+2. `.env` file at the project root.
+3. `.env` file at the platform root, when it is distinct from the project root.
+4. Defaults hardcoded in the source.
 
 CLI flags (`--profile=<id>`, `--debug`) override env vars for their respective settings.
 

@@ -68,13 +68,12 @@ The daemon has five main components glued together in `bootstrap.ts`:
 
 From [`bootstrap.ts`](plugins/workflow/daemon/src/bootstrap.ts):
 
-1. Detect monorepo root via `findRepoRoot()`.
-2. `createServiceBootstrap({ appId: 'workflow-daemon', repoRoot })` — init the platform singleton (adapters, logger, cache, storage).
+1. `runService()` resolves roots, loads layered `.env`, and initializes the platform singleton (adapters, logger, cache, storage).
 3. Check for workspace and environment adapters; log warnings if they're missing.
 4. Build a correlated logger with `serviceId: 'workflow'` bindings.
 5. Create the engine, worker, job broker, cron discovery, and cron scheduler.
 6. Start the Fastify server and bind HTTP routes.
-7. Register shutdown handlers for `SIGTERM` / `SIGINT`.
+7. Return teardown; `runService()` registers shutdown handling for `SIGTERM` / `SIGINT`.
 
 <Callout type="warning">
 The bootstrap checks that the workspace adapter is configured and writes a warning to `stderr` when it isn't. Workflows with default (`balanced`) or `strict` isolation will **fail at execution time** if no workspace adapter is available — set `platform.adapters.workspace` in `kb.config.json`, or declare `isolation: 'relaxed'` on the workflow spec to bypass. The same warning pattern applies to the environment adapter for `strict` isolation.

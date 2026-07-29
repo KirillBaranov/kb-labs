@@ -5703,6 +5703,9 @@ importers:
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../../sdk/sdk
+      '@kb-labs/shared-daemon':
+        specifier: workspace:*
+        version: link:../../../shared/daemon
       '@kb-labs/shared-http':
         specifier: workspace:*
         version: link:../../../shared/http
@@ -6009,6 +6012,9 @@ importers:
       '@kb-labs/rest-api-core':
         specifier: workspace:*
         version: link:../core
+      '@kb-labs/shared-daemon':
+        specifier: workspace:*
+        version: link:../../../shared/daemon
       '@kb-labs/shared-http':
         specifier: workspace:*
         version: link:../../../shared/http
@@ -6227,9 +6233,6 @@ importers:
       '@kb-labs/core-runtime':
         specifier: workspace:*
         version: link:../../core/runtime
-      '@kb-labs/core-sys':
-        specifier: workspace:*
-        version: link:../../core/sys
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*

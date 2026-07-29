@@ -1205,7 +1205,7 @@ export async function initPlatform(
     if (!platform.isAssembled && platform.isReal('llm')) {
       throw new Error(
         '[platform] Real LLM adapter is configured but assembly was not applied. ' +
-        'Pass assemblyHook: makeAssemblyHook() in createServiceBootstrap options. ' +
+        'Pass assemblyHook: makeAssemblyHook() to launchPlatform() or runService(). ' +
         'Without assembly: no rate limiting, no analytics, no LLM router, no PII redaction.',
       );
     }

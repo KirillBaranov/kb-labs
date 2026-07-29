@@ -1,1 +1,5 @@
-export { runDaemon, type DaemonConfig, type DaemonContext } from './daemon.js';
+export {
+  runService,
+  type ServiceConfig,
+  type ServiceContext,
+} from "./daemon.js";

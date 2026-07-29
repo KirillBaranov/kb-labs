@@ -1,7 +1,7 @@
 import { assemblePlatform } from './pipeline.js';
 
 /**
- * Returns the assemblyHook required by createServiceBootstrap().
+ * Returns the assemblyHook required by launchPlatform() and runService().
  *
  * Wraps raw platform adapters with the full assembly pipeline:
  *   resourceBrokerFactory → analyticsFactory → routerFactory → postAssemblyFactory
@@ -11,9 +11,8 @@ import { assemblePlatform } from './pipeline.js';
  *   `() => platform.logger` to emit assembly diagnostics when KB_DEBUG=true.
  *   Services that don't need assembly diagnostics can omit this.
  *
- * Pass the result as `assemblyHook` in ServiceBootstrapOptions.
- * Services that bypass createServiceBootstrap entirely (sandbox IPC workers via
- * initPlatform directly) do not need this.
+ * Pass the result as `assemblyHook` in PlatformLaunchOptions or ServiceConfig.
+ * Sandbox IPC workers that call initPlatform directly do not need this.
  */
 export function makeAssemblyHook(
   getLogger?: () => Parameters<typeof assemblePlatform>[3],

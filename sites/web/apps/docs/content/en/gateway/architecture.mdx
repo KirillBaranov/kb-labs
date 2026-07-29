@@ -49,7 +49,7 @@ apps/gateway-app/src/
 
 From [`bootstrap.ts`](plugins/gateway/app/src/bootstrap.ts):
 
-1. **Init platform.** `createServiceBootstrap({ appId: 'gateway', repoRoot })` loads `.env`, initializes the platform singleton (logger, cache, storage, optionally a SQL adapter).
+1. **Launch service.** `runService({ appId: 'gateway', startDir, platform: { assemblyHook }, setup })` resolves roots, loads layered `.env`, and initializes the platform singleton (logger, cache, storage, optionally a SQL adapter).
 2. **Build a correlated logger** with `serviceId: 'gateway'` bindings.
 3. **Load gateway config** via `loadGatewayConfig(repoRoot)` — this parses the `gateway` section of `kb.config.json` through `GatewayConfigSchema`. Missing config or missing `gateway` key means the gateway starts with defaults (`port: 4000`, empty upstreams).
 4. **Create the host store.** If `platform.sqlDatabase` is registered, construct a `SqliteHostStore` for persistence. Otherwise log a warning and fall back to cache-only — hosts will be lost on restart.
