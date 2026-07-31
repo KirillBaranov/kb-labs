@@ -46,6 +46,23 @@ export function applyVersionStrategy(
 function applyLockstep(packages: PackageVersion[]): PackageVersion[] {
   if (packages.length === 0) {return packages;}
 
+  // Idempotent retry: the planner's per-package guard (planner.ts) already
+  // resolved nextVersion back to currentVersion — without a fresh bump —
+  // for any package whose disk version is already published to npm (publish
+  // succeeded in a prior run, only git commit/tag remains). That decision
+  // must survive lockstep resolution unchanged: re-deriving nextVersion from
+  // currentVersion here would bump a SECOND time on top of a version that's
+  // already live, producing a git tag/commit one version ahead of what's
+  // actually in package.json and on the registry.
+  const alreadyPublished = packages.filter(p => p.isPublished);
+  if (alreadyPublished.length > 0) {
+    const sharedVersion = alreadyPublished.reduce(
+      (max, p) => (semver.gt(p.nextVersion, max) ? p.nextVersion : max),
+      alreadyPublished[0]!.nextVersion,
+    );
+    return packages.map(pkg => ({ ...pkg, nextVersion: sharedVersion }));
+  }
+
   // Find the maximum bump level
   const maxBump = getMaxBump(packages);
 
