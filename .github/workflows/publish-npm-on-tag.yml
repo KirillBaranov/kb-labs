@@ -284,5 +284,5 @@ jobs:
             test "${actual}" = "${version}"
           done < <(node -e '
             const manifest = require("./.kb/release/artifacts/manifest.json");
-            for (const artifact of manifest) console.log(`${artifact.name}\t${artifact.version}`);
+            for (const artifact of manifest) console.log(artifact.name + "\t" + artifact.version);
           ')
