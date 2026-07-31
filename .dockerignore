@@ -1,0 +1,43 @@
+# Every Dockerfile in this repo builds with the repo root as context
+# (`context: .` in .kb/deploy.yaml, or an equivalent CI checkout). Without
+# this file, that context includes multi-gigabyte directories that no image
+# build ever needs — on a long-lived local clone, .claude/worktrees alone
+# (full repo duplicates from agent sessions) and node_modules can push the
+# context past 15GB, which stalls `docker build` sending it to the daemon.
+# Discovered while building e2e/deploy/config-override's fixture image.
+
+# Version control & editor state
+.git
+.gitignore
+.DS_Store
+
+# Agent session worktrees — full repo duplicates, largest contributor.
+.claude/worktrees
+
+# Workspace node_modules — huge, never what a runtime image needs directly.
+# EXCEPTION: .kb/deploy/**/node_modules is the `pnpm deploy --prod` output
+# every service Dockerfile COPYs from — must stay included.
+**/node_modules
+!.kb/deploy/**/node_modules
+
+# Build output — same story: excluded broadly, except the CI-produced
+# deploy artifacts Dockerfiles actually COPY from.
+**/dist
+!.kb/deploy/**/dist
+
+# Runtime/local-only .kb state — never something an image build should see.
+**/.kb/database
+**/.kb/storage
+**/.kb/analytics
+**/.kb/logs
+**/.kb/tmp
+**/.kb/cache
+**/.kb/agents
+**/.kb/memory
+
+# Test/coverage artifacts
+**/coverage
+**/*.log
+e2e/*/report
+e2e/*/test-results
+e2e/tests/report

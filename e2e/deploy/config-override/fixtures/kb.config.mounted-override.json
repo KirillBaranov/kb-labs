@@ -1,0 +1,7 @@
+{
+  "platform": {
+    "adapters": {
+      "marker": "operator-mounted-override"
+    }
+  }
+}

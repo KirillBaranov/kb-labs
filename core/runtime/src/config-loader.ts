@@ -479,10 +479,14 @@ export async function loadPlatformConfig(
   }
 
   // Resolve ${ENV_VAR} placeholders in string values (e.g. baseURL, urls, secrets
-  // that live in env vars rather than config files). In non-strict mode so
-  // missing vars leave the placeholder intact and fail lazily at use-site rather
-  // than blocking bootstrap for unrelated adapters.
-  const effective = interpolateConfig(merged, false, env);
+  // that live in env vars rather than config files). Non-strict outside
+  // production so a missing var leaves the placeholder intact and fails
+  // lazily at use-site rather than blocking bootstrap for unrelated adapters.
+  // Strict in production: a cloud deployment with a missing secret must crash
+  // at boot, not serve traffic with an unresolved `${VAR}` baked into config
+  // (see docs/adr/0037-containers-are-canonical-cloud-delivery.md).
+  const strictInterpolation = env.NODE_ENV === "production";
+  const effective = interpolateConfig(merged, strictInterpolation, env);
 
   return {
     platformConfig: effective,

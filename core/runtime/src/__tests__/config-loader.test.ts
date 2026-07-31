@@ -328,4 +328,51 @@ describe('loadPlatformConfig', () => {
 
     expect(process.env.KB_TEST_SHOULD_NOT_LOAD).toBeUndefined()
   })
+
+  it('throws on an unresolved ${VAR} placeholder when NODE_ENV=production', async () => {
+    // A cloud deployment with a missing secret must crash at boot, not serve
+    // traffic with a literal `${VAR}` baked into config (docs/adr/0037).
+    const platformRoot = path.join(tmpDir, 'p10-platform')
+    const projectRoot = path.join(tmpDir, 'p10-project')
+    makePlatformDir(platformRoot)
+    makeProjectDir(projectRoot, {
+      platform: { adapters: { llm: '${MISSING_SECRET_VAR}' } },
+    })
+
+    delete process.env.MISSING_SECRET_VAR
+
+    await expect(
+      loadPlatformConfig({
+        startDir: projectRoot,
+        env: {
+          KB_PLATFORM_ROOT: platformRoot,
+          KB_PROJECT_ROOT: projectRoot,
+          NODE_ENV: 'production',
+        },
+        loadEnvFile: false,
+      }),
+    ).rejects.toThrow(/MISSING_SECRET_VAR/)
+  })
+
+  it('leaves an unresolved ${VAR} placeholder intact outside production', async () => {
+    const platformRoot = path.join(tmpDir, 'p11-platform')
+    const projectRoot = path.join(tmpDir, 'p11-project')
+    makePlatformDir(platformRoot)
+    makeProjectDir(projectRoot, {
+      platform: { adapters: { llm: '${MISSING_SECRET_VAR}' } },
+    })
+
+    delete process.env.MISSING_SECRET_VAR
+
+    const result = await loadPlatformConfig({
+      startDir: projectRoot,
+      env: {
+        KB_PLATFORM_ROOT: platformRoot,
+        KB_PROJECT_ROOT: projectRoot,
+      },
+      loadEnvFile: false,
+    })
+
+    expect(result.platformConfig.adapters?.llm).toBe('${MISSING_SECRET_VAR}')
+  })
 })

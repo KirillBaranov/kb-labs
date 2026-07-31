@@ -96,6 +96,30 @@ Forms the basis for automated e2e tests and pre-release regression checks.
 | [S-004](scenarios/S-004-team-admin-cloud-deploy.md) | Team Admin — Cloud Deploy | team-admin | P0 | manual |
 | [S-005](scenarios/S-005-team-member-connect.md) | Team Member — Connect to Cloud | team-member | P1 | manual |
 
+### Cloud Delivery — Internal (Platform Team ships containers)
+
+How KB Labs builds and publishes correct, complete container images. See
+[ADR-0037](../adr/0037-containers-are-canonical-cloud-delivery.md).
+
+| ID | Title | Persona | Priority | Automation |
+|---|---|---|---|---|
+| [S-033](scenarios/S-033-platform-team-composition-validated-before-ship.md) | Platform Team — Composition Validated Before Ship | platform-team | P0 | e2e-done |
+| [S-034](scenarios/S-034-platform-team-full-image-matrix-published.md) | Platform Team — Full Image Matrix Published on Release | platform-team | P0 | manual |
+
+### Cloud Delivery — User-Facing (Admin deploys and consumes containers)
+
+How an admin with no monorepo access deploys and gets value from a published
+image. Same ADR, opposite side of the same mechanism as the section above —
+S-033/S-037 share one command (`kb-create validate`), S-035/S-036 share one
+e2e fixture.
+
+| ID | Title | Persona | Priority | Automation |
+|---|---|---|---|---|
+| [S-035](scenarios/S-035-team-admin-try-container-five-minutes.md) | Team Admin — Try KB Labs in a Container Without a Rebuild | team-admin | P0 | e2e-done |
+| [S-036](scenarios/S-036-team-admin-override-composition-without-rebuild.md) | Team Admin — Override Composition Without Rebuilding | team-admin | P0 | e2e-done |
+| [S-037](scenarios/S-037-team-admin-catch-broken-composition-before-deploy.md) | Team Admin — Catch a Broken Composition Before Deploying | team-admin | P0 | e2e-done |
+| [S-038](scenarios/S-038-team-admin-missing-secret-fails-fast.md) | Team Admin — Missing Secret Fails Fast Instead of Booting Broken | team-admin | P0 | e2e-todo |
+
 ---
 
 ## Run Log

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kb-labs-platform
+description: KB Labs platform — gateway, rest-api, workflow, marketplace, studio, mcp, and supporting daemons
+type: application
+version: 0.1.0
+appVersion: "2.114.0"
+home: https://github.com/kb-labs-team/kb-labs
+sources:
+  - https://github.com/kb-labs-team/kb-labs
