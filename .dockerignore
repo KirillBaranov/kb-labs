@@ -19,11 +19,13 @@
 # every service Dockerfile COPYs from — must stay included.
 **/node_modules
 !.kb/deploy/**/node_modules
+!.kb/deploy/**/node_modules/**
 
 # Build output — same story: excluded broadly, except the CI-produced
 # deploy artifacts Dockerfiles actually COPY from.
 **/dist
 !.kb/deploy/**/dist
+!.kb/deploy/**/dist/**
 
 # Runtime/local-only .kb state — never something an image build should see.
 **/.kb/database
