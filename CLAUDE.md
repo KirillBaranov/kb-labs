@@ -253,6 +253,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | kb-dev usage               | `.claude/skills/tool-kb-dev.md`        | service management                                                                       |
 | kb-deploy usage            | `.claude/skills/tool-kb-deploy.md`     | deploy tasks                                                                             |
 | kb-monitor usage           | `.claude/skills/tool-kb-monitor.md`    | monitoring tasks                                                                         |
+| **Docker build hygiene**   | `.claude/skills/docker-build-hygiene.md` | editing `**/Dockerfile*`, `**/docker-compose*.yml`, `e2e/deploy/**`, or running `docker build`/`run` |
 | Code generation            | `.claude/skills/tool-generate.md`      | generate / scaffold tasks                                                                |
 | Add new route              | `.claude/skills/new-route.md`          | adding HTTP routes                                                                       |
 | Dependency hygiene         | `.claude/skills/deps-hygiene.md`       | dependency / lockfile tasks                                                              |

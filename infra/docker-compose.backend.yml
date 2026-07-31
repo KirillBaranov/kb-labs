@@ -21,14 +21,25 @@ services:
     networks:
       - kb-backend
 
+  kb-state-daemon:
+    image: ghcr.io/kb-labs-team/kb-state-daemon:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-state-daemon
+    ports:
+      - "7777:7777"
+    # No adapters, no persistence (InMemoryStateBroker) — see plugins/state/daemon/Dockerfile.
+    # A restart wipes any in-flight locks; that is current, expected behaviour.
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
   kb-marketplace-registry:
-    image: ghcr.io/kb-labs-team/kb-marketplace-registry:${IMAGE_TAG:-latest}
+    image: ghcr.io/kb-labs-team/kb-marketplace-registry:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
     container_name: kb-marketplace-registry
     ports:
       - "5071:5071"
     environment:
       - NODE_ENV=production
-      - KB_REGISTRY_URL=${KB_REGISTRY_URL:-https://api.kblabs.ru/api/v1/registry}
+      - KB_REGISTRY_URL=${KB_REGISTRY_URL:?set KB_REGISTRY_URL to your self-hosted registry URL}
       - KB_REGISTRY_PORT=5071
       - KB_SITE_URL=${KB_SITE_URL:-https://kblabs.ru}
       - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
@@ -37,12 +48,31 @@ services:
     depends_on:
       - kb-redis
       - kb-minio
+      # plugins/marketplace-registry/README.md:44 — real runtime dependency, not dev-only.
+      - kb-state-daemon
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
+  kb-marketplace:
+    image: ghcr.io/kb-labs-team/kb-marketplace:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-marketplace
+    ports:
+      - "5070:5070"
+    environment:
+      - NODE_ENV=production
+      # Consumer-side daemon (distinct from kb-marketplace-registry, the
+      # publisher/storage service). Points at your own registry, not any
+      # KB Labs default — see plugins/marketplace/daemon/Dockerfile.
+      - KB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1
+    depends_on:
+      - kb-marketplace-registry
     restart: unless-stopped
     networks:
       - kb-backend
 
   kb-gateway:
-    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG:-latest}
+    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
     container_name: kb-gateway
     ports:
       - "4000:4000"
@@ -52,8 +82,69 @@ services:
       - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
     volumes:
       - gateway_data:/app/.kb/database
+      - gateway_storage:/app/.kb/storage
+      - gateway_analytics:/app/.kb/analytics
     depends_on:
       - kb-redis
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
+  kb-rest-api:
+    image: ghcr.io/kb-labs-team/kb-rest-api:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-rest-api
+    ports:
+      - "5050:5050"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - kb-redis
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
+  kb-workflow:
+    image: ghcr.io/kb-labs-team/kb-workflow:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-workflow
+    ports:
+      - "7778:7778"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - workflow_analytics:/app/.kb/analytics
+    depends_on:
+      - kb-redis
+    restart: unless-stopped
+    networks:
+      - kb-backend
+    # IMPORTANT: exactly one instance. JobBroker/CronScheduler run in-process
+    # (plugins/workflow/daemon/src/bootstrap.ts) — a second instance
+    # double-fires every scheduled job. See docs/adr/0037.
+    deploy:
+      replicas: 1
+
+  kb-mcp:
+    image: ghcr.io/kb-labs-team/kb-mcp:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-mcp
+    ports:
+      - "7779:7779"
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
+  kb-studio:
+    image: ghcr.io/kb-labs-team/kb-studio:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    container_name: kb-studio
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - KB_API_BASE_URL=http://kb-gateway:4000/api/v1
+    depends_on:
+      - kb-gateway
     restart: unless-stopped
     networks:
       - kb-backend
@@ -65,4 +156,7 @@ networks:
 volumes:
   redis_data:
   gateway_data:
+  gateway_storage:
+  gateway_analytics:
+  workflow_analytics:
   minio_data:

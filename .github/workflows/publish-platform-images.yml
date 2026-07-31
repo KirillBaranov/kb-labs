@@ -1,0 +1,156 @@
+name: Publish platform images
+
+# Images and the compose distribution artifact are released from the same
+# GitHub Release as the npm platform packages. This keeps the image tag,
+# compose file, and published package version in lockstep.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: publish-platform-images-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+jobs:
+  prepare:
+    name: Prepare deploy artifacts
+    if: startsWith(github.event.release.tag_name, 'platform-v')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+
+      - name: Resolve platform version
+        id: version
+        run: echo "version=${RELEASE_TAG#platform-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build kb-devkit
+        run: make build -C tools/kb-devkit
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace
+        run: pnpm build
+
+      # Dockerfiles intentionally consume pnpm deploy output. Preparing all
+      # eight outputs once avoids rebuilding the monorepo once per image.
+      - name: Prepare production dependency trees
+        run: |
+          set -euo pipefail
+          pnpm deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
+          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+          pnpm deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
+          pnpm deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
+          pnpm deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
+          pnpm deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
+          pnpm deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
+          pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-deploy-artifacts
+          path: .kb/deploy/
+          retention-days: 7
+
+  images:
+    name: Publish ${{ matrix.image }}
+    needs: prepare
+    if: startsWith(github.event.release.tag_name, 'platform-v')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.prepare.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kb-state-daemon
+            dockerfile: plugins/state/daemon/Dockerfile
+          - image: kb-gateway
+            dockerfile: services/gateway/app/Dockerfile
+          - image: kb-marketplace
+            dockerfile: plugins/marketplace/daemon/Dockerfile
+          - image: kb-rest-api
+            dockerfile: services/rest-api/app/Dockerfile
+          - image: kb-studio
+            dockerfile: studio/app/Dockerfile
+          - image: kb-workflow
+            dockerfile: plugins/workflow/daemon/Dockerfile
+          - image: kb-mcp
+            dockerfile: services/mcp/app/Dockerfile
+          - image: kb-marketplace-registry
+            dockerfile: plugins/marketplace-registry/app/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-deploy-artifacts
+          path: .kb/deploy/
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/kb-labs-team/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+            ghcr.io/kb-labs-team/${{ matrix.image }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.IMAGE_TAG }}
+
+  compose:
+    name: Publish compose artifact
+    needs: images
+    if: startsWith(github.event.release.tag_name, 'platform-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Render version-pinned compose file
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${VERSION#platform-v}"
+          perl -0pi -e 's/\$\{IMAGE_TAG:\?[^}]+\}/$ENV{VERSION}/g' infra/docker-compose.backend.yml
+          cp infra/docker-compose.backend.yml docker-compose.yml
+          grep -q "kb-gateway:${VERSION}" docker-compose.yml
+          if grep -q 'IMAGE_TAG' docker-compose.yml; then
+            echo 'compose artifact still contains an unexpanded IMAGE_TAG' >&2
+            exit 1
+          fi
+      - name: Upload compose file to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" docker-compose.yml --clobber

@@ -1,0 +1,37 @@
+{{/*
+Composition ConfigMap — mounted at .kb/kb.config.json / .kb/marketplace.lock
+in every pod ONLY when the corresponding value is set, overriding each
+image's baked default. See docs/deployment/container-config-override.md for
+the mount contract this relies on.
+
+CRITICAL: a Kubernetes ConfigMap volume mount is unconditional — unlike
+`docker run -v`, you cannot "mount only if nothing else is there." If this
+chart always rendered the ConfigMap (even with `{}`), every image's own
+docker-entrypoint.sh would never see an empty live path and its baked
+default would never apply, silently dropping composition. So this template
+(and the volumeMounts in deployment.yaml) render/mount NOTHING when the
+corresponding value is empty — "unset" must mean "image default applies,"
+not "mount an empty file." Do not remove these `if` guards.
+
+${VAR} placeholders inside `.Values.config` are rendered as-is — Helm does
+not touch them. They are resolved by the running process at boot from the
+env this chart wires via secretRefs (see deployment.yaml).
+*/}}
+{{- if or .Values.config .Values.marketplaceLock }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-composition
+  labels:
+    app.kubernetes.io/part-of: kb-labs-platform
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+{{- if .Values.config }}
+  kb.config.json: |
+{{ .Values.config | toJson | indent 4 }}
+{{- end }}
+{{- if .Values.marketplaceLock }}
+  marketplace.lock: |
+{{ .Values.marketplaceLock | toJson | indent 4 }}
+{{- end }}
+{{- end }}

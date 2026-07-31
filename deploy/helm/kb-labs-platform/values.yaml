@@ -1,0 +1,113 @@
+# KB Labs platform — default values.
+#
+# Composition (which services run, which adapters they use, which plugins are
+# installed) lives here in ONE file, per docs/adr/0037-containers-are-canonical-cloud-delivery.md.
+# `config` below is rendered verbatim into a ConfigMap mounted at
+# .kb/kb.config.json — it may contain ${VAR} placeholders. Those are NOT
+# resolved by Helm; they are resolved by the running process at boot
+# (core/runtime/src/config-interpolation.ts), from the env this chart wires
+# via secretRefs. Keep ${VAR} literal in this file — do not wrap it in Helm's
+# own {{ }} syntax.
+
+image:
+  registry: ghcr.io/kb-labs-team
+  pullPolicy: IfNotPresent
+  # Explicit tag is required at install time (--set image.tag=<release>).
+  # Never defaults to "latest" — see docs/deployment/docker-build-hygiene.md's
+  # sibling policy on pinned versions (infra/docker-compose.backend.yml
+  # carries the same rule for the compose path).
+  tag: ""
+
+# Every backend unit from .kb/devservices.yaml, plus marketplace-registry and
+# mcp. `enabled: false` on any of these removes it from the release entirely
+# (no Deployment/Service rendered) — a minimal install can turn off units it
+# doesn't need (e.g. mcp, studio) without forking the chart.
+services:
+  state-daemon:
+    enabled: true
+    image: kb-state-daemon
+    port: 7777
+    replicas: 1
+    healthPath: /health
+  marketplace-registry:
+    enabled: true
+    image: kb-marketplace-registry
+    port: 5071
+    replicas: 1
+    healthPath: /health
+    # Real runtime dependency (plugins/marketplace-registry/README.md:44) —
+    # an initContainer waits for state-daemon before starting.
+    dependsOn: [state-daemon]
+  marketplace:
+    enabled: true
+    image: kb-marketplace
+    port: 5070
+    replicas: 1
+    healthPath: /health
+    dependsOn: [marketplace-registry]
+  gateway:
+    enabled: true
+    image: kb-gateway
+    port: 4000
+    replicas: 1
+    healthPath: /health
+  rest-api:
+    enabled: true
+    image: kb-rest-api
+    port: 5050
+    replicas: 1
+    healthPath: /api/v1/health
+  workflow:
+    enabled: true
+    image: kb-workflow
+    port: 7778
+    # HARD CONSTRAINT, enforced in templates/deployment.yaml: JobBroker and
+    # CronScheduler run in-process (plugins/workflow/daemon/src/bootstrap.ts)
+    # — a second replica double-fires every scheduled job. Raising this value
+    # fails the Helm render with an explicit error, not a silent bad deploy.
+    # See docs/adr/0037-containers-are-canonical-cloud-delivery.md and
+    # plugins/workflow/docs/adr/0014-worker-deployment-architecture.md (the
+    # worker/scheduler split that would lift this constraint — not built).
+    replicas: 1
+    healthPath: /health
+  mcp:
+    enabled: true
+    image: kb-mcp
+    port: 7779
+    replicas: 1
+    healthPath: /health
+  studio:
+    enabled: true
+    image: kb-studio
+    port: 3000
+    replicas: 1
+    healthPath: /
+    dependsOn: [gateway]
+
+# When non-empty, rendered into a ConfigMap and mounted at .kb/kb.config.json
+# in every pod, overriding each image's baked default — see
+# docs/deployment/container-config-override.md for the override contract.
+#
+# IMPORTANT — unlike `docker run -v`, a Kubernetes ConfigMap volume mount is
+# unconditional: if this chart mounted a file here even when empty, the
+# image's own docker-entrypoint.sh would never see "nothing at the live
+# path" and its baked default would never apply. So templates/configmap.yaml
+# and deployment.yaml treat `config: {}` as "mount nothing" (image default
+# applies), not "mount an empty file" (which would boot with dropped
+# composition). Leave empty to run each image's baked default; set it to
+# override.
+config: {}
+
+# Rendered into a ConfigMap, mounted at .kb/marketplace.lock. Leave empty
+# (the default) to run with each image's baked default composition — see the
+# note on `config` above and templates/configmap.yaml for why "empty" must
+# mean "mount nothing," not "mount an empty file," in this chart.
+# When set, must be a full lock: {schema: kb.marketplace/2, installed: {...}}
+# (see core/discovery/src/marketplace-lock.ts).
+marketplaceLock: {}
+
+# Names of pre-existing Kubernetes Secrets (create them out of band — this
+# chart never handles secret values directly) to envFrom into every pod. Use
+# this to supply the env vars any ${VAR} in `config` above references
+# (GATEWAY_JWT_SECRET, OPENAI_API_KEY, KB_REGISTRY_URL, etc.).
+secretRefs: []

@@ -1,12 +1,19 @@
 # ADR-0014: Declarative Delivery and Fleet Distribution
 
 **Date:** 2026-04-22
-**Status:** Proposed
+**Status:** Superseded by [ADR-0037](./0037-containers-are-canonical-cloud-delivery.md)
 **Deciders:** KB Labs Team
-**Last Reviewed:** 2026-04-22
+**Last Reviewed:** 2026-07-31
 **Tags:** delivery, deployment, architecture, distribution
 
 > **References:** [ADR-0012 — Platform / Project Scope](./0012-platform-project-scope.md), [ADR-0013 — Installer Config Placement](./0013-installer-config-placement.md)
+
+> **Superseded (2026-07-31):** [ADR-0037](./0037-containers-are-canonical-cloud-delivery.md) chose
+> containers as the canonical cloud delivery path instead of the npm-release/SSH-symlink-swap
+> approach below. The reasoning here is preserved as-is — it was the right call for its
+> constraints at the time (see ADR-0037's "Relationship to ADR-0014" for why the balance tipped).
+> The machinery this ADR describes (`kb-deploy apply`) is being migrated off, not deleted out from
+> under anything running — see ADR-0037's Decision 3 for the sequencing.
 
 ---
 

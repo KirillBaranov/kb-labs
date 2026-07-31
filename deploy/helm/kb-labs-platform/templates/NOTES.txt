@@ -1,0 +1,32 @@
+KB Labs platform installed as release "{{ .Release.Name }}" in namespace {{ .Release.Namespace }}.
+
+Enabled services:
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  - {{ $name }}  ({{ include "kb-labs-platform.fullname" (dict "Release" $.Release "name" $name) }}:{{ $svc.port }})
+{{- end }}
+{{- end }}
+
+{{- if not (or .Values.config .Values.marketplaceLock) }}
+
+No composition override set (`config` / `marketplaceLock` are empty) — every
+service is running its image's BAKED DEFAULT composition. This is expected
+for a first install; set `config`/`marketplaceLock` in values.yaml and
+`helm upgrade` to point at your own adapters (Redis, S3, your LLM provider,
+etc.). See docs/deployment/container-config-override.md.
+{{- end }}
+
+{{- if not .Values.secretRefs }}
+
+No secretRefs set — any ${VAR} placeholder in your composition config will
+fail every pod at boot (strict interpolation in production, see
+core/runtime/src/config-loader.ts). Create your Secrets first, then set
+secretRefs to reference them.
+{{- end }}
+
+Check status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Validate composition before your NEXT upgrade (catches broken adapter
+references before they reach a running pod):
+  kb-create validate <your kb.config.json> --lock <your marketplace.lock>
