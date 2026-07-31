@@ -57,3 +57,34 @@ describe('applyCanarySuffix', () => {
     expect(() => applyCanarySuffix([pkg({})], '')).toThrow();
   });
 });
+
+describe('applyVersionStrategy lockstep — idempotent retry', () => {
+  // Reproduces the "tag/commit one version ahead of package.json and npm"
+  // bug: on a retry after publish succeeded but the git commit/tag step
+  // failed, the planner's per-package idempotent guard (planner.ts) already
+  // resolved nextVersion back to the just-published currentVersion and set
+  // isPublished: true — that decision must survive lockstep resolution
+  // unchanged, not get bumped a second time.
+  it('does not re-bump packages already resolved by the idempotent-retry guard', () => {
+    const packages = [
+      pkg({
+        name: '@kb-labs/a',
+        currentVersion: '2.114.0',
+        nextVersion: '2.114.0',
+        bump: 'minor',
+        isPublished: true,
+      }),
+      pkg({
+        name: '@kb-labs/b',
+        currentVersion: '2.114.0',
+        nextVersion: '2.114.0',
+        bump: 'minor',
+        isPublished: true,
+      }),
+    ];
+
+    const result = applyVersionStrategy(packages, { strategy: 'lockstep' });
+
+    expect(result.map(p => p.nextVersion)).toEqual(['2.114.0', '2.114.0']);
+  });
+});

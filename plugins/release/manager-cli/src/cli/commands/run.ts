@@ -213,9 +213,22 @@ function buildReleaseSections(
 }
 
 function resolveChecks(flags: RunFlags, config: ReleaseConfig): NonNullable<ReleaseConfig['checks']> {
-  if (flags.flow) { return config.flows?.[flags.flow]?.checks ?? config.checks ?? []; }
-  if (flags.scope) { return config.scopes?.[flags.scope]?.checks ?? config.checks ?? []; }
-  return config.checks ?? [];
+  const flowChecks = flags.flow ? config.flows?.[flags.flow]?.checks : undefined;
+  const scopeChecks = flags.scope ? config.scopes?.[flags.scope]?.checks : undefined;
+  const selectedChecks = flowChecks ?? scopeChecks ?? [];
+  const checksById = new Map<string, NonNullable<ReleaseConfig['checks']>[number]>();
+
+  // Flow/scope checks are additions to the global release contract. A flow may
+  // replace a check with a stricter command, but it may not silently drop a
+  // global gate (the old behavior made platform releases skip typecheck,
+  // lint, tests and pack-install).
+  for (const check of config.checks ?? []) { checksById.set(check.id, check); }
+  for (const check of selectedChecks) { checksById.set(check.id, check); }
+
+  const channel = flags.channel ?? config.channel ?? 'stable';
+  return [...checksById.values()].map(check =>
+    channel === 'stable' && check.optional ? { ...check, optional: false } : check,
+  );
 }
 
 async function confirmRelease(): Promise<boolean> {

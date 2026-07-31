@@ -27,13 +27,13 @@ beforeEach(() => {
 });
 
 describe('release:rollback', () => {
-  it('ROLL-01: restores snapshot and returns exitCode 4', async () => {
+  it('ROLL-01: restores snapshot and returns a successful command result', async () => {
     const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui, cwd: '/project' });
 
     const result = await rollbackCommand.execute(ctx as never, mockCLIInput<RollbackFlags>());
 
-    expect(result.exitCode).toBe(4);
+    expect(result.ok).toBe(true);
     expect(restoreSnapshot).toHaveBeenCalledOnce();
   });
 
@@ -44,7 +44,7 @@ describe('release:rollback', () => {
     await rollbackCommand.execute(ctx as never, mockCLIInput<RollbackFlags>({ flags: { json: true } }));
 
     expect(captured.json.length).toBeGreaterThan(0);
-    expect((captured.json[0] as Record<string, unknown>).message).toBe('Rollback completed');
+    expect((captured.json[0] as { result: { message: string } }).result.message).toBe('Rollback completed');
   });
 
   it('ROLL-03: --dry-run shows intent, restoreSnapshot is NOT called', async () => {
@@ -53,7 +53,7 @@ describe('release:rollback', () => {
 
     const result = await rollbackCommand.execute(ctx as never, mockCLIInput<RollbackFlags>({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restoreSnapshot).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

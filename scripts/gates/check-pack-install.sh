@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-pack-install.sh
-# Pack the package with 'npm pack' and verify:
-#   1. The tarball is produced
+# Pack the package with pnpm's publish materialization and verify:
+#   1. The tarball is produced (using pnpm's publish materialization)
 #   2. All declared exports paths exist inside the tarball
 #   3. The main entry file is valid JavaScript (node --check)
 #
@@ -23,11 +23,15 @@ fi
 PKG_NAME=$(node -e "process.stdout.write(require('./package.json').name || '')")
 
 echo "Packing $PKG_NAME..."
-TARBALL=$(npm pack --pack-destination "$WORK_DIR" --quiet 2>/dev/null | tail -1)
-TARBALL_PATH="$WORK_DIR/$TARBALL"
+TARBALL_OUTPUT=$(pnpm pack --pack-destination "$WORK_DIR" --silent 2>/dev/null | tail -1)
+TARBALL_PATH="$TARBALL_OUTPUT"
+if [[ ! -f "$TARBALL_PATH" ]]; then
+  TARBALL_PATH="$WORK_DIR/$(basename "$TARBALL_OUTPUT")"
+fi
+TARBALL=$(basename "$TARBALL_PATH")
 
 if [[ ! -f "$TARBALL_PATH" ]]; then
-  echo "ERROR: npm pack did not produce a tarball" >&2
+  echo "ERROR: package pack did not produce a tarball" >&2
   exit 1
 fi
 
@@ -35,6 +39,31 @@ echo "Extracting $TARBALL..."
 tar -xzf "$TARBALL_PATH" -C "$WORK_DIR"
 
 EXTRACTED="$WORK_DIR/package"
+
+# A package can pass exports and syntax checks while still being impossible
+# to install outside the workspace. Inspect the packed manifest because this
+# is the artifact a user receives, not the source package.json.
+if ! node - "$EXTRACTED/package.json" <<'NODE'
+const fs = require('node:fs');
+const file = process.argv[2];
+const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+const issues = [];
+for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+  for (const [name, value] of Object.entries(pkg[section] || {})) {
+    if (typeof value !== 'string') continue;
+    if (/^(workspace:|link:|file:)/.test(value)) {
+      issues.push(`${section}.${name}=${value}`);
+    }
+  }
+}
+if (issues.length) {
+  console.error(`ERROR: packed manifest contains workspace-only dependency protocols:\n  ${issues.join('\n  ')}`);
+  process.exit(1);
+}
+NODE
+then
+  exit 1
+fi
 
 # Collect all entry points declared in package.json
 ENTRIES=$(node -e "
@@ -102,6 +131,24 @@ if [[ -f "$MAIN_FULL" ]]; then
   fi
   echo "  OK: syntax valid"
 fi
+
+# Install the actual tarball into an empty consumer project. This catches
+# unresolved workspace/link/file dependencies and package manifests that
+# only work because pnpm resolves them from the monorepo workspace.
+CONSUMER="$WORK_DIR/consumer"
+mkdir -p "$CONSUMER"
+printf '{"name":"kb-release-consumer","private":true}\n' > "$CONSUMER/package.json"
+echo "Installing packed artifact into a clean consumer..."
+if ! npm install --prefix "$CONSUMER" --package-lock=false --ignore-scripts --no-audit --no-fund "$TARBALL_PATH"; then
+  echo "ERROR: packed artifact cannot be installed by a clean consumer" >&2
+  exit 1
+fi
+
+if ! (cd "$CONSUMER" && node --input-type=module -e 'await import(process.argv[1])' "$PKG_NAME"); then
+  echo "ERROR: clean consumer cannot import $PKG_NAME" >&2
+  exit 1
+fi
+echo "  OK: clean consumer install and import"
 
 echo "OK: $PKG_NAME packs correctly — all declared exports present."
 exit 0

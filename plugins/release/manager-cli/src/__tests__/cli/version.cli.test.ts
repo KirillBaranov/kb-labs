@@ -52,7 +52,7 @@ describe('release:version', () => {
 
     const result = await versionCommand.execute(ctx as never, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updatePackageVersions)).toHaveBeenCalledOnce();
   });
 
@@ -64,7 +64,7 @@ describe('release:version', () => {
 
     const result = await versionCommand.execute(ctx as never, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updatePackageVersions)).not.toHaveBeenCalled();
   });
 
@@ -74,7 +74,7 @@ describe('release:version', () => {
 
     const result = await versionCommand.execute(ctx as never, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const out = captured.json[0] as Record<string, unknown>;
     expect(out.ok).toBe(true);
     expect(Array.isArray(out.updates)).toBe(true);
@@ -86,7 +86,7 @@ describe('release:version', () => {
 
     const result = await versionCommand.execute(ctx as never, mockCLIInput({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updatePackageVersions)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('2 package');

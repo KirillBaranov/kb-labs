@@ -196,7 +196,7 @@ All plugin behavior is controlled via the `release` section of your `kb.config.j
           "include": ["@my-org/core", "@my-org/types"]
         },
         "checks": [
-          // If set, replaces global checks for this scope
+          // If set, adds to global checks; matching ids override the global check
           { "id": "test", "command": "pnpm", "args": ["test", "--", "--run"], "runIn": "scopePath" }
         ]
       }

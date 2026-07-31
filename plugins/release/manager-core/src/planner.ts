@@ -11,18 +11,30 @@ import globby from 'globby';
 import { discoverSubRepoPaths } from '@kb-labs/sdk';
 import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan, ReleaseChannel } from './types';
 import { applyVersionStrategy, applyCanarySuffix, type VersionStrategy } from './versioning-strategies';
+import { buildReleaseTag } from './tag';
 
 /**
  * Find the most recent git tag for a package.
- * For scoped packages: looks for "<name>@<version>" tags.
- * For lockstep repos: looks for "v<version>" tags.
- * Returns null if no tag found (initial release).
+ * When a flow is active, the pipeline's own tags follow `{flow}-v{version}`
+ * (see tag.ts) — that pattern is tried FIRST via `flowTagGlob` (e.g.
+ * `platform-v*`), since neither of the two fallbacks below ever matches it:
+ * `pkgName@*` only matches legacy per-package scoped tags, and `v*` only
+ * matches a bare lockstep tag with no flow prefix. Without this, bump
+ * detection silently falls back to `v*` (or no tag at all) and scans commits
+ * since a much older, unrelated release.
  */
 async function findLastReleaseTag(
   git: ReturnType<typeof simpleGit>,
   pkgName: string,
+  flowTagGlob?: string,
 ): Promise<string | null> {
   try {
+    if (flowTagGlob) {
+      const flowTags = await git.tags(['--sort=-version:refname', '--list', flowTagGlob]);
+      if (flowTags.all.length > 0) {
+        return flowTags.all[0]!;
+      }
+    }
     // Try package-scoped tag first: @kb-labs/foo@1.2.3
     const tags = await git.tags(['--sort=-version:refname', `--list`, `${pkgName}@*`]);
     if (tags.all.length > 0) {
@@ -47,8 +59,9 @@ async function getCommitsSinceTag(
   git: ReturnType<typeof simpleGit>,
   pkgName: string,
   relPath: string,
+  flowTagGlob?: string,
 ): Promise<string[]> {
-  const lastTag = await findLastReleaseTag(git, pkgName);
+  const lastTag = await findLastReleaseTag(git, pkgName, flowTagGlob);
   try {
     // git log [<tag>..HEAD] [--] <path>
     // Without a tag (initial release): git log -- <path>
@@ -64,7 +77,7 @@ export interface PlannerOptions {
   cwd: string;
   config: ReleaseConfig;
   scope?: string;
-  /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
+  /** Named flow — selects a release config profile. Packages/versioning replace global values; checks are additive. */
   flow?: string;
   bumpOverride?: VersionBump;
   /** Release track. Defaults to 'stable'. See ReleaseChannel. */
@@ -73,7 +86,9 @@ export interface PlannerOptions {
 
 /**
  * Merge base config with a named flow's config.
- * Flow completely REPLACES packages, versioningStrategy, and checks — no array merging.
+ * Flow replaces packages/versioningStrategy and adds to checks. Matching check
+ * ids override the global definition so a flow can make one gate stricter
+ * without accidentally removing the global release contract.
  * All other config fields (registry, publish, rollback, git, changelog) remain from global.
  */
 export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): ReleaseConfig {
@@ -85,7 +100,9 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
     ...config,
     ...(flow.packages !== undefined && { packages: flow.packages }),
     ...(flow.versioningStrategy && { versioningStrategy: flow.versioningStrategy }),
-    ...(flow.checks !== undefined && { checks: flow.checks }),
+    ...(flow.checks !== undefined && {
+      checks: [...new Map([...(config.checks ?? []), ...flow.checks].map(check => [check.id, check])).values()],
+    }),
     ...(flow.build !== undefined && { build: flow.build }),
   };
 }
@@ -158,6 +175,13 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     ? mergeConfigWithFlow(options.config, options.flow)
     : options.config;
 
+  // This flow's own tag glob (e.g. `platform-v*`), so bump detection looks
+  // for commits since the tag THIS pipeline actually creates (see tag.ts)
+  // instead of falling back to an unrelated/stale tag pattern.
+  const flowTagGlob = options.flow
+    ? buildReleaseTag(options.flow, '*', config.flows?.[options.flow]?.tagPattern)
+    : undefined;
+
   // Step 1-2: discover candidates and apply scope filtering.
   const packages = await discoverCurrentPackages(cwd, scope, config);
 
@@ -174,7 +198,7 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     modifiedPackages = packages;
   } else {
     const git = simpleGit(cwd, { timeout: { block: 60000 } });
-    modifiedPackages = await detectModifiedPackages(git, packages, cwd);
+    modifiedPackages = await detectModifiedPackages(git, packages, cwd, flowTagGlob);
   }
 
   // Compute version bumps
@@ -220,6 +244,7 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
       git,
       gitCwd,
       pkg.name,
+      flowTagGlob,
     );
 
     planPackages.push({
@@ -475,6 +500,7 @@ async function detectModifiedPackages(
   git: ReturnType<typeof simpleGit>,
   packages: PackageVersion[],
   cwd: string,
+  flowTagGlob?: string,
 ): Promise<PackageVersion[]> {
   // `git status` is repository-wide. Running it once per package made planning
   // scale linearly in process launches before we even inspected release tags.
@@ -488,7 +514,7 @@ async function detectModifiedPackages(
       return pkg;
     }
 
-    const commits = await getCommitsSinceTag(git, pkg.name, pkgRel);
+    const commits = await getCommitsSinceTag(git, pkg.name, pkgRel, flowTagGlob);
     return commits.length > 0 ? pkg : null;
   }))).filter((pkg): pkg is PackageVersion => pkg !== null);
 }
@@ -500,9 +526,10 @@ async function computeNextVersion(
   git: ReturnType<typeof simpleGit>,
   gitCwd: string,
   pkgName: string,
+  flowTagGlob?: string,
 ): Promise<string> {
   if (bump === 'auto') {
-    const detectedBump = await detectVersionFromCommits(git, packagePath, gitCwd, pkgName);
+    const detectedBump = await detectVersionFromCommits(git, packagePath, gitCwd, pkgName, flowTagGlob);
     return semver.inc(currentVersion, detectedBump) || currentVersion;
   }
   return semver.inc(currentVersion, bump) || currentVersion;
@@ -513,10 +540,11 @@ async function detectVersionFromCommits(
   packagePath: string,
   gitCwd: string,
   pkgName: string,
+  flowTagGlob?: string,
 ): Promise<'major' | 'minor' | 'patch'> {
   try {
     const relPath = relative(resolve(gitCwd), resolve(packagePath));
-    const messages = await getCommitsSinceTag(git, pkgName, relPath);
+    const messages = await getCommitsSinceTag(git, pkgName, relPath, flowTagGlob);
 
     let hasMinor = false;
     let hasBreaking = false;

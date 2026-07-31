@@ -215,3 +215,53 @@ describe('planRelease — channel', () => {
     }
   });
 });
+
+// ─── planRelease — flow-tag-aware bump detection ──────────────────────────────
+//
+// Reproduces the "bump detection scans since a stale/unrelated tag" bug: the
+// pipeline's own release tags follow `{flow}-v{version}` (tag.ts), but
+// findLastReleaseTag only ever looked for `<pkgName>@*` or a bare `v*` tag —
+// neither of which a flow tag like `myflow-v1.0.0` matches. That made bump
+// detection scan ALL history (or a much older tag) instead of "since the
+// last release", inflating the detected bump every single run.
+describe('planRelease — flow tag detection', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTmpMonorepo([{ name: '@scope/alpha' }]);
+    // Commit the package as it stands (version 1.0.0) so it's not picked up
+    // as "uncommitted" — that path bypasses tag-based bump detection entirely.
+    execSync('git add -A && git commit -m "chore: commit initial packages"', { cwd: root });
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('only scans commits after this flow\'s own tag, not full history', async () => {
+    const pkgDir = join(root, 'packages', 'alpha');
+
+    // A feature commit BEFORE the flow's release tag — must NOT count towards
+    // this run's bump.
+    writeFileSync(join(pkgDir, 'feature.txt'), 'x');
+    execSync('git add -A && git commit -m "feat: add feature"', { cwd: root });
+    execSync('git tag myflow-v1.0.0', { cwd: root });
+
+    // A fix commit AFTER the tag — this is the only commit that should count.
+    writeFileSync(join(pkgDir, 'fix.txt'), 'y');
+    execSync('git add -A && git commit -m "fix: patch bug"', { cwd: root });
+
+    const plan = await planRelease({
+      cwd: root,
+      config: { flows: { myflow: {} } },
+      flow: 'myflow',
+    });
+
+    const alpha = plan.packages.find(p => p.name === '@scope/alpha');
+    expect(alpha).toBeDefined();
+    // Without flow-tag-aware detection, the pre-tag "feat" commit would still
+    // be in range, incorrectly producing a minor bump (1.1.0) instead of patch.
+    expect(alpha!.bump).toBe('patch');
+    expect(alpha!.nextVersion).toBe('1.0.1');
+  });
+});
