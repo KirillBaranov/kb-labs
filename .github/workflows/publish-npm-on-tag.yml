@@ -14,10 +14,11 @@ name: Publish npm (on release tag)
 #   2. Stage (this workflow, job `stage`) — `kb release stage` packs the
 #      already-committed versions into real npm tarballs, once, and
 #      uploads them as a build artifact. No re-bump, no re-plan.
-#   3. Deliver (this workflow, job `deliver-npm`) — downloads that exact
-#      artifact and runs `kb release deliver --target npm`, which
-#      publishes the tarballs as-is and verifies the result against the
-#      real registry (with retry — real npm has propagation lag).
+#   3. Deliver candidate (this workflow, job `deliver-candidate`) — downloads
+#      that exact artifact and publishes it under the `canary` dist-tag.
+#   4. User gate (job `launcher-smoke`) — installs and exercises the candidate.
+#   5. Promote (job `promote-stable`) — moves the same immutable versions to
+#      `latest`; no repack or rebuild is allowed after the gate.
 #
 # Tag grammar: `<flow>-v<version>` (e.g. `platform-v2.105.0`,
 # `sdk-v3.2.0`) — one literal, disjoint prefix per flow, so this workflow's
@@ -109,8 +110,8 @@ jobs:
           path: .kb/release/artifacts/
           retention-days: 7
 
-  deliver-npm:
-    name: Deliver to npm
+  deliver-candidate:
+    name: Deliver candidate to npm
     needs: stage
     runs-on: ubuntu-latest
     steps:
@@ -155,8 +156,8 @@ jobs:
           name: release-artifacts
           path: .kb/release/artifacts/
 
-      - name: Deliver (publish the staged tarballs as-is, verify against the registry)
-        run: pnpm kb release deliver --release-tag "${{ github.ref_name }}" --target npm
+      - name: Deliver candidate (publish the staged tarballs as-is)
+        run: pnpm kb release deliver --release-tag "${{ github.ref_name }}" --target npm --tag canary
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -170,7 +171,7 @@ jobs:
   # softprops/action-gh-release verbatim.
   github-release:
     name: GitHub Release
-    needs: [deliver-npm, launcher-smoke]
+    needs: promote-stable
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -223,7 +224,7 @@ jobs:
   launcher-smoke:
     name: kb-create post-publish smoke
     runs-on: ubuntu-latest
-    needs: deliver-npm
+    needs: deliver-candidate
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -245,3 +246,43 @@ jobs:
         working-directory: tools/kb-devkit
       - name: Run kb-create e2e against just-published packages
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+
+  # Stable npm is a promotion, never the first publication. The manifest is
+  # downloaded from the same staged artifact that the candidate delivery job
+  # used, so this job can only move versions that were actually smoke-tested.
+  promote-stable:
+    name: Promote candidate to stable
+    needs: [deliver-candidate, launcher-smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: .kb/release/artifacts/
+      - name: Promote the smoke-tested versions to latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          while IFS=$'\t' read -r name version; do
+            spec="${name}@${version}"
+            echo "Promoting ${spec} to latest"
+            npm dist-tag add "${spec}" latest --registry https://registry.npmjs.org
+            actual=$(npm view "${name}" dist-tags.latest --registry https://registry.npmjs.org)
+            test "${actual}" = "${version}"
+          done < <(node -e '
+            const manifest = require("./.kb/release/artifacts/manifest.json");
+            for (const artifact of manifest) console.log(`${artifact.name}\t${artifact.version}`);
+          ')
