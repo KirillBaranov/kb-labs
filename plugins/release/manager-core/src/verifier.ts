@@ -123,6 +123,7 @@ export function verifyExtractedTarball(extractedDir: string): string[] {
 
   // Exports exist
   const extractedPkg = JSON.parse(readFileSync(join(extractedDir, 'package.json'), 'utf-8')) as PkgJson;
+  issues.push(...findForbiddenDependencyProtocols(extractedPkg));
   for (const field of ['main', 'module', 'types'] as const) {
     const val = extractedPkg[field];
     if (val && !existsSync(join(extractedDir, val))) {
@@ -164,11 +165,36 @@ export function verifyExtractedTarball(extractedDir: string): string[] {
   return issues;
 }
 
+/**
+ * These protocols are workspace-only and cannot be consumed from a public
+ * registry. Checking the extracted package (rather than the source manifest)
+ * makes this a release-artifact contract and catches the exact bytes a user
+ * would install.
+ */
+export function findForbiddenDependencyProtocols(pkg: PkgJson): string[] {
+  const issues: string[] = [];
+  for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
+    const deps = pkg[section];
+    if (!deps || typeof deps !== 'object') { continue; }
+    for (const [name, value] of Object.entries(deps as Record<string, unknown>)) {
+      if (typeof value !== 'string') { continue; }
+      const protocol = ['workspace:', 'link:', 'file:'].find(prefix => value.startsWith(prefix));
+      if (protocol) {
+        issues.push(`${section}.${name} uses forbidden ${protocol} dependency protocol (${value})`);
+      }
+    }
+  }
+  return issues;
+}
+
 type PkgJson = Record<string, unknown> & {
   exports?: Record<string, Record<string, string> | string>;
   module?: string;
   main?: string;
   types?: string;
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
 };
 
 function resolveEsmEntry(pkg: PkgJson): string | undefined {

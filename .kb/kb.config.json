@@ -261,6 +261,14 @@
                   "args": ["scripts/gates/check-dist-exports.sh"],
                   "timeoutMs": 30000,
                   "runIn": "perPackage"
+                },
+                {
+                  "id": "pack-install",
+                  "name": "clean consumer install of packed artifact",
+                  "command": "bash",
+                  "args": ["scripts/gates/check-pack-install.sh"],
+                  "timeoutMs": 120000,
+                  "runIn": "perPackage"
                 }
               ]
             }

@@ -64,7 +64,7 @@ export interface PlannerOptions {
   cwd: string;
   config: ReleaseConfig;
   scope?: string;
-  /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
+  /** Named flow — selects a release config profile. Packages/versioning replace global values; checks are additive. */
   flow?: string;
   bumpOverride?: VersionBump;
   /** Release track. Defaults to 'stable'. See ReleaseChannel. */
@@ -73,7 +73,9 @@ export interface PlannerOptions {
 
 /**
  * Merge base config with a named flow's config.
- * Flow completely REPLACES packages, versioningStrategy, and checks — no array merging.
+ * Flow replaces packages/versioningStrategy and adds to checks. Matching check
+ * ids override the global definition so a flow can make one gate stricter
+ * without accidentally removing the global release contract.
  * All other config fields (registry, publish, rollback, git, changelog) remain from global.
  */
 export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): ReleaseConfig {
@@ -85,7 +87,9 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
     ...config,
     ...(flow.packages !== undefined && { packages: flow.packages }),
     ...(flow.versioningStrategy && { versioningStrategy: flow.versioningStrategy }),
-    ...(flow.checks !== undefined && { checks: flow.checks }),
+    ...(flow.checks !== undefined && {
+      checks: [...new Map([...(config.checks ?? []), ...flow.checks].map(check => [check.id, check])).values()],
+    }),
     ...(flow.build !== undefined && { build: flow.build }),
   };
 }

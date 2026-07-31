@@ -18,12 +18,14 @@
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, type CommandResult } from '@kb-labs/sdk';
 import {
   discoverCurrentPackages,
   mergeConfigWithFlow,
+  verifyExtractedTarball,
   type ReleaseConfig,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -103,6 +105,20 @@ export default defineCommand({
           const filename = parsed[0]?.filename;
           if (!filename) {
             throw new Error(`npm pack produced no tarball for ${pkg.name}@${pkg.currentVersion}`);
+          }
+          const tarballPath = join(outDir, filename);
+          const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
+          try {
+            const extractResult = spawnSync('tar', ['xzf', tarballPath, '-C', verifyDir], { stdio: 'pipe' });
+            if (extractResult.status !== 0) {
+              throw new Error(`could not extract staged tarball for ${pkg.name}@${pkg.currentVersion}`);
+            }
+            const issues = verifyExtractedTarball(join(verifyDir, 'package'));
+            if (issues.length > 0) {
+              throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
+            }
+          } finally {
+            rmSync(verifyDir, { recursive: true, force: true });
           }
           const sha256 = createHash('sha256').update(readFileSync(join(outDir, filename))).digest('hex');
           artifacts.push({ name: pkg.name, version: pkg.currentVersion, tarball: filename, sha256 });

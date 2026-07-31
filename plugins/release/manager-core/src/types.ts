@@ -145,7 +145,7 @@ export interface FlowConfig {
   packages?: PackagesFilter;
   /** Replaces global versioningStrategy. */
   versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
-  /** If set, replaces global checks for this flow. */
+  /** If set, adds to global checks; matching ids override the global check. */
   checks?: CustomCheckConfig[];
   /**
    * Git tag template for this flow's stable releases. Tokens: `{flow}`
@@ -223,10 +223,10 @@ export interface ReleaseConfig {
   build?: BuildConfig;
   /** Filter which packages are discovered and released. */
   packages?: PackagesFilter;
-  /** Per-scope overrides — packages filter merged with global, checks replace global entirely. */
+  /** Per-scope overrides — packages filter merged with global, checks are additive. */
   scopes?: Record<string, {
     packages?: PackagesFilter;
-    /** If set, replaces global `checks` for this scope. */
+    /** If set, adds to global `checks`; matching ids override the global check. */
     checks?: CustomCheckConfig[];
     /** If set, overrides global versioningStrategy for this scope. */
     versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
@@ -348,7 +348,7 @@ export interface PipelineOptions {
   scopeCwd: string;
   /** Original scope name for display/reporting only */
   scope?: string;
-  /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
+  /** Named flow — selects a release config profile. Packages/versioning replace global values; checks are additive. */
   flow?: string;
   config: ReleaseConfig;
   dryRun?: boolean;
@@ -385,4 +385,3 @@ export interface PipelineResult {
   report: ReleaseReport;
   plan: ReleasePlan;
 }
-

@@ -170,7 +170,7 @@ jobs:
   # softprops/action-gh-release verbatim.
   github-release:
     name: GitHub Release
-    needs: deliver-npm
+    needs: [deliver-npm, launcher-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
