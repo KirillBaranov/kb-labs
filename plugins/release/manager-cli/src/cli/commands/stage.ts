@@ -85,7 +85,16 @@ export default defineCommand({
         return { ok: false, error: 'Command failed' };
       }
 
-      const versionMap = new Map(discovered.map(pkg => [pkg.name, pkg.currentVersion]));
+      // versionMap must cover the WHOLE workspace, not just this flow's packages:
+      // a flow package can depend on a package owned by a different flow (e.g. sdk
+      // depends on @kb-labs/core-retry, which is platform-flow-scoped). Building the
+      // map from `discovered` (flow-scoped) alone leaves such cross-flow deps out of
+      // versionMap, so rewriteWorkspaceDeps silently skips them (no pinned version to
+      // substitute) and `npm pack` — unlike `pnpm pack` — never resolves workspace:*
+      // on its own, shipping the literal "workspace:*" string straight to the
+      // published tarball.
+      const allWorkspacePackages = await discoverCurrentPackages(repoRoot, undefined, baseConfig);
+      const versionMap = new Map(allWorkspacePackages.map(pkg => [pkg.name, pkg.currentVersion]));
       const artifacts: StagedArtifact[] = [];
 
       const packLoader = useLoader('Packing tarballs...');
