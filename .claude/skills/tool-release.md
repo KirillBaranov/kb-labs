@@ -16,7 +16,7 @@ CLI entry point: `pnpm kb release <command>`.
 > ## ⛔ КРИТИЧЕСКИЕ ПРАВИЛА — НАРУШЕНИЕ ЛОМАЕТ РЕЛИЗ
 >
 > **1. Для обычного релиза агент запускает только воркфлоу `release-prepare`.**
-> Воркфлоу сам выполняет validation, checks, build, approval, changelog, version bump,
+> Воркфлоу сам выполняет validation, checks, build, release review artifacts, approval, changelog, version bump,
 > commit, tag и push. Агент не заменяет его цепочку прямыми вызовами CLI.
 > Запрещено: `pnpm publish`, `npm publish`, `pnpm -r publish`, прямой stable
 > `pnpm kb release run`, ручной `git tag`/`git push` для обхода workflow.
@@ -43,9 +43,10 @@ CLI entry point: `pnpm kb release <command>`.
 
 **Всегда через воркфлоу `release-prepare`.** Он принимает только обязательный
 input `flow`, проверяет, что запуск идёт с `main`, а затем последовательно
-выполняет `Preview → Checks → Build → Approval → Prepare → Git`. До approval
-файлы не bump-аются и git refs не меняются. Нужен локально запущенный daemon
-(`kb-dev start`):
+выполняет `Preview → Checks → Build → Release Review → Approval → Prepare → Git`.
+До approval package versions не bump-аются и git refs не меняются; changelog,
+plan и ссылки для ревью уже подготовлены как workflow artifacts. Нужен локально
+запущенный daemon (`kb-dev start`):
 
 ```bash
 pnpm kb workflow run --workflow-id release-prepare --input '{"flow":"platform"}'
@@ -60,8 +61,9 @@ SDK запускаются отдельными workflow runs. Бинарник�
 контур и не подменяются npm-flow.
 
 Воркфлоу дойдёт до шага `Confirm release` и встанет в `waiting_approval` —
-это и есть точка, где план (что именно забампится) уже посчитан и ждёт
-решения. Approve отдаёт человек (или агент — **только** после того, как
+это и есть точка, где уже доступны release review, JSON-план, changelog,
+ссылка на сравнение с предыдущим тегом и ссылка на будущий release tag.
+Approve отдаёт человек (или агент — **только** после того, как
 человек в чате явно сказал "ок, апрувь"; это реальный тег + push, ничего
 не публикует в npm само по себе, но необратимо в смысле git-истории):
 
@@ -76,8 +78,9 @@ push и есть триггер CI. `flow` — `"platform"` или `"sdk"` (см
 Order ниже), передаётся через `--input`.
 
 Определение воркфлоу: `.kb/workflows/release-prepare.yml`. Это явная оркестрация
-команд `plan`, `checks`, `build`, `changelog`, `version` и `git` с approval между
-проверками и изменением репозитория; обходить её составными CLI-командами нельзя.
+команд `plan`, `checks`, `build`, `changelog`, `version` и `git` с approval после
+полного review-пакета, но до version bump и git-операций; обходить её составными
+CLI-командами нельзя.
 ID воркфлоу —
 `release-prepare`, без каких-либо префиксов (`kb workflow list` или
 `GET /api/v1/workflows` на daemon, если сомневаешься в актуальном списке).

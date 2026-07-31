@@ -1,0 +1,124 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+
+const flow = process.env.RELEASE_FLOW;
+const planPath = process.env.RELEASE_PLAN_PATH;
+
+if (!flow || !planPath) {
+  throw new Error("RELEASE_FLOW and RELEASE_PLAN_PATH are required");
+}
+
+if (!existsSync(planPath)) {
+  throw new Error(`Release plan was not written to ${planPath}`);
+}
+
+const plan = JSON.parse(readFileSync(planPath, "utf8"));
+const changelogPath = ".kb/release/CHANGELOG.md";
+const changelog = existsSync(changelogPath)
+  ? readFileSync(changelogPath, "utf8").trim()
+  : "Changelog was not generated.";
+
+const packages = Array.isArray(plan.packages) ? plan.packages : [];
+const nextVersion = packages[0]?.nextVersion || "unknown";
+const releaseTag = `${flow}-v${nextVersion}`;
+
+function command(args, fallback = "") {
+  try {
+    return execFileSync(args[0], args.slice(1), {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return fallback;
+  }
+}
+
+function repositoryUrl() {
+  const remote = command(["git", "remote", "get-url", "origin"]);
+  const match = remote.match(/github\.com[:/]([^/]+\/[^/.]+?)(?:\.git)?$/);
+  return match ? `https://github.com/${match[1]}` : "";
+}
+
+const repository = repositoryUrl();
+const previousTag = command([
+  "git",
+  "describe",
+  "--tags",
+  "--match",
+  `${flow}-v*`,
+  "--abbrev=0",
+]);
+const compareUrl =
+  repository && previousTag
+    ? `${repository}/compare/${previousTag}...${releaseTag}`
+    : repository
+      ? `${repository}/releases/tag/${releaseTag}`
+      : "";
+const tagUrl = repository ? `${repository}/releases/tag/${releaseTag}` : "";
+
+const summary = {
+  flow,
+  strategy: plan.strategy,
+  registry: plan.registry,
+  releaseTag,
+  previousTag: previousTag || null,
+  packages: packages.map((pkg) => ({
+    name: pkg.name,
+    currentVersion: pkg.currentVersion,
+    nextVersion: pkg.nextVersion,
+    bump: pkg.bump,
+  })),
+};
+
+const packageTable =
+  summary.packages.length > 0
+    ? summary.packages
+        .map(
+          (pkg) =>
+            `| [${pkg.name}](https://www.npmjs.com/package/${pkg.name}) | ${pkg.currentVersion || "—"} | ${pkg.nextVersion || "—"} | ${pkg.bump || "—"} |`,
+        )
+        .join("\n")
+    : "| — | — | — | — |";
+
+const links = [
+  compareUrl
+    ? `- Changes: [compare with ${previousTag || "the previous release"}](${compareUrl})`
+    : "- Changes: repository URL unavailable",
+  tagUrl
+    ? `- Release tag: [${releaseTag}](${tagUrl})`
+    : `- Release tag: \`${releaseTag}\``,
+].join("\n");
+
+const review = [
+  `# ${flow} release review`,
+  "",
+  `- **Candidate tag:** \`${releaseTag}\``,
+  `- **Packages:** ${summary.packages.length}`,
+  `- **Strategy:** ${plan.strategy || "—"}`,
+  `- **Registry:** ${plan.registry || "—"}`,
+  "",
+  links,
+  "",
+  "## Packages",
+  "",
+  "| Package | Current | Next | Bump |",
+  "| --- | --- | --- | --- |",
+  packageTable,
+  "",
+  "## Changelog",
+  "",
+  changelog,
+].join("\n");
+
+const payload = Buffer.from(
+  JSON.stringify({
+    plan: summary,
+    review,
+    changelog,
+    compareUrl,
+    tagUrl,
+  }),
+  "utf8",
+).toString("base64");
+
+console.log(`::kb-output:base64::${payload}`);
