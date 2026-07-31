@@ -1,0 +1,195 @@
+name: Deploy platform Compose
+
+# Deliberately separate from the legacy kb-deploy workflow. This is the
+# manual migration path for a host that runs the published per-service images.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Image tag to publish and deploy (for example 2.116.0-cloud1)
+        required: true
+        type: string
+      ref:
+        description: Git ref containing the Dockerfiles and compose definition
+        required: true
+        default: main
+        type: string
+      deploy:
+        description: Pull images and restart the remote Compose stack
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-platform-compose
+  cancel-in-progress: false
+
+env:
+  IMAGE_TAG: ${{ inputs.version }}
+
+jobs:
+  prepare:
+    name: Build production dependency trees
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - name: Build kb-devkit
+        run: make build -C tools/kb-devkit
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace
+        run: pnpm build
+      - name: Prepare image inputs
+        run: |
+          set -euo pipefail
+          pnpm deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
+          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+          pnpm deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
+          pnpm deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
+          pnpm deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
+          pnpm deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
+          pnpm deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
+          pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-deploy-inputs
+          path: .kb/deploy/
+          retention-days: 1
+
+  publish:
+    name: Publish ${{ matrix.image }}:${{ inputs.version }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kb-state-daemon
+            dockerfile: plugins/state/daemon/Dockerfile
+          - image: kb-gateway
+            dockerfile: services/gateway/app/Dockerfile
+          - image: kb-marketplace
+            dockerfile: plugins/marketplace/daemon/Dockerfile
+          - image: kb-rest-api
+            dockerfile: services/rest-api/app/Dockerfile
+          - image: kb-studio
+            dockerfile: studio/app/Dockerfile
+          - image: kb-workflow
+            dockerfile: plugins/workflow/daemon/Dockerfile
+          - image: kb-mcp
+            dockerfile: services/mcp/app/Dockerfile
+          - image: kb-marketplace-registry
+            dockerfile: plugins/marketplace-registry/app/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-deploy-inputs
+          path: .kb/deploy/
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/kb-labs-team/${{ matrix.image }}:${{ inputs.version }}
+
+  deploy:
+    name: Deploy Compose stack
+    needs: publish
+    if: inputs.deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Write SSH key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Upload Compose definition
+        run: |
+          scp -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new \
+            infra/docker-compose.backend.yml \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/kb-labs/docker-compose.platform.yml"
+      - name: Pull and restart platform
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" \
+            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$HOME/kb-labs"
+
+          # Keep the existing host .env and preserve credentials that were
+          # supplied only to the running MinIO container by the old stack.
+          if ! grep -q '^MINIO_ROOT_USER=' .env 2>/dev/null; then
+            user="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' kb-minio 2>/dev/null | sed -n 's/^MINIO_ROOT_USER=//p' | head -1)"
+            pass="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' kb-minio 2>/dev/null | sed -n 's/^MINIO_ROOT_PASSWORD=//p' | head -1)"
+            {
+              printf 'MINIO_ROOT_USER=%s\n' "$user"
+              printf 'MINIO_ROOT_PASSWORD=%s\n' "$pass"
+            } > .env.platform
+          else
+            : > .env.platform
+          fi
+          printf 'IMAGE_TAG=%s\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" >> .env.platform
+
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin >/dev/null
+          docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml pull
+          docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml up -d --remove-orphans
+          docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
+
+          check() { curl -fsS --max-time 15 "$2" >/dev/null || { echo "health check failed: $1" >&2; return 1; }; }
+          for i in 1 2 3 4 5 6; do
+            if check gateway http://127.0.0.1:4000/health \
+              && check rest http://127.0.0.1:5050/api/v1/health \
+              && check workflow http://127.0.0.1:7778/health \
+              && check marketplace http://127.0.0.1:5070/health \
+              && check registry http://127.0.0.1:5071/health \
+              && check state http://127.0.0.1:7777/health \
+              && check studio http://127.0.0.1:3000/; then
+              exit 0
+            fi
+            sleep 10
+          done
+          docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
+          exit 1
+          REMOTE
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy.key
