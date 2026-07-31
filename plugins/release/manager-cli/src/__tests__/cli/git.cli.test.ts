@@ -56,7 +56,7 @@ describe('release:git', () => {
 
     const result = await gitCommand.execute(ctx as never, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(commitAndTagRelease)).toHaveBeenCalledOnce();
   });
 
@@ -68,7 +68,7 @@ describe('release:git', () => {
 
     const result = await gitCommand.execute(ctx as never, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(commitAndTagRelease)).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('release:git', () => {
 
     const result = await gitCommand.execute(ctx as never, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const out = captured.json[0] as Record<string, unknown>;
     expect(out.committed).toBe(true);
     expect(Array.isArray(out.tagged)).toBe(true);
@@ -105,7 +105,7 @@ describe('release:git', () => {
 
     const result = await gitCommand.execute(ctx as never, mockCLIInput({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(commitAndTagRelease)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('2 package');
