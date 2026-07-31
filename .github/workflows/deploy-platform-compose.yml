@@ -59,14 +59,14 @@ jobs:
       - name: Prepare image inputs
         run: |
           set -euo pipefail
-          pnpm deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
-          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
-          pnpm deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
-          pnpm deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
-          pnpm deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
-          pnpm deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
-          pnpm deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
-          pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
+          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
       - uses: actions/upload-artifact@v4
         with:
           name: platform-deploy-inputs
