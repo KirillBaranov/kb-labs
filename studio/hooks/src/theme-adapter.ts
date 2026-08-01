@@ -120,16 +120,18 @@ export function getAntDesignTokens(): ThemeConfig['token'] {
     colorWhite: '#FFFFFF', // Always white
 
     // ============ Shadow ============
-    boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-    boxShadowSecondary: '0 4px 12px rgba(0,0,0,0.08)',
-    boxShadowTertiary: '0 8px 24px rgba(0,0,0,0.08)',
+    // Soft, diffuse shadows (matches kblabs.ru marketing site) instead of antd's tighter default stack
+    boxShadow: '0 2px 24px rgba(0,0,0,0.07)',
+    boxShadowSecondary: '0 4px 32px rgba(0,0,0,0.08)',
+    boxShadowTertiary: '0 8px 48px rgba(0,0,0,0.10)',
 
     // ============ Border Radius ============
-    borderRadius: 8,
-    borderRadiusLG: 12,
-    borderRadiusSM: 6,
-    borderRadiusXS: 4,
-    borderRadiusOuter: 6,
+    // Matches kblabs.ru radius scale (8/10/12/16/20/24/999) instead of antd's default 6/8/4
+    borderRadius: 10,
+    borderRadiusLG: 16,
+    borderRadiusSM: 8,
+    borderRadiusXS: 6,
+    borderRadiusOuter: 8,
 
     // ============ Control Heights ============
     controlHeight: 36,
@@ -138,7 +140,7 @@ export function getAntDesignTokens(): ThemeConfig['token'] {
     controlHeightXS: 22,
 
     // ============ Font Family ============
-    fontFamily: "var(--font-body, 'Inter', 'Segoe UI', sans-serif)",
+    fontFamily: "var(--font-body, 'Geist Sans', 'Segoe UI', sans-serif)",
 
     // ============ Font Sizes ============
     fontSize: 14,
@@ -470,18 +472,19 @@ export function getAntDesignComponents(): ThemeConfig['components'] {
       itemHoverColor: 'var(--link)', // Item hover text color
 
       // ============ Selected states ============
-      itemSelectedBg: 'var(--accent-subtle)', // Selected item background
+      // Accent as a point (thin left bar, see .ant-menu-item-selected override in kb-sidebar.module.css)
+      // not a filled pill — matches the rest of the kit's "no tinted background" rule
+      itemSelectedBg: 'transparent',
       itemSelectedColor: 'var(--link)', // Selected item text color
 
       // ============ Active states ============
-      itemActiveBg: 'var(--accent-subtle)', // Active item background
-      colorActiveBarBorderSize: 0, // No active bar (using background instead)
+      itemActiveBg: 'transparent',
 
       // ============ Dark theme specific ============
       darkItemBg: 'var(--bg-secondary)', // NEW: Dark mode item background
       darkItemColor: 'var(--text-primary)', // NEW: Dark mode item text
       darkItemHoverBg: 'var(--bg-hover)', // NEW: Dark mode hover
-      darkItemSelectedBg: 'var(--accent-subtle)', // Dark mode selected
+      darkItemSelectedBg: 'transparent', // Dark mode selected — accent line, not a fill
       darkItemSelectedColor: 'var(--link)', // Dark mode selected text
       darkSubMenuItemBg: 'var(--bg-secondary)', // NEW: Dark mode submenu background
 
