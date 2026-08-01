@@ -5,8 +5,17 @@ name: Deploy platform Compose
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - stage
+          - dev
       version:
-        description: Image tag to publish and deploy (for example 2.116.0-cloud1)
+        description: Release tag for production, or dev-/stage-prefixed tag for non-production
         required: true
         type: string
       ref:
@@ -39,6 +48,7 @@ env:
 jobs:
   prepare:
     name: Build production dependency trees
+    if: inputs.environment != 'production'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +71,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build workspace
         run: pnpm build
-      - name: Prepare image inputs
+      - name: Prepare non-production image inputs
         run: |
           set -euo pipefail
           # Keep pnpm's isolated production graph. Hoisting copies the whole
@@ -86,6 +96,7 @@ jobs:
   publish:
     name: Publish ${{ matrix.image }}:${{ inputs.version }}
     needs: prepare
+    if: inputs.environment != 'production'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -130,14 +141,16 @@ jobs:
 
   deploy:
     name: Deploy Compose stack
-    needs: publish
-    if: inputs.deploy
+    needs: [prepare, publish]
+    if: >-
+      always() && inputs.deploy &&
+      (inputs.environment == 'production' || needs.publish.result == 'success')
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.environment == 'production' && format('platform-v{0}', inputs.version) || inputs.ref }}
       - name: Write SSH key
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
@@ -164,12 +177,24 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           VERSION: ${{ inputs.version }}
           CLEANUP: ${{ inputs.cleanup }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" \
-            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' CLEANUP='$CLEANUP' bash -s" <<'REMOTE'
+            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' CLEANUP='$CLEANUP' ENVIRONMENT='$ENVIRONMENT' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$HOME/kb-labs"
+
+          case "$ENVIRONMENT" in
+            production) image_scope=release ;;
+            stage) image_scope=stage ;;
+            dev) image_scope=dev ;;
+            *) echo "unsupported environment: $ENVIRONMENT" >&2; exit 1 ;;
+          esac
+          if [[ "$ENVIRONMENT" != production && "$VERSION" != "$image_scope-"* ]]; then
+            echo "non-production image tag must start with $image_scope-: $VERSION" >&2
+            exit 1
+          fi
 
           # Keep the existing host .env and preserve credentials that were
           # supplied only to the running MinIO container by the old stack.
@@ -192,7 +217,7 @@ jobs:
             # newest existing tag as a rollback image. This is scoped to the
             # eight KB Labs repositories; unrelated host applications and
             # volumes are never pruned.
-            bash ./cleanup-platform-images.sh "$VERSION" --apply
+            bash ./cleanup-platform-images.sh "$VERSION" --apply "$image_scope"
             echo 'Docker usage after platform image cleanup:'
             docker system df
           fi
@@ -225,7 +250,7 @@ jobs:
           fi
 
           if [[ "$CLEANUP" == "true" ]]; then
-            bash ./cleanup-platform-images.sh "$VERSION" --apply
+            bash ./cleanup-platform-images.sh "$VERSION" --apply "$image_scope"
             echo 'Docker usage after successful platform deploy:'
             docker system df
           fi

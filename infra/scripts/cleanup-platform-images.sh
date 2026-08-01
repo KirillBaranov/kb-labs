@@ -2,8 +2,9 @@
 
 set -euo pipefail
 
-current_tag="${1:?usage: cleanup-platform-images.sh CURRENT_TAG [--apply]}"
+current_tag="${1:?usage: cleanup-platform-images.sh CURRENT_TAG [--apply] [SCOPE]}"
 apply="${2:-}"
+scope="${3:-release}"
 
 if [[ "$apply" != "--apply" ]]; then
   echo "dry-run: pass --apply to remove old KB Labs platform image tags"
@@ -24,6 +25,11 @@ for repository in "${repositories[@]}"; do
   previous_kept=false
   while IFS= read -r tag; do
     [[ -n "$tag" ]] || continue
+    case "$scope" in
+      release) [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]] || continue ;;
+      stage|dev) [[ "$tag" == "$scope-"* ]] || continue ;;
+      *) echo "unsupported image scope: $scope" >&2; exit 1 ;;
+    esac
     image="$repository:$tag"
     if [[ "$tag" == "$current_tag" || "$previous_kept" == false ]]; then
       echo "keep $image"
