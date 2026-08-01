@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-vibeproxy",
   "description": "VibeProxy adapter implementing ILLM interface for local Anthropic API proxy",
-  "version": "2.116.9",
+  "version": "2.116.10",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
