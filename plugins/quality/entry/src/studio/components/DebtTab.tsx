@@ -1,8 +1,6 @@
 import * as React from 'react';
 import {
   useData,
-  UIRow,
-  UICol,
   UICard,
   UITable,
   UITag,
@@ -10,7 +8,6 @@ import {
   UISkeleton,
   UISpace,
   UIIcon,
-  UIStatistic,
 } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type { DeadCodeResponse, HealthV2Response } from '@kb-labs/quality-contracts';
@@ -66,36 +63,40 @@ export function DebtTab() {
 
   return (
     <div>
-      <UIRow gutter={16} style={{ marginBottom: 24 }}>
-        <UICol span={6}>
-          <UICard>
-            <UIStatistic title="TypeScript Score" value={`${tsScore}/100`}
-              prefix={<UITag color={gradeColor(tsGrade)}>{tsGrade}</UITag>} />
-          </UICard>
-        </UICol>
-        <UICol span={6}>
-          <UICard>
-            <UIStatistic title="Unused Files" value={unusedFileRows.length}
-              valueStyle={{ color: unusedFileRows.length > 0 ? '#ff4d4f' : '#52c41a' }}
-              prefix={<UIIcon name="FileUnknownOutlined" />} />
-          </UICard>
-        </UICol>
-        <UICol span={6}>
-          <UICard>
-            <UIStatistic title="Unused Exports" value={unusedExportRows.length}
-              valueStyle={{ color: unusedExportRows.length > 0 ? '#faad14' : '#52c41a' }}
-              prefix={<UIIcon name="ExportOutlined" />} />
-          </UICard>
-        </UICol>
-        <UICol span={6}>
-          <UICard>
-            <UIStatistic title="Dep Issues"
-              value={unusedDepRows.length + unlistedDepRows.length}
-              valueStyle={{ color: (unusedDepRows.length + unlistedDepRows.length) > 0 ? '#faad14' : '#52c41a' }}
-              prefix={<UIIcon name="NodeIndexOutlined" />} />
-          </UICard>
-        </UICol>
-      </UIRow>
+      <UICard styles={{ body: { padding: '18px 24px' } }} style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'TypeScript Score', value: `${tsScore}/100`, tag: tsGrade },
+            {
+              label: 'Unused Files', value: unusedFileRows.length,
+              color: unusedFileRows.length > 0 ? '#ff4d4f' : '#52c41a',
+            },
+            {
+              label: 'Unused Exports', value: unusedExportRows.length,
+              color: unusedExportRows.length > 0 ? '#faad14' : '#52c41a',
+            },
+            {
+              label: 'Dep Issues', value: unusedDepRows.length + unlistedDepRows.length,
+              color: (unusedDepRows.length + unlistedDepRows.length) > 0 ? '#faad14' : '#52c41a',
+            },
+          ].map((metric, i) => (
+            <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              {i > 0 && <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                {metric.tag && <UITag color={gradeColor(metric.tag)}>{metric.tag}</UITag>}
+                <span style={{
+                  fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                  fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                  color: metric.color,
+                }}>
+                  {metric.value}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </UICard>
 
       {tsDetails.length > 0 && (
         <UICard title="TypeScript Health" style={{ marginBottom: 24 }}>
