@@ -11,6 +11,8 @@ import {
   UICol,
   UIPage,
   UIPageHeader,
+  UISegmented,
+  UITag,
 } from '@kb-labs/studio-ui-kit';
 import { useDataSources } from '@/providers/data-sources-provider';
 import type { PluginManifestEntry } from '@kb-labs/studio-data-client';
@@ -54,6 +56,9 @@ export function PluginsPage() {
 
   const filtered = useMemo(() => {
     return plugins.filter(p => {
+      // This page only fetches the plugin registry — there's no adapter
+      // registry wired in yet, so every entry here is a plugin/extension.
+      if (kindFilter === 'adapters') {return false;}
       const m = p.manifest;
       if (search) {
         const q = search.toLowerCase();
@@ -65,7 +70,7 @@ export function PluginsPage() {
       if (surfaceFilter === 'rest' && !((m.rest?.routes?.length ?? 0) > 0)) {return false;}
       return true;
     });
-  }, [plugins, search, surfaceFilter]);
+  }, [plugins, search, surfaceFilter, kindFilter]);
 
   const handleClick = (plugin: PluginManifestEntry) => {
     navigate(`/marketplace/${encodeURIComponent(plugin.pluginId)}`);
@@ -106,64 +111,36 @@ export function PluginsPage() {
       />
 
       {/* Filters bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
 
         {/* Kind tabs */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 10, padding: 3 }}>
-          {kindTabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setKindFilter(tab.key)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: kindFilter === tab.key ? 'var(--bg-secondary)' : 'transparent',
-                color: kindFilter === tab.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontSize: 13, fontWeight: kindFilter === tab.key ? 600 : 400,
-                boxShadow: kindFilter === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 120ms ease',
-              }}
-            >
-              {tab.label}
-              <span style={{
-                fontSize: 11, fontWeight: 600,
-                color: kindFilter === tab.key ? 'var(--link)' : 'var(--text-tertiary)',
-                background: kindFilter === tab.key ? 'rgba(12,102,255,0.10)' : 'transparent',
-                borderRadius: 8, padding: '0 5px',
-              }}>
-                {tab.count}
+        <UISegmented
+          value={kindFilter}
+          onChange={value => setKindFilter(value as KindFilter)}
+          options={kindTabs.map(tab => ({
+            label: (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 2px' }}>
+                {tab.label}
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{tab.count}</span>
               </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 20, background: 'var(--border-primary)', flexShrink: 0 }} />
+            ),
+            value: tab.key,
+          }))}
+        />
 
         {/* Surface chips */}
         <div style={{ display: 'flex', gap: 6 }}>
           {surfaceChips.map(chip => {
             const active = surfaceFilter === chip.key;
             return (
-              <button
+              <UITag
                 key={chip.key}
+                variant={active ? 'info' : 'neutral'}
                 onClick={() => setSurfaceFilter(active ? 'all' : chip.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${active ? 'var(--link)' : 'var(--border-primary)'}`,
-                  cursor: 'pointer',
-                  background: active ? 'rgba(12,102,255,0.08)' : 'transparent',
-                  color: active ? 'var(--link)' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: active ? 500 : 400,
-                  transition: 'all 120ms ease',
-                }}
+                style={{ margin: 0, fontSize: 12, padding: '3px 10px' }}
               >
-                {chip.label}
-                <span style={{ fontSize: 11, color: active ? 'var(--link)' : 'var(--text-tertiary)' }}>
-                  {chip.count}
-                </span>
-              </button>
+                {chip.label} <span style={{ opacity: 0.7 }}>{chip.count}</span>
+              </UITag>
             );
           })}
         </div>
