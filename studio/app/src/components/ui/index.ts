@@ -4,7 +4,6 @@ export { ThemeTransitionOverlay, type ThemeTransitionOverlayProps } from './them
 export { KBThemeToggle } from './kb-theme-toggle';
 
 // Layout Components
-export { KBHeader, type KBHeaderProps } from './kb-header';
 export { KBSidebar, type KBSidebarProps, type NavigationItem } from './kb-sidebar';
 export { KBPageLayout, type KBPageLayoutProps } from './kb-page-layout';
 
