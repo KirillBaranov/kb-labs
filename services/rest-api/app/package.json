@@ -19,9 +19,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/adapters-pino": "workspace:*",
-    "@kb-labs/adapters-redis": "workspace:*",
-    "@kb-labs/adapters-service-transport-http": "workspace:*",
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^10.1.1",
     "@fastify/swagger": ">=9.5.1",

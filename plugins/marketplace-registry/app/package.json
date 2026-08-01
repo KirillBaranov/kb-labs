@@ -21,9 +21,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/adapters-log-ringbuffer": "workspace:*",
-    "@kb-labs/adapters-pino": "workspace:*",
-    "@kb-labs/adapters-redis": "workspace:*",
     "@kb-labs/adapters-s3": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
