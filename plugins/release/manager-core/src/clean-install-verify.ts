@@ -36,18 +36,30 @@ export async function verifyCleanInstall(
 ): Promise<CleanInstallResult> {
   const consumerDir = mkdtempSync(join(tmpdir(), 'kb-clean-install-'));
   try {
-    writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'kb-release-consumer', private: true }) + '\n');
-
     if (packageManager === 'pnpm') {
+      const stagedTarballs = [tarballPath, ...additionalTarballs];
+      const dependencies: Record<string, string> = {};
+      for (const stagedTarball of stagedTarballs) {
+        const name = readPackedPackageName(stagedTarball);
+        if (!name) {
+          return { ok: false, error: `install failed: cannot read package name from ${stagedTarball}` };
+        }
+        dependencies[name] = `file:${stagedTarball}`;
+      }
+      writeFileSync(
+        join(consumerDir, 'package.json'),
+        JSON.stringify({ name: 'kb-release-consumer', private: true, dependencies }, null, 2) + '\n',
+      );
       const install = spawnSync(
         'pnpm',
-        ['add', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true', tarballPath, ...additionalTarballs],
+        ['install', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true'],
         { cwd: consumerDir, stdio: 'pipe', timeout: 120_000 },
       );
       if (install.status !== 0) {
         return { ok: false, error: `install failed: ${describeProcessFailure(install)}` };
       }
     } else {
+      writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'kb-release-consumer', private: true }) + '\n');
       // Lazy import: Arborist is only needed for the explicit npm path.
       const { Arborist } = await import('@npmcli/arborist');
       const arb = new Arborist({ path: consumerDir, ignoreScripts: true });
@@ -71,6 +83,17 @@ export async function verifyCleanInstall(
     return { ok: true };
   } finally {
     rmSync(consumerDir, { recursive: true, force: true });
+  }
+}
+
+function readPackedPackageName(tarballPath: string): string | undefined {
+  const result = spawnSync('tar', ['xOf', tarballPath, 'package/package.json'], { stdio: 'pipe' });
+  if (result.status !== 0) { return undefined; }
+  try {
+    const manifest = JSON.parse(result.stdout.toString()) as { name?: unknown };
+    return typeof manifest.name === 'string' ? manifest.name : undefined;
+  } catch {
+    return undefined;
   }
 }
 

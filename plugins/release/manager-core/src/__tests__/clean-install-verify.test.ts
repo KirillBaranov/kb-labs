@@ -22,7 +22,11 @@ vi.mock('node:fs', () => ({
 }));
 
 vi.mock('node:child_process', () => ({
-  spawnSync: vi.fn(() => ({ status: 0, stdout: '', stderr: '' })),
+  spawnSync: vi.fn((command: string, args: string[]) => ({
+    status: 0,
+    stdout: command === 'tar' && args[0] === 'xOf' ? JSON.stringify({ name: args[1] === '/tmp/pkg.tgz' ? '@kb-labs/sdk' : '@kb-labs/peer' }) : '',
+    stderr: '',
+  })),
 }));
 
 import { spawnSync } from 'node:child_process';
@@ -31,7 +35,16 @@ import { verifyCleanInstall } from '../clean-install-verify.js';
 beforeEach(() => {
   vi.clearAllMocks();
   mockReify.mockResolvedValue(undefined);
-  vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null });
+  vi.mocked(spawnSync).mockImplementation((command: string, args?: readonly string[]) => ({
+    status: 0,
+    stdout: command === 'tar' && args?.[0] === 'xOf'
+      ? Buffer.from(JSON.stringify({ name: args?.[1] === '/tmp/pkg.tgz' ? '@kb-labs/sdk' : '@kb-labs/peer' }))
+      : Buffer.from(''),
+    stderr: Buffer.from(''),
+    pid: 1,
+    output: [],
+    signal: null,
+  }) as never);
 });
 
 describe('verifyCleanInstall', () => {
@@ -48,7 +61,7 @@ describe('verifyCleanInstall', () => {
     expect(result.ok).toBe(true);
     expect(vi.mocked(spawnSync)).toHaveBeenCalledWith(
       'pnpm',
-      ['add', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true', '/tmp/pkg.tgz', '/tmp/peer.tgz'],
+      ['install', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true'],
       expect.objectContaining({ cwd: '/tmp/kb-clean-install-fake' }),
     );
     expect(mockReify).not.toHaveBeenCalled();
