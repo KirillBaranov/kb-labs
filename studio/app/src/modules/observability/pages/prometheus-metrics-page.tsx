@@ -15,6 +15,7 @@ import { usePrometheusMetrics } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import type { PluginMetrics, TenantMetrics } from '@kb-labs/studio-data-client';
 import { UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
+import { AnalyticsSummaryStrip } from '../../analytics/components/analytics-summary-strip';
 
 /**
  * Format uptime duration to human-readable string
@@ -59,10 +60,10 @@ function formatRelativeTime(timestamp: number): string {
  * Get status code color
  */
 function getStatusCodeColor(code: number): string {
-  if (code >= 500) {return '#ff4d4f';} // red
-  if (code >= 400) {return '#faad14';} // orange
-  if (code >= 300) {return '#1890ff';} // blue
-  return '#52c41a'; // green
+  if (code >= 500) {return 'var(--error)';} // red
+  if (code >= 400) {return 'var(--warning)';} // orange
+  if (code >= 300) {return 'var(--info)';} // blue
+  return 'var(--success)'; // green
 }
 
 /**
@@ -126,53 +127,21 @@ export function PrometheusMetricsPage() {
         description="REST API performance metrics - Auto-refresh every 10s"
       />
 
-      {/* Overview Cards */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Total Requests"
-              value={data.requests?.total ?? 0}
-              prefix={<UIIcon name="ApiOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Avg Latency (p50)"
-              value={formatNumber(data.latency?.p50 ?? 0, 1)}
-              suffix="ms"
-              prefix={<UIIcon name="ThunderboltOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Error Rate"
-              value={formatNumber(errorRate, 1)}
-              suffix="%"
-              prefix={<UIIcon name="WarningOutlined" />}
-              valueStyle={{ color: errorRate > 5 ? '#ff4d4f' : '#52c41a' }}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Uptime"
-              value={formatUptime(data.uptime?.seconds ?? 0)}
-              prefix={<UIIcon name="ClockCircleOutlined" />}
-            />
-          </UICard>
-        </UICol>
-      </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        {/* Headline — the numbers you check first: how much traffic, how fast, how broken */}
+        <AnalyticsSummaryStrip
+          metrics={[
+            { label: 'Total Requests', value: data.requests?.total ?? 0 },
+            { label: 'Avg Latency (p50)', value: `${formatNumber(data.latency?.p50 ?? 0, 1)}ms` },
+            { label: 'Error Rate', value: `${formatNumber(errorRate, 1)}%`, valueColor: errorRate > 5 ? 'var(--error)' : undefined },
+            { label: 'Uptime', value: formatUptime(data.uptime?.seconds ?? 0) },
+          ]}
+        />
 
-      {/* Latency Percentiles */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* Latency Percentiles */}
+        <UIRow gutter={[16, 16]}>
         <UICol xs={24} lg={12}>
-          <UICard title="Latency Percentiles" extra={<UIIcon name="ThunderboltOutlined" style={{ color: '#1890ff' }} />}>
+          <UICard title="Latency Percentiles" extra={<UIIcon name="ThunderboltOutlined" style={{ color: 'var(--info)' }} />}>
             <UIRow gutter={16}>
               <UICol span={8}>
                 <UIStatistic
@@ -187,7 +156,7 @@ export function PrometheusMetricsPage() {
                   title="p95"
                   value={formatNumber(data.latency?.p95 ?? 0, 1)}
                   suffix="ms"
-                  valueStyle={{ fontSize: 20, color: (data.latency?.p95 ?? 0) > 200 ? '#faad14' : '#52c41a' }}
+                  valueStyle={{ fontSize: 20, color: (data.latency?.p95 ?? 0) > 200 ? 'var(--warning)' : 'var(--success)' }}
                 />
               </UICol>
               <UICol span={8}>
@@ -195,22 +164,22 @@ export function PrometheusMetricsPage() {
                   title="p99"
                   value={formatNumber(data.latency?.p99 ?? 0, 1)}
                   suffix="ms"
-                  valueStyle={{ fontSize: 20, color: (data.latency?.p99 ?? 0) > 500 ? '#ff4d4f' : '#faad14' }}
+                  valueStyle={{ fontSize: 20, color: (data.latency?.p99 ?? 0) > 500 ? 'var(--error)' : 'var(--warning)' }}
                 />
               </UICol>
             </UIRow>
-            <div style={{ marginTop: 16, fontSize: 12, color: '#8c8c8c' }}>
+            <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-tertiary)' }}>
               Min: {formatNumber(data.latency?.min ?? 0, 1)}ms | Max: {formatNumber(data.latency?.max ?? 0, 1)}ms | Avg: {formatNumber(data.latency?.average ?? 0, 1)}ms
             </div>
           </UICard>
         </UICol>
 
         <UICol xs={24} lg={12}>
-          <UICard title="Success Rate" extra={<UIIcon name="CheckCircleOutlined" style={{ color: successRate >= 95 ? '#52c41a' : '#faad14' }} />}>
+          <UICard title="Success Rate" extra={<UIIcon name="CheckCircleOutlined" style={{ color: successRate >= 95 ? 'var(--success)' : 'var(--warning)' }} />}>
             <UIProgress
               percent={Math.round(successRate)}
               status={successRate >= 95 ? 'success' : successRate >= 90 ? 'normal' : 'exception'}
-              strokeColor={successRate >= 95 ? '#52c41a' : successRate >= 90 ? '#1890ff' : '#ff4d4f'}
+              strokeColor={successRate >= 95 ? 'var(--success)' : successRate >= 90 ? 'var(--info)' : 'var(--error)'}
             />
             <div style={{ marginTop: 16 }}>
               <UIRow gutter={16}>
@@ -218,21 +187,21 @@ export function PrometheusMetricsPage() {
                   <UIStatistic
                     title="Success"
                     value={data.requests?.success ?? 0}
-                    valueStyle={{ fontSize: 18, color: '#52c41a' }}
+                    valueStyle={{ fontSize: 18, color: 'var(--success)' }}
                   />
                 </UICol>
                 <UICol span={8}>
                   <UIStatistic
                     title="4xx Errors"
                     value={data.requests?.clientErrors ?? 0}
-                    valueStyle={{ fontSize: 18, color: '#faad14' }}
+                    valueStyle={{ fontSize: 18, color: 'var(--warning)' }}
                   />
                 </UICol>
                 <UICol span={8}>
                   <UIStatistic
                     title="5xx Errors"
                     value={data.requests?.serverErrors ?? 0}
-                    valueStyle={{ fontSize: 18, color: '#ff4d4f' }}
+                    valueStyle={{ fontSize: 18, color: 'var(--error)' }}
                   />
                 </UICol>
               </UIRow>
@@ -242,7 +211,7 @@ export function PrometheusMetricsPage() {
       </UIRow>
 
       {/* Per-Plugin Metrics */}
-      <UICard title="Per-Plugin Metrics" style={{ marginBottom: 24 }}>
+      <UICard title="Per-Plugin Metrics">
         <UITable<{ key: string; plugin: string } & PluginMetrics>
           dataSource={(data.perPlugin ?? []).map((item) => ({
             key: item.pluginId,
@@ -269,7 +238,7 @@ export function PrometheusMetricsPage() {
               key: 'errors',
               align: 'right' as const,
               render: (errors: number) => (
-                <span style={{ color: errors > 10 ? '#ff4d4f' : errors > 0 ? '#faad14' : '#52c41a' }}>
+                <span style={{ color: errors > 10 ? 'var(--error)' : errors > 0 ? 'var(--warning)' : 'var(--success)' }}>
                   {errors}
                 </span>
               ),
@@ -288,7 +257,7 @@ export function PrometheusMetricsPage() {
               align: 'right' as const,
               render: (_: unknown, record: PluginMetrics) =>
                 record.latency ? (
-                  <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                     {formatNumber(record.latency.min, 1)} / {formatNumber(record.latency.max, 1)} ms
                   </span>
                 ) : <span>N/A</span>,
@@ -300,7 +269,7 @@ export function PrometheusMetricsPage() {
       </UICard>
 
       {/* Per-Tenant Metrics */}
-      <UICard title="Per-Tenant Metrics" style={{ marginBottom: 24 }}>
+      <UICard title="Per-Tenant Metrics">
         <UITable<{ key: string; tenant: string } & TenantMetrics>
           dataSource={(data.perTenant ?? []).map((item) => ({
             key: item.tenantId,
@@ -326,7 +295,7 @@ export function PrometheusMetricsPage() {
               key: 'errors',
               align: 'right' as const,
               render: (errors: number) => (
-                <span style={{ color: errors > 50 ? '#ff4d4f' : errors > 10 ? '#faad14' : '#52c41a' }}>
+                <span style={{ color: errors > 50 ? 'var(--error)' : errors > 10 ? 'var(--warning)' : 'var(--success)' }}>
                   {errors}
                 </span>
               ),
@@ -345,7 +314,7 @@ export function PrometheusMetricsPage() {
               render: (_: unknown, record: TenantMetrics) => {
                 const rate = record.requests > 0 ? (record.errors / record.requests) * 100 : 0;
                 return (
-                  <span style={{ color: rate > 5 ? '#ff4d4f' : rate > 2 ? '#faad14' : '#52c41a' }}>
+                  <span style={{ color: rate > 5 ? 'var(--error)' : rate > 2 ? 'var(--warning)' : 'var(--success)' }}>
                     {formatNumber(rate, 1)}%
                   </span>
                 );
@@ -358,9 +327,9 @@ export function PrometheusMetricsPage() {
       </UICard>
 
       {/* Error Analytics */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <UIRow gutter={[16, 16]}>
         <UICol xs={24} lg={12}>
-          <UICard title="Error Breakdown" extra={<UIIcon name="ExclamationCircleOutlined" style={{ color: '#faad14' }} />}>
+          <UICard title="Error Breakdown" extra={<UIIcon name="ExclamationCircleOutlined" style={{ color: 'var(--warning)' }} />}>
             <UIRow gutter={16}>
               {Object.entries(data.errors?.byStatusCode ?? {})
                 .sort(([a], [b]) => Number(b) - Number(a))
@@ -391,7 +360,7 @@ export function PrometheusMetricsPage() {
                       <div style={{ marginBottom: 4 }}>
                         <UITag color={getStatusCodeColor(error.statusCode)}>{error.statusCode}</UITag>
                         {error.errorCode && <UITag>{error.errorCode}</UITag>}
-                        <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
                           {formatRelativeTime(error.timestamp)}
                         </span>
                       </div>
@@ -410,7 +379,7 @@ export function PrometheusMetricsPage() {
       {/* Redis Status & Plugin Mounts */}
       <UIRow gutter={[16, 16]}>
         <UICol xs={24} lg={12}>
-          <UICard title="Redis Status" extra={<UIIcon name="DatabaseOutlined" style={{ color: data.redis.lastStatus?.healthy ? '#52c41a' : '#ff4d4f' }} />}>
+          <UICard title="Redis Status" extra={<UIIcon name="DatabaseOutlined" style={{ color: data.redis.lastStatus?.healthy ? 'var(--success)' : 'var(--error)' }} />}>
             {data.redis.lastStatus ? (
               <>
                 <UIRow gutter={16}>
@@ -418,7 +387,7 @@ export function PrometheusMetricsPage() {
                     <UIStatistic
                       title="Health"
                       value={data.redis.lastStatus.healthy ? 'Healthy' : 'Unhealthy'}
-                      valueStyle={{ color: data.redis.lastStatus.healthy ? '#52c41a' : '#ff4d4f' }}
+                      valueStyle={{ color: data.redis.lastStatus.healthy ? 'var(--success)' : 'var(--error)' }}
                     />
                   </UICol>
                   <UICol span={12}>
@@ -430,10 +399,10 @@ export function PrometheusMetricsPage() {
                   </UICol>
                 </UIRow>
                 <div style={{ marginTop: 16 }}>
-                  <p style={{ margin: 0, fontSize: 12, color: '#8c8c8c' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
                     State: <strong>{data.redis.lastStatus.state}</strong>
                   </p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#8c8c8c' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
                     Healthy transitions: {data.redis.healthyTransitions} | Unhealthy: {data.redis.unhealthyTransitions}
                   </p>
                 </div>
@@ -460,18 +429,18 @@ export function PrometheusMetricsPage() {
                     <UIStatistic
                       title="Succeeded"
                       value={data.pluginMounts.succeeded}
-                      valueStyle={{ fontSize: 20, color: '#52c41a' }}
+                      valueStyle={{ fontSize: 20, color: 'var(--success)' }}
                     />
                   </UICol>
                   <UICol span={8}>
                     <UIStatistic
                       title="Failed"
                       value={data.pluginMounts.failed}
-                      valueStyle={{ fontSize: 20, color: data.pluginMounts.failed > 0 ? '#ff4d4f' : '#52c41a' }}
+                      valueStyle={{ fontSize: 20, color: data.pluginMounts.failed > 0 ? 'var(--error)' : 'var(--success)' }}
                     />
                   </UICol>
                 </UIRow>
-                <div style={{ marginTop: 16, fontSize: 12, color: '#8c8c8c' }}>
+                <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-tertiary)' }}>
                   Elapsed time: {formatNumber(data.pluginMounts.elapsedMs, 0)}ms
                 </div>
               </>
@@ -481,6 +450,7 @@ export function PrometheusMetricsPage() {
           </UICard>
         </UICol>
       </UIRow>
+      </div>
     </UIPage>
   );
 }
