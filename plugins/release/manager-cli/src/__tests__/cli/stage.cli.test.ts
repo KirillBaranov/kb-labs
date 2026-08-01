@@ -1,14 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Reproduces the "cross-flow dependency ships as literal workspace:*" bug:
-// stage.ts built its versionMap only from the current flow's own packages
-// (`discovered`), so a dependency owned by a DIFFERENT flow (e.g. sdk's
-// dependency on @kb-labs/core-retry, which is platform-flow-scoped) was
-// invisible to rewriteWorkspaceDeps. rewriteWorkspaceDeps silently skips any
-// dep with no entry in versionMap, and `npm pack` — unlike `pnpm pack` —
-// never resolves workspace:* on its own, so the literal string shipped to
-// the published tarball on npm.
-
 vi.mock('@kb-labs/release-manager-core', () => ({
   discoverCurrentPackages: vi.fn(),
   mergeConfigWithFlow: vi.fn((config: unknown, flow: string) => ({ ...(config as object), __flow: flow })),
@@ -42,6 +33,11 @@ vi.mock('node:child_process', () => ({
     if (cmd === 'npm') {
       return { status: 0, stdout: JSON.stringify([{ filename: 'kb-labs-sdk-2.115.0.tgz' }]), stderr: '' };
     }
+    if (cmd === 'pnpm') {
+      // pnpm pack has no --json output — it prints the absolute tarball
+      // path as its last stdout line (confirmed against real pnpm 9.11.0).
+      return { status: 0, stdout: '/tmp/artifacts/kb-labs-sdk-2.115.0.tgz\n', stderr: '' };
+    }
     return { status: 0, stdout: '', stderr: '' }; // tar extract
   }),
 }));
@@ -55,12 +51,15 @@ vi.mock('node:fs', () => ({
 }));
 
 import { discoverCurrentPackages } from '@kb-labs/release-manager-core';
+import { useConfig } from '@kb-labs/sdk';
 import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
+import { spawnSync } from 'node:child_process';
 import { rewriteWorkspaceDeps } from '../../shared/dep-rewrite.js';
 import stageCommand from '../../cli/commands/stage.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useConfig).mockResolvedValue({} as never);
   vi.mocked(rewriteWorkspaceDeps).mockReturnValue(() => {});
 
   vi.mocked(discoverCurrentPackages).mockImplementation(async (_cwd, _scope, config) => {
@@ -80,7 +79,55 @@ beforeEach(() => {
   });
 });
 
-describe('release:stage — cross-flow dependency versions', () => {
+// Default path: pnpm. pnpm resolves workspace:*/^/~ natively across every
+// dependency section (including devDependencies) using the live monorepo on
+// disk — this is the same tool `check-pack-install.sh` already packs with,
+// so the local gate now verifies the artifact shape CI actually ships,
+// instead of a different (npm-packed) artifact with its own hand-rolled
+// rewrite logic.
+describe('release:stage — default packageManager (pnpm)', () => {
+  it('packs via `pnpm pack` and never calls rewriteWorkspaceDeps', async () => {
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    const result = await stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk' } }));
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(rewriteWorkspaceDeps)).not.toHaveBeenCalled();
+    expect(vi.mocked(spawnSync)).toHaveBeenCalledWith(
+      'pnpm',
+      ['pack', '--pack-destination', expect.any(String)],
+      expect.objectContaining({ cwd: '/project/sdk/sdk' }),
+    );
+  });
+
+  it('parses the tarball filename from pnpm pack\'s last stdout line', async () => {
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    const result = await stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk', json: true } }));
+
+    expect(result.ok).toBe(true);
+    const payload = (result as { result: { artifacts: Array<{ tarball: string }> } }).result;
+    expect(payload.artifacts[0]!.tarball).toBe('kb-labs-sdk-2.115.0.tgz');
+  });
+});
+
+// Opt-in path: npm/yarn (config.publish.packageManager). Neither tool
+// resolves workspace: protocols on its own, so rewriteWorkspaceDeps still
+// runs a manual pre-pass — and it needs a versionMap covering the WHOLE
+// workspace, not just this flow's packages, because a flow package can
+// depend on a package owned by a DIFFERENT flow (e.g. sdk depends on
+// @kb-labs/core-retry, which is platform-flow-scoped). Building the map from
+// `discovered` (flow-scoped) alone used to leave such cross-flow deps out of
+// versionMap, so rewriteWorkspaceDeps silently skipped them (no pinned
+// version to substitute) and the literal "workspace:*" shipped straight to
+// the published npm tarball.
+describe('release:stage — packageManager: npm (opt-in)', () => {
+  beforeEach(() => {
+    vi.mocked(useConfig).mockResolvedValue({ publish: { packageManager: 'npm' } } as never);
+  });
+
   it('includes a dependency owned by a different flow in the versionMap passed to rewriteWorkspaceDeps', async () => {
     const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui, cwd: '/project' });
@@ -91,8 +138,6 @@ describe('release:stage — cross-flow dependency versions', () => {
     expect(vi.mocked(rewriteWorkspaceDeps)).toHaveBeenCalledOnce();
 
     const versionMap = vi.mocked(rewriteWorkspaceDeps).mock.calls[0]![1] as Map<string, string>;
-    // The bug: versionMap built only from `discovered` (flow-scoped) never had
-    // this entry, so rewriteWorkspaceDeps silently left "workspace:*" as-is.
     expect(versionMap.get('@kb-labs/core-retry')).toBe('2.114.0');
     expect(versionMap.get('@kb-labs/sdk')).toBe('2.115.0');
   });
@@ -103,8 +148,6 @@ describe('release:stage — cross-flow dependency versions', () => {
 
     await stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk' } }));
 
-    // rewriteWorkspaceDeps (and therefore packing) runs once — for sdk only,
-    // core-retry is a version-resolution source, not something this flow stages.
     expect(vi.mocked(rewriteWorkspaceDeps)).toHaveBeenCalledTimes(1);
     const pkgArg = vi.mocked(rewriteWorkspaceDeps).mock.calls[0]![0] as { path: string; version: string };
     expect(pkgArg.path).toBe('/project/sdk/sdk');

@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, type CommandResult } from '@kb-labs/sdk';
 import {
   discoverCurrentPackages,
@@ -47,6 +47,65 @@ export interface StagedArtifact {
 interface StagePayload {
   outDir?: string;
   artifacts?: StagedArtifact[];
+}
+
+/**
+ * Pack one package into `outDir`, returning the produced tarball's filename.
+ *
+ * pnpm (the default, matches `check-pack-install.sh`'s own packing) resolves
+ * `workspace:*`/`workspace:^`/`workspace:~` natively across every dependency
+ * section — dependencies, peerDependencies, AND devDependencies — using the
+ * live monorepo state on disk. No external versionMap or manual rewrite is
+ * needed, and there is no dedicated --json output; `pnpm pack` just prints
+ * the produced tarball's absolute path as its last stdout line.
+ *
+ * npm/yarn (opt-in via `config.publish.packageManager`) never resolves
+ * workspace: protocols on their own, so those two still need the manual
+ * rewriteWorkspaceDeps() pre-pass with a versionMap built from the whole
+ * workspace (see caller).
+ */
+/** pnpm prints the produced tarball's absolute path as its last stdout line — no --json output exists. */
+function filenameFromPnpmPack(stdout: string): string | undefined {
+  const lines = stdout.trim().split('\n').filter(Boolean);
+  const lastLine = lines[lines.length - 1];
+  return lastLine ? basename(lastLine.trim()) : undefined;
+}
+
+/** `npm pack --json` prints a JSON array; we only ever pack one package at a time. */
+function filenameFromNpmPack(stdout: string): string | undefined {
+  const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
+  return parsed[0]?.filename;
+}
+
+function packOne(
+  pkg: { path: string; currentVersion: string },
+  outDir: string,
+  packageManager: 'pnpm' | 'npm' | 'yarn',
+  versionMap: Map<string, string>,
+): { filename: string; restore: () => void } {
+  const isPnpm = packageManager === 'pnpm';
+  const restore = isPnpm
+    ? () => {}
+    : rewriteWorkspaceDeps({ path: pkg.path, version: pkg.currentVersion }, versionMap, packageManager);
+
+  const packArgs = isPnpm
+    ? ['pack', '--pack-destination', outDir]
+    : ['pack', '--pack-destination', outDir, '--json'];
+  const packResult = spawnSync(isPnpm ? 'pnpm' : 'npm', packArgs, { cwd: pkg.path, stdio: 'pipe' });
+
+  if (packResult.status !== 0) {
+    const stderr = packResult.stderr?.toString().trim() || packResult.stdout?.toString().trim();
+    throw new Error(`${packageManager} pack failed for ${pkg.path}${stderr ? `: ${stderr}` : ''}`);
+  }
+
+  const filename = isPnpm
+    ? filenameFromPnpmPack(packResult.stdout.toString())
+    : filenameFromNpmPack(packResult.stdout.toString());
+
+  if (!filename) {
+    throw new Error(`${packageManager} pack produced no tarball for ${pkg.path}`);
+  }
+  return { filename, restore };
 }
 
 export default defineCommand({
@@ -90,31 +149,18 @@ export default defineCommand({
       // depends on @kb-labs/core-retry, which is platform-flow-scoped). Building the
       // map from `discovered` (flow-scoped) alone leaves such cross-flow deps out of
       // versionMap, so rewriteWorkspaceDeps silently skips them (no pinned version to
-      // substitute) and `npm pack` — unlike `pnpm pack` — never resolves workspace:*
-      // on its own, shipping the literal "workspace:*" string straight to the
-      // published tarball.
+      // substitute). Only used by the npm/yarn packing path below — pnpm resolves
+      // workspace:* on its own and never consults this map.
       const allWorkspacePackages = await discoverCurrentPackages(repoRoot, undefined, baseConfig);
       const versionMap = new Map(allWorkspacePackages.map(pkg => [pkg.name, pkg.currentVersion]));
+      const packageManager = config.publish?.packageManager ?? 'pnpm';
       const artifacts: StagedArtifact[] = [];
 
       const packLoader = useLoader('Packing tarballs...');
       packLoader.start();
       for (const pkg of discovered) {
-        const restore = rewriteWorkspaceDeps({ path: pkg.path, version: pkg.currentVersion }, versionMap, 'npm');
+        const { filename, restore } = packOne(pkg, outDir, packageManager, versionMap);
         try {
-          const packResult = spawnSync('npm', ['pack', '--pack-destination', outDir, '--json'], {
-            cwd: pkg.path,
-            stdio: 'pipe',
-          });
-          if (packResult.status !== 0) {
-            const stderr = packResult.stderr?.toString().trim() || packResult.stdout?.toString().trim();
-            throw new Error(`npm pack failed for ${pkg.name}@${pkg.currentVersion}${stderr ? `: ${stderr}` : ''}`);
-          }
-          const parsed = JSON.parse(packResult.stdout.toString()) as Array<{ filename: string }>;
-          const filename = parsed[0]?.filename;
-          if (!filename) {
-            throw new Error(`npm pack produced no tarball for ${pkg.name}@${pkg.currentVersion}`);
-          }
           const tarballPath = join(outDir, filename);
           const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
           try {
