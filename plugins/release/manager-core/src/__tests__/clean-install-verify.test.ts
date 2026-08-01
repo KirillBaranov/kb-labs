@@ -1,0 +1,73 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Reproduces the "npm swallows the real error" incident: npm's own CLI
+// catches EUNSUPPORTEDPROTOCOL (thrown deep inside its own Arborist
+// dependency resolver, several levels into someone else's dependency graph)
+// as an unhandled rejection and prints nothing beyond "npm error, see log
+// file" — confirmed live chasing @kb-labs/sdk@2.115.0's install failure,
+// which took a manual Arborist repro script to actually diagnose.
+// verifyCleanInstall() calls Arborist directly so the real Error surfaces.
+
+const mockReify = vi.fn();
+const mockArboristCtor = vi.fn(() => ({ reify: mockReify }));
+
+vi.mock('@npmcli/arborist', () => ({
+  Arborist: mockArboristCtor,
+}));
+
+vi.mock('node:fs', () => ({
+  mkdtempSync: vi.fn(() => '/tmp/kb-clean-install-fake'),
+  rmSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
+
+vi.mock('node:child_process', () => ({
+  spawnSync: vi.fn(() => ({ status: 0, stdout: '', stderr: '' })),
+}));
+
+import { spawnSync } from 'node:child_process';
+import { verifyCleanInstall } from '../clean-install-verify.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockReify.mockResolvedValue(undefined);
+  vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null });
+});
+
+describe('verifyCleanInstall', () => {
+  it('reports ok:true when install and import both succeed', async () => {
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk');
+
+    expect(result.ok).toBe(true);
+    expect(mockReify).toHaveBeenCalledWith(expect.objectContaining({ add: ['/tmp/pkg.tgz'] }));
+  });
+
+  it('surfaces the real Arborist error message and code on install failure, instead of npm\'s swallowed "see log file"', async () => {
+    const err = new Error('Unsupported URL Type "workspace:": workspace:*') as NodeJS.ErrnoException;
+    err.code = 'EUNSUPPORTEDPROTOCOL';
+    mockReify.mockRejectedValue(err);
+
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('EUNSUPPORTEDPROTOCOL');
+    expect(result.error).toContain('workspace:*');
+  });
+
+  it('reports ok:false when install succeeds but the import check fails', async () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 1,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from('Cannot find module'),
+      pid: 1,
+      output: [],
+      signal: null,
+    });
+
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('cannot import @kb-labs/sdk');
+    expect(result.error).toContain('Cannot find module');
+  });
+});
