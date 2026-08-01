@@ -627,6 +627,13 @@ func (ins *Installer) installGroup(dir string, pkgs []string) error {
 
 // updateGroup updates pkgs in dir, draining progress lines to the log.
 func (ins *Installer) updateGroup(dir string, pkgs []string) error {
+	if tag := os.Getenv("KB_CREATE_PACKAGE_TAG"); tag != "" {
+		tagged := make([]string, len(pkgs))
+		for i, pkg := range pkgs {
+			tagged[i] = pkg + "@" + tag
+		}
+		pkgs = tagged
+	}
 	return ins.runGroup(dir, pkgs, ins.PM.Update)
 }
 

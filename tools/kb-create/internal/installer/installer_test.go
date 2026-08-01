@@ -587,6 +587,19 @@ func TestUpdateWritesProvenance(t *testing.T) {
 	}
 }
 
+func TestUpdateGroupUsesConfiguredPackageTag(t *testing.T) {
+	t.Setenv("KB_CREATE_PACKAGE_TAG", "canary")
+	fake := &fakePM{name: "pnpm"}
+	ins := &Installer{PM: fake, Log: discardLogger()}
+
+	if err := ins.updateGroup(t.TempDir(), []string{"@kb-labs/sdk"}); err != nil {
+		t.Fatalf("updateGroup() error = %v", err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0] != "update:@kb-labs/sdk@canary" {
+		t.Fatalf("update calls = %v, want [update:@kb-labs/sdk@canary]", fake.calls)
+	}
+}
+
 // TestUpdatePreservesSourceRegistryWhenNoRegistry verifies that Update does
 // not overwrite Source.Registry when the pm has no custom registry set
 // (the original install registry must be preserved).
