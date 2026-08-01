@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ConfigProvider, App } from 'antd';
+import { ConfigProvider, App, theme as antdTheme } from 'antd';
 import type { ConfigProviderProps, ThemeConfig } from 'antd';
 import { getAntDesignTokens, getAntDesignComponents } from '@kb-labs/studio-hooks';
 import { ThemeTransitionOverlay } from './theme-transition-overlay';
@@ -103,13 +103,31 @@ export function KBConfigProvider({
 
   const value = React.useMemo(() => ({ theme, resolvedTheme: actualTheme, setTheme }), [theme, actualTheme, setTheme]);
 
+  // Ant Design's defaultAlgorithm derives every color-ish token (colorSuccess,
+  // colorText, colorBorder, colorPrimaryBg, ...) from a handful of seed colors
+  // by running them through TinyColor. Our seed colors are `var(--x)` strings
+  // (so theme switching works via the .light/.dark class instead of a React
+  // re-render), which TinyColor can't parse — it silently falls back to black
+  // and that black then overwrites our explicit token overrides for every key
+  // the algorithm touches. Running the default algorithm and then re-applying
+  // our token map on top keeps Ant Design's non-color derivations (sizes,
+  // radii, control heights, shadows) while guaranteeing every var()-based
+  // color we set explicitly always wins.
+  const algorithm = React.useCallback(
+    (seedToken: Parameters<typeof antdTheme.defaultAlgorithm>[0]) => ({
+      ...antdTheme.defaultAlgorithm(seedToken),
+      ...tokens,
+    }),
+    [tokens]
+  );
+
   const themeConfig: ThemeConfig = React.useMemo(
     () => ({
       token: tokens,
       components: components,
-      // algorithm: algorithm, // Disabled - CSS variables handle theme
+      algorithm,
     }),
-    [tokens, components]
+    [tokens, components, algorithm]
   );
 
   return (
