@@ -1,5 +1,21 @@
 package manifest
 
+import "os"
+
+// packageTag returns an optional npm dist-tag used by release smoke tests.
+// Normal users keep the stable `latest` resolution; CI can set this to
+// `canary` to make the smoke install the candidate it just published.
+func packageTag() string {
+	return os.Getenv("KB_CREATE_PACKAGE_TAG")
+}
+
+func npmSpec(name string) string {
+	if tag := packageTag(); tag != "" {
+		return name + "@" + tag
+	}
+	return name + "@latest"
+}
+
 // Package is a core npm package required by the platform.
 type Package struct {
 	Name      string `json:"name"`
@@ -11,7 +27,7 @@ func (p Package) PackageSpec() string {
 	if p.LocalPath != "" {
 		return p.Name + "@file:" + p.LocalPath
 	}
-	return p.Name + "@latest"
+	return npmSpec(p.Name)
 }
 
 // Component is an optional service or plugin.
@@ -33,7 +49,7 @@ func (c Component) PackageSpec() string {
 	if c.LocalPath != "" {
 		return c.Pkg + "@file:" + c.LocalPath
 	}
-	return c.Pkg + "@latest"
+	return npmSpec(c.Pkg)
 }
 
 // Binary describes a Go binary distributed via GitHub Releases.

@@ -58,6 +58,20 @@ func TestCorePackageSpecs(t *testing.T) {
 	}
 }
 
+func TestPackageSpecsUseSmokeTagWhenConfigured(t *testing.T) {
+	t.Setenv("KB_CREATE_PACKAGE_TAG", "canary")
+	m := &Manifest{
+		Core:     []Package{{Name: "@kb-labs/sdk"}},
+		Services: []Component{{ID: "gateway", Pkg: "@kb-labs/gateway-app"}},
+	}
+	if got := m.CorePackageSpecs()[0]; got != "@kb-labs/sdk@canary" {
+		t.Fatalf("core spec = %q, want @kb-labs/sdk@canary", got)
+	}
+	if got := m.Services[0].PackageSpec(); got != "@kb-labs/gateway-app@canary" {
+		t.Fatalf("service spec = %q, want @kb-labs/gateway-app@canary", got)
+	}
+}
+
 // TestBinaryLocalPath verifies that Binary.LocalPath field is preserved through JSON round-trip.
 func TestBinaryLocalPath(t *testing.T) {
 	m := &Manifest{

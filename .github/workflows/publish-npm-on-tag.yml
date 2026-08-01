@@ -246,6 +246,11 @@ jobs:
         working-directory: tools/kb-devkit
       - name: Run kb-create e2e against just-published packages
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        env:
+          # The candidate is published under the canary dist-tag. Without
+          # this override kb-create resolves `latest` and tests the previous
+          # stable release instead of the artifacts delivered above.
+          KB_CREATE_PACKAGE_TAG: canary
 
   # Stable npm is a promotion, never the first publication. The manifest is
   # downloaded from the same staged artifact that the candidate delivery job
