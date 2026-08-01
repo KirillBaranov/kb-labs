@@ -154,4 +154,23 @@ describe('rewriteWorkspaceDeps — own version', () => {
 
     restore();
   });
+
+  it('materializes workspace refs without a release-map version to a valid npm range', () => {
+    writePkg(root, {
+      name: '@scope/alpha',
+      version: '1.0.0',
+      devDependencies: { '@scope/tooling': 'workspace:*' },
+    });
+
+    const restore = rewriteWorkspaceDeps(
+      { path: root, version: '1.0.0' },
+      new Map([['@scope/alpha', '1.0.0']]),
+      'npm',
+    );
+
+    const written = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
+    expect(written.devDependencies['@scope/tooling']).toBe('*');
+
+    restore();
+  });
 });
