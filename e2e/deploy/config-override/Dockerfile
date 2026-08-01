@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Fixture proving the ADR-0037 config-override mechanism, not a real service.
+# Fixture proving the fail-fast composition mechanism, not a real service.
 # Reuses the REAL docker-entrypoint.sh shipped in services/gateway/app/ —
 # not a reimplementation — so a pass here is evidence about the actual
 # shipped artifact, not a simulation of it. See e2e/deploy/config-override/README.md.
@@ -20,9 +20,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --chown=kb:nodejs services/gateway/app/docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Fixture composition — deliberately NOT the real gateway config, so a pass
-# here proves the mount-vs-bake mechanism, not gateway-specific behaviour.
-COPY --chown=kb:nodejs e2e/deploy/config-override/fixtures/kb.config.default.json .kb/kb.config.default.json
-COPY --chown=kb:nodejs e2e/deploy/config-override/fixtures/marketplace.default.lock .kb/marketplace.default.lock
+# here proves fail-fast behaviour, not gateway-specific behaviour.
 
 RUN chown -R kb:nodejs .kb && chmod +x /app/docker-entrypoint.sh
 
