@@ -6,11 +6,9 @@
  */
 
 import * as React from 'react';
-import { Tag as AntTag, theme } from 'antd';
+import { Tag as AntTag } from 'antd';
 import type { TagProps as AntTagProps } from 'antd';
 import './UITag.module.css';
-
-const { useToken } = theme;
 
 export type UITagVariant = 'success' | 'warning' | 'error' | 'info' | 'default' | 'neutral';
 
@@ -51,18 +49,21 @@ export function UITag({
   onClick,
   ...rest
 }: UITagProps) {
-  const { token } = useToken();
-
-  const colorMap: Record<UITagVariant, string> = {
-    success: token.colorSuccess,
-    warning: token.colorWarning,
-    error: token.colorError,
-    info: token.colorInfo,
-    default: token.colorPrimary,
-    neutral: token.colorTextSecondary,
+  // Preset *status* names (not raw hex/CSS-var values) — Ant Design resolves these
+  // through the Tag component's own theme tokens (see theme-adapter.ts `Tag: {...}`),
+  // which are plain `var(--x)` strings. Passing a *computed* useToken() color instead
+  // sends it through Ant's derivation pipeline, which runs TinyColor over the raw
+  // `var(--x)` string, fails to parse it, and silently falls back to black.
+  const colorMap: Record<UITagVariant, string | undefined> = {
+    success: 'success',
+    warning: 'warning',
+    error: 'error',
+    info: 'processing',
+    default: undefined,
+    neutral: undefined,
   };
 
-  const combinedClassName = ['kb-ui-tag', className].filter(Boolean).join(' ');
+  const combinedClassName = ['kb-ui-tag', onClick && 'kb-ui-tag--clickable', className].filter(Boolean).join(' ');
 
   return (
     <AntTag
@@ -72,7 +73,6 @@ export function UITag({
       icon={icon}
       className={combinedClassName}
       onClick={onClick}
-      style={onClick ? { cursor: 'pointer' } : undefined}
       {...rest}
     >
       {children}

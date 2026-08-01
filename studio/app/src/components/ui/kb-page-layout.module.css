@@ -1,0 +1,23 @@
+.content {
+  position: relative;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(circle at 1px 1px, var(--border-primary) 1px, transparent 0);
+  background-size: 28px 28px;
+  isolation: isolate;
+  border-left: 1px solid var(--border-primary);
+  border-top-left-radius: 20px;
+}
+
+.content::before {
+  content: '';
+  position: fixed;
+  top: -15%;
+  right: -10%;
+  width: 640px;
+  height: 640px;
+  background: radial-gradient(circle, var(--link) 0%, transparent 70%);
+  opacity: 0.07;
+  pointer-events: none;
+  z-index: -1;
+}

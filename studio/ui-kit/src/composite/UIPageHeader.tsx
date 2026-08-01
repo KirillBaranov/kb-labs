@@ -132,10 +132,12 @@ export function UIPageHeader({
               <h2
                 style={{
                   margin: 0,
+                  fontFamily: 'var(--font-heading)',
                   fontSize: token.fontSizeHeading3,
-                  fontWeight: token.fontWeightStrong,
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
                   color: token.colorTextHeading,
-                  lineHeight: 1.3,
+                  lineHeight: 1.2,
                 }}
               >
                 {title}

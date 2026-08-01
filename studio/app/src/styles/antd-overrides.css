@@ -44,11 +44,11 @@
 /* Menu group titles — uppercase label style */
 .ant-menu-item-group-title {
   text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.04em !important;
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   color: var(--text-tertiary) !important;
-  padding-top: 16px !important;
+  padding-top: 20px !important;
   padding-bottom: 4px !important;
 }
 
@@ -67,9 +67,9 @@
   border-radius: 8px !important;
 }
 
-/* Layout content background */
+/* Layout frame background — matches sidebar; the content panel paints its own bg on top */
 .ant-layout {
-  background: var(--bg-primary) !important;
+  background: var(--bg-sidebar) !important;
 }
 
 /* Active menu item styles */

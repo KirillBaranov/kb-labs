@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress } from '@kb-labs/studio-ui-kit';
 import {
-  SearchOutlined,
   PlusCircleOutlined,
   DeleteOutlined,
   ClockCircleOutlined,
   StarOutlined,
   FileSearchOutlined,
-  DatabaseOutlined,
 } from '@ant-design/icons';
 import { UIText, UIStatisticsChart, UICard, UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
 import { useAdaptersVectorStoreUsage, useAdaptersVectorStoreDailyStats } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import { AnalyticsDateRangePicker, type DateRangeValue } from '../components/analytics-date-range-picker';
+import { AnalyticsSummaryStrip } from '../components/analytics-summary-strip';
 import dayjs from 'dayjs';
 
 
@@ -118,23 +117,19 @@ export function AnalyticsVectorStorePage() {
         }
       />
 
-      <div style={{ marginTop: 24 }}>
-        {/* Overview Stats */}
-        <UIRow gutter={[16, 16]}>
-          {[
-            { label: 'Search Queries', value: stats?.searchQueries ?? 0, icon: <SearchOutlined />, status: 'info' as const },
-            { label: 'Upsert Operations', value: stats?.upsertOperations ?? 0, icon: <PlusCircleOutlined />, status: 'success' as const },
-            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0, icon: <DeleteOutlined />, status: 'warning' as const },
-            { label: 'Total Operations', value: totalOperations, icon: <DatabaseOutlined />, status: 'default' as const },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={6}>
-              <UIMetricCard {...metric} loading={isLoading} />
-            </UICol>
-          ))}
-        </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        <AnalyticsSummaryStrip
+          loading={isLoading}
+          metrics={[
+            { label: 'Search Queries', value: stats?.searchQueries ?? 0 },
+            { label: 'Upsert Operations', value: stats?.upsertOperations ?? 0 },
+            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0 },
+            { label: 'Total Operations', value: totalOperations },
+          ]}
+        />
 
         {/* Search Quality */}
-        <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <UIRow gutter={[16, 16]}>
           <UICol xs={24} lg={12}>
             <UICard title="Search Quality" style={{ height: '100%' }}>
               <UIStatistic
@@ -188,7 +183,7 @@ export function AnalyticsVectorStorePage() {
         </UIRow>
 
         {/* Storage Growth */}
-        <UICard title="Storage Statistics" style={{ marginTop: 16 }}>
+        <UICard title="Storage Statistics">
           <UIRow gutter={[16, 16]}>
             <UICol xs={24} sm={8}>
               <UIStatistic

@@ -1,11 +1,7 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress } from '@kb-labs/studio-ui-kit';
 import {
-  ApiOutlined,
-  DollarOutlined,
-  FileTextOutlined,
   ClockCircleOutlined,
-  WarningOutlined,
   TeamOutlined,
   GroupOutlined,
 } from '@ant-design/icons';
@@ -13,6 +9,7 @@ import { UIText, UIStatisticsChart, UICard, UIPage, UIPageHeader } from '@kb-lab
 import { useAdaptersEmbeddingsUsage, useAdaptersEmbeddingsDailyStats } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import { AnalyticsDateRangePicker, type DateRangeValue } from '../components/analytics-date-range-picker';
+import { AnalyticsSummaryStrip } from '../components/analytics-summary-strip';
 import { formatCost } from '../utils/formatters';
 import dayjs from 'dayjs';
 
@@ -107,23 +104,19 @@ export function AnalyticsEmbeddingsPage() {
         }
       />
 
-      <div style={{ marginTop: 24 }}>
-        {/* Overview Stats */}
-        <UIRow gutter={[16, 16]}>
-          {[
-            { label: 'Total Requests', value: stats?.totalRequests ?? 0, icon: <ApiOutlined />, status: 'info' as const },
-            { label: 'Text Processed', value: stats?.totalTextLength ?? 0, icon: <FileTextOutlined />, status: 'success' as const, unit: 'chars' },
-            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '0', icon: <DollarOutlined />, status: 'error' as const },
-            { label: 'Errors', value: stats?.errors ?? 0, icon: <WarningOutlined />, status: (stats && stats.errors > 0 ? 'warning' : 'success') as 'warning' | 'success' },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={6}>
-              <UIMetricCard {...metric} loading={isLoading} />
-            </UICol>
-          ))}
-        </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        <AnalyticsSummaryStrip
+          loading={isLoading}
+          metrics={[
+            { label: 'Total Requests', value: stats?.totalRequests ?? 0 },
+            { label: 'Text Processed', value: `${stats ? stats.totalTextLength.toLocaleString() : 0} chars` },
+            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '$0.00' },
+            { label: 'Errors', value: stats?.errors ?? 0, valueColor: stats && stats.errors > 0 ? 'var(--warning)' : undefined },
+          ]}
+        />
 
         {/* Batch Efficiency */}
-        <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <UIRow gutter={[16, 16]}>
           <UICol xs={24} lg={12}>
             <UICard title="Batch Processing" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
@@ -183,7 +176,7 @@ export function AnalyticsEmbeddingsPage() {
 
         {/* Cost Analysis */}
         {stats && stats.totalRequests > 0 && (
-          <UICard title="Cost Analysis" style={{ marginTop: 16 }}>
+          <UICard title="Cost Analysis">
             <UIRow gutter={[16, 16]}>
               <UICol xs={24} sm={8}>
                 <UIStatistic

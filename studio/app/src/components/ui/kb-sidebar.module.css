@@ -7,41 +7,162 @@
   bottom: 28px;
   background-color: var(--bg-sidebar);
   border-right: none;
-  box-shadow: 1px 0 0 var(--border-primary), 2px 0 8px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
   z-index: var(--z-sidebar);
   display: flex;
   flex-direction: column;
 }
 
-.header {
-  height: 64px;
+/* AntSider wraps children in its own block-level container — without this,
+   .scrollArea's flex:1 has no flex parent to size against, so it grows to
+   fit content instead of the available space, and overflow silently clips
+   against .sider's own overflow:hidden instead of scrolling. */
+.sider :global(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.profileCard {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 10px;
+  width: calc(100% - 24px);
+  margin: 12px 12px 12px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.profileCard:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-primary);
+}
+
+.profileCardCollapsed {
+  width: 40px;
+  margin: 4px auto 12px;
+  padding: 6px;
   justify-content: center;
-  border-bottom: 1px solid var(--border-primary);
+}
+
+.profileMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+
+.profileName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.profileStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.profileChevron {
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
 .scrollArea {
-  position: absolute;
-  top: 64px;
-  left: 0;
-  right: 0;
-  bottom: 48px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .menu {
   border-right: 0 !important;
-  padding: 4px 8px;
+  padding: 4px 12px;
 }
 
-.settingsArea {
+.menu :global(.ant-menu-item),
+.menu :global(.ant-menu-submenu-title) {
+  border-radius: 10px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  font-weight: 400 !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.menu :global(.ant-menu-item-selected) {
+  position: relative;
+  font-weight: 500 !important;
+  background-color: var(--accent-subtle) !important;
+}
+
+.menu :global(.ant-menu-item-selected)::before {
+  content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  border-top: 1px solid var(--border-primary);
+  left: -12px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--link);
+}
+
+.bottomStack {
+  flex-shrink: 0;
   background-color: var(--bg-sidebar);
+  padding-top: 4px;
+}
+
+.utilityRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 12px;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.brandMark:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.collapseButton {
+  margin-left: auto;
 }

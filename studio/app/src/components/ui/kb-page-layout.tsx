@@ -1,12 +1,11 @@
 import * as React from 'react';
 import { Layout as AntLayout } from 'antd';
-import { KBHeader, type KBHeaderProps } from './kb-header';
 import { KBSidebar, type KBSidebarProps, type NavigationItem } from './kb-sidebar';
+import styles from './kb-page-layout.module.css';
 
 const { Content: AntContent } = AntLayout;
 
 export interface KBPageLayoutProps {
-  headerProps?: KBHeaderProps;
   sidebarProps: Omit<KBSidebarProps, 'collapsed' | 'onCollapse'>;
   sidebarCollapsed?: boolean;
   onSidebarCollapse?: (collapsed: boolean) => void;
@@ -15,7 +14,6 @@ export interface KBPageLayoutProps {
 }
 
 export function KBPageLayout({
-  headerProps,
   sidebarProps,
   sidebarCollapsed,
   onSidebarCollapse,
@@ -39,28 +37,20 @@ export function KBPageLayout({
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
-      <KBHeader
-        {...headerProps}
-        sidebarCollapsed={collapsed}
-        onSidebarCollapse={setCollapsed}
-        sidebarWidth={sidebarWidth}
-      />
-      <AntLayout style={{ marginTop: 64 }}>
-        <KBSidebar {...sidebarProps} collapsed={collapsed} onCollapse={setCollapsed} />
-        <AntLayout
-          style={{
-            marginLeft: sidebarWidth,
-            transition: 'margin-left 0.2s',
-            minHeight: 'calc(100vh - 64px)',
-            paddingBottom: statusBar ? 28 : 0,
-          }}
-        >
-          <AntContent>{children}</AntContent>
-        </AntLayout>
+      <KBSidebar {...sidebarProps} collapsed={collapsed} onCollapse={setCollapsed} />
+      <AntLayout
+        style={{
+          marginLeft: sidebarWidth,
+          transition: 'margin-left 0.2s',
+          minHeight: '100vh',
+          paddingBottom: statusBar ? 28 : 0,
+        }}
+      >
+        <AntContent className={styles.content}>{children}</AntContent>
       </AntLayout>
       {statusBar}
     </AntLayout>
   );
 }
 
-export type { KBHeaderProps, KBSidebarProps, NavigationItem };
+export type { KBSidebarProps, NavigationItem };

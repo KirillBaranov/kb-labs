@@ -166,7 +166,12 @@ function LayoutContent() {
   return (
     <NavigationItemsProvider items={availableNavItems}>
       <KBPageLayout
-        headerProps={{
+        sidebarProps={{
+          items: allNavigationItems,
+          width: 240,
+          collapsedWidth: 80,
+          currentPath: location.pathname,
+          onNavigate: (path) => navigate(path),
           LinkComponent: Link as React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>,
           onLogout: () => { void handleLogout(); },
           userName: auth.status === 'authenticated' ? auth.user.email : '',
@@ -180,13 +185,6 @@ function LayoutContent() {
           onNotificationClick: (notification) => {
             navigate(`/observability/logs/${notification.id}`);
           },
-        }}
-        sidebarProps={{
-          items: allNavigationItems,
-          width: 240,
-          collapsedWidth: 80,
-          currentPath: location.pathname,
-          onNavigate: (path) => navigate(path),
         }}
         statusBar={
           <KBStatusBar
