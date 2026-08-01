@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/marketplace-registry-contracts",
   "description": "Shared types and interfaces for KB Labs Marketplace Registry",
-  "version": "2.116.10",
+  "version": "2.116.11",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

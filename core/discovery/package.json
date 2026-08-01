@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-discovery",
   "description": "Marketplace-based entity discovery for KB Labs platform",
-  "version": "2.116.10",
+  "version": "2.116.11",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
