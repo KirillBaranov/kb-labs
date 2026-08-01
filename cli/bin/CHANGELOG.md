@@ -1,3 +1,242 @@
+## [2.116.1] - 2026-08-01
+
+**164 packages** bumped to v2.116.1
+
+<details>
+<summary>Package list (164)</summary>
+
+| Package | Previous | Bump |
+|---------|----------|------|
+| `@kb-labs/adapters-analytics-duckdb` | 2.116.0 | patch |
+| `@kb-labs/adapters-analytics-file` | 2.116.0 | patch |
+| `@kb-labs/data-store` | 2.116.0 | patch |
+| `@kb-labs/adapters-analytics-sqlite` | 2.116.0 | patch |
+| `@kb-labs/adapters-environment-docker` | 2.116.0 | patch |
+| `@kb-labs/adapters-eventbus-cache` | 2.116.0 | patch |
+| `@kb-labs/adapters-kblabs-gateway` | 2.116.0 | patch |
+| `@kb-labs/adapters-mongodb` | 2.116.0 | patch |
+| `@kb-labs/adapters-log-ringbuffer` | 2.116.0 | patch |
+| `@kb-labs/adapters-log-document` | 2.116.0 | patch |
+| `@kb-labs/notifier-router` | 2.116.0 | patch |
+| `@kb-labs/adapters-openai` | 2.116.0 | patch |
+| `@kb-labs/adapters-pino` | 2.116.0 | patch |
+| `@kb-labs/adapters-qdrant` | 2.116.0 | patch |
+| `@kb-labs/adapters-s3` | 2.116.0 | patch |
+| `@kb-labs/adapters-pino-http` | 2.116.0 | patch |
+| `@kb-labs/adapters-redis` | 2.116.0 | patch |
+| `@kb-labs/adapters-snapshot-localfs` | 2.116.0 | patch |
+| `@kb-labs/adapters-service-transport-http` | 2.116.0 | patch |
+| `@kb-labs/adapters-state-broker` | 2.116.0 | patch |
+| `@kb-labs/adapters-transport` | 2.116.0 | patch |
+| `@kb-labs/adapters-sqlite` | 2.116.0 | patch |
+| `@kb-labs/adapters-telegram` | 2.116.0 | patch |
+| `@kb-labs/adapters-voyage-ai` | 2.116.0 | patch |
+| `@kb-labs/adapters-vibeproxy` | 2.116.0 | patch |
+| `@kb-labs/adapters-workspace-worktree` | 2.116.0 | patch |
+| `@kb-labs/adapters-workspace-agent` | 2.116.0 | patch |
+| `@kb-labs/adapters-workspace-localfs` | 2.116.0 | patch |
+| `@kb-labs/cli-commands` | 2.116.0 | patch |
+| `@kb-labs/cli-bin` | 2.116.0 | patch |
+| `@kb-labs/cli-runtime` | 2.116.0 | patch |
+| `@kb-labs/cli-contracts` | 2.116.0 | patch |
+| `@kb-labs/core-contracts` | 2.116.0 | patch |
+| `@kb-labs/core-discovery` | 2.116.0 | patch |
+| `@kb-labs/core-bundle` | 2.116.0 | patch |
+| `@kb-labs/core-ipc` | 2.116.0 | patch |
+| `@kb-labs/llm-router` | 2.116.0 | patch |
+| `@kb-labs/core-config` | 2.116.0 | patch |
+| `@kb-labs/core-platform` | 2.116.0 | patch |
+| `@kb-labs/plugin-contracts` | 2.116.0 | patch |
+| `@kb-labs/plugin-execution` | 2.116.0 | patch |
+| `@kb-labs/plugin-execution-factory` | 2.116.0 | patch |
+| `@kb-labs/core-policy` | 2.116.0 | patch |
+| `@kb-labs/plugin-runtime` | 2.116.0 | patch |
+| `@kb-labs/core-registry` | 2.116.0 | patch |
+| `@kb-labs/core-retry` | 2.116.0 | patch |
+| `@kb-labs/core-sandbox` | 2.116.0 | patch |
+| `@kb-labs/core-runtime` | 2.116.0 | patch |
+| `@kb-labs/core-state-broker` | 2.116.0 | patch |
+| `@kb-labs/core-resource-broker` | 2.116.0 | patch |
+| `@kb-labs/core-sys` | 2.116.0 | patch |
+| `@kb-labs/telemetry-client` | 2.116.0 | patch |
+| `@kb-labs/core-tenant` | 2.116.0 | patch |
+| `@kb-labs/core-types` | 2.116.0 | patch |
+| `@kb-labs/core-workspace` | 2.116.0 | patch |
+| `@kb-labs/devkit` | 2.116.0 | patch |
+| `@kb-labs/studio-data-client` | 2.116.0 | patch |
+| `@kb-labs/studio-app` | 2.116.0 | patch |
+| `@kb-labs/studio-devtools` | 2.116.0 | patch |
+| `@kb-labs/studio-hooks` | 2.116.0 | patch |
+| `@kb-labs/studio-plugin-tools` | 2.116.0 | patch |
+| `@kb-labs/studio-event-bus` | 2.116.0 | patch |
+| `@kb-labs/studio-federation` | 2.116.0 | patch |
+| `@kb-labs/studio-ui-core` | 2.116.0 | patch |
+| `@kb-labs/studio-ui-kit` | 2.116.0 | patch |
+| `@kb-labs/shared-command-kit` | 2.116.0 | patch |
+| `@kb-labs/shared-cli-ui` | 2.116.0 | patch |
+| `@kb-labs/shared-daemon` | 2.116.0 | patch |
+| `@kb-labs/shared-http` | 2.116.0 | patch |
+| `@kb-labs/perm-presets` | 2.116.0 | patch |
+| `@kb-labs/shared-testing-e2e` | 2.116.0 | patch |
+| `@kb-labs/shared-testing` | 2.116.0 | patch |
+| `@kb-labs/shared-testing-platform` | 2.116.0 | patch |
+| `@kb-labs/shared-tool-kit` | 2.116.0 | patch |
+| `@kb-labs/gateway-app` | 2.116.0 | patch |
+| `@kb-labs/gateway-auth` | 2.116.0 | patch |
+| `@kb-labs/gateway-contracts` | 2.116.0 | patch |
+| `@kb-labs/gateway-core` | 2.116.0 | patch |
+| `@kb-labs/mcp-app` | 2.116.0 | patch |
+| `@kb-labs/gateway-runtime-server` | 2.116.0 | patch |
+| `@kb-labs/rest-api-app` | 2.116.0 | patch |
+| `@kb-labs/rest-api-core` | 2.116.0 | patch |
+| `@kb-labs/agent-contracts` | 2.116.0 | patch |
+| `@kb-labs/rest-api-contracts` | 2.116.0 | patch |
+| `@kb-labs/agent-core` | 2.116.0 | patch |
+| `@kb-labs/agent-entry` | 2.116.0 | patch |
+| `@kb-labs/agent-kernel` | 2.116.0 | patch |
+| `@kb-labs/agent-history` | 2.116.0 | patch |
+| `@kb-labs/agent-sdk` | 2.116.0 | patch |
+| `@kb-labs/agent-store` | 2.116.0 | patch |
+| `@kb-labs/agent-tracing` | 2.116.0 | patch |
+| `@kb-labs/agent-tools` | 2.116.0 | patch |
+| `@kb-labs/agent-runtime` | 2.116.0 | patch |
+| `@kb-labs/agent-mcp` | 2.116.0 | patch |
+| `@kb-labs/commit-contracts` | 2.116.0 | patch |
+| `@kb-labs/commit-core` | 2.116.0 | patch |
+| `@kb-labs/clickup-contracts` | 2.116.0 | patch |
+| `@kb-labs/clickup-core` | 2.116.0 | patch |
+| `@kb-labs/clickup-entry` | 2.116.0 | patch |
+| `@kb-labs/commit-entry` | 2.116.0 | patch |
+| `@kb-labs/github-contracts` | 2.116.0 | patch |
+| `@kb-labs/github-entry` | 2.116.0 | patch |
+| `@kb-labs/devlink-core` | 2.116.0 | patch |
+| `@kb-labs/devlink-entry` | 2.116.0 | patch |
+| `@kb-labs/host-agent-app` | 2.116.0 | patch |
+| `@kb-labs/host-agent-client` | 2.116.0 | patch |
+| `@kb-labs/devlink-contracts` | 2.116.0 | patch |
+| `@kb-labs/host-agent-core` | 2.116.0 | patch |
+| `@kb-labs/host-agent-contracts` | 2.116.0 | patch |
+| `@kb-labs/host-agent-entry` | 2.116.0 | patch |
+| `@kb-labs/host-agent-fs` | 2.116.0 | patch |
+| `@kb-labs/host-agent-transport` | 2.116.0 | patch |
+| `@kb-labs/impact-core` | 2.116.0 | patch |
+| `@kb-labs/inbox-contracts` | 2.116.0 | patch |
+| `@kb-labs/impact-contracts` | 2.116.0 | patch |
+| `@kb-labs/inbox-core` | 2.116.0 | patch |
+| `@kb-labs/infra-worker-core` | 2.116.0 | patch |
+| `@kb-labs/inbox-entry` | 2.116.0 | patch |
+| `@kb-labs/infra-worker-contracts` | 2.116.0 | patch |
+| `@kb-labs/marketplace-contracts` | 2.116.0 | patch |
+| `@kb-labs/marketplace-api` | 2.116.0 | patch |
+| `@kb-labs/marketplace-core` | 2.116.0 | patch |
+| `@kb-labs/marketplace-npm` | 2.116.0 | patch |
+| `@kb-labs/marketplace-app` | 2.116.0 | patch |
+| `@kb-labs/marketplace-registry-app` | 2.116.0 | patch |
+| `@kb-labs/marketplace-registry-api` | 2.116.0 | patch |
+| `@kb-labs/marketplace-entry` | 2.116.0 | patch |
+| `@kb-labs/marketplace-registry-core` | 2.116.0 | patch |
+| `@kb-labs/marketplace-registry-contracts` | 2.116.0 | patch |
+| `@kb-labs/mind-contracts` | 2.116.0 | patch |
+| `@kb-labs/mind-core` | 2.116.0 | patch |
+| `@kb-labs/marketplace-registry-entry` | 2.116.0 | patch |
+| `@kb-labs/mind-entry` | 2.116.0 | patch |
+| `@kb-labs/qa-core` | 2.116.0 | patch |
+| `@kb-labs/qa-entry` | 2.116.0 | patch |
+| `@kb-labs/qa-contracts` | 2.116.0 | patch |
+| `@kb-labs/quality-contracts` | 2.116.0 | patch |
+| `@kb-labs/quality-entry` | 2.116.0 | patch |
+| `@kb-labs/quality-core` | 2.116.0 | patch |
+| `@kb-labs/policy-contracts` | 2.116.0 | patch |
+| `@kb-labs/policy-core` | 2.116.0 | patch |
+| `@kb-labs/release-manager-changelog` | 2.116.0 | patch |
+| `@kb-labs/release-manager-checks` | 2.116.0 | patch |
+| `@kb-labs/release-manager-cli` | 2.116.0 | patch |
+| `@kb-labs/release-manager-contracts` | 2.116.0 | patch |
+| `@kb-labs/release-manager-core` | 2.116.0 | patch |
+| `@kb-labs/review-entry` | 2.116.0 | patch |
+| `@kb-labs/review-heuristic` | 2.116.0 | patch |
+| `@kb-labs/review-core` | 2.116.0 | patch |
+| `@kb-labs/review-contracts` | 2.116.0 | patch |
+| `@kb-labs/review-llm` | 2.116.0 | patch |
+| `@kb-labs/scaffold` | 2.116.0 | patch |
+| `@kb-labs/scaffold-contracts` | 2.116.0 | patch |
+| `@kb-labs/site-tools` | 2.116.0 | patch |
+| `@kb-labs/scaffold-core` | 2.116.0 | patch |
+| `@kb-labs/workflow-artifacts` | 2.116.0 | patch |
+| `@kb-labs/core-state-daemon` | 2.116.0 | patch |
+| `@kb-labs/workflow-contracts` | 2.116.0 | patch |
+| `@kb-labs/workflow-constants` | 2.116.0 | patch |
+| `@kb-labs/workflow-entry` | 2.116.0 | patch |
+| `@kb-labs/workflow-daemon` | 2.116.0 | patch |
+| `@kb-labs/workflow-engine` | 2.116.0 | patch |
+| `@kb-labs/workflow-runtime` | 2.116.0 | patch |
+| `@kb-labs/workflow-steps` | 2.116.0 | patch |
+
+</details>
+
+### 🏗️ Core & SDK
+
+- **cli**: Introduces a new platform logging dependency, ensuring more reliable and consistent logging across all commands, which helps users troubleshoot issues more effectively.
+
+### 🌐 Gateway & API
+
+- **gateway**: Ensures that users are directed to the correct tenant even if the system cannot determine one, enhancing user experience and reliability.
+- **gateway**: Provides a clearer identity for CLI sessions, reducing confusion during registration and making it easier for users to manage their accounts (#291)
+
+### 🔌 Adapters
+
+- **adapters**: Introduces a new workaround called adapters-fs-temp to help users overcome a 403 error when publishing adapters-fs, ensuring smoother deployment and access to features.  
+- **adapters**: Renames the npm-publish workaround to adapters-diskio and removes unnecessary dependencies, simplifying the installation process for users and improving overall performance.
+
+### 🧩 Plugins
+
+- **release**: Ensures that installation tarballs are verified with accurate error messages, making it easier for users to troubleshoot installation issues.
+- **qa**: Collects evidence of continuous integration reliability, helping users trust the stability of the software (#313).
+- **release**: Introduces a configurable build step and a topologically sorted fallback, allowing users more control over their build process (#314).
+- **release**: Classifies npm publish errors and provides a summary in GitHub Actions, which helps users quickly understand the reasons for delivery failures (#305).
+- **release**: Implements a tag-driven stage/deliver split, streamlining the deployment process for users.
+- **release**: Makes the output path for the root changelog configurable, allowing users to customize where this important information is stored (#290).
+- **release**: Collapses large package-bump tables in changelogs, making it easier for users to read and understand updates (#289).
+- **release**: Normalizes workspace protocols in staged tarballs, improving consistency and reliability for users during the installation process.
+- **release**: Renames the verify-clean-install command to avoid confusion with path segments, enhancing user experience.
+- **release**: Prevents tagging when the git tag version does not match the version on disk, ensuring users have accurate versioning.
+- **release**: Scans development dependencies for forbidden protocols, enhancing security and compliance for users.
+- **release**: Defaults to using pnpm for packing stage tarballs instead of npm, improving efficiency in the packaging process.
+- **release**: Rewrites devDependencies workspace references before publishing, ensuring users have the correct dependencies when using the package.
+- **release**: Resolves cross-flow workspace dependencies during tarball staging, which helps maintain a smooth user experience.
+- **release**: Publishes the data-store package instead of the blocked fs adapter, ensuring users have access to the latest features.
+- **release**: Passes flowName and tagPattern through the release:git command, providing users with more flexibility in their release process.
+- **release**: Moves the platform-client into the SDK flow as lockstep, simplifying the user experience by ensuring compatibility.
+- **marketplace**: Updates stale integrity hashes in marketplace.lock, enhancing the reliability of marketplace interactions for users.
+- **release**: Marks end-to-end delivery fixture stubs as private, preventing confusion for users who may not need to access these stubs.
+
+### 🎨 Studio
+
+- **studio**: Resolves a crash in the development server that could prevent users from running their projects, ensuring a smoother and more reliable development experience (#304)
+
+### 🔧 Other
+
+- **deploy**: Introduces consumer-owned release images, empowering users to manage their own deployments more effectively.
+- **general**: Completes the cloud deployment delivery path, ensuring smoother and more reliable deployment processes for users.
+- **logging**: Implements persistent aggregate platform logs, allowing users to maintain a comprehensive history of platform activities.
+- **logging**: Unifies platform log context, making it easier for users to trace and understand log entries across different components.
+- **kb-create**: Launches an intent-based install wizard, simplifying the setup process by guiding users through scenario selection.
+- **ci**: Adds a reusable GitHub Action for kb-create-install, streamlining continuous integration and saving users time on configuration (#300).
+- **kb-create**: Supports version-pinned plugins and services, giving users the ability to maintain consistent environments with specific versions (#298).
+- **kb-create**: Transitions default adapter packages to be config-driven, enhancing flexibility and customization for users.
+- **kb-create,plugin-runtime**: Introduces adapter-role validation and catalog-driven config, improving the installation process and reducing errors for users (#296).
+- **deploy**: Restores the executable bit for the provisioner, ensuring that users can run the provisioner without issues.
+- **general**: Avoids Docker Hub rate limits during deployment, ensuring users experience uninterrupted deployments.
+- **general**: Makes deployment node modules self-contained, simplifying the deployment process and reducing potential conflicts for users.
+- **general**: Includes the pnpm deploy virtual store in images, enhancing package management and consistency for user deployments.
+- **general**: Passes adapter overrides to the installer, providing users with greater control and customization during installation.
+- **general**: Preserves project artifacts during lifecycle journeys, ensuring that users do not lose important project data throughout the development process.
+- **general**: Satisfies daemon test lint, improving code quality and reliability for users.
+- **general**: Preserves legacy service bootstrap exports, allowing users to maintain compatibility with older services.
+- **platform**: Enhances the logger with a stderr spy, giving users more visibility into platform errors and warnings.
+- **general**: Enables discovery of workflow plugins from the platform root, making it easier for users to find and utilize available plugins.
+- **logging**: Addresses lint rules, improving code quality and consistency for users.
+- **general**: Synchronizes the workspace lockfile, ensuring that users have a consistent and
 ## [2.116.0] - 2026-08-01
 
 **164 packages** bumped to v2.116.0
