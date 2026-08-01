@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/agent-store",
   "description": "Canonical session artifact storage for KB Labs Agents.",
-  "version": "2.116.4",
+  "version": "2.116.5",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

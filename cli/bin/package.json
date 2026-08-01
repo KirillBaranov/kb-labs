@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/cli-bin",
   "description": "KB Labs CLI tool for project management and automation",
-  "version": "2.116.4",
+  "version": "2.116.5",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/review-heuristic",
-  "version": "2.116.4",
+  "version": "2.116.5",
   "type": "module",
   "exports": {
     ".": {

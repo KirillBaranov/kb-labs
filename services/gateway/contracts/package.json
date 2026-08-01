@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/gateway-contracts",
-  "version": "2.116.4",
+  "version": "2.116.5",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
