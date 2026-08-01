@@ -20,7 +20,7 @@ interface VerifyCleanInstallFlags {
 }
 
 export default defineCommand({
-  id: 'release:verify-clean-install',
+  id: 'release:clean-install',
   description: 'Install a packed tarball into a throwaway consumer and confirm it imports cleanly',
 
   handler: {
@@ -28,7 +28,7 @@ export default defineCommand({
       const { flags } = input;
 
       if (!flags.tarball || !flags.name) {
-        const msg = 'release:verify-clean-install requires --tarball <path> and --name <package-name>';
+        const msg = 'release:clean-install requires --tarball <path> and --name <package-name>';
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
         return { ok: false, error: 'Command failed' };
       }

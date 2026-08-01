@@ -12,7 +12,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('release:verify-clean-install', () => {
+describe('release:clean-install', () => {
   it('VCI-01: ok:true when verifyCleanInstall succeeds', async () => {
     vi.mocked(verifyCleanInstall).mockResolvedValue({ ok: true });
     const { ui, captured } = createCapturedUI();

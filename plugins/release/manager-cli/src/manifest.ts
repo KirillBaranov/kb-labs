@@ -248,10 +248,10 @@ export const manifest = {
         ],
       },
 
-      // release:verify-clean-install - Shared install-verification used by
-      // both check-pack-install.sh and `release stage`
+      // release:clean-install - Shared install-verification used by both
+      // check-pack-install.sh and `release stage`
       {
-        path: 'release verify-clean-install',
+        path: 'release clean install',
         category: 'Publish',
         describe: 'Install a packed tarball into a throwaway consumer and confirm it imports cleanly',
         operationType: 'execute' as const,
@@ -271,7 +271,7 @@ export const manifest = {
         }),
 
         examples: [
-          'kb release verify-clean-install --tarball ./kb-labs-sdk-2.115.0.tgz --name @kb-labs/sdk',
+          'kb release clean install --tarball ./kb-labs-sdk-2.115.0.tgz --name @kb-labs/sdk',
         ],
       },
 

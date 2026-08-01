@@ -138,7 +138,7 @@ fi
 # manifest several levels deep in someone else's graph breaks this install
 # too — static checks above can't see that).
 #
-# Delegates to `release verify-clean-install` (same implementation `release
+# Delegates to `release clean install` (same implementation `release
 # stage` uses for its own final check) instead of shelling to `npm install`
 # directly: plain npm swallows this exact failure class (EUNSUPPORTEDPROTOCOL
 # thrown deep inside its own Arborist dependency resolver) as an unhandled
@@ -150,7 +150,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 CLI_BIN="$REPO_ROOT/cli/bin/dist/bin.js"
 echo "Installing packed artifact into a clean consumer..."
 if [[ -f "$CLI_BIN" ]]; then
-  if ! node "$CLI_BIN" release verify-clean-install --tarball "$TARBALL_PATH" --name "$PKG_NAME"; then
+  if ! node "$CLI_BIN" release clean install --tarball "$TARBALL_PATH" --name "$PKG_NAME"; then
     exit 1
   fi
 else
