@@ -39,16 +39,18 @@ export async function verifyCleanInstall(
     if (packageManager === 'pnpm') {
       const stagedTarballs = [tarballPath, ...additionalTarballs];
       const dependencies: Record<string, string> = {};
+      const overrides: Record<string, string> = {};
       for (const stagedTarball of stagedTarballs) {
         const name = readPackedPackageName(stagedTarball);
         if (!name) {
           return { ok: false, error: `install failed: cannot read package name from ${stagedTarball}` };
         }
         dependencies[name] = `file:${stagedTarball}`;
+        overrides[name] = `file:${stagedTarball}`;
       }
       writeFileSync(
         join(consumerDir, 'package.json'),
-        JSON.stringify({ name: 'kb-release-consumer', private: true, dependencies }, null, 2) + '\n',
+        JSON.stringify({ name: 'kb-release-consumer', private: true, dependencies, pnpm: { overrides } }, null, 2) + '\n',
       );
       const install = spawnSync(
         'pnpm',
