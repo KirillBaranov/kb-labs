@@ -42,13 +42,9 @@ concurrency:
   group: deploy-platform-compose
   cancel-in-progress: false
 
-env:
-  IMAGE_TAG: ${{ inputs.version }}
-
 jobs:
   prepare:
-    name: Build production dependency trees
-    if: inputs.environment != 'production'
+    name: Prepare consumer composition
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,37 +60,56 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
-      - name: Build kb-devkit
-        run: make build -C tools/kb-devkit
-      - name: Install dependencies
+          go-version-file: tools/kb-create/go.mod
+      - name: Install composition metadata dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build workspace
-        run: pnpm build
-      - name: Prepare non-production image inputs
+      - name: Build kb-create
+        run: make build -C tools/kb-create
+      - name: Export consumer image contexts
         run: |
           set -euo pipefail
-          # Keep pnpm's isolated production graph. Hoisting copies the whole
-          # workspace peer graph into every image and was the main reason the
-          # service images grew past 1 GB each. The explicit runtime adapter
-          # dependencies in the service manifests make dynamic config loading
-          # work without broadening the graph.
-          pnpm deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
-          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
-          pnpm deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
-          pnpm deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
-          pnpm deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
-          pnpm deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
-          pnpm deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
-          pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+          mkdir -p .kb/consumer
+          for service in gateway rest-api workflow marketplace-registry; do
+            ./tools/kb-create/kb-create deployment \
+              --matrix .kb/compatibility.json \
+              export --root . --service "$service" \
+              --output ".kb/consumer/$service"
+            cp tools/kb-create/kb-create ".kb/consumer/$service/kb-create"
+          done
+      - name: Prepare non-production base images
+        if: inputs.environment != 'production'
+        run: |
+          set -euo pipefail
+          pnpm build
+          specs=(
+            '@kb-labs/core-state-daemon:.kb/deploy/state-daemon'
+            '@kb-labs/gateway-app:.kb/deploy/gateway-app'
+            '@kb-labs/marketplace-app:.kb/deploy/marketplace-app'
+            '@kb-labs/rest-api-app:.kb/deploy/rest-api-app'
+            '@kb-labs/studio-app:.kb/deploy/studio-app'
+            '@kb-labs/workflow-daemon:.kb/deploy/workflow-daemon'
+            '@kb-labs/mcp-app:.kb/deploy/mcp-app'
+            '@kb-labs/marketplace-registry-app:.kb/deploy/marketplace-registry-app'
+          )
+          for spec in "${specs[@]}"; do
+            package="${spec%%:*}"
+            output="${spec#*:}"
+            pnpm deploy --filter "$package" --prod "$output"
+          done
       - uses: actions/upload-artifact@v4
+        if: inputs.environment != 'production'
         with:
           name: platform-deploy-inputs
           path: .kb/deploy/
           retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: consumer-image-contexts
+          path: .kb/consumer/
+          retention-days: 1
 
-  publish:
-    name: Publish ${{ matrix.image }}:${{ inputs.version }}
+  publish_base:
+    name: Publish base ${{ matrix.image }}:${{ inputs.version }}
     needs: prepare
     if: inputs.environment != 'production'
     runs-on: ubuntu-latest
@@ -139,18 +154,66 @@ jobs:
           push: true
           tags: ghcr.io/kb-labs-team/${{ matrix.image }}:${{ inputs.version }}
 
+  publish_consumer:
+    name: Publish consumer ${{ matrix.image }}:${{ inputs.version }}
+    needs: [prepare, publish_base]
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      (inputs.environment == 'production' || needs.publish_base.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kb-consumer-gateway
+            service: gateway
+            base: kb-gateway
+          - image: kb-consumer-rest-api
+            service: rest-api
+            base: kb-rest-api
+          - image: kb-consumer-workflow
+            service: workflow
+            base: kb-workflow
+          - image: kb-consumer-marketplace-registry
+            service: marketplace-registry
+            base: kb-marketplace-registry
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: consumer-image-contexts
+          path: .kb/consumer/
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish derived consumer image
+        uses: docker/build-push-action@v6
+        with:
+          context: .kb/consumer/${{ matrix.service }}
+          file: .kb/consumer/${{ matrix.service }}/Dockerfile
+          push: true
+          build-args: |
+            KB_BASE_IMAGE=ghcr.io/kb-labs-team/${{ matrix.base }}:${{ inputs.version }}
+          tags: ghcr.io/kb-labs-team/${{ matrix.image }}:${{ inputs.version }}
+
   deploy:
     name: Deploy Compose stack
-    needs: [prepare, publish]
+    needs: [prepare, publish_base, publish_consumer]
     if: >-
       always() && inputs.deploy &&
-      (inputs.environment == 'production' || needs.publish.result == 'success')
+      needs.prepare.result == 'success' &&
+      (inputs.environment == 'production' || needs.publish_base.result == 'success') &&
+      needs.publish_consumer.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.environment == 'production' && format('platform-v{0}', inputs.version) || inputs.ref }}
+          ref: ${{ inputs.ref }}
       - name: Write SSH key
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
@@ -208,7 +271,7 @@ jobs:
           else
             : > .env.platform
           fi
-          printf 'IMAGE_TAG=%s\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" >> .env.platform
+          printf 'BASE_IMAGE_TAG=%s\nCONSUMER_IMAGE_TAG=%s\nCONSUMER_IMAGE_REGISTRY=ghcr.io/kb-labs-team\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" "$VERSION" >> .env.platform
 
           if [[ "$CLEANUP" == "true" ]]; then
             echo 'Docker usage before platform image cleanup:'
@@ -238,7 +301,7 @@ jobs:
               && check marketplace http://127.0.0.1:5070/health \
               && check registry http://127.0.0.1:5071/health \
               && check state http://127.0.0.1:7777/health \
-              && check studio http://127.0.0.1:3000/; then
+              && check studio http://127.0.0.1:3002/; then
               healthy=true
               break
             fi

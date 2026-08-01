@@ -1,6 +1,6 @@
 # User-built production images
 
-**Status:** proposed — architecture direction agreed, implementation not started
+**Status:** implemented — consumer-owned derived images are built from release images
 
 ## Decision
 
@@ -33,7 +33,7 @@ produces a working `kb.config.json` and lock data for the selected packages.
 When the local composition is ready, the user runs:
 
 ```bash
-kb-create deployment export --service gateway --platform 2.114.0 --output ./gateway-prod
+kb-create deployment export --root . --service gateway --output ./gateway-prod
 ```
 
 The command creates a small, reviewable directory:
@@ -43,7 +43,9 @@ gateway-prod/
   Dockerfile
   kb.config.json
   marketplace.lock
-  .dockerignore
+  compatibility.json
+  deployment.json
+  kb-create
 ```
 
 The exported lock is portable: package identity, exact version, source and
@@ -53,27 +55,32 @@ Kubernetes Secret.
 
 ### 3. Build the user's image
 
-The generated Dockerfile uses a version-pinned KB Labs service image and
-invokes the standalone `kb-create` provision command during `docker build`:
+The generated Dockerfile takes the release image as a build argument and
+invokes the bundled standalone `kb-create` provision command during `docker build`:
 
 ```dockerfile
-FROM ghcr.io/kb-labs/gateway:2.114.0
+ARG KB_BASE_IMAGE
+FROM ${KB_BASE_IMAGE}
 
-COPY --from=ghcr.io/kb-labs/kb-create:2.114.0 \
-  /usr/local/bin/kb-create /usr/local/bin/kb-create
+COPY kb-create /usr/local/bin/kb-create
 
-COPY kb.config.json marketplace.lock /app/.kb/
+COPY kb.config.json marketplace.lock deployment.json compatibility.json /app/.kb/
 
-RUN kb-create provision \
+RUN kb-create deployment provision \
   --root /app \
+  --composition /app/.kb/deployment.json \
   --config /app/.kb/kb.config.json \
-  --lock /app/.kb/marketplace.lock
+  --lock /app/.kb/marketplace.lock \
+  --matrix /app/.kb/compatibility.json
 ```
 
 The user builds and publishes this image in their own CI or locally:
 
 ```bash
-docker build -t registry.example.com/acme/gateway:2026-08-01 .
+docker build \
+  --build-arg KB_BASE_IMAGE=ghcr.io/kb-labs-team/kb-gateway:2.116.0 \
+  -t registry.example.com/acme/gateway:2026-08-01 \
+  ./gateway-prod
 docker push registry.example.com/acme/gateway:2026-08-01
 ```
 

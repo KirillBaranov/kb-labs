@@ -19,6 +19,10 @@ repositories=(
   ghcr.io/kb-labs-team/kb-workflow
   ghcr.io/kb-labs-team/kb-mcp
   ghcr.io/kb-labs-team/kb-studio
+  ghcr.io/kb-labs-team/kb-consumer-gateway
+  ghcr.io/kb-labs-team/kb-consumer-rest-api
+  ghcr.io/kb-labs-team/kb-consumer-workflow
+  ghcr.io/kb-labs-team/kb-consumer-marketplace-registry
 )
 
 for repository in "${repositories[@]}"; do

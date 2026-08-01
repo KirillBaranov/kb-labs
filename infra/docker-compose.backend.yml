@@ -28,7 +28,7 @@ services:
       - kb-backend
 
   kb-state-daemon:
-    image: ghcr.io/kb-labs-team/kb-state-daemon:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-state-daemon:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-state-daemon
     ports:
       - "7777:7777"
@@ -40,7 +40,7 @@ services:
       - kb-backend
 
   kb-marketplace-registry:
-    image: ghcr.io/kb-labs-team/kb-marketplace-registry:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-marketplace-registry:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-marketplace-registry
     ports:
       - "5071:5071"
@@ -63,7 +63,7 @@ services:
       - kb-backend
 
   kb-marketplace:
-    image: ghcr.io/kb-labs-team/kb-marketplace:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-marketplace:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-marketplace
     ports:
       - "5070:5070"
@@ -81,7 +81,7 @@ services:
       - kb-backend
 
   kb-gateway:
-    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-gateway:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-gateway
     ports:
       - "4000:4000"
@@ -101,7 +101,7 @@ services:
       - kb-backend
 
   kb-rest-api:
-    image: ghcr.io/kb-labs-team/kb-rest-api:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-rest-api:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-rest-api
     ports:
       - "5050:5050"
@@ -115,7 +115,7 @@ services:
       - kb-backend
 
   kb-workflow:
-    image: ghcr.io/kb-labs-team/kb-workflow:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-workflow:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-workflow
     ports:
       - "7778:7778"
@@ -136,7 +136,7 @@ services:
       replicas: 1
 
   kb-mcp:
-    image: ghcr.io/kb-labs-team/kb-mcp:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-mcp:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-mcp
     ports:
       - "7779:7779"
@@ -149,10 +149,10 @@ services:
       - kb-backend
 
   kb-studio:
-    image: ghcr.io/kb-labs-team/kb-studio:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-studio:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-studio
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - NODE_ENV=production
       - KB_API_BASE_URL=http://kb-gateway:4000/api/v1

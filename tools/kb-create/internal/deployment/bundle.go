@@ -3,6 +3,7 @@ package deployment
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,7 +30,12 @@ func Export(platformRoot, service, output string, matrix Matrix) error {
 	if err != nil {
 		return err
 	}
-	config, err := os.ReadFile(filepath.Join(platformRoot, ".kb", "kb.config.jsonc"))
+	configName := "kb.config.jsonc"
+	config, err := os.ReadFile(filepath.Join(platformRoot, ".kb", configName))
+	if os.IsNotExist(err) {
+		configName = "kb.config.json"
+		config, err = os.ReadFile(filepath.Join(platformRoot, ".kb", configName))
+	}
 	if err != nil {
 		return fmt.Errorf("read local composition config: %w", err)
 	}
@@ -46,18 +52,43 @@ func Export(platformRoot, service, output string, matrix Matrix) error {
 		return err
 	}
 	files := map[string][]byte{
-		"kb.config.jsonc":    config,
+		configName:           config,
 		"marketplace.lock":   lock,
 		"deployment.json":    append(contract, '\n'),
 		"compatibility.json": append(matrixData, '\n'),
-		"Dockerfile":         []byte("ARG KB_BASE_IMAGE\nFROM ${KB_BASE_IMAGE}\nCOPY --from=ghcr.io/kb-labs-team/kb-create:${KB_CREATE_VERSION} /usr/local/bin/kb-create /usr/local/bin/kb-create\nCOPY kb.config.jsonc marketplace.lock deployment.json compatibility.json /app/.kb/\nRUN kb-create deployment provision --root /app --composition /app/.kb/deployment.json --lock /app/.kb/marketplace.lock --config /app/.kb/kb.config.jsonc --matrix /app/.kb/compatibility.json\n"),
 	}
+	provisioner, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("locate kb-create provisioner: %w", err)
+	}
+	if err := copyProvisioner(filepath.Join(output, "kb-create"), provisioner); err != nil {
+		return fmt.Errorf("copy kb-create provisioner: %w", err)
+	}
+	if err := os.Chmod(filepath.Join(output, "kb-create"), 0o755); err != nil {
+		return fmt.Errorf("make kb-create provisioner executable: %w", err)
+	}
+	files["Dockerfile"] = []byte(fmt.Sprintf("ARG KB_BASE_IMAGE\nFROM ${KB_BASE_IMAGE}\nCOPY --chown=1001:1001 kb-create /usr/local/bin/kb-create\nCOPY --chown=1001:1001 %s marketplace.lock deployment.json compatibility.json /app/.kb/\nRUN kb-create deployment provision --root /app --composition /app/.kb/deployment.json --lock /app/.kb/marketplace.lock --config /app/.kb/%s --matrix /app/.kb/compatibility.json\n", configName, configName))
 	for name, data := range files {
 		if err := os.WriteFile(filepath.Join(output, name), data, 0o644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func copyProvisioner(destination, source string) error {
+	input, err := os.Open(source) // #nosec G304 -- source is the running kb-create executable.
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+	outputFile, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755) // #nosec G304 -- destination is inside the explicit export directory.
+	if err != nil {
+		return err
+	}
+	defer outputFile.Close()
+	_, err = io.Copy(outputFile, input)
+	return err
 }
 
 func portableLock(path string) ([]byte, error) {

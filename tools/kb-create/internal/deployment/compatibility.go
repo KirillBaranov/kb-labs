@@ -87,6 +87,9 @@ func ReadVersions(root string, matrix Matrix) (map[string]string, error) {
 func readPackageVersion(root, packageName string) (string, error) {
 	path := filepath.Join(root, "node_modules", filepath.FromSlash(packageName), "package.json")
 	data, err := os.ReadFile(path) // #nosec G304 -- root is an explicit CLI argument.
+	if os.IsNotExist(err) {
+		path, data, err = findWorkspacePackage(root, packageName)
+	}
 	if err != nil {
 		return "", fmt.Errorf("%s is not installed at %s: %w", packageName, path, err)
 	}
@@ -100,6 +103,48 @@ func readPackageVersion(root, packageName string) (string, error) {
 		return "", fmt.Errorf("%s has no version in %s", packageName, path)
 	}
 	return pkg.Version, nil
+}
+
+func findWorkspacePackage(root, packageName string) (string, []byte, error) {
+	var foundPath string
+	var foundData []byte
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			name := entry.Name()
+			if name == ".git" || name == "node_modules" || name == ".kb" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if entry.Name() != "package.json" || foundPath != "" {
+			return nil
+		}
+		data, err := os.ReadFile(path) // #nosec G304 -- path is discovered below the explicit root.
+		if err != nil {
+			return err
+		}
+		var pkg struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(data, &pkg); err != nil {
+			return nil
+		}
+		if pkg.Name == packageName {
+			foundPath = path
+			foundData = data
+		}
+		return nil
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	if foundPath == "" {
+		return filepath.Join(root, "node_modules", filepath.FromSlash(packageName), "package.json"), nil, os.ErrNotExist
+	}
+	return foundPath, foundData, nil
 }
 
 // CheckTarget validates both the base image itself and the requirements that

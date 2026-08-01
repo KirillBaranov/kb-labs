@@ -143,11 +143,11 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${VERSION#platform-v}"
-          perl -0pi -e 's/\$\{IMAGE_TAG:\?[^}]+\}/$ENV{VERSION}/g' infra/docker-compose.backend.yml
+          perl -0pi -e 's/\$\{BASE_IMAGE_TAG:\?[^}]+\}/$ENV{VERSION}/g' infra/docker-compose.backend.yml
           cp infra/docker-compose.backend.yml docker-compose.yml
-          grep -q "kb-gateway:${VERSION}" docker-compose.yml
-          if grep -q 'IMAGE_TAG' docker-compose.yml; then
-            echo 'compose artifact still contains an unexpanded IMAGE_TAG' >&2
+          grep -q "kb-gateway" docker-compose.yml
+          if ! grep -q 'CONSUMER_IMAGE_TAG' docker-compose.yml; then
+            echo 'compose artifact lost the consumer image tag contract' >&2
             exit 1
           fi
       - name: Upload compose file to GitHub Release
