@@ -50,21 +50,10 @@ export const dashboardRoutes: RouteObject[] = [
  * Dashboard navigation items for sidebar
  */
 export const dashboardNavigation: NavigationItem = {
-  key: KEYS.MODULE,
+  key: KEYS.OVERVIEW,
   label: 'Dashboard',
+  path: PATHS.ROOT,
   icon: renderIcon('DashboardOutlined'),
-  children: [
-    {
-      key: KEYS.OVERVIEW,
-      label: 'Overview',
-      path: PATHS.ROOT,
-      icon: renderIcon('DashboardOutlined'),
-    },
-    {
-      key: KEYS.INSIGHTS,
-      label: 'AI Insights',
-      path: PATHS.INSIGHTS,
-      icon: renderIcon('RobotOutlined'),
-    },
-  ],
+  // AI Insights: route stays live (still reachable at /insights), just
+  // hidden from the sidebar — not used enough day-to-day to earn a slot.
 };
