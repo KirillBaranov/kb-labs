@@ -3706,6 +3706,15 @@ importers:
 
   plugins/marketplace-registry/app:
     dependencies:
+      '@kb-labs/adapters-log-ringbuffer':
+        specifier: workspace:*
+        version: link:../../../adapters/log-ringbuffer
+      '@kb-labs/adapters-pino':
+        specifier: workspace:*
+        version: link:../../../adapters/pino
+      '@kb-labs/adapters-redis':
+        specifier: workspace:*
+        version: link:../../../adapters/redis
       '@kb-labs/adapters-s3':
         specifier: workspace:*
         version: link:../../../adapters/s3
@@ -5164,6 +5173,21 @@ importers:
       '@fastify/swagger-ui':
         specifier: ^5.2.0
         version: 5.2.5
+      '@kb-labs/adapters-analytics-file':
+        specifier: workspace:*
+        version: link:../../../adapters/analytics-file
+      '@kb-labs/adapters-eventbus-cache':
+        specifier: workspace:*
+        version: link:../../../adapters/eventbus-cache
+      '@kb-labs/adapters-pino':
+        specifier: workspace:*
+        version: link:../../../adapters/pino
+      '@kb-labs/adapters-redis':
+        specifier: workspace:*
+        version: link:../../../adapters/redis
+      '@kb-labs/adapters-service-transport-http':
+        specifier: workspace:*
+        version: link:../../../adapters/service-transport-http
       '@kb-labs/core-config':
         specifier: workspace:*
         version: link:../../../core/config
@@ -5974,6 +5998,15 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.2.0
+      '@kb-labs/adapters-pino':
+        specifier: workspace:*
+        version: link:../../../adapters/pino
+      '@kb-labs/adapters-redis':
+        specifier: workspace:*
+        version: link:../../../adapters/redis
+      '@kb-labs/adapters-service-transport-http':
+        specifier: workspace:*
+        version: link:../../../adapters/service-transport-http
       '@kb-labs/core-config':
         specifier: workspace:*
         version: link:../../../core/config

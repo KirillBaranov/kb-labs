@@ -19,6 +19,11 @@ on:
         required: true
         default: true
         type: boolean
+      cleanup:
+        description: Remove old KB Labs platform image tags after a healthy deploy
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -59,14 +64,19 @@ jobs:
       - name: Prepare image inputs
         run: |
           set -euo pipefail
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+          # Keep pnpm's isolated production graph. Hoisting copies the whole
+          # workspace peer graph into every image and was the main reason the
+          # service images grew past 1 GB each. The explicit runtime adapter
+          # dependencies in the service manifests make dynamic config loading
+          # work without broadening the graph.
+          pnpm deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
+          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+          pnpm deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
+          pnpm deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
+          pnpm deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
+          pnpm deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
+          pnpm deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
+          pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
       - uses: actions/upload-artifact@v4
         with:
           name: platform-deploy-inputs
@@ -142,16 +152,22 @@ jobs:
           scp -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new \
             infra/docker-compose.backend.yml \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/kb-labs/docker-compose.platform.yml"
+      - name: Upload image cleanup script
+        run: |
+          scp -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new \
+            infra/scripts/cleanup-platform-images.sh \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/kb-labs/cleanup-platform-images.sh"
       - name: Pull and restart platform
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           VERSION: ${{ inputs.version }}
+          CLEANUP: ${{ inputs.cleanup }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" \
-            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' bash -s" <<'REMOTE'
+            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' CLEANUP='$CLEANUP' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$HOME/kb-labs"
 
@@ -169,6 +185,18 @@ jobs:
           fi
           printf 'IMAGE_TAG=%s\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" >> .env.platform
 
+          if [[ "$CLEANUP" == "true" ]]; then
+            echo 'Docker usage before platform image cleanup:'
+            docker system df
+            # Free space before pulling the next release, while retaining the
+            # newest existing tag as a rollback image. This is scoped to the
+            # eight KB Labs repositories; unrelated host applications and
+            # volumes are never pruned.
+            bash ./cleanup-platform-images.sh "$VERSION" --apply
+            echo 'Docker usage after platform image cleanup:'
+            docker system df
+          fi
+
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin >/dev/null
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml pull \
             kb-state-daemon kb-marketplace-registry kb-marketplace kb-gateway \
@@ -177,6 +205,7 @@ jobs:
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
 
           check() { curl -fsS --max-time 15 "$2" >/dev/null || { echo "health check failed: $1" >&2; return 1; }; }
+          healthy=false
           for i in 1 2 3 4 5 6; do
             if check gateway http://127.0.0.1:4000/health \
               && check rest http://127.0.0.1:5050/api/v1/health \
@@ -185,12 +214,21 @@ jobs:
               && check registry http://127.0.0.1:5071/health \
               && check state http://127.0.0.1:7777/health \
               && check studio http://127.0.0.1:3000/; then
-              exit 0
+              healthy=true
+              break
             fi
             sleep 10
           done
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
-          exit 1
+          if [[ "$healthy" != "true" ]]; then
+            exit 1
+          fi
+
+          if [[ "$CLEANUP" == "true" ]]; then
+            bash ./cleanup-platform-images.sh "$VERSION" --apply
+            echo 'Docker usage after successful platform deploy:'
+            docker system df
+          fi
           REMOTE
       - name: Remove SSH key
         if: always()

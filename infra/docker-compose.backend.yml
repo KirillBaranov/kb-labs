@@ -5,6 +5,11 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    logging: &kb-json-logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - kb-backend
 
@@ -18,6 +23,7 @@ services:
     volumes:
       - minio_data:/data
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -29,6 +35,7 @@ services:
     # No adapters, no persistence (InMemoryStateBroker) — see plugins/state/daemon/Dockerfile.
     # A restart wipes any in-flight locks; that is current, expected behaviour.
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -51,6 +58,7 @@ services:
       # plugins/marketplace-registry/README.md:44 — real runtime dependency, not dev-only.
       - kb-state-daemon
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -68,6 +76,7 @@ services:
     depends_on:
       - kb-marketplace-registry
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -87,6 +96,7 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -100,6 +110,7 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -115,6 +126,7 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
     # IMPORTANT: exactly one instance. JobBroker/CronScheduler run in-process
@@ -132,6 +144,7 @@ services:
       - NODE_ENV=production
       - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
@@ -146,6 +159,7 @@ services:
     depends_on:
       - kb-gateway
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
