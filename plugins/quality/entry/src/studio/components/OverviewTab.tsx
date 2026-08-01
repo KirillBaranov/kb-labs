@@ -4,7 +4,6 @@ import {
   UIRow,
   UICol,
   UICard,
-  UIStatistic,
   UIProgress,
   UITag,
   UIAlert,
@@ -146,24 +145,29 @@ export function OverviewTab() {
         />
       )}
 
-      {/* Quick Stats */}
-      <UIRow gutter={16}>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic title="Packages" value={statsData?.packages ?? 0} prefix={<UIIcon name="DatabaseOutlined" />} />
-          </UICard>
-        </UICol>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic title="Lines of Code" value={statsData?.loc ?? 0} prefix={<UIIcon name="CodeOutlined" />} />
-          </UICard>
-        </UICol>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic title="Total Size" value={statsData?.size ?? 'N/A'} prefix={<UIIcon name="FileTextOutlined" />} />
-          </UICard>
-        </UICol>
-      </UIRow>
+      {/* Quick Stats — compact single-row strip, not three separate cards */}
+      <UICard styles={{ body: { padding: '18px 24px' } }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Packages', value: statsData?.packages ?? 0 },
+            { label: 'Lines of Code', value: statsData?.loc ?? 0 },
+            { label: 'Total Size', value: statsData?.size ?? 'N/A' },
+          ].map((metric, i) => (
+            <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              {i > 0 && <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                  fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                }}>
+                  {metric.value}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </UICard>
     </div>
   );
 }

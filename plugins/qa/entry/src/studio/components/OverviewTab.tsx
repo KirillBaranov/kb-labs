@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {
-  UIRow, UICol, UICard, UIStatistic, UITag, UIAlert,
+  UITag, UIAlert,
   UISpin, UISpace, UIIcon,
   useData, useTheme,
 } from '@kb-labs/sdk/studio';
@@ -101,60 +101,40 @@ export function OverviewTab() {
         style={{ marginBottom: token.marginLG }}
       />
 
-      {/* Latest run task cards */}
+      {/* Latest run task strip — compact clickable pills, not a grid of centered cards */}
       {taskGroups.size > 0 && (
-        <UIRow gutter={[16, 16]} style={{ marginBottom: token.marginLG }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: token.marginLG }}>
           {[...taskGroups.entries()].map(([task, counts]) => {
             const hasFailed = counts.failed > 0;
+            const parts = [`${counts.passed} passed`];
+            if (counts.failed > 0) {parts.push(`${counts.failed} failed`);}
+            if (counts.cached > 0) {parts.push(`${counts.cached} cached`);}
             return (
-              <UICol xs={24} sm={12} lg={6} key={task}>
-                <UICard
-                  hoverable
-                  onClick={() => setDrawerOpen(true)}
-                  style={{ cursor: 'pointer', textAlign: 'center' }}
-                >
-                  <UITag
-                    color={hasFailed ? 'error' : 'success'}
-                    style={{ marginBottom: token.marginSM, fontSize: token.fontSize }}
-                  >
-                    {hasFailed
-                      ? <UIIcon name="CloseCircleOutlined" />
-                      : <UIIcon name="CheckCircleOutlined" />}
-                    {' '}{hasFailed ? 'FAILED' : 'PASSED'}
-                  </UITag>
-                  <div style={{ fontWeight: 600, fontSize: token.fontSizeLG, marginBottom: token.marginSM }}>
-                    {task}
-                  </div>
-                  <UIRow gutter={8} justify="center">
-                    <UICol>
-                      <UIStatistic
-                        title="Passed"
-                        value={counts.passed}
-                        valueStyle={{ color: token.colorSuccess, fontSize: token.fontSize }}
-                      />
-                    </UICol>
-                    <UICol>
-                      <UIStatistic
-                        title="Failed"
-                        value={counts.failed}
-                        valueStyle={{ color: counts.failed > 0 ? token.colorError : token.colorSuccess, fontSize: token.fontSize }}
-                      />
-                    </UICol>
-                    {counts.cached > 0 && (
-                      <UICol>
-                        <UIStatistic
-                          title="Cached"
-                          value={counts.cached}
-                          valueStyle={{ color: token.colorTextSecondary, fontSize: token.fontSize }}
-                        />
-                      </UICol>
-                    )}
-                  </UIRow>
-                </UICard>
-              </UICol>
+              <div
+                key={task}
+                onClick={() => setDrawerOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: token.borderRadius,
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                  cursor: 'pointer',
+                }}
+              >
+                <UIIcon
+                  name={hasFailed ? 'CloseCircleOutlined' : 'CheckCircleOutlined'}
+                  style={{ color: hasFailed ? token.colorError : token.colorSuccess }}
+                />
+                <span style={{ fontWeight: 600, fontSize: token.fontSize }}>{task}</span>
+                <span style={{ color: token.colorTextTertiary, fontSize: token.fontSizeSM }}>
+                  {parts.join(' · ')}
+                </span>
+              </div>
             );
           })}
-        </UIRow>
+        </div>
       )}
 
       {/* Baseline Diff */}
