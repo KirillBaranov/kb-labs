@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/workflow-artifacts",
   "description": "Artifact helpers for KB Labs workflow engine.",
-  "version": "2.116.8",
+  "version": "2.116.9",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

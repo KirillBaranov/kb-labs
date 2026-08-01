@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/review-core",
-  "version": "2.116.8",
+  "version": "2.116.9",
   "type": "module",
   "exports": {
     ".": {

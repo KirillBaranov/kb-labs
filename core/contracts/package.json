@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-contracts",
   "description": "Contracts for KB Labs Core plugin.",
-  "version": "2.116.8",
+  "version": "2.116.9",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",
