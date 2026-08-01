@@ -16,7 +16,7 @@ describe('gateway production image contract', () => {
   });
 
   it('fails before starting when kb-create has not materialized a composition', () => {
-    expect(entrypoint).toContain('/app/.kb/kb.config.json is required');
+    expect(entrypoint).toContain('/app/.kb/kb.config.json or kb.config.jsonc is required');
     expect(entrypoint).toContain('/app/.kb/marketplace.lock is required');
     expect(entrypoint).not.toContain('cp /app/.kb/');
   });
