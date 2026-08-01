@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/marketplace-app",
   "description": "KB Labs Marketplace service — Fastify entrypoint",
-  "version": "2.116.7",
+  "version": "2.116.8",
   "type": "module",
   "main": "./dist/index.js",
   "files": [

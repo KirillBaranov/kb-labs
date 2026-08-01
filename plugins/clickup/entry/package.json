@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/clickup-entry",
-  "version": "2.116.7",
+  "version": "2.116.8",
   "type": "module",
   "description": "V3 manifest + CLI handlers for clickup",
   "main": "./dist/index.js",
