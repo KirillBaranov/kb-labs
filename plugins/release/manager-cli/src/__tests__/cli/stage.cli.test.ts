@@ -30,14 +30,17 @@ vi.mock('../../shared/dep-rewrite.js', () => ({
 }));
 
 vi.mock('node:child_process', () => ({
-  spawnSync: vi.fn((cmd: string) => {
+  spawnSync: vi.fn((cmd: string, args: string[], opts: { cwd?: string }) => {
     if (cmd === 'npm') {
       return { status: 0, stdout: JSON.stringify([{ filename: 'kb-labs-sdk-2.115.0.tgz' }]), stderr: '' };
     }
     if (cmd === 'pnpm') {
       // pnpm pack has no --json output — it prints the absolute tarball
       // path as its last stdout line (confirmed against real pnpm 9.11.0).
-      return { status: 0, stdout: '/tmp/artifacts/kb-labs-sdk-2.115.0.tgz\n', stderr: '' };
+      // Filename derived from cwd so multi-package batching tests can tell
+      // artifacts apart.
+      const slug = (opts.cwd ?? 'pkg').split('/').pop();
+      return { status: 0, stdout: `/tmp/artifacts/kb-labs-${slug}.tgz\n`, stderr: '' };
     }
     return { status: 0, stdout: '', stderr: '' }; // tar extract
   }),
@@ -65,8 +68,21 @@ beforeEach(() => {
   vi.mocked(verifyCleanInstall).mockResolvedValue({ ok: true });
 
   vi.mocked(discoverCurrentPackages).mockImplementation(async (_cwd, _scope, config) => {
-    const isFlowScoped = (config as { __flow?: string }).__flow !== undefined;
-    if (isFlowScoped) {
+    const flow = (config as { __flow?: string }).__flow;
+    if (flow === 'many') {
+      // Synthetic flow with more packages than CONCURRENCY (default 6), to
+      // exercise the batching loop across multiple batches.
+      return Array.from({ length: 8 }, (_, i) => ({
+        name: `@scope/pkg-${i}`,
+        currentVersion: '1.0.0',
+        nextVersion: '1.0.0',
+        path: `/project/pkgs/pkg-${i}`,
+        gitRoot: '/project',
+        bump: 'auto',
+        isPublished: false,
+      })) as never;
+    }
+    if (flow !== undefined) {
       // Only sdk's own flow package — its dependency on core-retry (owned by
       // the `platform` flow) is deliberately NOT in this list.
       return [
@@ -111,7 +127,26 @@ describe('release:stage — default packageManager (pnpm)', () => {
 
     expect(result.ok).toBe(true);
     const payload = (result as { result: { artifacts: Array<{ tarball: string }> } }).result;
-    expect(payload.artifacts[0]!.tarball).toBe('kb-labs-sdk-2.115.0.tgz');
+    expect(payload.artifacts[0]!.tarball).toBe('kb-labs-sdk.tgz');
+  });
+
+  // Each package's clean-room install is a real registry round-trip — for a
+  // lockstep flow the size of `platform` (~150 packages) that's ~150
+  // sequential npm installs if run one at a time. Bounded concurrency
+  // (KB_STAGE_CONCURRENCY, default 6) batches the work instead; this proves
+  // the batching loop doesn't drop or duplicate a package across batch
+  // boundaries with more packages than fit in one batch.
+  it('stages every package exactly once when there are more packages than the concurrency limit', async () => {
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    const result = await stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'many', json: true } }));
+
+    expect(result.ok).toBe(true);
+    const payload = (result as { result: { artifacts: Array<{ name: string }> } }).result;
+    expect(payload.artifacts).toHaveLength(8);
+    expect(new Set(payload.artifacts.map(a => a.name)).size).toBe(8);
+    expect(vi.mocked(verifyCleanInstall)).toHaveBeenCalledTimes(8);
   });
 
   // Static manifest checks (verifyExtractedTarball) can't see an
