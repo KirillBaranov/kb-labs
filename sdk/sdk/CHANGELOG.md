@@ -1,3 +1,109 @@
+## [2.115.2] - 2026-08-01
+
+**2 packages** bumped to v2.115.2
+
+| Package | Previous | Bump |
+|---------|----------|------|
+| `@kb-labs/platform-client` | 2.115.1 | patch |
+| `@kb-labs/sdk` | 2.115.1 | patch |
+
+### 🏗️ Core & SDK
+
+- **cli**: declare platform logging dependency
+
+### 🌐 Gateway & API
+
+- **gateway**: fall back to bootstrap tenant when Host resolves no tenant
+- **gateway**: give the CLI a human session identity, close the /auth/register gap (#291)
+
+### 🔌 Adapters
+
+- **adapters**: add adapters-fs-temp as npm-publish workaround for adapters-fs 403
+- **adapters**: rename npm-publish workaround to adapters-diskio, drop fs-extra/fast-glob
+
+### 🧩 Plugins
+
+- **release**: verify tarballs actually install, with real error messages
+- **qa**: collect CI reliability evidence (#313)
+- **release**: configurable build step + topo-sorted fallback (#314)
+- **release**: classify npm publish errors + write GH Actions step summary on deliver failure (#305)
+- **release**: plugin prepares, CI delivers — tag-driven stage/deliver split (#303)
+- **release**: make root changelog output path config-driven (#290)
+- **release**: collapse large package-bump tables in lockstep changelogs (#289)
+- **release**: smoke test canary packages
+- **release**: remove per-package clean install from stage
+- **release**: force pnpm bundle overrides locally
+- **release**: install pnpm bundle from local tarballs
+- **release**: verify staged artifacts with configured package manager
+- **release**: materialize unmapped workspace refs
+- **release**: verify staged packages as a flow
+- **release**: rewrite optional dependency protocols
+- **release**: preserve workspace range operators
+- **release**: normalize workspace protocols in staged tarballs
+- **release**: rename verify-clean-install command to avoid kebab-case path segment
+- **release**: refuse to tag when git tag version disagrees with disk
+- **release**: scan devDependencies for forbidden dependency protocols
+- **release**: pack stage tarballs with pnpm by default, not npm
+- **release**: rewrite devDependencies workspace: refs before npm publish
+- **release**: resolve cross-flow workspace: deps when staging tarballs
+- **release**: publish data-store instead of blocked fs adapter
+- **release**: pass flowName/tagPattern through release:git command
+- **release**: move platform-client into the sdk flow as lockstep
+- **marketplace**: rehash stale integrity hashes in marketplace.lock
+- **release**: mark e2e delivery fixture stubs as private
+- **release**: stop overwriting the root CHANGELOG.md, stage it for commit (#288)
+- **qa**: fresh-install journey mismatches (kb-dev start / workflow / docs) (#287)
+- **release**: push only the new tag(s), not the whole tag history (#285)
+- **qa**: rename e2e-flaky CLI path segment to comply with naming convention (#286)
+- **release**: rewrite a package's own version before pnpm publish (#283)
+- **release**: fix no-promise-executor-return lint error in changelog test (#281)
+- **release**: scope changelog LLM timeout per-group, not per-render (#280)
+- **release**: resolve pnpm bundle with local overrides
+- **release**: batch stage's per-package clean-install checks
+
+### 🎨 Studio
+
+- **studio**: fix rspack dev server ERR_CONFIG_FACTORY_TARGET_MISSING crash (#304)
+
+### 🔧 Other
+
+- **deploy**: build consumer-owned release images
+- complete cloud deployment delivery path
+- **logging**: persist aggregate platform logs
+- **logging**: unify platform log context
+- **kb-create**: intent-based install wizard (--intent, scenario picker)
+- **ci**: reusable kb-create-install composite GitHub Action (#300)
+- **kb-create**: support version-pinned plugins/services (id@version) (#298)
+- **kb-create**: make default adapter packages config-driven (#299)
+- **kb-create,plugin-runtime**: adapter-role validation + catalog-driven config (#296)
+- **ci**: retry npm stable tag promotion
+- **scaffold**: preserve npm channel in generated dependencies
+- **kb-create**: use smoke tag during updates
+- **deploy**: restore provisioner executable bit (#334)
+- avoid Docker Hub rate limit during deploy
+- make deployment node modules self-contained
+- include pnpm deploy virtual store in images
+- pass adapter overrides to installer
+- preserve project artifacts during lifecycle journeys
+- satisfy daemon test lint
+- preserve legacy service bootstrap exports
+- **platform**: type logger stderr spy
+- discover workflow plugins from platform root
+- **logging**: satisfy lint rules
+- sync workspace lockfile
+- resolve dedicated binary releases
+- update scaffolded command result shapes (#322)
+- update plugin template command results (#321)
+- unblock main CI snapshot validation (#319)
+- **deploy**: use company GHCR namespace
+- **deps**: scope brace-expansion security override
+- **tools**: stop tracking compiled Go CLI binaries, dedupe CI build steps (#311)
+- **deps**: patch high/moderate vulns found by pnpm audit
+- **kb-create**: bare --yes against a manifest with no intents array
+- **plugin-contracts**: derive PlatformRequirements from PluginServices (#297)
+- **ci**: stabilize E2E Install Flow and clear pnpm audit findings
+- **ci**: grant contents:write to e2e-platform call in ci-pr.yml (#282)
+- **ci**: reuse built output during npm delivery
 ## [2.115.1] - 2026-08-01
 
 **2 packages** bumped to v2.115.1
