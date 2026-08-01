@@ -51,15 +51,7 @@ function rewriteWorkspaceDep(
   versionMap: Map<string, string>,
 ): boolean {
   const pinned = versionMap.get(depName);
-  // A staged tarball must never contain a workspace protocol. Some workspace
-  // packages (most commonly tooling-only devDependencies) are intentionally
-  // outside the release package map, so there is no version to pin. Keep the
-  // artifact installable by materializing those references to a valid npm
-  // range instead of silently shipping `workspace:*`.
-  if (!pinned) {
-    deps[depName] = '*';
-    return true;
-  }
+  if (!pinned) { return false; }
   const range = val === 'workspace:*' ? '^' : val.slice('workspace:'.length);
   deps[depName] = `${range}${pinned}`;
   return true;

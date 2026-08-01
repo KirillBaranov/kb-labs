@@ -42,6 +42,18 @@ describe('verifyCleanInstall', () => {
     expect(mockReify).toHaveBeenCalledWith(expect.objectContaining({ add: ['/tmp/pkg.tgz'] }));
   });
 
+  it('uses pnpm for the configured pnpm path and keeps the staged tarballs in the install set', async () => {
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk', ['/tmp/peer.tgz'], 'pnpm');
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(spawnSync)).toHaveBeenCalledWith(
+      'pnpm',
+      ['add', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true', '/tmp/pkg.tgz', '/tmp/peer.tgz'],
+      expect.objectContaining({ cwd: '/tmp/kb-clean-install-fake' }),
+    );
+    expect(mockReify).not.toHaveBeenCalled();
+  });
+
   it('surfaces the real Arborist error message and code on install failure, instead of npm\'s swallowed "see log file"', async () => {
     const err = new Error('Unsupported URL Type "workspace:": workspace:*') as NodeJS.ErrnoException;
     err.code = 'EUNSUPPORTEDPROTOCOL';

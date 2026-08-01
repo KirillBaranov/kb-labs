@@ -53,14 +53,9 @@ interface StagePayload {
 /**
  * Pack one package into `outDir`, returning the produced tarball's filename.
  *
- * `pnpm pack` resolves workspace references well enough for a workspace
- * install, but it can leave literal `workspace:*`/`workspace:^`/`workspace:~`
- * values in the packed manifest (notably peerDependencies). The tarball is
- * consumed outside the workspace by npm, so materialize every dependency
- * section before packing and restore the source manifest afterwards.
- *
- * npm/yarn (opt-in via `config.publish.packageManager`) need the same rewrite;
- * they do not resolve workspace: protocols on their own.
+ * pnpm is the platform default and owns workspace protocol materialization.
+ * npm/yarn are explicit opt-in paths and get the rewrite needed for their
+ * standalone tarballs.
  */
 /** pnpm prints the produced tarball's absolute path as its last stdout line — no --json output exists. */
 function filenameFromPnpmPack(stdout: string): string | undefined {
@@ -82,14 +77,10 @@ function packOne(
   versionMap: Map<string, string>,
 ): { filename: string; restore: () => void } {
   const isPnpm = packageManager === 'pnpm';
-  // `rewriteWorkspaceDeps` intentionally keeps workspace: refs for the
-  // publish path, where pnpm performs its own normalization. Stage is
-  // different: it produces a standalone tarball for npm consumers, so force
-  // the non-pnpm rewrite path even when pnpm is the packer.
   const restore = rewriteWorkspaceDeps(
     { path: pkg.path, version: pkg.currentVersion },
     versionMap,
-    isPnpm ? 'npm' : packageManager,
+    packageManager,
   );
 
   const packArgs = isPnpm
@@ -135,6 +126,7 @@ async function verifyStagePackage(
   outDir: string,
   artifact: StagedArtifact,
   allTarballs: string[],
+  packageManager: 'pnpm' | 'npm' | 'yarn',
 ): Promise<void> {
   const tarballPath = join(outDir, artifact.tarball);
   const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
@@ -145,7 +137,12 @@ async function verifyStagePackage(
     if (issues.length > 0) throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
   } finally { rmSync(verifyDir, { recursive: true, force: true }); }
 
-  const cleanInstall = await verifyCleanInstall(tarballPath, pkg.name, allTarballs.filter(path => path !== tarballPath));
+  const cleanInstall = await verifyCleanInstall(
+    tarballPath,
+    pkg.name,
+    allTarballs.filter(path => path !== tarballPath),
+    packageManager === 'pnpm' ? 'pnpm' : 'npm',
+  );
   if (!cleanInstall.ok) throw new Error(`staged artifact for ${pkg.name}@${pkg.currentVersion} fails a clean install: ${cleanInstall.error}`);
 }
 
@@ -194,7 +191,7 @@ export default defineCommand({
       // workspace:* on its own and never consults this map.
       const allWorkspacePackages = await discoverCurrentPackages(repoRoot, undefined, baseConfig);
       const versionMap = new Map(allWorkspacePackages.map(pkg => [pkg.name, pkg.currentVersion]));
-      const packageManager = config.publish?.packageManager ?? 'pnpm';
+      const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
 
       // Each package's real clean-room install (verifyCleanInstall, below) is
       // a genuine network round-trip against the registry — for a lockstep
@@ -227,7 +224,7 @@ export default defineCommand({
       verifyLoader.start();
       for (let i = 0; i < discovered.length; i += CONCURRENCY) {
         const batch = discovered.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map((pkg, index) => verifyStagePackage(pkg, outDir, artifacts[i + index]!, allTarballs)));
+        await Promise.all(batch.map((pkg, index) => verifyStagePackage(pkg, outDir, artifacts[i + index]!, allTarballs, packageManager)));
       }
       verifyLoader.succeed(`Verified ${artifacts.length} staged tarball(s)`);
 

@@ -7,14 +7,9 @@
  * itself broken (npm auto-installs peers, so a bad manifest several levels
  * deep in someone else's graph fails this package's install too).
  *
- * Uses @npmcli/arborist directly instead of shelling out to `npm install`.
- * npm's own CLI catches this exact failure mode (EUNSUPPORTEDPROTOCOL from
- * npm-package-arg, thrown deep inside Arborist's ideal-tree build) as an
- * unhandled rejection and just sets a bare exit code — no "npm error ..."
- * line, nothing in the debug log beyond "verbose exit 1". Calling Arborist
- * ourselves gets the real Error object with a real, readable message instead
- * of a dead end that takes an hour of manual repro to explain (confirmed
- * live against @kb-labs/sdk@2.115.0 and @kb-labs/plugin-execution-factory@2.114.0).
+ * The package manager is configurable. pnpm is the platform default and is
+ * used for the monorepo release flow; npm remains available for projects that
+ * explicitly publish with npm.
  */
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -37,20 +32,30 @@ export async function verifyCleanInstall(
   tarballPath: string,
   packageName: string,
   additionalTarballs: string[] = [],
+  packageManager: 'pnpm' | 'npm' = 'npm',
 ): Promise<CleanInstallResult> {
-  // Lazy import: @npmcli/arborist is a heavy, npm-internal package only
-  // needed on this one verification path.
-  const { Arborist } = await import('@npmcli/arborist');
-
   const consumerDir = mkdtempSync(join(tmpdir(), 'kb-clean-install-'));
   try {
     writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'kb-release-consumer', private: true }) + '\n');
 
-    const arb = new Arborist({ path: consumerDir, ignoreScripts: true });
-    try {
-      await arb.reify({ add: [tarballPath, ...additionalTarballs], save: false });
-    } catch (err) {
-      return { ok: false, error: `install failed: ${describeArboristError(err)}` };
+    if (packageManager === 'pnpm') {
+      const install = spawnSync(
+        'pnpm',
+        ['add', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true', tarballPath, ...additionalTarballs],
+        { cwd: consumerDir, stdio: 'pipe', timeout: 120_000 },
+      );
+      if (install.status !== 0) {
+        return { ok: false, error: `install failed: ${describeProcessFailure(install)}` };
+      }
+    } else {
+      // Lazy import: Arborist is only needed for the explicit npm path.
+      const { Arborist } = await import('@npmcli/arborist');
+      const arb = new Arborist({ path: consumerDir, ignoreScripts: true });
+      try {
+        await arb.reify({ add: [tarballPath, ...additionalTarballs], save: false });
+      } catch (err) {
+        return { ok: false, error: `install failed: ${describeArboristError(err)}` };
+      }
     }
 
     const importCheck = spawnSync(
@@ -81,4 +86,10 @@ function describeArboristError(err: unknown): string {
     return code ? `[${code}] ${err.message}` : err.message;
   }
   return String(err);
+}
+
+function describeProcessFailure(result: { stderr?: Buffer | string; stdout?: Buffer | string; status: number | null }): string {
+  const stderr = result.stderr?.toString().trim();
+  const stdout = result.stdout?.toString().trim();
+  return stderr || stdout || `package manager exited with code ${result.status ?? 'unknown'}`;
 }

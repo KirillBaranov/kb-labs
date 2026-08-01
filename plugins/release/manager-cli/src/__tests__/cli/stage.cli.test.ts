@@ -97,11 +97,9 @@ beforeEach(() => {
   });
 });
 
-// Default path: pnpm. The packer is pnpm, but the resulting tarball must be
-// installable outside the workspace by npm, so stage materializes workspace:
-// references before packing and restores the source manifest afterwards.
+// Default path: pnpm. Packing and clean-install verification use pnpm.
 describe('release:stage — default packageManager (pnpm)', () => {
-  it('packs via `pnpm pack` after rewriting workspace references', async () => {
+  it('packs and verifies via pnpm while leaving workspace resolution to pnpm', async () => {
     const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui, cwd: '/project' });
 
@@ -109,7 +107,7 @@ describe('release:stage — default packageManager (pnpm)', () => {
 
     expect(result.ok).toBe(true);
     expect(vi.mocked(rewriteWorkspaceDeps)).toHaveBeenCalledOnce();
-    expect(vi.mocked(rewriteWorkspaceDeps).mock.calls[0]![2]).toBe('npm');
+    expect(vi.mocked(rewriteWorkspaceDeps).mock.calls[0]![2]).toBe('pnpm');
     expect(vi.mocked(spawnSync)).toHaveBeenCalledWith(
       'pnpm',
       ['pack', '--pack-destination', expect.any(String)],

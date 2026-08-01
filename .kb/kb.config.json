@@ -193,6 +193,9 @@
         },
         "release": {
           "versioningStrategy": "lockstep",
+          "publish": {
+            "packageManager": "pnpm"
+          },
           "workspace": {
             "type": "pnpm",
             "root": "."
