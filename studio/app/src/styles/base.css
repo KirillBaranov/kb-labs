@@ -1,7 +1,7 @@
 /* Base element styles and layout utilities */
 
 body {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-sidebar);
   color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;

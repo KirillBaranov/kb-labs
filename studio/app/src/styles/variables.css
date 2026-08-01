@@ -1,26 +1,26 @@
 /* KB Labs UI Color Kit */
 
 :root {
-  /* Backgrounds */
-  --bg-primary: #F8F8F8;
+  /* Backgrounds — matches kblabs.ru neutral scale */
+  --bg-primary: #F4F5F7;
   --bg-secondary: #FFFFFF;
   --bg-tertiary: #F3F4F6;
   --bg-hover: #F3F4F6;        /* Same as tertiary for hover state */
   --bg-sidebar: #FFFFFF;
 
   /* Text */
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-tertiary: #6B7280;
+  --text-primary: #0F1115;
+  --text-secondary: #5C616D;
+  --text-tertiary: #5C616D;
   --text-inverse: #FFFFFF;
 
   /* Borders */
-  --border-primary: #E5E7EB;
-  --border-secondary: #D4D4D4;
+  --border-primary: #D9DDE6;
+  --border-secondary: #C4CAD8;
 
   /* Typography */
-  --font-body: 'Inter', 'Segoe UI', sans-serif;
-  --font-heading: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-body: 'Geist Sans', 'Inter', 'Segoe UI', sans-serif;
+  --font-heading: 'Plus Jakarta Sans', 'Geist Sans', sans-serif;
 
   /* Interactive */
   --link: #0c66ff;
@@ -55,27 +55,27 @@
 }
 
 .dark {
-  /* Backgrounds */
-  --bg-primary: #0D0D0F;
-  --bg-secondary: #1A1A1C;
-  --bg-tertiary: #27272A;
-  --bg-hover: #2E2E32;        /* Lighter hover state for tables/cards */
-  --bg-sidebar: #1A1A1C;
+  /* Backgrounds — matches kblabs.ru dark neutral scale */
+  --bg-primary: #09090B;
+  --bg-secondary: #0F1014;
+  --bg-tertiary: #1A1B22;
+  --bg-hover: #1E2028;        /* Lighter hover state for tables/cards */
+  --bg-sidebar: #0F1014;
 
   /* Text */
-  --text-primary: #F5F5F7;
-  --text-secondary: #A1A1AA;
-  --text-tertiary: #A1A1AA;
-  --text-inverse: #1A1A1C;
+  --text-primary: #E6EAF4;
+  --text-secondary: #8090A6;
+  --text-tertiary: #8090A6;
+  --text-inverse: #0F1115;
 
   /* Borders */
-  --border-primary: #3F3F46;
-  --border-secondary: #52525B;
+  --border-primary: #1E2535;
+  --border-secondary: #2C3650;
 
   /* Interactive */
-  --link: #60a5fa;
-  --link-hover: #93c5fd;
-  --accent-subtle: rgba(12, 102, 255, 0.15);
+  --link: #3A82F6;
+  --link-hover: #60a5fa;
+  --accent-subtle: rgba(58, 130, 246, 0.15);
 
   /* Status */
   --success: #22C55E;
