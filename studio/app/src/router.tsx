@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { createBrowserRouter, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, Outlet, useLocation, useNavigate } from 'react-router-dom';
 // Use real auth provider (ADR-0020); old providers/auth-provider kept for migration.
 import { useAuth } from './auth/auth-provider';
 import { RequireAuth } from './auth/guards';
 import { useRegistryV2 } from './providers/registry-v2-provider';
-import { CommandPaletteProvider } from './providers/command-palette-provider';
+import { CommandPaletteProvider, useCommandPalette } from './providers/command-palette-provider';
 import { useNotifications } from '@kb-labs/studio-data-client';
 import { useDataSources } from './providers/data-sources-provider';
 import { HealthBanner } from './components/health-banner';
@@ -80,6 +80,7 @@ function LayoutContent() {
   const { registry, error } = useRegistryV2();
   const sources = useDataSources();
   const { settings } = useSettings();
+  const commandPalette = useCommandPalette();
 
   // Notifications hook
   const {
@@ -172,10 +173,9 @@ function LayoutContent() {
           collapsedWidth: 80,
           currentPath: location.pathname,
           onNavigate: (path) => navigate(path),
-          LinkComponent: Link as React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>,
           onLogout: () => { void handleLogout(); },
           userName: auth.status === 'authenticated' ? auth.user.email : '',
-          // Notifications
+          onOpenSearch: commandPalette.open,
           notifications,
           unreadNotificationsCount: unreadCount,
           onMarkNotificationAsRead: markAsRead,
