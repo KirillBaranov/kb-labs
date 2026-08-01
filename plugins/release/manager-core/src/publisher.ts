@@ -265,6 +265,28 @@ function createPackageChangelog(pkg: PackageVersion, changelog: string): string 
 }
 
 /**
+ * Guard against creating a git tag whose embedded version doesn't match
+ * what was actually just committed to package.json — see the call site in
+ * commitAndTagRelease() for why this can drift despite the commit step
+ * having "just" written these exact versions.
+ */
+async function assertTagVersionsMatchDisk(pkgs: PackageVersion[]): Promise<void> {
+  const mismatches: string[] = [];
+  for (const pkg of pkgs) {
+    const packageJsonPath = join(pkg.path, 'package.json');
+    const onDiskVersion = (JSON.parse(await readFile(packageJsonPath, 'utf-8')) as { version?: string }).version;
+    if (onDiskVersion !== pkg.nextVersion) {
+      mismatches.push(`${pkg.name}: tag would say ${pkg.nextVersion}, package.json says ${onDiskVersion ?? '<missing>'}`);
+    }
+  }
+  if (mismatches.length > 0) {
+    throw new Error(
+      `Refusing to create a git tag that doesn't match the committed package.json version(s):\n  ${mismatches.join('\n  ')}`,
+    );
+  }
+}
+
+/**
  * Commit and tag release changes
  *
  * Each package is committed inside its own git repo (supports submodules).
@@ -389,6 +411,19 @@ export async function commitAndTagRelease(options: {
 
       // 2. Tag (skip if already done)
       if (rootTagged.length === 0) {
+        // The tag name is built from plan.packages[*].nextVersion, but the
+        // git commit just above staged whatever updatePackageVersions()
+        // (called earlier in the pipeline) wrote to disk. Those two are
+        // normally the same value — but an idempotent-retry guard elsewhere
+        // in the pipeline can legitimately resolve nextVersion back to an
+        // already-published currentVersion for a package on a retry,
+        // without this run knowing to also re-tag. Left unchecked, that
+        // produces a real git tag whose version doesn't match what's
+        // actually committed under it (observed live: `sdk-v2.116.0`
+        // pointing at a commit where package.json said `2.115.0`). Fail
+        // loudly here rather than push a tag nobody can trust.
+        await assertTagVersionsMatchDisk(pkgs);
+
         if (singleVersionAcrossPlan) {
           // One tag per flow release: `{flow}-v{version}` (see ./tag.ts).
           const tagName = buildReleaseTag(flowName, plan.packages[0]!.nextVersion, tagPattern);
