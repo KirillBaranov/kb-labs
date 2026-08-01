@@ -173,7 +173,7 @@ export function verifyExtractedTarball(extractedDir: string): string[] {
  */
 export function findForbiddenDependencyProtocols(pkg: PkgJson): string[] {
   const issues: string[] = [];
-  for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
+  for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies', 'devDependencies'] as const) {
     const deps = pkg[section];
     if (!deps || typeof deps !== 'object') { continue; }
     for (const [name, value] of Object.entries(deps as Record<string, unknown>)) {
@@ -195,6 +195,7 @@ type PkgJson = Record<string, unknown> & {
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 };
 
 function resolveEsmEntry(pkg: PkgJson): string | undefined {

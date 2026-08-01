@@ -48,7 +48,7 @@ const fs = require('node:fs');
 const file = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
 const issues = [];
-for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies', 'devDependencies']) {
   for (const [name, value] of Object.entries(pkg[section] || {})) {
     if (typeof value !== 'string') continue;
     if (/^(workspace:|link:|file:)/.test(value)) {
@@ -133,22 +133,43 @@ if [[ -f "$MAIN_FULL" ]]; then
 fi
 
 # Install the actual tarball into an empty consumer project. This catches
-# unresolved workspace/link/file dependencies and package manifests that
-# only work because pnpm resolves them from the monorepo workspace.
-CONSUMER="$WORK_DIR/consumer"
-mkdir -p "$CONSUMER"
-printf '{"name":"kb-release-consumer","private":true}\n' > "$CONSUMER/package.json"
+# unresolved workspace/link/file dependencies AND already-published peer
+# dependencies that are themselves broken (npm auto-installs peers, so a bad
+# manifest several levels deep in someone else's graph breaks this install
+# too — static checks above can't see that).
+#
+# Delegates to `release verify-clean-install` (same implementation `release
+# stage` uses for its own final check) instead of shelling to `npm install`
+# directly: plain npm swallows this exact failure class (EUNSUPPORTEDPROTOCOL
+# thrown deep inside its own Arborist dependency resolver) as an unhandled
+# rejection and prints nothing beyond "npm error, see log file" — confirmed
+# live chasing @kb-labs/sdk@2.115.0's install failure, which took a manual
+# Arborist repro to actually diagnose. Calling Arborist ourselves gets the
+# real error message instead.
+REPO_ROOT=$(git rev-parse --show-toplevel)
+CLI_BIN="$REPO_ROOT/cli/bin/dist/bin.js"
 echo "Installing packed artifact into a clean consumer..."
-if ! npm install --prefix "$CONSUMER" --package-lock=false --ignore-scripts --no-audit --no-fund "$TARBALL_PATH"; then
-  echo "ERROR: packed artifact cannot be installed by a clean consumer" >&2
-  exit 1
+if [[ -f "$CLI_BIN" ]]; then
+  if ! node "$CLI_BIN" release verify-clean-install --tarball "$TARBALL_PATH" --name "$PKG_NAME"; then
+    exit 1
+  fi
+else
+  # Fallback for contexts where the CLI hasn't been built (e.g. this script
+  # invoked standalone, outside the release checks pipeline) — same checks,
+  # degraded (unexplained) error message on failure.
+  CONSUMER="$WORK_DIR/consumer"
+  mkdir -p "$CONSUMER"
+  printf '{"name":"kb-release-consumer","private":true}\n' > "$CONSUMER/package.json"
+  if ! npm install --prefix "$CONSUMER" --package-lock=false --ignore-scripts --no-audit --no-fund "$TARBALL_PATH"; then
+    echo "ERROR: packed artifact cannot be installed by a clean consumer" >&2
+    exit 1
+  fi
+  if ! (cd "$CONSUMER" && node --input-type=module -e 'await import(process.argv[1])' "$PKG_NAME"); then
+    echo "ERROR: clean consumer cannot import $PKG_NAME" >&2
+    exit 1
+  fi
+  echo "  OK: clean consumer install and import"
 fi
-
-if ! (cd "$CONSUMER" && node --input-type=module -e 'await import(process.argv[1])' "$PKG_NAME"); then
-  echo "ERROR: clean consumer cannot import $PKG_NAME" >&2
-  exit 1
-fi
-echo "  OK: clean consumer install and import"
 
 echo "OK: $PKG_NAME packs correctly — all declared exports present."
 exit 0
