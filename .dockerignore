@@ -26,6 +26,8 @@
 **/dist
 !.kb/deploy/**/dist
 !.kb/deploy/**/dist/**
+!.kb/bundle/**/dist
+!.kb/bundle/**/dist/**
 
 # Runtime/local-only .kb state — never something an image build should see.
 **/.kb/database
