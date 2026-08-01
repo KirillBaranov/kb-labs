@@ -52,7 +52,8 @@ function rewriteWorkspaceDep(
 ): boolean {
   const pinned = versionMap.get(depName);
   if (!pinned) { return false; }
-  deps[depName] = val === 'workspace:*' ? `^${pinned}` : val.replace('workspace:', '');
+  const range = val === 'workspace:*' ? '^' : val.slice('workspace:'.length);
+  deps[depName] = `${range}${pinned}`;
   return true;
 }
 

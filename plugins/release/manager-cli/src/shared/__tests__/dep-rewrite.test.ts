@@ -75,6 +75,33 @@ describe('rewriteWorkspaceDeps — own version', () => {
     restore();
   });
 
+  it('preserves caret and tilde ranges when materializing workspace protocols', () => {
+    writePkg(root, {
+      name: '@scope/alpha',
+      version: '1.0.0',
+      dependencies: {
+        '@scope/beta': 'workspace:^',
+        '@scope/gamma': 'workspace:~',
+      },
+    });
+
+    const restore = rewriteWorkspaceDeps(
+      { path: root, version: '1.0.0' },
+      new Map([
+        ['@scope/alpha', '1.0.0'],
+        ['@scope/beta', '2.0.0'],
+        ['@scope/gamma', '3.0.0'],
+      ]),
+      'npm',
+    );
+
+    const written = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
+    expect(written.dependencies['@scope/beta']).toBe('^2.0.0');
+    expect(written.dependencies['@scope/gamma']).toBe('~3.0.0');
+
+    restore();
+  });
+
   it('leaves workspace:* deps untouched for pnpm (pnpm handles them natively) while still bumping version', () => {
     writePkg(root, {
       name: '@scope/alpha',
