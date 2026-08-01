@@ -93,7 +93,8 @@ export function rewriteWorkspaceDeps(
     modified = true;
   }
 
-  // devDependencies must be rewritten too: a published tarball's devDependencies
+  // Every dependency-like section must be rewritten: a published tarball's
+  // devDependencies/optionalDependencies
   // field is inert for the *installer* of this package, but npm's own manifest
   // normalization (npm-package-arg validation inside @npmcli/arborist) parses
   // EVERY dependency-like section of every manifest it reads while building the
@@ -102,7 +103,7 @@ export function rewriteWorkspaceDeps(
   // EUNSUPPORTEDPROTOCOL and aborts the whole install, not just a devDependency
   // installation that would otherwise be skipped. Confirmed live on
   // @kb-labs/plugin-execution-factory@2.114.0's devDependencies.@kb-labs/gateway-core.
-  for (const section of ['dependencies', 'peerDependencies', 'devDependencies'] as const) {
+  for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies', 'devDependencies'] as const) {
     const deps = pkgJson[section] as Record<string, string> | undefined;
     if (!deps) { continue; }
     if (rewriteDepsSection(deps, pkgPath, versionMap, packageManager)) { modified = true; }

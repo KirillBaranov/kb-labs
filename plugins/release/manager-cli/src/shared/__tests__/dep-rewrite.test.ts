@@ -83,6 +83,7 @@ describe('rewriteWorkspaceDeps — own version', () => {
         '@scope/beta': 'workspace:^',
         '@scope/gamma': 'workspace:~',
       },
+      optionalDependencies: { '@scope/optional': 'workspace:*' },
     });
 
     const restore = rewriteWorkspaceDeps(
@@ -91,6 +92,7 @@ describe('rewriteWorkspaceDeps — own version', () => {
         ['@scope/alpha', '1.0.0'],
         ['@scope/beta', '2.0.0'],
         ['@scope/gamma', '3.0.0'],
+        ['@scope/optional', '4.0.0'],
       ]),
       'npm',
     );
@@ -98,6 +100,7 @@ describe('rewriteWorkspaceDeps — own version', () => {
     const written = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
     expect(written.dependencies['@scope/beta']).toBe('^2.0.0');
     expect(written.dependencies['@scope/gamma']).toBe('~3.0.0');
+    expect(written.optionalDependencies['@scope/optional']).toBe('^4.0.0');
 
     restore();
   });
