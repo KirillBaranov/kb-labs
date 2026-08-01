@@ -4,7 +4,6 @@ vi.mock('@kb-labs/release-manager-core', () => ({
   discoverCurrentPackages: vi.fn(),
   mergeConfigWithFlow: vi.fn((config: unknown, flow: string) => ({ ...(config as object), __flow: flow })),
   verifyExtractedTarball: vi.fn(() => []),
-  verifyCleanInstall: vi.fn(),
 }));
 
 vi.mock('@kb-labs/sdk', async (importOriginal) => {
@@ -54,7 +53,7 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
 }));
 
-import { discoverCurrentPackages, verifyCleanInstall } from '@kb-labs/release-manager-core';
+import { discoverCurrentPackages } from '@kb-labs/release-manager-core';
 import { useConfig } from '@kb-labs/sdk';
 import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
 import { spawnSync } from 'node:child_process';
@@ -65,7 +64,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useConfig).mockResolvedValue({} as never);
   vi.mocked(rewriteWorkspaceDeps).mockReturnValue(() => {});
-  vi.mocked(verifyCleanInstall).mockResolvedValue({ ok: true });
 
   vi.mocked(discoverCurrentPackages).mockImplementation(async (_cwd, _scope, config) => {
     const flow = (config as { __flow?: string }).__flow;
@@ -97,7 +95,7 @@ beforeEach(() => {
   });
 });
 
-// Default path: pnpm. Packing and clean-install verification use pnpm.
+// Default path: pnpm. Packing and static artifact verification use pnpm.
 describe('release:stage — default packageManager (pnpm)', () => {
   it('packs and verifies via pnpm while leaving workspace resolution to pnpm', async () => {
     const { ui } = createCapturedUI();
@@ -126,12 +124,8 @@ describe('release:stage — default packageManager (pnpm)', () => {
     expect(payload.artifacts[0]!.tarball).toBe('kb-labs-sdk.tgz');
   });
 
-  // Each package's clean-room install is a real registry round-trip — for a
-  // lockstep flow the size of `platform` (~150 packages) that's ~150
-  // sequential npm installs if run one at a time. Bounded concurrency
-  // (KB_STAGE_CONCURRENCY, default 6) batches the work instead; this proves
-  // the batching loop doesn't drop or duplicate a package across batch
-  // boundaries with more packages than fit in one batch.
+  // Bounded batching proves the stage loop doesn't drop or duplicate a
+  // package across batch boundaries.
   it('stages every package exactly once when there are more packages than the concurrency limit', async () => {
     const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui, cwd: '/project' });
@@ -142,29 +136,6 @@ describe('release:stage — default packageManager (pnpm)', () => {
     const payload = (result as { result: { artifacts: Array<{ name: string }> } }).result;
     expect(payload.artifacts).toHaveLength(8);
     expect(new Set(payload.artifacts.map(a => a.name)).size).toBe(8);
-    expect(vi.mocked(verifyCleanInstall)).toHaveBeenCalledTimes(8);
-  });
-
-  // Static manifest checks (verifyExtractedTarball) can't see an
-  // already-published PEER dependency that is itself broken. This is the
-  // guarantee that catches it: `stage` must fail the whole command — not
-  // just log a warning — when the real clean-room install fails, so CI can
-  // never ship a tarball that doesn't actually install.
-  it('fails the command when verifyCleanInstall reports the tarball cannot be installed', async () => {
-    vi.mocked(verifyCleanInstall).mockResolvedValue({
-      ok: false,
-      error: 'install failed: [EUNSUPPORTEDPROTOCOL] Unsupported URL Type "workspace:": workspace:*',
-    });
-    const { ui } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    // Matches the existing throw-on-failure convention in this file (e.g.
-    // "npm pack failed") — the CLI's outer runner converts this into a
-    // failed command result; calling execute() directly here bypasses that
-    // wrapper, so the rejection itself is the observable contract.
-    await expect(
-      stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk' } })),
-    ).rejects.toThrow('EUNSUPPORTEDPROTOCOL');
   });
 });
 

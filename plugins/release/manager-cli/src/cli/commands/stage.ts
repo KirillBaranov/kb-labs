@@ -26,7 +26,6 @@ import {
   discoverCurrentPackages,
   mergeConfigWithFlow,
   verifyExtractedTarball,
-  verifyCleanInstall,
   type ReleaseConfig,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -104,9 +103,9 @@ function packOne(
 }
 
 /**
- * Pack, statically verify, and clean-install-verify one package — the full
- * per-package unit of work `stage` runs, batched with bounded concurrency
- * by the caller (see KB_STAGE_CONCURRENCY above).
+ * Pack one package. Static artifact verification happens after all packages
+ * have been packed, so Stage never performs a registry-style install per
+ * package.
  */
 async function packStagePackage(
   pkg: { name: string; path: string; currentVersion: string },
@@ -121,13 +120,11 @@ async function packStagePackage(
   } finally { restore(); }
 }
 
-async function verifyStagePackage(
+function verifyStagePackage(
   pkg: { name: string; currentVersion: string },
   outDir: string,
   artifact: StagedArtifact,
-  allTarballs: string[],
-  packageManager: 'pnpm' | 'npm' | 'yarn',
-): Promise<void> {
+): void {
   const tarballPath = join(outDir, artifact.tarball);
   const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
   try {
@@ -137,13 +134,6 @@ async function verifyStagePackage(
     if (issues.length > 0) throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
   } finally { rmSync(verifyDir, { recursive: true, force: true }); }
 
-  const cleanInstall = await verifyCleanInstall(
-    tarballPath,
-    pkg.name,
-    allTarballs.filter(path => path !== tarballPath),
-    packageManager === 'pnpm' ? 'pnpm' : 'npm',
-  );
-  if (!cleanInstall.ok) throw new Error(`staged artifact for ${pkg.name}@${pkg.currentVersion} fails a clean install: ${cleanInstall.error}`);
 }
 
 export default defineCommand({
@@ -193,14 +183,6 @@ export default defineCommand({
       const versionMap = new Map(allWorkspacePackages.map(pkg => [pkg.name, pkg.currentVersion]));
       const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
 
-      // Each package's real clean-room install (verifyCleanInstall, below) is
-      // a genuine network round-trip against the registry — for a lockstep
-      // flow the size of `platform` (~150 packages) that's ~150 sequential
-      // npm installs if run one at a time. Bounded concurrency keeps the
-      // per-package guarantee (see comment below) while cutting wall time by
-      // roughly this factor; KB_STAGE_CONCURRENCY overrides the default for
-      // tuning against real registry rate limits. Mirrors the same pattern
-      // already used for the actual publish step (publish-programmatic.ts).
       const CONCURRENCY = Number(useEnv('KB_STAGE_CONCURRENCY') ?? 6);
 
       const packLoader = useLoader('Packing tarballs...');
@@ -215,16 +197,11 @@ export default defineCommand({
       }
       packLoader.succeed(`Packed ${artifacts.length} tarball(s) to ${outDir}`);
 
-      // Verify against the complete staged flow, not the registry's previous
-      // versions. This matters for peers: while this release is unpublished,
-      // npm would otherwise resolve a peer to an older published package that
-      // may still contain a broken workspace protocol.
-      const allTarballs = artifacts.map(artifact => join(outDir, artifact.tarball));
       const verifyLoader = useLoader('Verifying staged tarballs...');
       verifyLoader.start();
       for (let i = 0; i < discovered.length; i += CONCURRENCY) {
         const batch = discovered.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map((pkg, index) => verifyStagePackage(pkg, outDir, artifacts[i + index]!, allTarballs, packageManager)));
+        batch.forEach((pkg, index) => verifyStagePackage(pkg, outDir, artifacts[i + index]!));
       }
       verifyLoader.succeed(`Verified ${artifacts.length} staged tarball(s)`);
 
