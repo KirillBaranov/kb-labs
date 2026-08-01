@@ -8,10 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   UIButton,
   UISelect,
-  UIRow,
-  UICol,
   UIIcon,
-  UITypographyText,
 } from '@kb-labs/sdk/studio';
 import { useData } from '@kb-labs/sdk/studio';
 import type { WorkflowRun } from '@kb-labs/workflow-contracts';
@@ -62,43 +59,35 @@ export default function WorkflowsRuns() {
         }
       />
 
-      {/* Filters */}
-      <UICard style={{ marginBottom: 'var(--spacing-section)' }}>
-        <UIRow gutter={16}>
-          <UICol span={8}>
-            <UITypographyText className="typo-label">Filter by Status</UITypographyText>
-            <UISelect
-              style={{ width: '100%', marginTop: 8 }}
-              placeholder="All statuses"
-              allowClear
-              value={filters.status}
-              onChange={(status) => setFilters({ ...filters, status: status as string | undefined })}
-              options={[
-                { label: 'Running', value: 'running' },
-                { label: 'Success', value: 'success' },
-                { label: 'Failed', value: 'failed' },
-                { label: 'Dead Letter', value: 'dlq' },
-                { label: 'Cancelled', value: 'cancelled' },
-                { label: 'Queued', value: 'queued' },
-              ]}
-            />
-          </UICol>
-          <UICol span={8}>
-            <UITypographyText className="typo-label">Limit</UITypographyText>
-            <UISelect
-              style={{ width: '100%', marginTop: 8 }}
-              value={filters.limit}
-              onChange={(limit) => setFilters({ ...filters, limit: limit as number })}
-              options={[
-                { label: '25', value: 25 },
-                { label: '50', value: 50 },
-                { label: '100', value: 100 },
-                { label: '200', value: 200 },
-              ]}
-            />
-          </UICol>
-        </UIRow>
-      </UICard>
+      {/* Toolbar — one row, no labels, placeholders do the talking */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--spacing-section)' }}>
+        <UISelect
+          style={{ width: 160 }}
+          placeholder="All statuses"
+          allowClear
+          value={filters.status}
+          onChange={(status) => setFilters({ ...filters, status: status as string | undefined })}
+          options={[
+            { label: 'Running', value: 'running' },
+            { label: 'Success', value: 'success' },
+            { label: 'Failed', value: 'failed' },
+            { label: 'Dead Letter', value: 'dlq' },
+            { label: 'Cancelled', value: 'cancelled' },
+            { label: 'Queued', value: 'queued' },
+          ]}
+        />
+        <UISelect
+          style={{ width: 100 }}
+          value={filters.limit}
+          onChange={(limit) => setFilters({ ...filters, limit: limit as number })}
+          options={[
+            { label: '25', value: 25 },
+            { label: '50', value: 50 },
+            { label: '100', value: 100 },
+            { label: '200', value: 200 },
+          ]}
+        />
+      </div>
 
       {/* View */}
       {viewMode === 'triage' && (
