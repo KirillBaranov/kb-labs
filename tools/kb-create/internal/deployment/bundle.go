@@ -67,7 +67,7 @@ func Export(platformRoot, service, output string, matrix Matrix) error {
 	if err := os.Chmod(filepath.Join(output, "kb-create"), 0o755); err != nil {
 		return fmt.Errorf("make kb-create provisioner executable: %w", err)
 	}
-	files["Dockerfile"] = []byte(fmt.Sprintf("ARG KB_BASE_IMAGE\nFROM ${KB_BASE_IMAGE}\nCOPY --chown=1001:1001 kb-create /usr/local/bin/kb-create\nCOPY --chown=1001:1001 %s marketplace.lock deployment.json compatibility.json /app/.kb/\nRUN kb-create deployment provision --root /app --composition /app/.kb/deployment.json --lock /app/.kb/marketplace.lock --config /app/.kb/%s --matrix /app/.kb/compatibility.json\n", configName, configName))
+	files["Dockerfile"] = []byte(fmt.Sprintf("ARG KB_BASE_IMAGE\nFROM ${KB_BASE_IMAGE}\nCOPY --chown=1001:1001 kb-create /usr/local/bin/kb-create\nCOPY --chown=1001:1001 %s marketplace.lock deployment.json compatibility.json /app/.kb/\nRUN chmod +x /usr/local/bin/kb-create && kb-create deployment provision --root /app --composition /app/.kb/deployment.json --lock /app/.kb/marketplace.lock --config /app/.kb/%s --matrix /app/.kb/compatibility.json\n", configName, configName))
 	for name, data := range files {
 		if err := os.WriteFile(filepath.Join(output, name), data, 0o644); err != nil {
 			return err

@@ -40,6 +40,7 @@ func TestExportUsesJsonCompositionAndEmbedsProvisioner(t *testing.T) {
 	for _, expected := range []string{
 		"FROM ${KB_BASE_IMAGE}",
 		"COPY --chown=1001:1001 kb-create",
+		"RUN chmod +x /usr/local/bin/kb-create && kb-create deployment provision",
 		"kb-create deployment provision",
 		"/app/.kb/kb.config.json",
 	} {
