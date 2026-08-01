@@ -104,6 +104,19 @@ jobs:
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
 
+      - name: Archive built workspace output for delivery
+        shell: bash
+        run: |
+          dist_dirs=()
+          while IFS= read -r -d '' dir; do
+            dist_dirs+=("$dir")
+          done < <(find . -type d -name dist \
+            -not -path './node_modules/*' \
+            -not -path './.git/*' \
+            -not -path './.kb/*' \
+            -print0)
+          tar -czf .kb/release/artifacts/workspace-dist.tar.gz "${dist_dirs[@]}"
+
       - uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
@@ -145,16 +158,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Needed to compile the `kb` CLI itself — the artifact downloaded
-      # below already has the packages to ship, this build never re-packs
-      # them.
-      - name: Build (topological order)
-        run: pnpm build
-
       - uses: actions/download-artifact@v4
         with:
           name: release-artifacts
           path: .kb/release/artifacts/
+
+      - name: Restore built workspace output
+        run: tar -xzf .kb/release/artifacts/workspace-dist.tar.gz -C .
 
       - name: Deliver candidate (publish the staged tarballs as-is)
         run: pnpm kb release deliver --release-tag "${{ github.ref_name }}" --target npm --tag canary
