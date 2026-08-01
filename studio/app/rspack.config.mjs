@@ -13,6 +13,9 @@ const __dirname = path.dirname(__filename);
 // Gateway URL for proxying API and plugin widget requests
 const proxyTarget = process.env.API_PROXY_TARGET || 'http://localhost:4000';
 
+// Dev server port — override via PORT (e.g. isolated worktree/parallel envs)
+const devServerPort = Number(process.env.PORT) || 3000;
+
 // Expose KB_* env vars via import.meta.env
 const envDefines = {
   'import.meta.env.MODE': JSON.stringify(isDev ? 'development' : 'production'),
@@ -111,7 +114,7 @@ export default defineConfig({
     isDev && new RefreshPlugin(),
   ].filter(Boolean),
   devServer: {
-    port: 3000,
+    port: devServerPort,
     hot: true,
     historyApiFallback: true,
     proxy: [
