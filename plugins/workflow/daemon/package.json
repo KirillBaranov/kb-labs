@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/workflow-daemon",
   "description": "Workflow daemon for KB Labs - standalone service for background job execution",
-  "version": "2.116.11",
+  "version": "2.116.12",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
