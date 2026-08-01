@@ -26,6 +26,7 @@ import {
   UIIcon,
 } from '@kb-labs/studio-ui-kit';
 import { UIRangePicker, UICheckbox } from '@kb-labs/studio-ui-kit';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useLogStream } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
@@ -33,6 +34,15 @@ import type { LogRecord, LogSummarizeResponse } from '@kb-labs/studio-data-clien
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
+import { AnalyticsSummaryStrip } from '../../analytics/components/analytics-summary-strip';
+
+const LEVEL_COLORS: Record<string, string> = {
+  error: 'var(--error)',
+  warn: 'var(--warning)',
+  info: 'var(--info)',
+  debug: 'var(--text-tertiary)',
+  trace: 'var(--text-tertiary)',
+};
 
 
 /**
@@ -118,6 +128,99 @@ function calculateLogStats(logs: LogRecord[]) {
   }
 
   return stats;
+}
+
+/**
+ * Compact, single-line log row — click to expand raw JSON.
+ * Replaces the old UIAccordion-per-row rendering (huge padding, generic chevron).
+ */
+function LogRow({ log }: { log: LogRecord }) {
+  const [expanded, setExpanded] = useState(false);
+  const levelColor = LEVEL_COLORS[log.level] ?? 'var(--text-tertiary)';
+
+  const jsonString = useMemo(() => {
+    try {
+      return JSON.stringify(log, null, 2);
+    } catch {
+      return JSON.stringify(
+        {
+          ...log,
+          err: log.err
+            ? {
+                name: String(log.err.name || 'Error'),
+                message: String(log.err.message || ''),
+                stack: String(log.err.stack || '').split('\n').slice(0, 10).join('\n'),
+              }
+            : undefined,
+        },
+        null,
+        2
+      );
+    }
+  }, [log]);
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border-primary)' }}>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          padding: '6px 10px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 12,
+        }}
+      >
+        {expanded ? (
+          <ChevronDown size={12} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+        ) : (
+          <ChevronRight size={12} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+        )}
+        <span style={{ width: 3, height: 14, borderRadius: 2, background: levelColor, flexShrink: 0 }} />
+        <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>{formatTime(log.time)}</span>
+        <span style={{ color: levelColor, fontWeight: 600, flexShrink: 0, minWidth: 44 }}>
+          {log.level.toUpperCase()}
+        </span>
+        {log.plugin && <span style={{ color: 'var(--info)', flexShrink: 0 }}>[{log.plugin}]</span>}
+        <span
+          style={{
+            color: 'var(--text-primary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+          }}
+        >
+          {String(log.msg || '(no message)')}
+          {log.err ? ` (${String(log.err.name || 'Error')})` : ''}
+        </span>
+      </button>
+      {expanded && (
+        <div style={{ background: 'var(--bg-tertiary)', padding: 12 }}>
+          <UITypographyParagraph
+            copyable={{ text: jsonString }}
+            style={{
+              marginBottom: 0,
+              fontSize: 12,
+              fontFamily: 'ui-monospace, monospace',
+              whiteSpace: 'pre-wrap',
+              maxHeight: 400,
+              overflow: 'auto',
+            }}
+          >
+            {jsonString}
+          </UITypographyParagraph>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -329,72 +432,6 @@ export function LogsPage() {
   }, [filteredLogs, groupBy]);
 
   /**
-   * Render single log item with expandable details
-   */
-  const renderLogItem = (log: LogRecord, index: number) => {
-    // Build clean JSON representation for expansion
-    const logData = { ...log };
-
-    // Safe JSON stringify (handles circular refs and errors)
-    let jsonString: string;
-    try {
-      jsonString = JSON.stringify(logData, null, 2);
-    } catch {
-      // Fallback if JSON.stringify fails (circular refs, etc.)
-      jsonString = JSON.stringify(
-        {
-          ...logData,
-          err: logData.err ? {
-            name: String(logData.err.name || 'Error'),
-            message: String(logData.err.message || ''),
-            stack: String(logData.err.stack || '').split('\n').slice(0, 10).join('\n'),
-          } : undefined,
-        },
-        null,
-        2
-      );
-    }
-
-    const labelText = [
-      formatTime(log.time),
-      `[${log.level.toUpperCase()}]`,
-      log.plugin ? `[${log.plugin}]` : '',
-      String(log.msg || '(no message)'),
-      log.err ? `(${String(log.err.name || 'Error')})` : '',
-    ].filter(Boolean).join(' ');
-
-    return (
-      <UIAccordion
-        ghost
-        key={`${log.time}-${index}`}
-        items={[
-          {
-            key: String(index),
-            label: labelText,
-            children: (
-              <div style={{ backgroundColor: '#fafafa', padding: 16, borderRadius: 4, marginLeft: -24, marginRight: -24 }}>
-                <UITypographyParagraph
-                  copyable={{ text: jsonString }}
-                  style={{
-                    marginBottom: 0,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    whiteSpace: 'pre-wrap',
-                    maxHeight: 400,
-                    overflow: 'auto',
-                  }}
-                >
-                  {jsonString}
-                </UITypographyParagraph>
-              </div>
-            ),
-          },
-        ]}
-      />
-    );
-  };
-
-  /**
    * Render grouped logs
    */
   const renderGroupedLogs = () => {
@@ -404,16 +441,16 @@ export function LogsPage() {
 
     return (
       <UIAccordion
+        ghost
         items={groups.map(([key, groupLogs]) => ({
           key,
           label: `${key} (${groupLogs.length} logs)`,
           children: (
-            <UIList
-              dataSource={groupLogs}
-              renderItem={(log, index) => (
-                <UIListItem style={{ padding: '8px 0' }}>{renderLogItem(log, index)}</UIListItem>
-              )}
-            />
+            <div>
+              {groupLogs.map((log, index) => (
+                <LogRow key={`${log.time}-${index}`} log={log} />
+              ))}
+            </div>
           ),
         }))}
       />
@@ -480,379 +517,239 @@ export function LogsPage() {
       <UIPageHeader
         title="Live Logs"
         description="Real-time application logs with AI-ready filtering and grouping"
+        actions={
+          <UIButton
+            variant="primary"
+            icon={<UIIcon name="RobotOutlined" />}
+            onClick={openSummarizeModal}
+            disabled={filteredLogs.length === 0}
+          >
+            AI Summarize
+          </UIButton>
+        }
       />
 
-      {/* Connection Status */}
-      {!isConnected && !error && viewMode === 'live' && (
-        <UIAlert
-          message="Connecting to log stream..."
-          variant="info"
-          showIcon
-          icon={<UIIcon name="SyncOutlined" spin />}
-          style={{ marginBottom: 24 }}
-        />
-      )}
-
-      {error && viewMode === 'live' && (
-        <UIAlert
-          message="Connection failed"
-          description={error.message + ' - Make sure REST API is running on localhost:5050'}
-          variant="error"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-      )}
-
-      {isConnected && viewMode === 'live' && (
-        <UIAlert
-          message="Connected to log stream"
-          variant="success"
-          showIcon
-          icon={<UIIcon name="CheckCircleOutlined" />}
-          style={{ marginBottom: 24 }}
-        />
-      )}
-
-      {viewMode === 'history' && historyError && (
-        <UIAlert
-          message="Failed to load historical logs"
-          description={historyError.message}
-          variant="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {viewMode === 'history' && (
-        <UIAlert
-          message={`Historical logs: ${historyTotal} total`}
-          description={
-            historySource
-              ? `Source: ${historySource}${historyStats?.persistence ? `, persisted logs: ${historyStats.persistence.totalLogs}` : ''}`
-              : 'Showing stored logs with server-side filtering and search'
-          }
-          variant="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {/* Filters & Stats (Collapsible) */}
-      <UICard style={{ marginBottom: 16 }}>
-        <UIAccordion
-          defaultActiveKey={['filters']}
-          ghost
-          items={[
-            {
-              key: 'filters',
-              label: `Filters & Statistics (${
-                viewMode === 'history'
-                  ? `${filteredLogs.length}/${historyTotal}`
-                  : filteredLogs.length
-              } logs)`,
-              children: (
-                <>
-                  <UIRow gutter={[16, 16]} style={{ marginBottom: 12 }}>
-                    <UICol span={6}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          Mode
-                        </UITypographyText>
-                        <UISegmented
-                          value={viewMode}
-                          onChange={(value) => setViewMode(value as 'live' | 'history')}
-                          options={[
-                            { label: 'Live', value: 'live' },
-                            { label: 'History', value: 'history' },
-                          ]}
-                        />
-                      </UISpace>
-                    </UICol>
-
-                    <UICol span={18}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          <UIIcon name="SearchOutlined" /> Search
-                        </UITypographyText>
-                        <UIInput
-                          value={searchQuery}
-                          onChange={(value: string) => setSearchQuery(value)}
-                          placeholder={viewMode === 'history'
-                            ? 'Search in history by message'
-                            : 'Search in live list'}
-                          allowClear
-                        />
-                      </UISpace>
-                    </UICol>
-                  </UIRow>
-
-                  <UIRow gutter={[16, 16]}>
-                    <UICol span={6}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          <UIIcon name="FilterOutlined" /> Level
-                        </UITypographyText>
-                        <UISelect
-                          style={{ width: '100%' }}
-                          placeholder="All levels"
-                          allowClear
-                          value={levelFilter ?? undefined}
-                          onChange={(v) => setLevelFilter(v as string | null)}
-                          options={[
-                            { label: 'Trace', value: 'trace' },
-                            { label: 'Debug', value: 'debug' },
-                            { label: 'Info', value: 'info' },
-                            { label: 'Warning', value: 'warn' },
-                            { label: 'Error', value: 'error' },
-                          ]}
-                        />
-                      </UISpace>
-                    </UICol>
-
-                    <UICol span={6}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          <UIIcon name="FilterOutlined" /> Plugin
-                        </UITypographyText>
-                        <UISelect
-                          style={{ width: '100%' }}
-                          placeholder="All plugins"
-                          allowClear
-                          value={pluginFilter ?? undefined}
-                          onChange={(v) => setPluginFilter(v as string | null)}
-                          options={uniquePlugins.map((plugin) => ({ label: String(plugin), value: String(plugin) }))}
-                        />
-                      </UISpace>
-                    </UICol>
-
-                    <UICol span={6}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          <UIIcon name="ClockCircleOutlined" /> Time Range
-                        </UITypographyText>
-                        <UISelect
-                          style={{ width: '100%' }}
-                          value={timeRange}
-                          onChange={(v) => setTimeRange(v as string)}
-                          options={Object.entries(TIME_RANGES).map(([key, { label }]) => ({
-                            label,
-                            value: key,
-                          }))}
-                        />
-                      </UISpace>
-                    </UICol>
-
-                    <UICol span={6}>
-                      <UISpace direction="vertical" style={{ width: '100%' }}>
-                        <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                          <UIIcon name="GroupOutlined" /> Group By
-                        </UITypographyText>
-                        <UISelect
-                          style={{ width: '100%' }}
-                          value={groupBy}
-                          onChange={(v) => setGroupBy(v as 'none' | 'trace' | 'plugin' | 'execution')}
-                          options={[
-                            { label: 'No grouping', value: 'none' },
-                            { label: 'Trace ID', value: 'trace' },
-                            { label: 'Execution ID', value: 'execution' },
-                            { label: 'Plugin', value: 'plugin' },
-                          ]}
-                        />
-                      </UISpace>
-                    </UICol>
-
-                    {timeRange === 'custom' && (
-                      <UICol span={24}>
-                        <UISpace direction="vertical" style={{ width: '100%' }}>
-                          <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                            Custom Time Range
-                          </UITypographyText>
-                          <UIRangePicker
-                            showTime
-                            style={{ width: '100%' }}
-                            onChange={(dates) =>
-                              setCustomTimeRange(dates as [Dayjs, Dayjs] | null)
-                            }
-                          />
-                        </UISpace>
-                      </UICol>
-                    )}
-                  </UIRow>
-
-                  {/* Statistics (for AI Summarization) */}
-                  <UIRow
-                    gutter={16}
-                    style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}
-                  >
-                    <UICol span={4}>
-                      <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                        Total Logs
-                      </UITypographyText>
-                      <div>
-                        <UITypographyText strong style={{ fontSize: 20 }}>
-                          {stats.total}
-                        </UITypographyText>
-                      </div>
-                    </UICol>
-                    <UICol span={4}>
-                      <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                        Errors
-                      </UITypographyText>
-                      <div>
-                        <UITypographyText type="danger" strong style={{ fontSize: 20 }}>
-                          {stats.errorCount}
-                        </UITypographyText>
-                      </div>
-                    </UICol>
-                    <UICol span={4}>
-                      <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                        Warnings
-                      </UITypographyText>
-                      <div>
-                        <UITypographyText type="warning" strong style={{ fontSize: 20 }}>
-                          {stats.warningCount}
-                        </UITypographyText>
-                      </div>
-                    </UICol>
-                    <UICol span={4}>
-                      <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                        Unique Traces
-                      </UITypographyText>
-                      <div>
-                        <UITypographyText strong style={{ fontSize: 20 }}>
-                          {stats.uniqueTraces.size}
-                        </UITypographyText>
-                      </div>
-                    </UICol>
-                    <UICol span={4}>
-                      <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                        Unique Executions
-                      </UITypographyText>
-                      <div>
-                        <UITypographyText strong style={{ fontSize: 20 }}>
-                          {stats.uniqueExecutions.size}
-                        </UITypographyText>
-                      </div>
-                    </UICol>
-                    <UICol span={4}>
-                      <UIButton
-                        variant="primary"
-                        icon={<UIIcon name="RobotOutlined" />}
-                        onClick={openSummarizeModal}
-                        disabled={filteredLogs.length === 0}
-                      >
-                        AI Summarize
-                      </UIButton>
-                    </UICol>
-                  </UIRow>
-                </>
-              ),
-            },
-          ]}
-        />
-      </UICard>
-
-      {/* Logs List */}
-      <UICard
-        title={
-          <UISpace>
-            <span>{
-              groupBy === 'none'
-                ? (viewMode === 'history' ? 'Historical Logs' : 'Recent Logs')
-                : `Logs grouped by ${groupBy}`
-            }</span>
-            <UIBadge
-              count={viewMode === 'history' ? historyTotal : filteredLogs.length}
-              showZero
-              style={{ backgroundColor: '#52c41a' }}
-            />
-          </UISpace>
-        }
-        extra={
-          <UISpace>
-            {viewMode === 'live' ? (
-              <>
-                <UIButton
-                  size="small"
-                  icon={isPaused ? <UIIcon name="SyncOutlined" /> : <UIIcon name="ClockCircleOutlined" />}
-                  onClick={() => setIsPaused(!isPaused)}
-                  variant={isPaused ? 'primary' : 'default'}
-                >
-                  {isPaused ? 'Resume' : 'Pause'}
-                </UIButton>
-                <UIButton size="small" onClick={clearLogs}>
-                  Clear
-                </UIButton>
-              </>
-            ) : (
-              <UIButton
-                size="small"
-                icon={<UIIcon name="ReloadOutlined" />}
-                loading={historyLoading}
-                onClick={() => setHistoryRefreshToken((v) => v + 1)}
-              >
-                Refresh
-              </UIButton>
-            )}
-          </UISpace>
-        }
-      >
-        {viewMode === 'history' && historyLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <UISpin tip="Loading historical logs..." />
-          </div>
-        ) : filteredLogs.length === 0 ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+        {/* Connection Status */}
+        {!isConnected && !error && viewMode === 'live' && (
           <UIAlert
-            message="No logs match current filters"
-            description={
-              viewMode === 'history'
-                ? 'Adjust filters or search query for historical data'
-                : 'Adjust filters or wait for new logs to arrive'
-            }
+            message="Connecting to log stream..."
             variant="info"
             showIcon
+            icon={<UIIcon name="SyncOutlined" spin />}
           />
-        ) : groupBy === 'none' ? (
-          <div style={{ maxHeight: 600, overflow: 'auto' }}>
-            <UIList
-              dataSource={filteredLogs}
-              renderItem={(log, index) => (
-                <UIListItem style={{ padding: '8px 0' }}>{renderLogItem(log, index)}</UIListItem>
-              )}
-              pagination={
-                viewMode === 'history'
-                  ? {
-                      current: historyPage,
-                      total: historyTotal,
-                      pageSize: historyPageSize,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['25', '50', '100', '200'],
-                      showTotal: (total: number, range: [number, number]) =>
-                        `Showing ${range[0]}-${range[1]} of ${total} logs`,
-                      onChange: (page: number, pageSize: number) => {
-                        if (pageSize !== historyPageSize) {
-                          setHistoryPageSize(pageSize);
-                          setHistoryPage(1);
-                        } else {
-                          setHistoryPage(page);
-                        }
-                      },
-                    }
-                  : filteredLogs.length > 50
-                  ? {
-                      pageSize: 50,
-                      showSizeChanger: true,
-                      showTotal: (total: number) => `Total ${total} logs`,
-                      pageSizeOptions: ['25', '50', '100', '200'],
-                    }
-                  : false
-              }
-            />
-          </div>
-        ) : (
-          renderGroupedLogs()
         )}
-      </UICard>
+
+        {error && viewMode === 'live' && (
+          <UIAlert
+            message="Connection failed"
+            description={error.message + ' - Make sure REST API is running on localhost:5050'}
+            variant="error"
+            showIcon
+          />
+        )}
+
+        {viewMode === 'history' && historyError && (
+          <UIAlert
+            message="Failed to load historical logs"
+            description={historyError.message}
+            variant="error"
+            showIcon
+          />
+        )}
+
+        {/* Toolbar — one row, no labels, placeholders do the talking */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <UISegmented
+            value={viewMode}
+            onChange={(value) => setViewMode(value as 'live' | 'history')}
+            options={[
+              { label: 'Live', value: 'live' },
+              { label: 'History', value: 'history' },
+            ]}
+          />
+          <UIInput
+            value={searchQuery}
+            onChange={(value: string) => setSearchQuery(value)}
+            placeholder={viewMode === 'history' ? 'Search history…' : 'Search live logs…'}
+            allowClear
+            prefix={<UIIcon name="SearchOutlined" style={{ color: 'var(--text-tertiary)' }} />}
+            style={{ flex: '1 1 220px', minWidth: 180 }}
+          />
+          <UISelect
+            style={{ width: 130 }}
+            placeholder="All levels"
+            allowClear
+            value={levelFilter ?? undefined}
+            onChange={(v) => setLevelFilter(v as string | null)}
+            options={[
+              { label: 'Trace', value: 'trace' },
+              { label: 'Debug', value: 'debug' },
+              { label: 'Info', value: 'info' },
+              { label: 'Warning', value: 'warn' },
+              { label: 'Error', value: 'error' },
+            ]}
+          />
+          <UISelect
+            style={{ width: 150 }}
+            placeholder="All plugins"
+            allowClear
+            value={pluginFilter ?? undefined}
+            onChange={(v) => setPluginFilter(v as string | null)}
+            options={uniquePlugins.map((plugin) => ({ label: String(plugin), value: String(plugin) }))}
+          />
+          <UISelect
+            style={{ width: 150 }}
+            value={timeRange}
+            onChange={(v) => setTimeRange(v as string)}
+            options={Object.entries(TIME_RANGES).map(([key, { label }]) => ({ label, value: key }))}
+          />
+          <UISelect
+            style={{ width: 150 }}
+            value={groupBy}
+            onChange={(v) => setGroupBy(v as 'none' | 'trace' | 'plugin' | 'execution')}
+            options={[
+              { label: 'No grouping', value: 'none' },
+              { label: 'Trace ID', value: 'trace' },
+              { label: 'Execution ID', value: 'execution' },
+              { label: 'Plugin', value: 'plugin' },
+            ]}
+          />
+        </div>
+
+        {timeRange === 'custom' && (
+          <UIRangePicker
+            showTime
+            style={{ width: 340 }}
+            onChange={(dates) => setCustomTimeRange(dates as [Dayjs, Dayjs] | null)}
+          />
+        )}
+
+        {/* Headline stats — the numbers you check first */}
+        <AnalyticsSummaryStrip
+          metrics={[
+            { label: 'Total', value: viewMode === 'history' ? historyTotal : filteredLogs.length },
+            { label: 'Errors', value: stats.errorCount, valueColor: stats.errorCount > 0 ? 'var(--error)' : undefined },
+            { label: 'Warnings', value: stats.warningCount, valueColor: stats.warningCount > 0 ? 'var(--warning)' : undefined },
+            { label: 'Unique Traces', value: stats.uniqueTraces.size },
+            { label: 'Unique Executions', value: stats.uniqueExecutions.size },
+          ]}
+        />
+
+        {viewMode === 'history' && (
+          <UITypographyText type="secondary" style={{ fontSize: 12 }}>
+            {historySource
+              ? `Source: ${historySource}${historyStats?.persistence ? ` · persisted logs: ${historyStats.persistence.totalLogs}` : ''}`
+              : 'Showing stored logs with server-side filtering and search'}
+          </UITypographyText>
+        )}
+
+        {/* Logs — dense rows, no card framing, just a bordered panel */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <UISpace size="small">
+              <UITypographyText strong>
+                {groupBy === 'none'
+                  ? (viewMode === 'history' ? 'Historical Logs' : 'Recent Logs')
+                  : `Logs grouped by ${groupBy}`}
+              </UITypographyText>
+              <UIBadge
+                count={viewMode === 'history' ? historyTotal : filteredLogs.length}
+                showZero
+                style={{ backgroundColor: 'var(--text-tertiary)' }}
+              />
+            </UISpace>
+            <UISpace>
+              {viewMode === 'live' ? (
+                <>
+                  <UIButton
+                    size="small"
+                    icon={isPaused ? <UIIcon name="SyncOutlined" /> : <UIIcon name="ClockCircleOutlined" />}
+                    onClick={() => setIsPaused(!isPaused)}
+                    variant={isPaused ? 'primary' : 'default'}
+                  >
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </UIButton>
+                  <UIButton size="small" onClick={clearLogs}>
+                    Clear
+                  </UIButton>
+                </>
+              ) : (
+                <UIButton
+                  size="small"
+                  icon={<UIIcon name="ReloadOutlined" />}
+                  loading={historyLoading}
+                  onClick={() => setHistoryRefreshToken((v) => v + 1)}
+                >
+                  Refresh
+                </UIButton>
+              )}
+            </UISpace>
+          </div>
+
+          <div style={{ border: '1px solid var(--border-primary)', borderRadius: 10, overflow: 'hidden' }}>
+            {viewMode === 'history' && historyLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <UISpin tip="Loading historical logs..." />
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <UIAlert
+                message="No logs match current filters"
+                description={
+                  viewMode === 'history'
+                    ? 'Adjust filters or search query for historical data'
+                    : 'Adjust filters or wait for new logs to arrive'
+                }
+                variant="info"
+                showIcon
+                style={{ border: 'none' }}
+              />
+            ) : groupBy === 'none' ? (
+              <div style={{ maxHeight: 640, overflow: 'auto' }}>
+                <UIList
+                  split={false}
+                  dataSource={filteredLogs}
+                  renderItem={(log, index) => (
+                    <UIListItem style={{ padding: 0, display: 'block' }}>
+                      <LogRow key={`${log.time}-${index}`} log={log} />
+                    </UIListItem>
+                  )}
+                  pagination={
+                    viewMode === 'history'
+                      ? {
+                          current: historyPage,
+                          total: historyTotal,
+                          pageSize: historyPageSize,
+                          showSizeChanger: true,
+                          pageSizeOptions: ['25', '50', '100', '200'],
+                          showTotal: (total: number, range: [number, number]) =>
+                            `Showing ${range[0]}-${range[1]} of ${total} logs`,
+                          onChange: (page: number, pageSize: number) => {
+                            if (pageSize !== historyPageSize) {
+                              setHistoryPageSize(pageSize);
+                              setHistoryPage(1);
+                            } else {
+                              setHistoryPage(page);
+                            }
+                          },
+                        }
+                      : filteredLogs.length > 50
+                      ? {
+                          pageSize: 50,
+                          showSizeChanger: true,
+                          showTotal: (total: number) => `Total ${total} logs`,
+                          pageSizeOptions: ['25', '50', '100', '200'],
+                        }
+                      : false
+                  }
+                />
+              </div>
+            ) : (
+              renderGroupedLogs()
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* AI Summarize Modal */}
       <UIModal
@@ -883,7 +780,7 @@ export function LogsPage() {
       >
         <UISpace direction="vertical" style={{ width: '100%' }} size="large">
           {/* Data Preview */}
-          <UICard size="small" style={{ backgroundColor: '#fafafa' }}>
+          <UICard size="small" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
             <UIRow gutter={16}>
               <UICol span={6}>
                 <UITypographyText type="secondary">Logs to analyze:</UITypographyText>
