@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-s3",
   "description": "S3-compatible storage adapter implementing IStorage interface (supports MinIO)",
-  "version": "2.114.0",
+  "version": "2.115.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
