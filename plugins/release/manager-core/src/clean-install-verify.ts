@@ -38,14 +38,17 @@ export async function verifyCleanInstall(
   try {
     if (packageManager === 'pnpm') {
       const stagedTarballs = [tarballPath, ...additionalTarballs];
-      const dependencies: Record<string, string> = {};
+      const targetName = readPackedPackageName(tarballPath);
+      if (!targetName) {
+        return { ok: false, error: `install failed: cannot read package name from ${tarballPath}` };
+      }
+      const dependencies: Record<string, string> = { [targetName]: `file:${tarballPath}` };
       const overrides: Record<string, string> = {};
       for (const stagedTarball of stagedTarballs) {
         const name = readPackedPackageName(stagedTarball);
         if (!name) {
           return { ok: false, error: `install failed: cannot read package name from ${stagedTarball}` };
         }
-        dependencies[name] = `file:${stagedTarball}`;
         overrides[name] = `file:${stagedTarball}`;
       }
       writeFileSync(
