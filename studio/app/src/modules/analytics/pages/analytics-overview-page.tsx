@@ -1,4 +1,4 @@
-import { UIRow, UICol, UIStatistic, UIAlert, UISpace, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert } from '@kb-labs/studio-ui-kit';
 import {
   ThunderboltOutlined,
   DatabaseOutlined,
@@ -10,7 +10,7 @@ import {
   ArrowRightOutlined,
   DollarOutlined,
 } from '@ant-design/icons';
-import { UIText, UITitle, UICard, UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
+import { UICard, UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
 import {
   useAnalyticsStats,
   useAdaptersLLMUsage,
@@ -21,7 +21,17 @@ import {
 } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import { useNavigate } from 'react-router-dom';
+import { AnalyticsSummaryStrip } from '../components/analytics-summary-strip';
+import type { ReactNode } from 'react';
 
+interface AdapterCardConfig {
+  key: string;
+  path: string;
+  label: string;
+  icon: ReactNode;
+  color: string;
+  stats: Array<{ title: string; value: number; suffix?: string; precision?: number; prefix?: ReactNode; valueColor?: string }>;
+}
 
 /**
  * Analytics Overview Page
@@ -32,7 +42,6 @@ import { useNavigate } from 'react-router-dom';
  * - Quick links to detailed views (LLM, Cache, Events, etc.)
  */
 export function AnalyticsOverviewPage() {
-  const { token } = useUITheme();
   const sources = useDataSources();
   const navigate = useNavigate();
 
@@ -89,6 +98,74 @@ export function AnalyticsOverviewPage() {
     );
   }
 
+  const summary = [
+    { label: 'Total Events', value: statsData?.totalEvents ?? 0 },
+    { label: 'Event Types', value: statsData ? Object.keys(statsData.byType).length : 0 },
+    { label: 'Sources', value: statsData ? Object.keys(statsData.bySource).length : 0 },
+    { label: 'Actors', value: statsData ? Object.keys(statsData.byActor).length : 0 },
+  ];
+
+  const adapters: AdapterCardConfig[] = [
+    {
+      key: 'llm',
+      path: '/analytics/llm',
+      label: 'LLM Usage',
+      icon: <RobotOutlined />,
+      color: 'var(--info)',
+      stats: [
+        { title: 'Requests', value: llmStats?.totalRequests ?? 0 },
+        { title: 'Cost', value: llmStats?.totalCost ?? 0, prefix: <DollarOutlined />, precision: 2 },
+      ],
+    },
+    {
+      key: 'embeddings',
+      path: '/analytics/embeddings',
+      label: 'Embeddings',
+      icon: <FileTextOutlined />,
+      color: 'var(--success)',
+      stats: [
+        { title: 'Requests', value: embeddingsStats?.totalRequests ?? 0 },
+        { title: 'Text Chars', value: embeddingsStats?.totalTextLength ?? 0 },
+      ],
+    },
+    {
+      key: 'vectorstore',
+      path: '/analytics/vectorstore',
+      label: 'VectorStore',
+      icon: <DatabaseOutlined />,
+      color: 'var(--link)',
+      stats: [
+        { title: 'Searches', value: vectorstoreStats?.searchQueries ?? 0 },
+        { title: 'Avg Score', value: vectorstoreStats?.avgSearchScore ?? 0, precision: 2 },
+      ],
+    },
+    {
+      key: 'cache',
+      path: '/analytics/cache',
+      label: 'Cache',
+      icon: <ThunderboltOutlined />,
+      color: 'var(--warning)',
+      stats: [
+        {
+          title: 'Hit Rate', value: cacheStats?.hitRate ?? 0, suffix: '%', precision: 1,
+          valueColor: cacheStats && cacheStats.hitRate >= 80 ? 'var(--success)' : 'var(--info)',
+        },
+        { title: 'Total Gets', value: cacheStats?.totalGets ?? 0 },
+      ],
+    },
+    {
+      key: 'storage',
+      path: '/analytics/storage',
+      label: 'Storage',
+      icon: <SaveOutlined />,
+      color: 'var(--error)',
+      stats: [
+        { title: 'Reads', value: storageStats?.readOperations ?? 0 },
+        { title: 'Writes', value: storageStats?.writeOperations ?? 0 },
+      ],
+    },
+  ];
+
   return (
     <UIPage width="full">
       <UIPageHeader
@@ -96,206 +173,47 @@ export function AnalyticsOverviewPage() {
         description="High-level metrics across all platform adapters"
       />
 
-      <div style={{ marginTop: 24 }}>
-        {/* Overview Stats */}
-        <UIRow gutter={[16, 16]}>
-          {[
-            { label: 'Total Events', value: statsData?.totalEvents ?? 0, icon: <ThunderboltOutlined />, status: 'info' as const },
-            { label: 'Event Types', value: statsData ? Object.keys(statsData.byType).length : 0, icon: <DatabaseOutlined />, status: 'success' as const },
-            { label: 'Sources', value: statsData ? Object.keys(statsData.bySource).length : 0, icon: <CloudOutlined />, status: 'default' as const },
-            { label: 'Actors', value: statsData ? Object.keys(statsData.byActor).length : 0, icon: <RocketOutlined />, status: 'warning' as const },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={6}>
-              <UIMetricCard {...metric} loading={statsLoading} />
-            </UICol>
-          ))}
-        </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+        <AnalyticsSummaryStrip metrics={summary} loading={statsLoading} />
 
         {/* Platform Adapters */}
-        <div style={{ marginTop: 32 }}>
-          <UITitle level={4}>Platform Adapters</UITitle>
-          <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
-            {/* LLM Adapter */}
-            <UICol xs={24} md={12} lg={8}>
-              <UICard
-                hoverable
-                onClick={() => navigate('/analytics/llm')}
-                style={{ cursor: 'pointer' }}
-              >
-                <UISpace direction="vertical" style={{ width: '100%' }} size="large">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <UISpace>
-                      <RobotOutlined style={{ fontSize: 24, color: 'var(--info)' }} />
-                      <UIText weight="semibold" style={{ fontSize: 16 }}>LLM Usage</UIText>
-                    </UISpace>
-                    <ArrowRightOutlined style={{ color: token.colorTextTertiary }} />
-                  </div>
-                  <UIRow gutter={16}>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Requests"
-                        value={llmStats?.totalRequests ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Cost"
-                        value={llmStats?.totalCost ?? 0}
-                        prefix={<DollarOutlined />}
-                        precision={2}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                  </UIRow>
-                </UISpace>
-              </UICard>
-            </UICol>
+        <UIRow gutter={[16, 16]}>
+          {adapters.map(adapter => {
+            const title = (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: adapter.color, fontSize: 15, display: 'flex' }}>{adapter.icon}</span>
+                <span>{adapter.label}</span>
+              </div>
+            );
 
-            {/* Embeddings Adapter */}
-            <UICol xs={24} md={12} lg={8}>
-              <UICard
-                hoverable
-                onClick={() => navigate('/analytics/embeddings')}
-                style={{ cursor: 'pointer' }}
-              >
-                <UISpace direction="vertical" style={{ width: '100%' }} size="large">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <UISpace>
-                      <FileTextOutlined style={{ fontSize: 24, color: 'var(--success)' }} />
-                      <UIText weight="semibold" style={{ fontSize: 16 }}>Embeddings</UIText>
-                    </UISpace>
-                    <ArrowRightOutlined style={{ color: token.colorTextTertiary }} />
-                  </div>
+            return (
+              <UICol key={adapter.key} xs={24} md={12} lg={8}>
+                <UICard
+                  title={title}
+                  extra={<ArrowRightOutlined style={{ color: 'var(--text-tertiary)', fontSize: 13 }} />}
+                  hoverable
+                  onClick={() => navigate(adapter.path)}
+                  style={{ cursor: 'pointer', height: '100%' }}
+                >
                   <UIRow gutter={16}>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Requests"
-                        value={embeddingsStats?.totalRequests ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Text Chars"
-                        value={embeddingsStats?.totalTextLength ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
+                    {adapter.stats.map(stat => (
+                      <UICol span={12} key={stat.title}>
+                        <UIStatistic
+                          title={stat.title}
+                          value={stat.value}
+                          suffix={stat.suffix}
+                          precision={stat.precision}
+                          prefix={stat.prefix}
+                          valueStyle={{ fontSize: 18, color: stat.valueColor }}
+                        />
+                      </UICol>
+                    ))}
                   </UIRow>
-                </UISpace>
-              </UICard>
-            </UICol>
-
-            {/* VectorStore Adapter */}
-            <UICol xs={24} md={12} lg={8}>
-              <UICard
-                hoverable
-                onClick={() => navigate('/analytics/vectorstore')}
-                style={{ cursor: 'pointer' }}
-              >
-                <UISpace direction="vertical" style={{ width: '100%' }} size="large">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <UISpace>
-                      <DatabaseOutlined style={{ fontSize: 24, color: 'var(--link)' }} />
-                      <UIText weight="semibold" style={{ fontSize: 16 }}>VectorStore</UIText>
-                    </UISpace>
-                    <ArrowRightOutlined style={{ color: token.colorTextTertiary }} />
-                  </div>
-                  <UIRow gutter={16}>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Searches"
-                        value={vectorstoreStats?.searchQueries ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Avg Score"
-                        value={vectorstoreStats?.avgSearchScore ?? 0}
-                        precision={2}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                  </UIRow>
-                </UISpace>
-              </UICard>
-            </UICol>
-
-            {/* Cache Adapter */}
-            <UICol xs={24} md={12} lg={8}>
-              <UICard
-                hoverable
-                onClick={() => navigate('/analytics/cache')}
-                style={{ cursor: 'pointer' }}
-              >
-                <UISpace direction="vertical" style={{ width: '100%' }} size="large">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <UISpace>
-                      <ThunderboltOutlined style={{ fontSize: 24, color: 'var(--warning)' }} />
-                      <UIText weight="semibold" style={{ fontSize: 16 }}>Cache</UIText>
-                    </UISpace>
-                    <ArrowRightOutlined style={{ color: token.colorTextTertiary }} />
-                  </div>
-                  <UIRow gutter={16}>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Hit Rate"
-                        value={cacheStats?.hitRate ?? 0}
-                        suffix="%"
-                        precision={1}
-                        valueStyle={{ fontSize: 20, color: cacheStats && cacheStats.hitRate >= 80 ? 'var(--success)' : 'var(--info)' }}
-                      />
-                    </UICol>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Total Gets"
-                        value={cacheStats?.totalGets ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                  </UIRow>
-                </UISpace>
-              </UICard>
-            </UICol>
-
-            {/* Storage Adapter */}
-            <UICol xs={24} md={12} lg={8}>
-              <UICard
-                hoverable
-                onClick={() => navigate('/analytics/storage')}
-                style={{ cursor: 'pointer' }}
-              >
-                <UISpace direction="vertical" style={{ width: '100%' }} size="large">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <UISpace>
-                      <SaveOutlined style={{ fontSize: 24, color: 'var(--error)' }} />
-                      <UIText weight="semibold" style={{ fontSize: 16 }}>Storage</UIText>
-                    </UISpace>
-                    <ArrowRightOutlined style={{ color: token.colorTextTertiary }} />
-                  </div>
-                  <UIRow gutter={16}>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Reads"
-                        value={storageStats?.readOperations ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                    <UICol span={12}>
-                      <UIStatistic
-                        title="Writes"
-                        value={storageStats?.writeOperations ?? 0}
-                        valueStyle={{ fontSize: 20 }}
-                      />
-                    </UICol>
-                  </UIRow>
-                </UISpace>
-              </UICard>
-            </UICol>
-          </UIRow>
-        </div>
+                </UICard>
+              </UICol>
+            );
+          })}
+        </UIRow>
       </div>
     </UIPage>
   );

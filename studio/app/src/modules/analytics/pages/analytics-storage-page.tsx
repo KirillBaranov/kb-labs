@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIMetricCard } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert } from '@kb-labs/studio-ui-kit';
 import {
-  FileOutlined,
   UploadOutlined,
   DownloadOutlined,
   DeleteOutlined,
@@ -12,6 +11,7 @@ import { UIText, UIStatisticsChart, UICard, UIPage, UIPageHeader } from '@kb-lab
 import { useAdaptersStorageUsage, useAdaptersStorageDailyStats } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import { AnalyticsDateRangePicker, type DateRangeValue } from '../components/analytics-date-range-picker';
+import { AnalyticsSummaryStrip } from '../components/analytics-summary-strip';
 import dayjs from 'dayjs';
 
 
@@ -121,23 +121,19 @@ export function AnalyticsStoragePage() {
         }
       />
 
-      <div style={{ marginTop: 24 }}>
-        {/* Operations Overview */}
-        <UIRow gutter={[16, 16]}>
-          {[
-            { label: 'Read Operations', value: stats?.readOperations ?? 0, icon: <DownloadOutlined />, status: 'info' as const },
-            { label: 'Write Operations', value: stats?.writeOperations ?? 0, icon: <UploadOutlined />, status: 'success' as const },
-            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0, icon: <DeleteOutlined />, status: 'error' as const },
-            { label: 'Total Operations', value: totalOperations, icon: <FileOutlined />, status: 'default' as const },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={6}>
-              <UIMetricCard {...metric} loading={isLoading} />
-            </UICol>
-          ))}
-        </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        <AnalyticsSummaryStrip
+          loading={isLoading}
+          metrics={[
+            { label: 'Read Operations', value: stats?.readOperations ?? 0 },
+            { label: 'Write Operations', value: stats?.writeOperations ?? 0 },
+            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0 },
+            { label: 'Total Operations', value: totalOperations },
+          ]}
+        />
 
         {/* Bandwidth Usage */}
-        <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <UIRow gutter={[16, 16]}>
           <UICol xs={24} lg={12}>
             <UICard title="Bandwidth Usage" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
@@ -201,7 +197,7 @@ export function AnalyticsStoragePage() {
 
         {/* Operation Statistics */}
         {stats && totalOperations > 0 && (
-          <UICard title="Operation Statistics" style={{ marginTop: 16 }}>
+          <UICard title="Operation Statistics">
             <UIRow gutter={[16, 16]}>
               <UICol xs={24} sm={8}>
                 <UIStatistic

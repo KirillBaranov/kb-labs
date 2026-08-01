@@ -1,17 +1,14 @@
 import { useState, useMemo } from 'react';
-import { UIRow, UICol, UIAlert, UITable, UISpace, UISelect, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIAlert, UITable, UISpace, UISelect, useUITheme } from '@kb-labs/studio-ui-kit';
 import {
   RobotOutlined,
-  DollarOutlined,
-  ThunderboltOutlined,
   ClockCircleOutlined,
-  WarningOutlined,
-  SaveOutlined,
 } from '@ant-design/icons';
 import { UIText, UIStatisticsChart, UICard, UITag, UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
 import { useAdaptersLLMUsage, useAdaptersLLMDailyStats } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import { AnalyticsDateRangePicker, type DateRangeValue } from '../components/analytics-date-range-picker';
+import { AnalyticsSummaryStrip } from '../components/analytics-summary-strip';
 import { formatCost, formatNumber, formatDuration } from '../utils/formatters';
 import dayjs from 'dayjs';
 
@@ -292,38 +289,24 @@ export function AnalyticsLLMPage() {
         }
       />
 
-      <div style={{ marginTop: 24 }}>
-        {/* Overview Stats */}
-        <UIRow gutter={[16, 16]}>
-          {[
-            { label: 'Total Requests', value: stats?.totalRequests ?? 0, icon: <ThunderboltOutlined />, status: 'info' as const },
-            { label: 'Total Tokens', value: stats?.totalTokens ?? 0, icon: <RobotOutlined />, status: 'success' as const },
-            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '0', icon: <DollarOutlined />, status: 'error' as const },
-            { label: 'Errors', value: stats?.errors ?? 0, icon: <WarningOutlined />, status: (stats && stats.errors > 0 ? 'warning' : 'success') as 'warning' | 'success' },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={6}>
-              <UIMetricCard {...metric} loading={isLoading} />
-            </UICol>
-          ))}
-        </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        {/* Headline — the 4 numbers you actually check first: how much, how many, is it broken, is caching paying off */}
+        <AnalyticsSummaryStrip
+          loading={isLoading}
+          metrics={[
+            { label: 'Total Requests', value: stats?.totalRequests ?? 0 },
+            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '$0.00' },
+            { label: 'Errors', value: stats?.errors ?? 0, valueColor: stats && stats.errors > 0 ? 'var(--warning)' : undefined },
+            { label: 'Cache Savings', value: stats ? formatCost(stats.totalCacheSavingsUsd) : '$0.00', valueColor: 'var(--success)' },
+          ]}
+        />
 
-        {/* Cache Savings Row */}
-        <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
-          {[
-            { label: 'Cache Read Tokens', value: stats?.totalCacheReadTokens ?? 0, icon: <SaveOutlined />, status: 'info' as const },
-            { label: 'Billable Tokens', value: stats?.totalBillableTokens ?? 0, icon: <RobotOutlined />, status: 'warning' as const },
-            { label: 'Cache Savings', value: stats ? formatCost(stats.totalCacheSavingsUsd) : '0', icon: <DollarOutlined />, status: 'success' as const },
-          ].map((metric) => (
-            <UICol key={metric.label} xs={24} sm={12} lg={8}>
-              <UIMetricCard {...metric} loading={isLoading} />
-            </UICol>
-          ))}
-        </UIRow>
-
-        {/* Model Breakdown Table */}
+        {/* Model Breakdown Table — token accounting lives here as a subtitle, one level down from the headline */}
         <UICard
           title="Usage by Model"
-          style={{ marginTop: 16 }}
+          subtitle={stats
+            ? `${formatNumber(stats.totalTokens)} total tokens · ${formatNumber(stats.totalCacheReadTokens)} cached · ${formatNumber(stats.totalBillableTokens)} billable`
+            : undefined}
           extra={
             stats && (
               <UITag color="blue">
@@ -343,7 +326,7 @@ export function AnalyticsLLMPage() {
         </UICard>
 
         {/* Daily Usage Chart */}
-        <UICard title="Daily Usage Trend" style={{ marginTop: 16 }} key="daily-usage-chart">
+        <UICard title="Daily Usage Trend" key="daily-usage-chart">
           {/* Model Filter */}
           <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <UIText weight="medium">Filter by models:</UIText>
