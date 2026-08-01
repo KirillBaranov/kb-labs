@@ -53,17 +53,14 @@ interface StagePayload {
 /**
  * Pack one package into `outDir`, returning the produced tarball's filename.
  *
- * pnpm (the default, matches `check-pack-install.sh`'s own packing) resolves
- * `workspace:*`/`workspace:^`/`workspace:~` natively across every dependency
- * section — dependencies, peerDependencies, AND devDependencies — using the
- * live monorepo state on disk. No external versionMap or manual rewrite is
- * needed, and there is no dedicated --json output; `pnpm pack` just prints
- * the produced tarball's absolute path as its last stdout line.
+ * `pnpm pack` resolves workspace references well enough for a workspace
+ * install, but it can leave literal `workspace:*`/`workspace:^`/`workspace:~`
+ * values in the packed manifest (notably peerDependencies). The tarball is
+ * consumed outside the workspace by npm, so materialize every dependency
+ * section before packing and restore the source manifest afterwards.
  *
- * npm/yarn (opt-in via `config.publish.packageManager`) never resolves
- * workspace: protocols on their own, so those two still need the manual
- * rewriteWorkspaceDeps() pre-pass with a versionMap built from the whole
- * workspace (see caller).
+ * npm/yarn (opt-in via `config.publish.packageManager`) need the same rewrite;
+ * they do not resolve workspace: protocols on their own.
  */
 /** pnpm prints the produced tarball's absolute path as its last stdout line — no --json output exists. */
 function filenameFromPnpmPack(stdout: string): string | undefined {
@@ -85,9 +82,15 @@ function packOne(
   versionMap: Map<string, string>,
 ): { filename: string; restore: () => void } {
   const isPnpm = packageManager === 'pnpm';
-  const restore = isPnpm
-    ? () => {}
-    : rewriteWorkspaceDeps({ path: pkg.path, version: pkg.currentVersion }, versionMap, packageManager);
+  // `rewriteWorkspaceDeps` intentionally keeps workspace: refs for the
+  // publish path, where pnpm performs its own normalization. Stage is
+  // different: it produces a standalone tarball for npm consumers, so force
+  // the non-pnpm rewrite path even when pnpm is the packer.
+  const restore = rewriteWorkspaceDeps(
+    { path: pkg.path, version: pkg.currentVersion },
+    versionMap,
+    isPnpm ? 'npm' : packageManager,
+  );
 
   const packArgs = isPnpm
     ? ['pack', '--pack-destination', outDir]

@@ -97,21 +97,19 @@ beforeEach(() => {
   });
 });
 
-// Default path: pnpm. pnpm resolves workspace:*/^/~ natively across every
-// dependency section (including devDependencies) using the live monorepo on
-// disk — this is the same tool `check-pack-install.sh` already packs with,
-// so the local gate now verifies the artifact shape CI actually ships,
-// instead of a different (npm-packed) artifact with its own hand-rolled
-// rewrite logic.
+// Default path: pnpm. The packer is pnpm, but the resulting tarball must be
+// installable outside the workspace by npm, so stage materializes workspace:
+// references before packing and restores the source manifest afterwards.
 describe('release:stage — default packageManager (pnpm)', () => {
-  it('packs via `pnpm pack` and never calls rewriteWorkspaceDeps', async () => {
+  it('packs via `pnpm pack` after rewriting workspace references', async () => {
     const { ui } = createCapturedUI();
     const ctx = createMockContext({ ui, cwd: '/project' });
 
     const result = await stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk' } }));
 
     expect(result.ok).toBe(true);
-    expect(vi.mocked(rewriteWorkspaceDeps)).not.toHaveBeenCalled();
+    expect(vi.mocked(rewriteWorkspaceDeps)).toHaveBeenCalledOnce();
+    expect(vi.mocked(rewriteWorkspaceDeps).mock.calls[0]![2]).toBe('npm');
     expect(vi.mocked(spawnSync)).toHaveBeenCalledWith(
       'pnpm',
       ['pack', '--pack-destination', expect.any(String)],
