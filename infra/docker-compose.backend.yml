@@ -5,6 +5,11 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    logging: &kb-json-logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - kb-backend
 
@@ -18,22 +23,24 @@ services:
     volumes:
       - minio_data:/data
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-state-daemon:
-    image: ghcr.io/kb-labs-team/kb-state-daemon:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-state-daemon:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-state-daemon
     ports:
       - "7777:7777"
     # No adapters, no persistence (InMemoryStateBroker) — see plugins/state/daemon/Dockerfile.
     # A restart wipes any in-flight locks; that is current, expected behaviour.
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-marketplace-registry:
-    image: ghcr.io/kb-labs-team/kb-marketplace-registry:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-marketplace-registry:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-marketplace-registry
     ports:
       - "5071:5071"
@@ -51,11 +58,12 @@ services:
       # plugins/marketplace-registry/README.md:44 — real runtime dependency, not dev-only.
       - kb-state-daemon
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-marketplace:
-    image: ghcr.io/kb-labs-team/kb-marketplace:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-marketplace:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-marketplace
     ports:
       - "5070:5070"
@@ -68,11 +76,12 @@ services:
     depends_on:
       - kb-marketplace-registry
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-gateway:
-    image: ghcr.io/kb-labs-team/kb-gateway:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-gateway:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-gateway
     ports:
       - "4000:4000"
@@ -87,11 +96,12 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-rest-api:
-    image: ghcr.io/kb-labs-team/kb-rest-api:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-rest-api:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-rest-api
     ports:
       - "5050:5050"
@@ -100,11 +110,12 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-workflow:
-    image: ghcr.io/kb-labs-team/kb-workflow:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${CONSUMER_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-consumer-workflow:${CONSUMER_IMAGE_TAG:?set CONSUMER_IMAGE_TAG to a derived image tag}
     container_name: kb-workflow
     ports:
       - "7778:7778"
@@ -115,6 +126,7 @@ services:
     depends_on:
       - kb-redis
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
     # IMPORTANT: exactly one instance. JobBroker/CronScheduler run in-process
@@ -124,7 +136,7 @@ services:
       replicas: 1
 
   kb-mcp:
-    image: ghcr.io/kb-labs-team/kb-mcp:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-mcp:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-mcp
     ports:
       - "7779:7779"
@@ -132,20 +144,22 @@ services:
       - NODE_ENV=production
       - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 
   kb-studio:
-    image: ghcr.io/kb-labs-team/kb-studio:${IMAGE_TAG:?set IMAGE_TAG to an explicit release version}
+    image: ${KB_IMAGE_REGISTRY:-ghcr.io/kb-labs-team}/kb-studio:${BASE_IMAGE_TAG:?set BASE_IMAGE_TAG to an explicit release version}
     container_name: kb-studio
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - NODE_ENV=production
       - KB_API_BASE_URL=http://kb-gateway:4000/api/v1
     depends_on:
       - kb-gateway
     restart: unless-stopped
+    logging: *kb-json-logging
     networks:
       - kb-backend
 

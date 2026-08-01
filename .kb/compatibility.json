@@ -1,0 +1,14 @@
+{
+  "schema": "kb.compatibility/1",
+  "components": {
+    "runtime": { "package": "@kb-labs/core-runtime" },
+    "sdk": { "package": "@kb-labs/sdk" }
+  },
+  "rules": [
+    {
+      "component": "runtime",
+      "versionRange": ">=2.0.0 <3.0.0",
+      "requires": { "sdk": ">=2.0.0 <3.0.0" }
+    }
+  ]
+}

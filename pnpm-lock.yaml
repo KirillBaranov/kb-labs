@@ -3706,9 +3706,6 @@ importers:
 
   plugins/marketplace-registry/app:
     dependencies:
-      '@kb-labs/adapters-s3':
-        specifier: workspace:*
-        version: link:../../../adapters/s3
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../../../core/platform
@@ -5644,33 +5641,6 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.2.0
-      '@kb-labs/adapters-analytics-file':
-        specifier: workspace:*
-        version: link:../../../adapters/analytics-file
-      '@kb-labs/adapters-eventbus-cache':
-        specifier: workspace:*
-        version: link:../../../adapters/eventbus-cache
-      '@kb-labs/adapters-log-document':
-        specifier: workspace:*
-        version: link:../../../adapters/log-document
-      '@kb-labs/adapters-log-ringbuffer':
-        specifier: workspace:*
-        version: link:../../../adapters/log-ringbuffer
-      '@kb-labs/adapters-openai':
-        specifier: workspace:*
-        version: link:../../../adapters/openai
-      '@kb-labs/adapters-pino':
-        specifier: workspace:*
-        version: link:../../../adapters/pino
-      '@kb-labs/adapters-redis':
-        specifier: workspace:*
-        version: link:../../../adapters/redis
-      '@kb-labs/adapters-service-transport-http':
-        specifier: workspace:*
-        version: link:../../../adapters/service-transport-http
-      '@kb-labs/adapters-sqlite':
-        specifier: workspace:*
-        version: link:../../../adapters/sqlite
       '@kb-labs/core-config':
         specifier: workspace:*
         version: link:../../../core/config

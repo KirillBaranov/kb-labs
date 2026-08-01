@@ -10,11 +10,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/dist ./dist
 
-# Default composition, applied by docker-entrypoint.sh only when nothing is
-# mounted over .kb/kb.config.json / .kb/marketplace.lock. These are NOT the
-# live config path — do not read them directly; see docs/adr/0037.
-COPY --chown=kb:nodejs services/gateway/app/.kb/kb.config.prod.json .kb/kb.config.default.json
-COPY --chown=kb:nodejs services/gateway/app/.kb/marketplace.prod.lock .kb/marketplace.default.lock
+# Composition is deliberately absent from the release image. kb-create writes
+# the user's explicit config and lock into their derived image; the entrypoint
+# refuses to boot without both files.
 COPY --chown=kb:nodejs services/gateway/app/docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN mkdir -p .kb/database .kb/storage .kb/analytics && chown -R kb:nodejs .kb && \
@@ -26,5 +24,4 @@ EXPOSE 4000
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
-
 

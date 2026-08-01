@@ -43,15 +43,6 @@ from the deployed bundle).
 | 3 | `kb-create validate <config> --lock <lock missing one referenced package>` | Fails, names the specific slot and package, explains it "will not load at boot" | | ⬜ |
 | 4 | Fix the lock to include the package, re-run | Passes, "no issues found" | | ⬜ |
 
-### Phase 3 — Real repo config, real lock (regression check)
-
-| # | Action | Expected | Actual | Status |
-|---|--------|----------|--------|--------|
-| 5 | `kb-create validate services/gateway/app/.kb/kb.config.prod.json --lock services/gateway/app/.kb/marketplace.prod.lock` | Reports every adapter referenced in config but absent from the lock | | ⬜ |
-| 6 | `kb-create validate --json ...` | Same findings as structured JSON, for CI consumption | | ⬜ |
-
----
-
 ## Result
 
 <!-- PASS / FAIL / PARTIAL -->
@@ -60,11 +51,9 @@ from the deployed bundle).
 
 ## Notes
 
-- Phase 3 is a live regression check, not a fixture — running it against
-  `services/gateway/app/.kb/kb.config.prod.json` currently surfaces 3 real
-  findings in this repo (`storage`/`adapters-diskio`, `analytics`,
-  `logPersistence` all absent from `marketplace.prod.lock`). One is the known
-  PR #328 bug; the other two were discovered by writing this command.
+- A release image deliberately has no repo-owned production config or lock.
+  The equivalent regression check runs against the bundle emitted by
+  `kb-create deployment export` once that command lands.
 - **Not covered here:** plugin↔SDK/core peer-version compatibility. No
   manifest field for that exists anywhere in the platform yet — see
   `internal/validate/validate.go`'s doc comment. Validating against a

@@ -5,8 +5,17 @@ name: Deploy platform Compose
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - stage
+          - dev
       version:
-        description: Image tag to publish and deploy (for example 2.116.0-cloud1)
+        description: Release tag for production, or dev-/stage-prefixed tag for non-production
         required: true
         type: string
       ref:
@@ -19,6 +28,11 @@ on:
         required: true
         default: true
         type: boolean
+      cleanup:
+        description: Remove old KB Labs platform image tags after a healthy deploy
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -28,12 +42,9 @@ concurrency:
   group: deploy-platform-compose
   cancel-in-progress: false
 
-env:
-  IMAGE_TAG: ${{ inputs.version }}
-
 jobs:
   prepare:
-    name: Build production dependency trees
+    name: Prepare consumer composition
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,33 +60,58 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
-      - name: Build kb-devkit
-        run: make build -C tools/kb-devkit
-      - name: Install dependencies
+          go-version-file: tools/kb-create/go.mod
+      - name: Install composition metadata dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build workspace
-        run: pnpm build
-      - name: Prepare image inputs
+      - name: Build kb-create
+        run: make build -C tools/kb-create
+      - name: Export consumer image contexts
         run: |
           set -euo pipefail
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/core-state-daemon --prod .kb/deploy/state-daemon
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-app --prod .kb/deploy/marketplace-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/rest-api-app --prod .kb/deploy/rest-api-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/studio-app --prod .kb/deploy/studio-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/workflow-daemon --prod .kb/deploy/workflow-daemon
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/mcp-app --prod .kb/deploy/mcp-app
-          pnpm --config.node-linker=hoisted deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
+          mkdir -p .kb/consumer
+          for service in gateway rest-api workflow marketplace-registry; do
+            ./tools/kb-create/kb-create deployment \
+              --matrix .kb/compatibility.json \
+              export --root . --service "$service" \
+              --output ".kb/consumer/$service"
+            cp tools/kb-create/kb-create ".kb/consumer/$service/kb-create"
+          done
+      - name: Prepare non-production base images
+        if: inputs.environment != 'production'
+        run: |
+          set -euo pipefail
+          pnpm build
+          specs=(
+            '@kb-labs/core-state-daemon:.kb/deploy/state-daemon'
+            '@kb-labs/gateway-app:.kb/deploy/gateway-app'
+            '@kb-labs/marketplace-app:.kb/deploy/marketplace-app'
+            '@kb-labs/rest-api-app:.kb/deploy/rest-api-app'
+            '@kb-labs/studio-app:.kb/deploy/studio-app'
+            '@kb-labs/workflow-daemon:.kb/deploy/workflow-daemon'
+            '@kb-labs/mcp-app:.kb/deploy/mcp-app'
+            '@kb-labs/marketplace-registry-app:.kb/deploy/marketplace-registry-app'
+          )
+          for spec in "${specs[@]}"; do
+            package="${spec%%:*}"
+            output="${spec#*:}"
+            pnpm deploy --filter "$package" --prod "$output"
+          done
       - uses: actions/upload-artifact@v4
+        if: inputs.environment != 'production'
         with:
           name: platform-deploy-inputs
           path: .kb/deploy/
           retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: consumer-image-contexts
+          path: .kb/consumer/
+          retention-days: 1
 
-  publish:
-    name: Publish ${{ matrix.image }}:${{ inputs.version }}
+  publish_base:
+    name: Publish base ${{ matrix.image }}:${{ inputs.version }}
     needs: prepare
+    if: inputs.environment != 'production'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -118,10 +154,60 @@ jobs:
           push: true
           tags: ghcr.io/kb-labs-team/${{ matrix.image }}:${{ inputs.version }}
 
+  publish_consumer:
+    name: Publish consumer ${{ matrix.image }}:${{ inputs.version }}
+    needs: [prepare, publish_base]
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      (inputs.environment == 'production' || needs.publish_base.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kb-consumer-gateway
+            service: gateway
+            base: kb-gateway
+          - image: kb-consumer-rest-api
+            service: rest-api
+            base: kb-rest-api
+          - image: kb-consumer-workflow
+            service: workflow
+            base: kb-workflow
+          - image: kb-consumer-marketplace-registry
+            service: marketplace-registry
+            base: kb-marketplace-registry
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: consumer-image-contexts
+          path: .kb/consumer/
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish derived consumer image
+        uses: docker/build-push-action@v6
+        with:
+          context: .kb/consumer/${{ matrix.service }}
+          file: .kb/consumer/${{ matrix.service }}/Dockerfile
+          push: true
+          build-args: |
+            KB_BASE_IMAGE=ghcr.io/kb-labs-team/${{ matrix.base }}:${{ inputs.version }}
+          tags: ghcr.io/kb-labs-team/${{ matrix.image }}:${{ inputs.version }}
+
   deploy:
     name: Deploy Compose stack
-    needs: publish
-    if: inputs.deploy
+    needs: [prepare, publish_base, publish_consumer]
+    if: >-
+      always() && inputs.deploy &&
+      needs.prepare.result == 'success' &&
+      (inputs.environment == 'production' || needs.publish_base.result == 'success') &&
+      needs.publish_consumer.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -142,18 +228,36 @@ jobs:
           scp -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new \
             infra/docker-compose.backend.yml \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/kb-labs/docker-compose.platform.yml"
+      - name: Upload image cleanup script
+        run: |
+          scp -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new \
+            infra/scripts/cleanup-platform-images.sh \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/kb-labs/cleanup-platform-images.sh"
       - name: Pull and restart platform
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           VERSION: ${{ inputs.version }}
+          CLEANUP: ${{ inputs.cleanup }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy.key -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" \
-            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' bash -s" <<'REMOTE'
+            "GHCR_TOKEN='$GHCR_TOKEN' VERSION='$VERSION' CLEANUP='$CLEANUP' ENVIRONMENT='$ENVIRONMENT' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$HOME/kb-labs"
+
+          case "$ENVIRONMENT" in
+            production) image_scope=release ;;
+            stage) image_scope=stage ;;
+            dev) image_scope=dev ;;
+            *) echo "unsupported environment: $ENVIRONMENT" >&2; exit 1 ;;
+          esac
+          if [[ "$ENVIRONMENT" != production && "$VERSION" != "$image_scope-"* ]]; then
+            echo "non-production image tag must start with $image_scope-: $VERSION" >&2
+            exit 1
+          fi
 
           # Keep the existing host .env and preserve credentials that were
           # supplied only to the running MinIO container by the old stack.
@@ -167,7 +271,19 @@ jobs:
           else
             : > .env.platform
           fi
-          printf 'IMAGE_TAG=%s\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" >> .env.platform
+          printf 'BASE_IMAGE_TAG=%s\nCONSUMER_IMAGE_TAG=%s\nCONSUMER_IMAGE_REGISTRY=ghcr.io/kb-labs-team\nKB_REGISTRY_URL=http://kb-marketplace-registry:5071/api/v1\n' "$VERSION" "$VERSION" >> .env.platform
+
+          if [[ "$CLEANUP" == "true" ]]; then
+            echo 'Docker usage before platform image cleanup:'
+            docker system df
+            # Free space before pulling the next release, while retaining the
+            # newest existing tag as a rollback image. This is scoped to the
+            # eight KB Labs repositories; unrelated host applications and
+            # volumes are never pruned.
+            bash ./cleanup-platform-images.sh "$VERSION" --apply "$image_scope"
+            echo 'Docker usage after platform image cleanup:'
+            docker system df
+          fi
 
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin >/dev/null
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml pull \
@@ -177,6 +293,7 @@ jobs:
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
 
           check() { curl -fsS --max-time 15 "$2" >/dev/null || { echo "health check failed: $1" >&2; return 1; }; }
+          healthy=false
           for i in 1 2 3 4 5 6; do
             if check gateway http://127.0.0.1:4000/health \
               && check rest http://127.0.0.1:5050/api/v1/health \
@@ -184,13 +301,22 @@ jobs:
               && check marketplace http://127.0.0.1:5070/health \
               && check registry http://127.0.0.1:5071/health \
               && check state http://127.0.0.1:7777/health \
-              && check studio http://127.0.0.1:3000/; then
-              exit 0
+              && check studio http://127.0.0.1:3002/; then
+              healthy=true
+              break
             fi
             sleep 10
           done
           docker compose --env-file .env --env-file .env.platform -f docker-compose.platform.yml ps
-          exit 1
+          if [[ "$healthy" != "true" ]]; then
+            exit 1
+          fi
+
+          if [[ "$CLEANUP" == "true" ]]; then
+            bash ./cleanup-platform-images.sh "$VERSION" --apply "$image_scope"
+            echo 'Docker usage after successful platform deploy:'
+            docker system df
+          fi
           REMOTE
       - name: Remove SSH key
         if: always()
