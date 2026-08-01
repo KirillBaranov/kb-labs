@@ -4,6 +4,7 @@ vi.mock('@kb-labs/release-manager-core', () => ({
   discoverCurrentPackages: vi.fn(),
   mergeConfigWithFlow: vi.fn((config: unknown, flow: string) => ({ ...(config as object), __flow: flow })),
   verifyExtractedTarball: vi.fn(() => []),
+  verifyCleanInstall: vi.fn(),
 }));
 
 vi.mock('@kb-labs/sdk', async (importOriginal) => {
@@ -50,7 +51,7 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
 }));
 
-import { discoverCurrentPackages } from '@kb-labs/release-manager-core';
+import { discoverCurrentPackages, verifyCleanInstall } from '@kb-labs/release-manager-core';
 import { useConfig } from '@kb-labs/sdk';
 import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
 import { spawnSync } from 'node:child_process';
@@ -61,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useConfig).mockResolvedValue({} as never);
   vi.mocked(rewriteWorkspaceDeps).mockReturnValue(() => {});
+  vi.mocked(verifyCleanInstall).mockResolvedValue({ ok: true });
 
   vi.mocked(discoverCurrentPackages).mockImplementation(async (_cwd, _scope, config) => {
     const isFlowScoped = (config as { __flow?: string }).__flow !== undefined;
@@ -110,6 +112,28 @@ describe('release:stage — default packageManager (pnpm)', () => {
     expect(result.ok).toBe(true);
     const payload = (result as { result: { artifacts: Array<{ tarball: string }> } }).result;
     expect(payload.artifacts[0]!.tarball).toBe('kb-labs-sdk-2.115.0.tgz');
+  });
+
+  // Static manifest checks (verifyExtractedTarball) can't see an
+  // already-published PEER dependency that is itself broken. This is the
+  // guarantee that catches it: `stage` must fail the whole command — not
+  // just log a warning — when the real clean-room install fails, so CI can
+  // never ship a tarball that doesn't actually install.
+  it('fails the command when verifyCleanInstall reports the tarball cannot be installed', async () => {
+    vi.mocked(verifyCleanInstall).mockResolvedValue({
+      ok: false,
+      error: 'install failed: [EUNSUPPORTEDPROTOCOL] Unsupported URL Type "workspace:": workspace:*',
+    });
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    // Matches the existing throw-on-failure convention in this file (e.g.
+    // "npm pack failed") — the CLI's outer runner converts this into a
+    // failed command result; calling execute() directly here bypasses that
+    // wrapper, so the rejection itself is the observable contract.
+    await expect(
+      stageCommand.execute(ctx as never, mockCLIInput({ flags: { flow: 'sdk' } })),
+    ).rejects.toThrow('EUNSUPPORTEDPROTOCOL');
   });
 });
 

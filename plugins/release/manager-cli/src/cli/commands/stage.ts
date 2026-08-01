@@ -26,6 +26,7 @@ import {
   discoverCurrentPackages,
   mergeConfigWithFlow,
   verifyExtractedTarball,
+  verifyCleanInstall,
   type ReleaseConfig,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -175,6 +176,21 @@ export default defineCommand({
           } finally {
             rmSync(verifyDir, { recursive: true, force: true });
           }
+
+          // Static checks (above) only see THIS package's own manifest — they
+          // can't catch an already-published PEER dependency that is itself
+          // broken (npm auto-installs peers, so a bad manifest several levels
+          // deep in someone else's graph breaks this install too). A real
+          // clean-room install is the only check that actually mirrors what a
+          // consumer's `npm install` will do. Confirmed this class of failure
+          // live: @kb-labs/sdk's own tarball was clean, but installing it
+          // still failed because @kb-labs/plugin-execution-factory@2.114.0
+          // (an already-published peer) shipped with a broken devDependency.
+          const cleanInstall = await verifyCleanInstall(tarballPath, pkg.name);
+          if (!cleanInstall.ok) {
+            throw new Error(`staged artifact for ${pkg.name}@${pkg.currentVersion} fails a clean install: ${cleanInstall.error}`);
+          }
+
           const sha256 = createHash('sha256').update(readFileSync(join(outDir, filename))).digest('hex');
           artifacts.push({ name: pkg.name, version: pkg.currentVersion, tarball: filename, sha256 });
         } finally {

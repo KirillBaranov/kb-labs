@@ -248,6 +248,33 @@ export const manifest = {
         ],
       },
 
+      // release:verify-clean-install - Shared install-verification used by
+      // both check-pack-install.sh and `release stage`
+      {
+        path: 'release verify-clean-install',
+        category: 'Publish',
+        describe: 'Install a packed tarball into a throwaway consumer and confirm it imports cleanly',
+        operationType: 'execute' as const,
+        longDescription:
+          'Installs --tarball into a fresh, outside-the-workspace consumer project and confirms --name can be ' +
+          'imported afterward. Shared by check-pack-install.sh (local release gate) and `release stage` (CI publish ' +
+          'path) so both use identical verification — catches an already-published PEER dependency that is itself ' +
+          'broken, which static manifest checks cannot see. Surfaces the real failure reason via @npmcli/arborist ' +
+          'directly; plain `npm install` swallows this exact failure class as an unhandled rejection with no usable error.',
+
+        handler: './cli/commands/verify-clean-install.js#default',
+
+        flags: defineCommandFlags({
+          tarball: { type: 'string', description: 'Path to the packed tarball to install' },
+          name: { type: 'string', description: 'Package name to import after install' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release verify-clean-install --tarball ./kb-labs-sdk-2.115.0.tgz --name @kb-labs/sdk',
+        ],
+      },
+
       // release:promote - Promote an already-released version to npm
       {
         path: 'release promote',

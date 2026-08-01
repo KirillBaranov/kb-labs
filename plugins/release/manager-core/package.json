@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@kb-labs/sdk": "workspace:*",
+    "@npmcli/arborist": "^10.0.2",
     "execa": "^9.5.3",
     "globby": "^11.0.0",
     "semver": "^7.6.3",
@@ -42,6 +43,7 @@
     "@kb-labs/devkit": "workspace:*",
     "@types/fs-extra": "^11.0.0",
     "@types/node": "^24.3.3",
+    "@types/npmcli__arborist": "^6.3.3",
     "@types/semver": "^7.5.8",
     "eslint": "^9",
     "rimraf": "^6.0.1",
