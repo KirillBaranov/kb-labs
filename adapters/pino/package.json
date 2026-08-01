@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-pino",
   "description": "Pino adapter implementing ILogger interface",
-  "version": "2.116.3",
+  "version": "2.116.4",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
