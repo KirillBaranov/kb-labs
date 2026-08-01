@@ -99,7 +99,7 @@ jobs:
       # Rebuild at the exact tagged commit — dist/ is gitignored, so the
       # "prepare" step's build output never made it into this checkout.
       - name: Build (topological order)
-        run: pnpm build
+        run: ./tools/kb-devkit/kb-devkit run build --no-cache
 
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
