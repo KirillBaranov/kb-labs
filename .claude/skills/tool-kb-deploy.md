@@ -39,6 +39,19 @@ The release workflow (`.github/workflows/publish-platform-images.yml`) already:
 Production deployment should only pull those images, run the Compose health checks, and
 then perform scoped cleanup. Do not use `latest` for production.
 
+## Adapter composition
+
+Service and plugin packages never declare concrete `@kb-labs/adapters-*` packages as
+dependencies. Adapter implementations are selected by the customer's platform config
+and installed at runtime through the marketplace/provisioning flow. The release images
+contain the service code only; do not add adapters to a service manifest or bake a
+default adapter set into a production marketplace lock.
+
+When provisioning a deployment, install only the adapters explicitly selected by the
+customer, then verify the resulting `.kb/marketplace.lock` and adapter health. A missing
+adapter is a configuration/provisioning error; it is not a reason to add that adapter to
+the service's `package.json`.
+
 ## Choosing the path
 
 ### Dev or stage
