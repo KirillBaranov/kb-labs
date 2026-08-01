@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, useUITheme } from '@kb-labs/studio-ui-kit';
 import {
   ClockCircleOutlined,
   CheckCircleOutlined,
@@ -132,18 +132,31 @@ export function AnalyticsCachePage() {
             </UICard>
           </UICol>
           <UICol xs={24} lg={16}>
-            <UIRow gutter={[16, 16]}>
-              {[
-                { label: 'Total Gets', value: stats?.totalGets ?? 0, icon: <EyeOutlined />, status: 'info' as const },
-                { label: 'Cache Hits', value: stats?.hits ?? 0, icon: <CheckCircleOutlined />, status: 'success' as const },
-                { label: 'Cache Misses', value: stats?.misses ?? 0, icon: <CloseCircleOutlined />, status: 'error' as const },
-                { label: 'Miss Rate', value: `${missRate}%`, icon: <CloseCircleOutlined />, status: 'warning' as const },
-              ].map((metric) => (
-                <UICol key={metric.label} xs={12}>
-                  <UIMetricCard {...metric} loading={isLoading} />
+            <UICard style={{ height: '100%' }}>
+              <UIRow gutter={[16, 16]}>
+                <UICol xs={12}>
+                  <UIStatistic title="Total Gets" value={stats?.totalGets ?? 0} prefix={<EyeOutlined />} loading={isLoading} />
                 </UICol>
-              ))}
-            </UIRow>
+                <UICol xs={12}>
+                  <UIStatistic
+                    title="Cache Hits" value={stats?.hits ?? 0} prefix={<CheckCircleOutlined />} loading={isLoading}
+                    valueStyle={{ color: 'var(--success)' }}
+                  />
+                </UICol>
+                <UICol xs={12}>
+                  <UIStatistic
+                    title="Cache Misses" value={stats?.misses ?? 0} prefix={<CloseCircleOutlined />} loading={isLoading}
+                    valueStyle={{ color: 'var(--error)' }}
+                  />
+                </UICol>
+                <UICol xs={12}>
+                  <UIStatistic
+                    title="Miss Rate" value={missRate} suffix="%" prefix={<CloseCircleOutlined />} loading={isLoading}
+                    valueStyle={{ color: 'var(--warning)' }}
+                  />
+                </UICol>
+              </UIRow>
+            </UICard>
           </UICol>
         </UIRow>
 
