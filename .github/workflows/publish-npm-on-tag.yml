@@ -294,8 +294,16 @@ jobs:
           while IFS=$'\t' read -r name version; do
             spec="${name}@${version}"
             echo "Promoting ${spec} to latest"
-            npm dist-tag add "${spec}" latest --registry https://registry.npmjs.org
-            actual=$(npm view "${name}" dist-tags.latest --registry https://registry.npmjs.org)
+            actual=""
+            for attempt in 1 2 3 4 5; do
+              npm dist-tag add "${spec}" latest --registry https://registry.npmjs.org || true
+              actual=$(npm view "${name}" dist-tags.latest --registry https://registry.npmjs.org 2>/dev/null || true)
+              if test "${actual}" = "${version}"; then
+                break
+              fi
+              echo "Waiting for npm to expose latest=${version} for ${name} (attempt ${attempt}/5)"
+              sleep 2
+            done
             test "${actual}" = "${version}"
           done < <(node -e '
             const manifest = require("./.kb/release/artifacts/manifest.json");
