@@ -82,7 +82,22 @@ async function detectVersions(): Promise<Record<string, string>> {
     readPkg('@kb-labs/devkit/package.json', FALLBACK_VERSIONS.devkit),
     readPkg('@kb-labs/shared-command-kit/package.json', FALLBACK_VERSIONS.commandKit),
   ]);
-  return { sdk, devkit, commandKit };
+  // Release smoke tests install the candidate packages under a dist-tag. A
+  // caret range would resolve the previous stable package instead, so carry
+  // the channel through to generated manifests as a valid npm spec.
+  const smokeTag = process.env.KB_CREATE_PACKAGE_TAG;
+  return {
+    sdk,
+    devkit,
+    commandKit,
+    ...(smokeTag
+      ? {
+          sdkSpec: smokeTag,
+          devkitSpec: smokeTag,
+          commandKitSpec: smokeTag,
+        }
+      : {}),
+  };
 }
 
 function parsePositional(argv: string[] | undefined): {

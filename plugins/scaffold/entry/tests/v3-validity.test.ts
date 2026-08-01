@@ -71,6 +71,22 @@ describe('generated plugin manifest passes V3 validation', () => {
 });
 
 describe('generated plugin files are type-safe', () => {
+  it('uses the configured npm channel for generated package specs', async () => {
+    const entity = await loadEntity(templatesRoot, 'plugin');
+    const { files } = await build({
+      entity,
+      selectedBlockIds: ['base', 'cli'],
+      context: {
+        ...baseCtx,
+        blocks: ['base', 'cli'],
+        versions: { ...baseCtx.versions, sdkSpec: 'canary', devkitSpec: 'canary', commandKitSpec: 'canary' },
+      },
+    });
+    const entryPackage = files.find(f => f.path.endsWith('-entry/package.json'));
+    expect(entryPackage?.contents).toContain('"@kb-labs/sdk": "canary"');
+    expect(entryPackage?.contents).toContain('"@kb-labs/shared-command-kit": "canary"');
+  });
+
   it('error.ts validationError signature takes (ctx, message, isJson?) — no hint param', async () => {
     const { files } = await buildFor(['base']);
     const errorFile = files.find(f => f.path.includes('utils/error'));
