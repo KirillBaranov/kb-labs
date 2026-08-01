@@ -23,6 +23,7 @@
     "@ant-design/charts": "^2.6.6",
     "@ant-design/icons": "^5.4.0",
     "@ant-design/plots": "^2.6.6",
+    "@fontsource/geist-sans": "^5.3.0",
     "@kb-labs/agent-contracts": "workspace:*",
     "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/qa-contracts": "workspace:*",
