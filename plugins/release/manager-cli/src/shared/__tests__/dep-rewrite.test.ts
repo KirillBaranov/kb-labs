@@ -94,4 +94,34 @@ describe('rewriteWorkspaceDeps — own version', () => {
 
     restore();
   });
+
+  // Reproduces the "EUNSUPPORTEDPROTOCOL crashes an unrelated consumer's
+  // install" bug: devDependencies was never in the rewritten section list, so
+  // a published tarball could ship a literal "workspace:*" in its
+  // devDependencies. That field is never installed for a *dependency*
+  // package, but npm's own manifest validation (@npmcli/arborist, via
+  // npm-package-arg) parses every dependency-like section of every manifest
+  // it reads while building the ideal tree — including devDependencies many
+  // levels deep in someone else's graph — and throws EUNSUPPORTEDPROTOCOL,
+  // aborting the whole install. Confirmed live on
+  // @kb-labs/plugin-execution-factory@2.114.0's
+  // devDependencies.@kb-labs/gateway-core.
+  it('rewrites devDependencies workspace:* refs for non-pnpm package managers', () => {
+    writePkg(root, {
+      name: '@scope/alpha',
+      version: '1.0.0',
+      devDependencies: { '@scope/gamma': 'workspace:*' },
+    });
+
+    const restore = rewriteWorkspaceDeps(
+      { path: root, version: '1.0.0' },
+      new Map([['@scope/alpha', '1.0.0'], ['@scope/gamma', '2.0.0']]),
+      'npm',
+    );
+
+    const written = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
+    expect(written.devDependencies['@scope/gamma']).toBe('^2.0.0');
+
+    restore();
+  });
 });
