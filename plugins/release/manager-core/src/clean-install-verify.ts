@@ -33,7 +33,11 @@ export interface CleanInstallResult {
  * monorepo workspace, so pnpm's workspace resolution can't mask a problem)
  * and confirm `packageName` can actually be imported afterward.
  */
-export async function verifyCleanInstall(tarballPath: string, packageName: string): Promise<CleanInstallResult> {
+export async function verifyCleanInstall(
+  tarballPath: string,
+  packageName: string,
+  additionalTarballs: string[] = [],
+): Promise<CleanInstallResult> {
   // Lazy import: @npmcli/arborist is a heavy, npm-internal package only
   // needed on this one verification path.
   const { Arborist } = await import('@npmcli/arborist');
@@ -44,7 +48,7 @@ export async function verifyCleanInstall(tarballPath: string, packageName: strin
 
     const arb = new Arborist({ path: consumerDir, ignoreScripts: true });
     try {
-      await arb.reify({ add: [tarballPath], save: false });
+      await arb.reify({ add: [tarballPath, ...additionalTarballs], save: false });
     } catch (err) {
       return { ok: false, error: `install failed: ${describeArboristError(err)}` };
     }

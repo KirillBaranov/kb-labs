@@ -117,7 +117,7 @@ function packOne(
  * per-package unit of work `stage` runs, batched with bounded concurrency
  * by the caller (see KB_STAGE_CONCURRENCY above).
  */
-async function stagePackage(
+async function packStagePackage(
   pkg: { name: string; path: string; currentVersion: string },
   outDir: string,
   packageManager: 'pnpm' | 'npm' | 'yarn',
@@ -125,40 +125,28 @@ async function stagePackage(
 ): Promise<StagedArtifact> {
   const { filename, restore } = packOne(pkg, outDir, packageManager, versionMap);
   try {
-    const tarballPath = join(outDir, filename);
-    const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
-    try {
-      const extractResult = spawnSync('tar', ['xzf', tarballPath, '-C', verifyDir], { stdio: 'pipe' });
-      if (extractResult.status !== 0) {
-        throw new Error(`could not extract staged tarball for ${pkg.name}@${pkg.currentVersion}`);
-      }
-      const issues = verifyExtractedTarball(join(verifyDir, 'package'));
-      if (issues.length > 0) {
-        throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
-      }
-    } finally {
-      rmSync(verifyDir, { recursive: true, force: true });
-    }
-
-    // Static checks (above) only see THIS package's own manifest — they
-    // can't catch an already-published PEER dependency that is itself
-    // broken (npm auto-installs peers, so a bad manifest several levels
-    // deep in someone else's graph breaks this install too). A real
-    // clean-room install is the only check that actually mirrors what a
-    // consumer's `npm install` will do. Confirmed this class of failure
-    // live: @kb-labs/sdk's own tarball was clean, but installing it still
-    // failed because @kb-labs/plugin-execution-factory@2.114.0 (an
-    // already-published peer) shipped with a broken devDependency.
-    const cleanInstall = await verifyCleanInstall(tarballPath, pkg.name);
-    if (!cleanInstall.ok) {
-      throw new Error(`staged artifact for ${pkg.name}@${pkg.currentVersion} fails a clean install: ${cleanInstall.error}`);
-    }
-
     const sha256 = createHash('sha256').update(readFileSync(join(outDir, filename))).digest('hex');
     return { name: pkg.name, version: pkg.currentVersion, tarball: filename, sha256 };
-  } finally {
-    restore();
-  }
+  } finally { restore(); }
+}
+
+async function verifyStagePackage(
+  pkg: { name: string; currentVersion: string },
+  outDir: string,
+  artifact: StagedArtifact,
+  allTarballs: string[],
+): Promise<void> {
+  const tarballPath = join(outDir, artifact.tarball);
+  const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
+  try {
+    const extractResult = spawnSync('tar', ['xzf', tarballPath, '-C', verifyDir], { stdio: 'pipe' });
+    if (extractResult.status !== 0) throw new Error(`could not extract staged tarball for ${pkg.name}@${pkg.currentVersion}`);
+    const issues = verifyExtractedTarball(join(verifyDir, 'package'));
+    if (issues.length > 0) throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
+  } finally { rmSync(verifyDir, { recursive: true, force: true }); }
+
+  const cleanInstall = await verifyCleanInstall(tarballPath, pkg.name, allTarballs.filter(path => path !== tarballPath));
+  if (!cleanInstall.ok) throw new Error(`staged artifact for ${pkg.name}@${pkg.currentVersion} fails a clean install: ${cleanInstall.error}`);
 }
 
 export default defineCommand({
@@ -224,11 +212,24 @@ export default defineCommand({
       for (let i = 0; i < discovered.length; i += CONCURRENCY) {
         const batch = discovered.slice(i, i + CONCURRENCY);
         const batchArtifacts = await Promise.all(
-          batch.map(pkg => stagePackage(pkg, outDir, packageManager, versionMap)),
+          batch.map(pkg => packStagePackage(pkg, outDir, packageManager, versionMap)),
         );
         artifacts.push(...batchArtifacts);
       }
       packLoader.succeed(`Packed ${artifacts.length} tarball(s) to ${outDir}`);
+
+      // Verify against the complete staged flow, not the registry's previous
+      // versions. This matters for peers: while this release is unpublished,
+      // npm would otherwise resolve a peer to an older published package that
+      // may still contain a broken workspace protocol.
+      const allTarballs = artifacts.map(artifact => join(outDir, artifact.tarball));
+      const verifyLoader = useLoader('Verifying staged tarballs...');
+      verifyLoader.start();
+      for (let i = 0; i < discovered.length; i += CONCURRENCY) {
+        const batch = discovered.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map((pkg, index) => verifyStagePackage(pkg, outDir, artifacts[i + index]!, allTarballs)));
+      }
+      verifyLoader.succeed(`Verified ${artifacts.length} staged tarball(s)`);
 
       writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(artifacts, null, 2) + '\n', 'utf-8');
 
