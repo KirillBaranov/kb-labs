@@ -6,11 +6,31 @@
  */
 
 .kb-ui-tag {
-  transition: opacity 100ms ease, transform 100ms ease;
+  transition: opacity 100ms ease, transform 100ms ease, box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease, filter 150ms ease;
 }
 
-.kb-ui-tag:not([disabled]):active {
+/*
+ * All tags, even plain informational ones (e.g. capability badges on a
+ * card), get a subtle brightness lift on hover so the whole UI feels alive.
+ */
+.kb-ui-tag:not([disabled]):hover {
+  filter: brightness(1.06);
+}
+
+/* Tags with an onClick additionally get lift/press feedback — they're pressable. */
+.kb-ui-tag--clickable {
+  cursor: pointer;
+}
+
+.kb-ui-tag--clickable:not([disabled]):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px var(--shadow-hover, rgba(0, 0, 0, 0.1));
+  border-color: var(--border-secondary);
+}
+
+.kb-ui-tag--clickable:not([disabled]):active {
   opacity: 0.7;
   transform: scale(0.94);
+  box-shadow: none;
   transition: opacity 50ms ease, transform 50ms ease;
 }

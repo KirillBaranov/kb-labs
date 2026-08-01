@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { Layout, Menu } from 'antd';
-import type { MenuProps } from 'antd';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Layout, Menu, Dropdown, Avatar, type MenuProps } from 'antd';
+import { PanelLeftClose, PanelLeftOpen, User, ChevronsUpDown } from 'lucide-react';
 import { UIButton } from '@kb-labs/studio-ui-kit';
+import { KBThemeToggle } from './kb-theme-toggle';
+import { KBNotificationBell, type LogNotification } from './kb-notification-bell';
 import styles from './kb-sidebar.module.css';
 
 const { Sider: AntSider } = Layout;
@@ -24,6 +25,26 @@ export interface KBSidebarProps {
   collapsedWidth?: number;
   currentPath?: string;
   onNavigate?: (path: string) => void;
+
+  // Brand
+  logo?: React.ReactNode;
+  logoLink?: string;
+  LinkComponent?: React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>;
+
+  // Identity (was header)
+  onLogout?: () => void;
+  profileMenuItems?: MenuProps['items'];
+  userAvatar?: string;
+  userName?: string;
+
+  // Notifications (was header)
+  notifications?: LogNotification[];
+  unreadNotificationsCount?: number;
+  onMarkNotificationAsRead?: (id: string) => void;
+  onMarkAllNotificationsAsRead?: () => void;
+  onClearAllNotifications?: () => void;
+  onClearNotification?: (id: string) => void;
+  onNotificationClick?: (notification: LogNotification) => void;
 }
 
 export function KBSidebar({
@@ -34,6 +55,20 @@ export function KBSidebar({
   collapsedWidth = 64,
   currentPath,
   onNavigate,
+  logo = 'KB Labs',
+  logoLink = '/',
+  LinkComponent,
+  onLogout,
+  profileMenuItems,
+  userAvatar,
+  userName = 'User',
+  notifications = [],
+  unreadNotificationsCount = 0,
+  onMarkNotificationAsRead,
+  onMarkAllNotificationsAsRead,
+  onClearAllNotifications,
+  onClearNotification,
+  onNotificationClick,
 }: KBSidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
 
@@ -151,6 +186,13 @@ export function KBSidebar({
   const mainItems = (menuItems ?? []).filter((item: any) => item?.key !== 'settings');
   const settingsItems = (menuItems ?? []).filter((item: any) => item?.key === 'settings');
 
+  const profileItems: MenuProps['items'] = profileMenuItems || [
+    ...(onLogout ? [{ key: 'logout', label: 'Logout', danger: true, onClick: onLogout }] : []),
+  ];
+
+  const hasNotifications =
+    onMarkNotificationAsRead && onMarkAllNotificationsAsRead && onClearAllNotifications && onClearNotification;
+
   return (
     <AntSider
       collapsible
@@ -161,13 +203,26 @@ export function KBSidebar({
       className={styles.sider}
       theme="light"
     >
-      <div className={styles.header}>
-        <UIButton
-          variant="text"
-          icon={collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          onClick={() => setCollapsed(!collapsed)}
-        />
-      </div>
+      <Dropdown menu={{ items: profileItems }} placement="bottomLeft">
+        <button
+          type="button"
+          className={[styles.profileCard, collapsed && styles.profileCardCollapsed].filter(Boolean).join(' ')}
+        >
+          <Avatar size={30} icon={!userAvatar && <User size={14} />} src={userAvatar} />
+          {!collapsed && (
+            <>
+              <div className={styles.profileMeta}>
+                <span className={styles.profileName}>{userName}</span>
+                <span className={styles.profileStatus}>
+                  <span className={styles.profileStatusDot} />
+                  Online
+                </span>
+              </div>
+              <ChevronsUpDown size={14} className={styles.profileChevron} />
+            </>
+          )}
+        </button>
+      </Dropdown>
 
       <div className={styles.scrollArea}>
         <Menu
@@ -180,8 +235,8 @@ export function KBSidebar({
         />
       </div>
 
-      {settingsItems.length > 0 && (
-        <div className={styles.settingsArea}>
+      <div className={styles.bottomStack}>
+        {settingsItems.length > 0 && (
           <Menu
             mode="inline"
             selectedKeys={selectedKeys}
@@ -189,8 +244,40 @@ export function KBSidebar({
             onClick={handleMenuClick}
             className={styles.menu}
           />
+        )}
+
+        <div className={styles.utilityRow}>
+          {LinkComponent ? (
+            <LinkComponent to={logoLink} className={styles.brandMark}>
+              {typeof logo === 'string' ? logo.slice(0, 1) : logo}
+            </LinkComponent>
+          ) : (
+            <a href={logoLink} className={styles.brandMark}>
+              {typeof logo === 'string' ? logo.slice(0, 1) : logo}
+            </a>
+          )}
+
+          {hasNotifications && (
+            <KBNotificationBell
+              notifications={notifications}
+              unreadCount={unreadNotificationsCount}
+              onMarkAsRead={onMarkNotificationAsRead!}
+              onMarkAllAsRead={onMarkAllNotificationsAsRead!}
+              onClearAll={onClearAllNotifications!}
+              onClearNotification={onClearNotification!}
+              onNotificationClick={onNotificationClick}
+            />
+          )}
+          <KBThemeToggle />
+
+          <UIButton
+            variant="text"
+            className={styles.collapseButton}
+            icon={collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            onClick={() => setCollapsed(!collapsed)}
+          />
         </div>
-      )}
+      </div>
     </AntSider>
   );
 }
