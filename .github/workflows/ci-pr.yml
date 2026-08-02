@@ -76,7 +76,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build (affected dependency closure)
-        run: ./tools/kb-devkit/kb-devkit run build --affected
+        # GitHub runners start with an empty .kb/devkit state. Without
+        # --diff-only every package is classified as "dirty", defeating the
+        # affected graph and rebuilding the full workspace on every PR.
+        run: ./tools/kb-devkit/kb-devkit run build --affected --diff-only
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
