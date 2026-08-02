@@ -156,7 +156,7 @@ export function LoginPage() {
                   { type: 'email', message: 'Enter a valid email address' },
                 ]}
               >
-                <UIInput id="login-email" autoComplete="email" size="large" />
+                <UIInput id="login-email" type="email" autoComplete="email" size="large" />
               </UIFormItem>
             </div>
 
