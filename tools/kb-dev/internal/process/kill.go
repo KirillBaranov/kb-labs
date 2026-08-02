@@ -45,6 +45,12 @@ func GetListenerPIDs(port int) []int {
 	return getListenerPIDs(port)
 }
 
+// CommandLine returns a human-readable command for a process ID.
+// It is used by kb-dev status to explain port conflicts.
+func CommandLine(pid int) string {
+	return commandLine(pid)
+}
+
 // getListenerPIDsLsof is the lsof-based implementation used on Unix.
 func getListenerPIDsLsof(port int) []int {
 	out, err := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port), "-sTCP:LISTEN").Output()

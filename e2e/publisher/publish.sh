@@ -1,7 +1,8 @@
 #!/bin/sh
-# Publish all @kb-labs/*.tgz tarballs to Verdaccio using pnpm.
-# pnpm publish writes sha512 integrity hashes; npm publish writes sha1,
-# which causes ERR_PNPM_TARBALL_INTEGRITY on the consuming side.
+# Publish all @kb-labs/*.tgz tarballs to Verdaccio using npm.
+# The input is already a packed tarball. npm publish reads the manifest from
+# inside that tarball; pnpm publish <tarball> can resolve the package from its
+# current working directory and republish workspace:* metadata.
 #
 # Idempotent: runs safely on warm Verdaccio volumes (packages already exist).
 # Runs once and exits 0 — Docker Compose waits for this to complete
@@ -50,18 +51,18 @@ get_token() {
 TOKEN=$(get_token)
 
 if [ -n "$TOKEN" ]; then
-  pnpm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN" 2>/dev/null || true
   echo "    Auth token acquired"
 else
-  # Last resort: use basic-auth (base64-encoded user:pass) in pnpm config
+  # Last resort: use basic-auth (base64-encoded user:pass) in npm config
   B64=$(echo -n "${USER}:${PASS}" | base64)
-  pnpm config set "//${REGISTRY_HOST}/:_auth" "$B64" 2>/dev/null || true
-  pnpm config set "//${REGISTRY_HOST}/:username" "$USER" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:_auth" "$B64" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:username" "$USER" 2>/dev/null || true
   echo "    Using basic-auth (no token available)"
 fi
 
 PARALLELISM="${PUBLISH_PARALLELISM:-4}"
-echo "==> Publishing packages (pnpm publish for sha512 integrity, parallel x${PARALLELISM})..."
+echo "==> Publishing packages (npm publish from tarballs, parallel x${PARALLELISM})..."
 
 # Each pnpm publish handshakes with Verdaccio per package. Sequential
 # loop over 160+ tarballs takes ~160s of mostly-idle waiting. Running
@@ -76,16 +77,16 @@ publish_set() {
   find "$set_dir" -maxdepth 1 -type f -name '*.tgz' -print 2>/dev/null | sort
 }
 
-# Worker: published-or-409 → echo ✓/~ and exit 0; anything else → exit 1.
+# Worker: published-or-conflict → echo ✓/~ and exit 0; anything else → exit 1.
 # REGISTRY is exported above; the worker reads it from env.
 WORKER='
   tarball="$1"
   pkg=$(basename "$tarball")
-  OUTPUT=$(pnpm publish "$tarball" --registry "$REGISTRY" --no-git-checks 2>&1) && {
+  OUTPUT=$(npm publish "$tarball" --registry "$REGISTRY" 2>&1) && {
     echo "  ✓ $pkg"
     exit 0
   } || true
-  if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published"; then
+  if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published\|cannot publish over the previously published versions"; then
     echo "  ~ $pkg (already exists — skipped)"
     exit 0
   fi

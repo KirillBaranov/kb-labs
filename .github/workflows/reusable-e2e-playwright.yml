@@ -85,7 +85,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
 
       # The committed binaries in tools/ are macOS builds; rebuild for linux/amd64.
@@ -129,7 +129,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          key: e2e-tgz-v5-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
           restore-keys: |
             e2e-tgz-${{ runner.os }}-
 
@@ -213,7 +213,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
           # No restore-keys: storage must only be reused when built from the exact
           # same tarballs — a partial-match restore leaves stale package versions.
 

@@ -78,4 +78,15 @@ describe('marketplace HTTP authentication', () => {
       expect.objectContaining({ headers: { Authorization: 'Bearer fresh-token' } }),
     );
   });
+
+  it('gives a first-run instruction when no auth exists', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('refreshToken is required', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(get('/packages')).rejects.toThrow(
+      'Marketplace authentication is required. Run `kb auth login` or choose local no-auth mode during installation.',
+    );
+    expect(sessionRefresh).not.toHaveBeenCalled();
+    expect(credentialsRefresh).not.toHaveBeenCalled();
+  });
 });

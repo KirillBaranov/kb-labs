@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - uses: actions/setup-go@v5
@@ -100,7 +100,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          key: e2e-tgz-v3-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
 
       - name: Pack @kb-labs/* packages
         if: (inputs.gate == false || steps.gate.outputs.run == 'true') && steps.tgz-cache.outputs.cache-hit != 'true'
@@ -139,7 +139,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
 
       - name: Prepare Verdaccio storage permissions
         if: inputs.gate == false || steps.gate.outputs.run == 'true'
@@ -191,6 +191,7 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          GITHUB_TOKEN: ${{ github.token }}
 
       # ── Cleanup ───────────────────────────────────────────────────────
 

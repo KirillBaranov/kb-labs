@@ -3,7 +3,7 @@
 # Stage 1 (go-builder): compiles kb-create and kb-dev from monorepo source so
 # the E2E suite never needs kblabs.ru or GitHub releases to be reachable (CI-safe).
 #
-# Stage 2 (runtime): Node 20 image with the compiled binaries pre-installed.
+# Stage 2 (runtime): Node 24 image with the compiled binaries pre-installed.
 # entrypoint.sh detects the pre-installed binaries and skips the remote
 # install.sh download. kb-create then installs all @kb-labs/* packages from
 # the Verdaccio local registry (started by the verdaccio Compose service),
@@ -31,11 +31,11 @@ RUN cd /src/kb-create && go build -o /out/kb-create .
 RUN cd /src/kb-dev    && go build -o /out/kb-dev .
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────
-FROM node:22-bookworm
+FROM node:24-bookworm
 
 RUN apt-get update -qq && \
     apt-get install -y -qq curl ca-certificates git jq && \
-    npm install -g pnpm@9 && \
+    npm install -g pnpm@11.4.0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN git config --global user.email "e2e@kblabs.test" && \

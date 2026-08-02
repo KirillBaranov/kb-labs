@@ -36,7 +36,10 @@ import { toPosixPath } from '../utils/path';
 import { validateManifests, normalizeManifest } from './schema';
 
 // Check if DEBUG_MODE is enabled
-const DEBUG_MODE = process.env.DEBUG_SANDBOX === '1' || process.env.NODE_ENV === 'development';
+// A development build is not the same thing as an opted-in discovery
+// diagnostic session. Keep routine CLI output quiet even when the installed
+// Studio/CLI happens to run with NODE_ENV=development.
+const DEBUG_MODE = process.env.DEBUG_SANDBOX === '1' || process.env.KB_DISCOVERY_DEBUG === '1';
 
 // Helper function for logging - only outputs in DEBUG_MODE to avoid polluting user output
 // In production, discovery logs are suppressed unless user explicitly enables --debug

@@ -51,7 +51,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -84,7 +84,10 @@ jobs:
           path: |
             e2e/packages-base
             base-dist-artifacts.tar
-          key: e2e-base-tgz-v4-${{ github.sha }}
+          # v6 invalidates snapshots produced before published package metadata
+          # was verified end-to-end; those snapshots could contain workspace:*
+          # references even though the current pack step is clean.
+          key: e2e-base-tgz-v6-${{ github.sha }}
       - name: Validate exact main E2E snapshot
         run: |
           count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
@@ -102,7 +105,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Check Single Version Policy (versions + format)
@@ -117,7 +120,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
+        with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: node infra/devkit/bin/devkit-check-plugins.mjs --ci
 
@@ -138,7 +141,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
@@ -171,7 +174,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -196,7 +199,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
@@ -247,7 +250,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - uses: actions/setup-go@v5
@@ -284,11 +287,14 @@ jobs:
           # changes. pnpm pack materializes workspace:* ranges into exact
           # versions, so reusing an older tarball can make the Verdaccio e2e
           # job test a package graph that is not present in this checkout.
-          key: e2e-tgz-v3-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
+          key: e2e-tgz-v5-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
 
       - name: Pack @kb-labs/* packages
         if: steps.tgz-cache.outputs.cache-hit != 'true'
         run: bash e2e/scripts/pack-all.sh
+
+      - name: Validate packed package metadata
+        run: bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages"
 
       - name: Pre-pull BuildKit image
         run: |

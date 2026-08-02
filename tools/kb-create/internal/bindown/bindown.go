@@ -128,6 +128,9 @@ func latestBinariesTag(repo string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	resp, err := client.Do(req) // #nosec G704 -- URL is constructed from trusted GitHub API constant
 	if err != nil {
@@ -136,6 +139,9 @@ func latestBinariesTag(repo string) (string, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
+			return "", fmt.Errorf("GitHub API %s returned 403; set GITHUB_TOKEN or pin a binary release version", url)
+		}
 		return "", fmt.Errorf("GitHub API %s returned %d", url, resp.StatusCode)
 	}
 

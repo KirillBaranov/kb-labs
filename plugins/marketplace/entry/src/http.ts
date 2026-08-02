@@ -77,6 +77,9 @@ async function request<T>(method: string, path: string, body?: Record<string, un
         auth = await auth.refresh();
         continue;
       }
+      if (response.status === 401 && !auth) {
+        throw new Error('Marketplace authentication is required. Run `kb auth login` or choose local no-auth mode during installation.');
+      }
       if (!response.ok) {
         const text = await response.text();
         throw new Error(`Marketplace ${path} failed (${response.status}): ${text}`);

@@ -1,12 +1,38 @@
 package pm
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
+
+func TestPinPnpmPackageJSON(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"kb-platform"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := pinPnpmPackageJSON(dir); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if got := pkg["packageManager"]; got != "pnpm@11.4.0" {
+		t.Fatalf("packageManager = %v, want pnpm@11.4.0", got)
+	}
+	engines, ok := pkg["engines"].(map[string]interface{})
+	if !ok || engines["node"] != ">=24" {
+		t.Fatalf("engines = %#v, want node >=24", pkg["engines"])
+	}
+}
 
 // TestDetectReturnsNonNil verifies that Detect always returns a non-nil manager.
 func TestDetectReturnsNonNil(t *testing.T) {
@@ -54,6 +80,9 @@ func TestPnpmInstallArgsUseAppendOnlyReporter(t *testing.T) {
 	if !slices.Contains(args, "--registry") || !slices.Contains(args, "http://localhost:4873") {
 		t.Errorf("pnpm install args = %q, want configured registry", args)
 	}
+	if slices.Contains(args, "--allow-build=@kb-labs/devkit") {
+		t.Errorf("pnpm install args = %q, must not use unsupported --allow-build CLI flag", args)
+	}
 }
 
 // TestEnsurePackageJSONCreates verifies that ensurePackageJSON creates package.json
@@ -72,6 +101,34 @@ func TestEnsurePackageJSONCreates(t *testing.T) {
 	}
 	if info.Size() == 0 {
 		t.Error("package.json is empty")
+	}
+}
+
+func TestEnsurePackageJSONAllowsPlatformBuildDependencies(t *testing.T) {
+	dir := t.TempDir()
+	if err := ensurePackageJSON(dir); err != nil {
+		t.Fatalf("ensurePackageJSON: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		t.Fatalf("read package.json: %v", err)
+	}
+	var pkg struct {
+		Pnpm struct {
+			OnlyBuiltDependencies []string `json:"onlyBuiltDependencies"`
+		} `json:"pnpm"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatalf("parse package.json: %v", err)
+	}
+	got := make(map[string]bool, len(pkg.Pnpm.OnlyBuiltDependencies))
+	for _, name := range pkg.Pnpm.OnlyBuiltDependencies {
+		got[name] = true
+	}
+	for _, name := range []string{"@kb-labs/devkit", "@parcel/watcher", "@swc/core", "better-sqlite3", "esbuild", "unrs-resolver"} {
+		if !got[name] {
+			t.Errorf("package.json pnpm.onlyBuiltDependencies missing %q", name)
+		}
 	}
 }
 
@@ -155,6 +212,15 @@ func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 	const wantDefault = "registry=https://registry.npmjs.org/"
 	if !strings.Contains(string(data), wantDefault) {
 		t.Errorf(".npmrc missing default registry: got %q, want it to contain %q", string(data), wantDefault)
+	}
+	workspace, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	if err != nil {
+		t.Fatalf("pnpm-workspace.yaml not written: %v", err)
+	}
+	for _, want := range []string{"allowBuilds:", "'@kb-labs/devkit': true", "'esbuild': true", "overrides:", "'@kb-labs/sdk': '>=2.0.0'"} {
+		if !strings.Contains(string(workspace), want) {
+			t.Errorf("pnpm-workspace.yaml missing %q: got %q", want, string(workspace))
+		}
 	}
 }
 

@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import OpenAI from "openai";
-import { createAdapter, normalizeLLMError } from "./llm.js";
+import { createAdapter, KBLabsGatewayError, normalizeLLMError } from "./llm.js";
 
 /**
  * Regression coverage for the gateway-502-shows-raw-HTML bug: `kb review run`
@@ -31,11 +31,27 @@ describe("normalizeLLMError", () => {
     }
   });
 
-  it("leaves a well-formed JSON API error (e.g. 401) untouched", () => {
+  it("preserves structured provider context for a well-formed JSON API error", () => {
     const jsonError = { error: { message: "Invalid API key", type: "invalid_request_error" } };
-    const apiError = OpenAI.APIError.generate(401, jsonError, "Invalid API key", {});
+    const apiError = OpenAI.APIError.generate(401, jsonError, "Invalid API key", {
+      "content-type": "application/json",
+      "x-request-id": "req-123",
+    });
 
-    expect(() => normalizeLLMError(apiError)).toThrowError(apiError.message);
+    try {
+      normalizeLLMError(apiError);
+    } catch (err) {
+      expect(err).toBeInstanceOf(KBLabsGatewayError);
+      expect((err as Error).message).toContain("HTTP 401");
+      expect((err as Error).message).toContain("Invalid API key");
+      expect((err as Error).message).toContain("req-123");
+      expect((err as KBLabsGatewayError).contentType).toBe("application/json");
+    }
+  });
+
+  it("turns timeout errors into actionable diagnostics without a body dump", () => {
+    expect(() => normalizeLLMError(Object.assign(new Error("request timed out"), { name: "AbortError" })))
+      .toThrow(/timed out/);
   });
 
   it("rethrows non-APIError errors unchanged", () => {

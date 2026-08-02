@@ -9,6 +9,7 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -87,13 +88,19 @@ exit 0
 		t.Fatalf("write fake pnpm: %v", err)
 	}
 
-	// Keep the real Node.js directory available because kb-create preflight
-	// verifies Node before it writes any installer state.
+	// Model the supported runtime explicitly. The host running tests may be an
+	// older Node release, but these lifecycle tests are about installer behavior
+	// after toolchain preflight, not about the host machine's version.
 	nodePath, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("locate node for lifecycle harness: %v", err)
 	}
-	// Fake PATH: stub pnpm, real node, and basic shell tools.
+	nodeShim := filepath.Join(fakeBin, "node")
+	nodeScript := fmt.Sprintf("#!/usr/bin/env bash\nif [ \"$1\" = \"--version\" ]; then echo v24.0.0; else exec %q \"$@\"; fi\n", nodePath)
+	if err := os.WriteFile(nodeShim, []byte(nodeScript), 0o755); err != nil { //nolint:gosec // test fixture
+		t.Fatalf("write fake node: %v", err)
+	}
+	// Fake PATH: supported Node/pnpm shims and basic shell tools.
 	env = append(os.Environ(), "PATH="+fakeBin+":"+filepath.Dir(nodePath)+":/usr/bin:/bin")
 	return platformDir, kbCreate, env
 }
@@ -228,12 +235,7 @@ func TestPlatformDirMkdirFailsHardAbort(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	kbCreate := filepath.Join(root, "kb-create")
-	cmd := exec.Command("go", "build", "-o", kbCreate, ".") //nolint:gosec
-	cmd.Dir = testdataWd(t)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build kb-create: %v\n%s", err, out)
-	}
+	_, kbCreate, env := setup(t)
 
 	readOnlyParent := filepath.Join(root, "readonly-parent")
 	if err := os.MkdirAll(readOnlyParent, 0o755); err != nil {
@@ -247,7 +249,7 @@ func TestPlatformDirMkdirFailsHardAbort(t *testing.T) {
 	platformDir := filepath.Join(readOnlyParent, "platform") // does not exist — MkdirAll must create it
 	projectDir := t.TempDir()
 
-	out, err := runKbCreate(t, kbCreate, os.Environ(), projectDir, "--yes", "--platform", platformDir)
+	out, err := runKbCreate(t, kbCreate, env, projectDir, "--yes", "--platform", platformDir)
 	if err == nil {
 		t.Fatalf("expected kb-create to fail against a read-only platform parent, got success:\n%s", out)
 	}

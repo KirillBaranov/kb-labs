@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
 
       - name: Build Go tools (kb-devkit, kb-dev)
@@ -66,7 +66,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-v4-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
+          key: e2e-tgz-v5-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
 
       - name: Pack @kb-labs/* packages
         if: steps.tgz-cache.outputs.cache-hit != 'true'
@@ -77,6 +77,7 @@ jobs:
           count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           echo "Packed tarballs: $count"
           test "$count" -ge 100
+          bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages"
 
       - name: Pre-pull BuildKit image
         run: |

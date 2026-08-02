@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/kb-labs/create/internal/toolchain"
 )
 
 // PnpmManager implements PackageManager using pnpm.
@@ -38,7 +40,11 @@ func (p *PnpmManager) Update(dir string, pkgs []string, progress chan<- Progress
 // kb-create's single-line spinner. Raw output is still collected for a fatal
 // error report; it is simply no longer allowed to redraw the user's terminal.
 func (p *PnpmManager) installArgs(command, dir string, pkgs []string) []string {
-	args := append([]string{command, "--dir", dir, "--reporter=append-only"}, pkgs...)
+	args := []string{command, "--dir", dir, "--reporter=append-only"}
+	// Build permissions are written to pnpm-workspace.yaml by ensureNpmrc.
+	// Do not pass --allow-build here: it is not supported by all pnpm 11
+	// patch releases, while the workspace config is the stable interface.
+	args = append(args, pkgs...)
 	if p.Registry != "" {
 		args = append(args, "--registry", p.Registry)
 	}
@@ -78,6 +84,9 @@ func (p *PnpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
 
 func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) error {
 	if err := ensurePackageJSON(dir); err != nil {
+		return err
+	}
+	if err := pinPnpmPackageJSON(dir); err != nil {
 		return err
 	}
 	if err := p.ensureNpmrc(dir); err != nil {
@@ -126,6 +135,30 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 	return cmd.Wait()
 }
 
+func pinPnpmPackageJSON(dir string) error {
+	path := filepath.Join(dir, "package.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return fmt.Errorf("parse platform package.json: %w", err)
+	}
+	pkg["packageManager"] = "pnpm@" + toolchain.PnpmVersion
+	engines, _ := pkg["engines"].(map[string]interface{})
+	if engines == nil {
+		engines = map[string]interface{}{}
+	}
+	engines["node"] = ">=24"
+	pkg["engines"] = engines
+	rendered, err := json.MarshalIndent(pkg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(rendered, '\n'), 0o600)
+}
+
 // ensureNpmrc writes a platform-local .npmrc. It is always written (even when
 // no custom registry is configured) because the installer points pnpm's
 // NPM_CONFIG_USERCONFIG at this file to isolate it from the user's global
@@ -145,5 +178,34 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	if p.StoreDir != "" {
 		content += "store-dir=" + p.StoreDir + "\npackage-import-method=hardlink\n"
 	}
-	return os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600); err != nil {
+		return err
+	}
+	// pnpm 10+ reads workspace settings from pnpm-workspace.yaml, not from
+	// package.json. The platform is intentionally a standalone workspace so
+	// clean installs can allow native build scripts without an interactive
+	// `pnpm approve-builds` prompt and retain the platform overrides.
+	workspaceConfig := "allowBuilds:\n"
+	for _, name := range []string{
+		"@kb-labs/devkit",
+		"@parcel/watcher",
+		"@swc/core",
+		"better-sqlite3",
+		"esbuild",
+		"unrs-resolver",
+	} {
+		workspaceConfig += "  '" + name + "': true\n"
+	}
+	workspaceConfig += "overrides:\n"
+	for _, name := range []string{
+		"@kb-labs/gateway-contracts",
+		"@kb-labs/gateway-auth",
+		"@kb-labs/gateway-core",
+		"@kb-labs/sdk",
+		"@kb-labs/core-runtime",
+		"@kb-labs/core-platform",
+	} {
+		workspaceConfig += "  '" + name + "': '>=2.0.0'\n"
+	}
+	return os.WriteFile(filepath.Join(dir, "pnpm-workspace.yaml"), []byte(workspaceConfig), 0o600)
 }

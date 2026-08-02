@@ -686,6 +686,24 @@ func (m *Manager) Status() *StatusResult {
 			LogFile: logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), id),
 		}
 
+		// A failed/dead TCP service is often caused by a process outside kb-dev
+		// holding its configured port. Surface the exact PID and command so the
+		// user can clean up the right process instead of guessing or using a
+		// broad kill command.
+		if svc.Config.Port > 0 && (state == service.StateFailed || state == service.StateDead) {
+			for _, pid := range process.GetListenerPIDs(svc.Config.Port) {
+				if pid == svc.PID {
+					continue
+				}
+				ss.PortOccupant = &PortOccupant{PID: pid, Command: process.CommandLine(pid)}
+				if ss.Detail == "" {
+					ss.Detail = fmt.Sprintf("port %d is occupied by PID %d", svc.Config.Port, pid)
+				}
+				ss.Cleanup = fmt.Sprintf("kb-dev stop %s --force", id)
+				break
+			}
+		}
+
 		// Resolved dependency states.
 		if len(svc.Config.DependsOn) > 0 {
 			ss.DepsState = make(map[string]string)
