@@ -24,7 +24,10 @@
 
 import * as React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Building2, Lock } from 'lucide-react';
+import { UIButton, UIInput, UIInputPassword } from '@kb-labs/studio-ui-kit';
 import { useAuth } from '@/auth/auth-provider';
+import styles from './login-page.module.css';
 
 // ── Provider types ────────────────────────────────────────────────────────────
 
@@ -51,7 +54,24 @@ export function LoginPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = React.useState(false);
+
+  // Minimal client-side check — the server is the source of truth for
+  // credential validity, this is just fast feedback before a round-trip.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validate = (candidateEmail: string, candidatePassword: string) => {
+    const errors: { email?: string; password?: string } = {};
+    if (!candidateEmail.trim()) {
+      errors.email = 'Email is required';
+    } else if (!EMAIL_RE.test(candidateEmail)) {
+      errors.email = 'Enter a valid email address';
+    }
+    if (!candidatePassword) {
+      errors.password = 'Password is required';
+    }
+    return errors;
+  };
 
   // Auto-navigate when auth resolves to authenticated (handles transparent
   // token refresh: RequireAuth sends the user here while loading, auth-provider
@@ -86,6 +106,13 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const errors = validate(email, password);
+    setFieldErrors(errors);
+    if (errors.email || errors.password) {
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email, password);
@@ -106,32 +133,22 @@ export function LoginPage() {
   const redirectProviders = providers.filter((p) => p.kind === 'redirect');
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg-tertiary, #f5f5f5)',
-        padding: '2rem',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '400px',
-          width: '100%',
-          background: 'var(--bg-primary, #fff)',
-          borderRadius: '12px',
-          padding: '2.5rem',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-        }}
-      >
-        {/* Heading */}
-        <h1 style={{ marginBottom: '0.25rem', fontSize: '1.5rem', fontWeight: 600 }}>
-          KB Labs Studio
-        </h1>
-        <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary, #666)', fontSize: '0.9rem' }}>
-          Sign in to your workspace
+    <div className={styles.screen}>
+      <div className={styles.card}>
+        {/* Brand */}
+        <div className={styles.brand}>
+          <div className={styles.mark} aria-hidden="true">
+            KB
+          </div>
+          <div>
+            <p className={styles.title}>KB Labs Studio</p>
+            <p className={styles.subtitle}>AI/infra control plane</p>
+          </div>
+        </div>
+
+        <h1 className={styles.heading}>Welcome back</h1>
+        <p className={styles.lede}>
+          Access is invite-only — ask your workspace admin for credentials.
         </p>
 
         {/* Password form */}
@@ -142,108 +159,70 @@ export function LoginPage() {
             noValidate
           >
             {/* Email field */}
-            <div style={{ marginBottom: '1rem' }}>
-              <label
-                htmlFor="login-email"
-                style={{ display: 'block', marginBottom: '0.375rem', fontWeight: 500 }}
-              >
+            <div className={styles.field}>
+              <label htmlFor="login-email" className={styles.label}>
                 Email
               </label>
-              <input
+              <UIInput
                 id="login-email"
                 type="email"
                 autoComplete="email"
                 required
+                size="large"
+                status={fieldErrors.email ? 'error' : undefined}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.6rem 0.75rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-primary, #d9d9d9)',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box',
+                onChange={(value) => {
+                  setEmail(value);
+                  if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
                 }}
               />
+              {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
             </div>
 
             {/* Password field */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label
-                htmlFor="login-password"
-                style={{ display: 'block', marginBottom: '0.375rem', fontWeight: 500 }}
-              >
+            <div className={styles.field}>
+              <label htmlFor="login-password" className={styles.label}>
                 Password
               </label>
-              <input
+              <UIInputPassword
                 id="login-password"
-                type="password"
                 autoComplete="current-password"
                 required
+                size="large"
+                status={fieldErrors.password ? 'error' : undefined}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.6rem 0.75rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-primary, #d9d9d9)',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box',
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
                 }}
               />
+              {fieldErrors.password && <p className={styles.fieldError}>{fieldErrors.password}</p>}
             </div>
 
             {/* Error message */}
             {error && (
-              <p
-                role="alert"
-                style={{
-                  color: 'var(--color-error, #ff4d4f)',
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem',
-                }}
-              >
+              <p role="alert" className={styles.error}>
                 {error}
               </p>
             )}
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.7rem',
-                borderRadius: '6px',
-                background: loading ? '#aaa' : 'var(--color-primary, #667eea)',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
+            <UIButton
+              htmlType="submit"
+              variant="primary"
+              size="large"
+              loading={loading}
+              className={styles.submit}
             >
               {loading ? 'Signing in…' : 'Sign in'}
-            </button>
+            </UIButton>
           </form>
         )}
 
         {/* Divider between password form and redirect providers */}
-        {showPasswordForm && redirectProviders.length > 0 && (
-          <div
-            aria-hidden="true"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              margin: '1.25rem 0',
-              color: 'var(--text-secondary, #999)',
-              fontSize: '0.8rem',
-            }}
-          >
-            <span style={{ flex: 1, height: '1px', background: 'var(--border-primary, #e5e5e5)' }} />
+        {showPasswordForm && (
+          <div aria-hidden="true" className={styles.divider}>
             or
-            <span style={{ flex: 1, height: '1px', background: 'var(--border-primary, #e5e5e5)' }} />
           </div>
         )}
 
@@ -252,25 +231,28 @@ export function LoginPage() {
           <a
             key={p.id}
             href={`/api/auth/oauth/${p.id}/start`}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.7rem',
-              marginBottom: '0.625rem',
-              borderRadius: '6px',
-              background: 'var(--bg-secondary, #f0f0f0)',
-              color: 'var(--text-primary, #333)',
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              textAlign: 'center',
-              textDecoration: 'none',
-              border: '1px solid var(--border-primary, #d9d9d9)',
-              boxSizing: 'border-box',
-            }}
+            className={styles.providerLink}
           >
+            <Building2 size={16} aria-hidden="true" />
             Continue with {p.id}
           </a>
         ))}
+
+        {/* SSO — planned, not wired up yet: shown disabled to signal the
+            upcoming corporate-identity login path (Okta/Azure AD/etc). */}
+        <button
+          type="button"
+          disabled
+          className={styles.providerLinkDisabled}
+          title="Coming soon"
+        >
+          <Building2 size={16} aria-hidden="true" />
+          Continue with corporate SSO
+          <span className={styles.soonBadge}>
+            <Lock size={10} aria-hidden="true" />
+            Soon
+          </span>
+        </button>
       </div>
     </div>
   );
