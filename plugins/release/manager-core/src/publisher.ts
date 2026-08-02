@@ -167,6 +167,26 @@ function mergeChangelogBlock(existingChangelog: string, newBlock: string, versio
   return newBlock + (existingChangelog ? '\n' + existingChangelog : '');
 }
 
+/**
+ * Release commit ranges can overlap when several lockstep releases are
+ * prepared in quick succession. Keep the root changelog readable by not
+ * repeating an identical change that is already recorded in its history.
+ * Package changelogs intentionally keep their flow-local history untouched.
+ */
+function removeHistoricalDuplicateBullets(existingChangelog: string, newBlock: string): string {
+  const historicalBullets = new Set(
+    existingChangelog
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('- ')),
+  );
+
+  return newBlock
+    .split('\n')
+    .filter(line => !line.trim().startsWith('- ') || !historicalBullets.has(line.trim()))
+    .join('\n');
+}
+
 /** Default location of the consolidated repo-root changelog, relative to repoRoot. */
 export const DEFAULT_ROOT_CHANGELOG_PATH = '.kb/release/CHANGELOG.md';
 
@@ -218,7 +238,12 @@ export async function mergeRootChangelog(options: {
     // No existing root changelog, start fresh
   }
 
-  const updatedChangelog = mergeChangelogBlock(existingChangelog, changelog.trim(), versionPattern);
+  // A retry must replace the current version with the complete generated
+  // block; only a genuinely new version is filtered against older history.
+  const deduplicatedBlock = versionPattern.test(existingChangelog)
+    ? changelog.trim()
+    : removeHistoricalDuplicateBullets(existingChangelog, changelog.trim());
+  const updatedChangelog = mergeChangelogBlock(existingChangelog, deduplicatedBlock, versionPattern);
 
   await mkdir(dirname(changelogPath), { recursive: true });
   await writeFile(changelogPath, updatedChangelog.trim() + '\n', 'utf-8');
@@ -501,4 +526,3 @@ function createCommitMessage(plan: ReleasePlan): string {
 
   return lines.join('\n');
 }
-

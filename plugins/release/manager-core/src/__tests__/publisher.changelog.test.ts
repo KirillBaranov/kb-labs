@@ -157,6 +157,34 @@ describe('mergeRootChangelog — repo-root .kb/release/CHANGELOG.md', () => {
     expect(content.indexOf('1.1.0')).toBeLessThan(content.indexOf('1.0.0'));
   });
 
+  it('does not repeat change bullets already present in root history', async () => {
+    const rootChangelogPath = join(repoRoot, '.kb', 'release', 'CHANGELOG.md');
+    mkdirSync(join(repoRoot, '.kb', 'release'), { recursive: true });
+    writeFileSync(
+      rootChangelogPath,
+      '## [1.0.0] - 2025-12-01\n\n### Changes\n\n- **release**: shared change\n',
+      'utf-8',
+    );
+
+    const plan: ReleasePlan = {
+      packages: [makePkg({ name: '@scope/alpha', path: join(repoRoot, 'alpha'), currentVersion: '1.0.0', nextVersion: '1.1.0' })],
+      strategy: 'semver',
+      registry: 'https://registry.npmjs.org',
+      rollbackEnabled: true,
+      channel: 'stable',
+    };
+
+    await mergeRootChangelog({
+      repoRoot,
+      plan,
+      changelog: '## [1.1.0] - 2026-01-01\n\n### Changes\n\n- **release**: shared change\n- **release**: unique change',
+    });
+
+    const content = readFileSync(rootChangelogPath, 'utf-8');
+    expect(content.match(/\*\*release\*\*: shared change/g)?.length).toBe(1);
+    expect(content.match(/\*\*release\*\*: unique change/g)?.length).toBe(1);
+  });
+
   it('replaces the same-version section on retry instead of duplicating it', async () => {
     mkdirSync(join(repoRoot, 'beta'), { recursive: true });
     const plan: ReleasePlan = {
