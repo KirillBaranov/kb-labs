@@ -284,23 +284,15 @@ func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options, basePa
 	if gatewayConfig, ok := config["gateway"].(map[string]any); ok {
 		if upstreams, ok := gatewayConfig["upstreams"].(map[string]any); ok {
 			plan := resolveGatewayPlan(opts)
-			allowed := make(map[string]bool, len(plan.Transport))
-			for serviceID := range plan.Transport {
-				allowed[serviceID] = true
+			reconciled, changed, err := reconcileLegacyUpstreams(upstreams, plan)
+			if err != nil {
+				incompatible = true
 			}
-			seenPrefixes := make(map[string]bool, len(upstreams))
-			for id, raw := range upstreams {
-				upstream, ok := raw.(map[string]any)
-				serviceID, serviceOK := upstream["serviceId"].(string)
-				prefix, prefixOK := upstream["prefix"].(string)
-				if !ok || !serviceOK || !prefixOK || !allowed[serviceID] || seenPrefixes[prefix] {
-					incompatible = true
-					if opts.AllowIncompatibleLegacyMigration {
-						delete(upstreams, id)
-					}
-					continue
-				}
-				seenPrefixes[prefix] = true
+			if incompatible && !opts.AllowIncompatibleLegacyMigration {
+				return fmt.Errorf("%w: stale or conflicting gateway upstreams require confirmation", ErrIncompatibleLegacyConfig)
+			}
+			if changed || opts.AllowIncompatibleLegacyMigration {
+				gatewayConfig["upstreams"] = reconciled
 			}
 		}
 		if incompatible && !opts.AllowIncompatibleLegacyMigration {
@@ -325,6 +317,81 @@ func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options, basePa
 		return fmt.Errorf("remove legacy config: %w", err)
 	}
 	return nil
+}
+
+// reconcileLegacyUpstreams makes the generated install plan authoritative for
+// managed gateway routes while retaining compatible user-defined routes. This
+// prevents a legacy alias (for example widgets -> /plugins) from colliding
+// with the generated plugin proxy after the project config is migrated.
+func reconcileLegacyUpstreams(legacy map[string]any, plan *gateway.Plan) (map[string]any, bool, error) {
+	result := make(map[string]any, len(plan.Gateway.Upstreams)+len(legacy))
+	usedPrefixes := make(map[string]string, len(plan.Gateway.Upstreams))
+	for id, upstream := range plan.Gateway.Upstreams {
+		raw, err := json.Marshal(upstream)
+		if err != nil {
+			return nil, false, err
+		}
+		var value map[string]any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, false, err
+		}
+		result[id] = value
+		usedPrefixes[upstream.Prefix] = id
+	}
+
+	keys := make([]string, 0, len(legacy))
+	for id := range legacy {
+		keys = append(keys, id)
+	}
+	sort.Strings(keys)
+	changed := false
+	var firstErr error
+	for _, id := range keys {
+		raw, ok := legacy[id].(map[string]any)
+		serviceID, serviceOK := raw["serviceId"].(string)
+		prefix, prefixOK := raw["prefix"].(string)
+		if !ok || !serviceOK || !prefixOK || prefix == "" {
+			changed = true
+			if firstErr == nil {
+				firstErr = fmt.Errorf("legacy upstream %q is malformed", id)
+			}
+			continue
+		}
+		if _, ok := plan.Transport[serviceID]; !ok {
+			changed = true
+			if firstErr == nil {
+				firstErr = fmt.Errorf("legacy upstream %q references missing service %q", id, serviceID)
+			}
+			continue
+		}
+		if owner, exists := usedPrefixes[prefix]; exists {
+			generated, _ := result[id].(map[string]any)
+			if owner != id || !mapsEqual(raw, generated) {
+				changed = true
+				if firstErr == nil {
+					firstErr = fmt.Errorf("legacy upstream %q conflicts with route %q", id, owner)
+				}
+			}
+			continue
+		}
+		if _, generated := plan.Gateway.Upstreams[id]; generated {
+			// Generated route wins even when its prefix did not collide.
+			changed = true
+			continue
+		}
+		result[id] = raw
+		usedPrefixes[prefix] = id
+	}
+	return result, changed, firstErr
+}
+
+func mapsEqual(left, right map[string]any) bool {
+	if right == nil {
+		return false
+	}
+	leftJSON, leftErr := json.Marshal(left)
+	rightJSON, rightErr := json.Marshal(right)
+	return leftErr == nil && rightErr == nil && string(leftJSON) == string(rightJSON)
 }
 
 // isGeneratedPointerConfig distinguishes the installer-created project pointer

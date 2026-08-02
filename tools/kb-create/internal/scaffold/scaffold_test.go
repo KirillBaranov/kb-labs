@@ -487,7 +487,7 @@ func TestWriteProjectConfig_MigratesLegacyJsonWithBackup(t *testing.T) {
 	if err := os.MkdirAll(kbDir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	customContent := `{"platform":{"dir":"/old/path","custom":"keep"},"custom":{"enabled":true},"gateway":{"upstreams":{"legacy":{"serviceId":"missing","prefix":"/old"},"rest":{"serviceId":"rest","prefix":"/api/v1"},"duplicate":{"serviceId":"rest","prefix":"/api/v1"}}}}`
+	customContent := `{"platform":{"dir":"/old/path","custom":"keep"},"custom":{"enabled":true},"gateway":{"upstreams":{"legacy":{"serviceId":"missing","prefix":"/old"},"rest":{"serviceId":"rest","prefix":"/api/v1"},"duplicate":{"serviceId":"rest","prefix":"/api/v1"},"widgets":{"serviceId":"rest","prefix":"/plugins"}}}}`
 	jsonPath := filepath.Join(kbDir, "kb.config.json")
 	if err := os.WriteFile(jsonPath, []byte(customContent), 0o644); err != nil {
 		t.Fatal(err)
@@ -508,8 +508,11 @@ func TestWriteProjectConfig_MigratesLegacyJsonWithBackup(t *testing.T) {
 	if !strings.Contains(string(migrated), `"dir": "/some/platform"`) || !strings.Contains(string(migrated), `"custom": "keep"`) || !strings.Contains(string(migrated), `"enabled": true`) {
 		t.Errorf("migration did not preserve managed pointer and user fields: %s", migrated)
 	}
-	if strings.Contains(string(migrated), `"missing"`) || strings.Count(string(migrated), `"prefix": "/api/v1"`) != 1 {
+	if strings.Contains(string(migrated), `"missing"`) || strings.Contains(string(migrated), `"prefix": "/old"`) || strings.Count(string(migrated), `"prefix": "/api/v1"`) != 1 {
 		t.Errorf("migration did not remove stale/duplicate routes: %s", migrated)
+	}
+	if strings.Count(string(migrated), `"prefix": "/plugins"`) != 1 {
+		t.Errorf("migration retained a duplicate /plugins route instead of using the generated route: %s", migrated)
 	}
 	if _, err := os.Stat(jsonPath); !os.IsNotExist(err) {
 		t.Errorf("legacy json still exists after migration: %v", err)
