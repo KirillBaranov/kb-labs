@@ -290,6 +290,9 @@ jobs:
         if: steps.tgz-cache.outputs.cache-hit != 'true'
         run: bash e2e/scripts/pack-all.sh
 
+      - name: Validate packed package metadata
+        run: bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages"
+
       - name: Pre-pull BuildKit image
         run: |
           for i in 1 2 3; do

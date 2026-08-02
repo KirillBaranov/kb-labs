@@ -86,3 +86,23 @@ if [ "$FAILED" -gt 0 ]; then
   echo "ERROR: $FAILED packages failed to pack"
   exit 1
 fi
+
+# A workspace reference is valid inside this monorepo but invalid after a
+# package is published to Verdaccio/npm. Keep this invariant at the packaging
+# boundary so a broken tarball cannot poison a registry snapshot or an E2E
+# cache and only fail much later inside a customer's fresh install.
+echo "==> Validating published package metadata"
+INVALID=0
+for tarball in "$OUT_DIR"/*.tgz; do
+  [ -f "$tarball" ] || continue
+  if ! tar -xOzf "$tarball" package/package.json 2>/dev/null \
+    | jq -e '[.. | strings | select(startswith("workspace:"))] | length == 0' >/dev/null; then
+    echo "  ERROR: workspace dependency leaked into $(basename "$tarball")"
+    INVALID=$((INVALID+1))
+  fi
+done
+if [ "$INVALID" -gt 0 ]; then
+  echo "ERROR: $INVALID published tarballs contain workspace:* references"
+  exit 1
+fi
+echo "    All published tarballs contain registry-resolvable dependencies"

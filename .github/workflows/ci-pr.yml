@@ -138,6 +138,7 @@ jobs:
           echo "Base snapshot tarballs: $count"
           test "$count" -gt 100
           test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
+          bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages-base"
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:

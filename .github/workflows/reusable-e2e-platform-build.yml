@@ -77,6 +77,7 @@ jobs:
           count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
           echo "Packed tarballs: $count"
           test "$count" -ge 100
+          bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages"
 
       - name: Pre-pull BuildKit image
         run: |
