@@ -18,7 +18,7 @@
     "check:affected": "./tools/kb-devkit/kb-devkit run build lint type-check test --affected",
     "clean": "pnpm -r run clean",
     "clean:all": "pnpm -r run clean && rimraf node_modules",
-    "deploy": "./tools/kb-deploy/kb-deploy run",
+    "platform:deploy": "./tools/kb-deploy/kb-deploy run",
     "deploy:all": "./tools/kb-deploy/kb-deploy run --all",
     "deploy:status": "./tools/kb-deploy/kb-deploy status",
     "deps:check": "syncpack list-mismatches",
