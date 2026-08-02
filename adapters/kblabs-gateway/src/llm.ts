@@ -93,26 +93,61 @@ async function refreshToken(
 
 // ── Error normalization ─────────────────────────────────────────────────────
 
-/**
- * Normalizes gateway/LLM-provider errors before they reach callers.
- *
- * When the gateway (or an intermediate proxy) returns a non-2xx response
- * with a non-JSON body — e.g. an HTML 502 page when the upstream is
- * unreachable — the `openai` SDK's `APIError.message` becomes the raw HTML
- * verbatim (see openai/src/core.ts: `errMessage = errJSON ? undefined :
- * errText`, then `APIError.makeMessage` falls through to that raw text).
- * Both `kb review run` (shared/cli-ui handleError, prints err.message as-is)
- * and `kb commit commit` (heuristic-fallback catch, writes err.message +
- * err.stack to stderr) print that message straight to the terminal — a
- * page-long HTML dump instead of a useful error. `err.error` (the parsed
- * JSON body) is only unset when the body wasn't JSON, so it's a reliable
- * signal to replace the message with a short, clean one.
- */
-export function normalizeLLMError(err: unknown): never {
-  if (err instanceof OpenAI.APIError && err.status && !err.error) {
-    throw new Error(
-      `KB Labs Gateway error (HTTP ${err.status}): upstream returned a non-JSON response — ` +
-        `the gateway or LLM provider may be down or misconfigured. Try again in a moment.`,
+export class KBLabsGatewayError extends Error {
+  readonly status?: number;
+  readonly contentType?: string;
+  readonly endpointHost: string;
+  readonly correlationId?: string;
+
+  constructor(message: string, details: {
+    status?: number;
+    contentType?: string;
+    endpointHost: string;
+    correlationId?: string;
+  }) {
+    super(message);
+    this.name = "KBLabsGatewayError";
+    this.status = details.status;
+    this.contentType = details.contentType;
+    this.endpointHost = details.endpointHost;
+    this.correlationId = details.correlationId;
+  }
+}
+
+function responseHeader(headers: unknown, name: string): string | undefined {
+  if (!headers || typeof headers !== "object") {return undefined;}
+  const source = headers as { get?: (key: string) => string | null } & Record<string, unknown>;
+  if (typeof source.get === "function") {return source.get(name) ?? undefined;}
+  const value = Object.entries(source).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
+  return typeof value === "string" ? value : undefined;
+}
+
+function endpointHost(url: string): string {
+  try { return new URL(url).host; } catch { return "unknown"; }
+}
+
+/** Normalize provider errors without leaking response bodies, prompts, or secrets. */
+export function normalizeLLMError(err: unknown, requestURL = DEFAULT_GATEWAY_URL): never {
+  if (err instanceof OpenAI.APIError) {
+    const status = err.status;
+    const contentType = responseHeader(err.headers, "content-type") ?? "unknown";
+    const correlationId = responseHeader(err.headers, "x-correlation-id") ?? responseHeader(err.headers, "x-request-id");
+    const host = endpointHost(requestURL);
+    const providerMessage = err.error && typeof err.error === "object" && "message" in err.error
+      ? String((err.error as { message?: unknown }).message)
+      : undefined;
+    const bodyNote = providerMessage ? `: ${providerMessage.slice(0, 240)}` :
+      " — upstream returned a non-JSON response";
+    const requestNote = correlationId ? `, request ${correlationId}` : "";
+    throw new KBLabsGatewayError(
+      `KB Labs Gateway request failed${status ? ` (HTTP ${status})` : ""} at ${host}${requestNote} [${contentType}]${bodyNote}`,
+      { status, contentType, endpointHost: host, correlationId },
+    );
+  }
+  if (err instanceof Error && (err.name === "AbortError" || /timeout|timed out/i.test(err.message))) {
+    throw new KBLabsGatewayError(
+      `KB Labs Gateway request timed out at ${endpointHost(requestURL)} — check gateway/provider availability`,
+      { endpointHost: endpointHost(requestURL) },
     );
   }
   throw err;
@@ -179,7 +214,7 @@ export class KBLabsGatewayLLM implements ILLM {
         messages: [{ role: "user", content: prompt }],
         ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
       })
-      .catch(normalizeLLMError);
+      .catch((err: unknown) => normalizeLLMError(err, this.gatewayURL));
 
     const content = response.choices[0]?.message?.content ?? "";
     return {
@@ -233,7 +268,7 @@ export class KBLabsGatewayLLM implements ILLM {
         tools: options.toolChoice !== "none" ? tools : undefined,
         tool_choice,
       })
-      .catch(normalizeLLMError);
+      .catch((err: unknown) => normalizeLLMError(err, this.gatewayURL));
 
     const message = response.choices[0]?.message;
     if (!message) {

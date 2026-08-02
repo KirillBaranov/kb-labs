@@ -25,14 +25,7 @@ export default defineCommand<unknown, CLIInput<RefreshFlags>, unknown>({
       const { flags = {} } = input;
 
       try {
-        const cacheFile = path.join(ctx.cwd, '.kb', 'cache', 'cli-manifests.json');
-        let cleared = false;
-        try {
-          await fs.unlink(cacheFile);
-          cleared = true;
-        } catch {
-          // file may not exist
-        }
+        const cleared = await clearDiscoveryCache(ctx.cwd);
 
         if (flags.json) {
           ctx.ui?.json?.({ cleared });
@@ -51,3 +44,13 @@ export default defineCommand<unknown, CLIInput<RefreshFlags>, unknown>({
     },
   },
 });
+
+export async function clearDiscoveryCache(cwd: string): Promise<boolean> {
+  const cacheFile = path.join(cwd, '.kb', 'cache', 'cli-manifests.json');
+  try {
+    await fs.unlink(cacheFile);
+    return true;
+  } catch {
+    return false;
+  }
+}
