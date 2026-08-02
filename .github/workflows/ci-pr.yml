@@ -47,36 +47,6 @@ jobs:
     permissions:
       contents: read
 
-  # ── 1a. Determine the E2E closure before spending E2E resources ──────────
-  e2e-discover:
-    name: Discover affected E2E suites
-    runs-on: ubuntu-latest
-    needs: [preflight, build-tools]
-    permissions:
-      contents: read
-    outputs:
-      has-generic: ${{ steps.set.outputs.has-generic }}
-      has-auth: ${{ steps.set.outputs.has-auth }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        with:
-          name: go-tools
-          path: tools-bin/
-      - name: Install kb-devkit
-        run: chmod +x tools-bin/* && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
-      - name: Compute affected E2E suites
-        id: set
-        run: |
-          .devkit/affected.sh > /tmp/changed-files
-          ./tools/kb-devkit/kb-devkit affected --json > /tmp/affected.json
-          OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
-          echo "computed E2E selection: $OUT"
-          echo "has-generic=$(echo "$OUT" | jq -r '(.suites | length) > 0')" >> "$GITHUB_OUTPUT"
-          echo "has-auth=$(echo "$OUT" | jq -r '.auth')" >> "$GITHUB_OUTPUT"
-
   # ── 2. Build TS packages in the complete PR diff closure ───────────────────
   build:
     name: Build TS (affected)
@@ -115,64 +85,6 @@ jobs:
           path: dist-artifacts.tar
           retention-days: 1
           compression-level: 3
-
-  # ── 2a. Exact base snapshot for the PR fast E2E overlay ───────────────────
-  # The normal path restores this from main's cache. On the first rollout, or
-  # after cache eviction, build the exact PR base SHA once instead of falling
-  # back to a potentially stale npm @kb-labs/* package.
-  base-snapshot:
-    name: Build exact base E2E snapshot
-    runs-on: ubuntu-latest
-    needs: [preflight, build-tools, e2e-discover]
-    if: >-
-      !contains(github.event.pull_request.labels.*.name, 'full-ci') &&
-      needs.e2e-discover.outputs.has-generic == 'true'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          fetch-depth: 1
-      - uses: pnpm/action-setup@v4
-        with: { run_install: false }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - uses: actions/download-artifact@v4
-        with:
-          name: go-tools
-          path: tools-bin/
-      - name: Install Go tools
-        run: |
-          chmod +x tools-bin/*
-          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
-          cp tools-bin/kb-dev tools/kb-dev/kb-dev
-      - name: Restore exact base snapshot cache
-        id: base-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            e2e/packages-base
-            base-dist-artifacts.tar
-          key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
-      - name: Install base dependencies
-        if: steps.base-cache.outputs.cache-hit != 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Build base packages
-        if: steps.base-cache.outputs.cache-hit != 'true'
-        run: ./tools/kb-devkit/kb-devkit run build --no-cache
-      - name: Pack base packages
-        if: steps.base-cache.outputs.cache-hit != 'true'
-        run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
-      - name: Archive base dist packages
-        if: steps.base-cache.outputs.cache-hit != 'true'
-        run: find . -path '*/node_modules/*' -prune -o -path '*/.kb/*' -prune -o -type d -name dist -print | tar cf base-dist-artifacts.tar -T -
-      - name: Validate exact base E2E snapshot
-        run: |
-          count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
-          echo "Base snapshot tarballs: $count"
-          test "$count" -gt 100
-          test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
@@ -265,6 +177,7 @@ jobs:
     name: kb-create e2e
     runs-on: ubuntu-latest
     needs: [build-tools, build]
+    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
     timeout-minutes: 30
     permissions:
       contents: read
@@ -448,7 +361,7 @@ jobs:
         if: steps.gate.outputs.run != 'true'
         run: echo "kb-create e2e skipped (no kb-create changes in this PR)"
 
-  # ── E2E suites — run after the shared build, in parallel with checks ───────
+  # ── Full E2E — opt in per PR; always runs after a successful main CI ──────
 
   e2e-platform:
     if: contains(github.event.pull_request.labels.*.name, 'full-ci')
@@ -461,82 +374,3 @@ jobs:
       # entire run to fail at startup (0 jobs) before anything executes.
       contents: write
       actions: read
-  fast-plugin-e2e:
-    name: Affected E2E
-    if: >-
-      !contains(github.event.pull_request.labels.*.name, 'full-ci') &&
-      needs.e2e-discover.outputs.has-generic == 'true'
-    needs: [build, base-snapshot, e2e-discover]
-    uses: ./.github/workflows/e2e-plugins.yml
-    with:
-      dist-artifact: dist
-      go-tools-artifact: go-tools
-      base-snapshot-key: e2e-base-tgz-v4-${{ github.event.pull_request.base.sha }}
-    permissions:
-      contents: read
-      actions: read
-  e2e-auth:
-    if: >-
-      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
-      needs.e2e-discover.outputs.has-auth == 'true'
-    needs: [build, e2e-discover]
-    uses: ./.github/workflows/reusable-e2e-playwright.yml
-    with:
-      suite: auth
-      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml
-      compose-project: kb-e2e-auth
-      run-command: cd e2e/auth && pnpm e2e
-      report-dir: e2e/auth/report
-      artifact-prefix: auth
-      studio: true
-      studio-https: false
-      idp: false
-    permissions:
-      contents: read
-
-  e2e-oauth:
-    if: >-
-      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
-      needs.e2e-discover.outputs.has-auth == 'true'
-    needs: [build, e2e-discover]
-    uses: ./.github/workflows/reusable-e2e-playwright.yml
-    with:
-      suite: oauth
-      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml:e2e/docker-compose.oauth-ci.yml
-      compose-project: kb-e2e-oauth
-      run-command: cd e2e/auth && pnpm e2e:oauth
-      report-dir: e2e/auth/report-oauth
-      artifact-prefix: oauth
-      studio: true
-      studio-https: true
-      idp: true
-      hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
-    permissions:
-      contents: read
-
-  e2e-marketplace:
-    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
-    needs: [build]
-    uses: ./.github/workflows/reusable-e2e-docker.yml
-    with:
-      suite: marketplace
-      e2e-package: "@kb-labs/e2e-marketplace"
-      health-url: http://localhost:5070/health
-      health-steps: 36
-      compose-project: kb-e2e-marketplace
-    permissions:
-      contents: read
-
-  e2e-rest-api:
-    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
-    needs: [build]
-    uses: ./.github/workflows/reusable-e2e-docker.yml
-    with:
-      suite: rest-api
-      e2e-package: "@kb-labs/e2e-rest-api"
-      health-url: http://localhost:5050/api/v1/health
-      health-steps: 36
-      playwright-dir: e2e/rest-api
-      compose-project: kb-e2e-rest-api
-    permissions:
-      contents: read

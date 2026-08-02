@@ -2036,15 +2036,6 @@ importers:
       '@kb-labs/e2e-shared':
         specifier: workspace:*
         version: link:../shared
-      '@kb-labs/gateway-app':
-        specifier: workspace:*
-        version: link:../../services/gateway/app
-      '@kb-labs/gateway-auth':
-        specifier: workspace:*
-        version: link:../../services/gateway/auth
-      '@kb-labs/studio-app':
-        specifier: workspace:*
-        version: link:../../studio/app
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.59.1

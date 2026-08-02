@@ -1,8 +1,6 @@
-# Affected E2E matrix
+# Plugin E2E matrix
 
-End-to-end suites run **only for the affected dependency closure**. The Docker
-matrix covers plugin, platform and infrastructure suites; auth/oauth use their
-dedicated browser/IdP runner.
+Per-plugin end-to-end suites, run **only for the plugins that actually changed**.
 
 ## Two matrices
 
@@ -41,7 +39,7 @@ unless their env flag is set — for mind: `MIND_BENCH_REAL=1` plus live OpenAI 
 `.github/workflows/e2e-plugins.yml` — `discover` job asks kb-devkit which packages
 the PR diff affects, maps them to suites via `scripts/ci/affected-plugin-e2e.mjs`,
 and emits a dynamic matrix. Only affected suites spin up a Docker stack
-(`reusable-e2e-docker.yml`); a PR touching no relevant package runs zero shards.
+(`reusable-e2e-docker.yml`); a PR touching no plugin runs zero shards.
 
 ## Adding a new plugin suite
 

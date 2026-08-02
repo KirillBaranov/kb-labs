@@ -56,6 +56,42 @@ jobs:
     permissions:
       contents: read
 
+  # Auth is intentionally part of the post-main regression, not the default
+  # pull-request gate. It remains available in a PR through the `full-ci`
+  # label, which calls this workflow.
+  e2e-auth:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-playwright.yml
+    with:
+      suite: auth
+      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml
+      compose-project: kb-e2e-auth
+      run-command: cd e2e/auth && pnpm e2e
+      report-dir: e2e/auth/report
+      artifact-prefix: auth
+      studio: true
+      studio-https: false
+      idp: false
+    permissions:
+      contents: read
+
+  e2e-oauth:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-playwright.yml
+    with:
+      suite: oauth
+      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml:e2e/docker-compose.oauth-ci.yml
+      compose-project: kb-e2e-oauth
+      run-command: cd e2e/auth && pnpm e2e:oauth
+      report-dir: e2e/auth/report-oauth
+      artifact-prefix: oauth
+      studio: true
+      studio-https: true
+      idp: true
+      hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
+    permissions:
+      contents: read
+
   aggregate:
     name: Platform E2E
     needs: [e2e, e2e-mcp]
