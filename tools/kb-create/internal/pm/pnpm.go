@@ -181,7 +181,7 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	// package.json. The platform is intentionally a standalone workspace so
 	// clean installs can allow native build scripts without an interactive
 	// `pnpm approve-builds` prompt and retain the platform overrides.
-	workspaceConfig := "onlyBuiltDependencies:\n"
+	workspaceConfig := "allowBuilds:\n"
 	for _, name := range []string{
 		"@kb-labs/devkit",
 		"@parcel/watcher",
@@ -190,7 +190,7 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 		"esbuild",
 		"unrs-resolver",
 	} {
-		workspaceConfig += "  - '" + name + "'\n"
+		workspaceConfig += "  '" + name + "': true\n"
 	}
 	workspaceConfig += "overrides:\n"
 	for _, name := range []string{

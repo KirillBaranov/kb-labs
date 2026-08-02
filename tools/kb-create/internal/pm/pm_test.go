@@ -214,7 +214,7 @@ func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pnpm-workspace.yaml not written: %v", err)
 	}
-	for _, want := range []string{"onlyBuiltDependencies:", "'@kb-labs/devkit'", "'esbuild'", "overrides:", "'@kb-labs/sdk': '>=2.0.0'"} {
+	for _, want := range []string{"allowBuilds:", "'@kb-labs/devkit': true", "'esbuild': true", "overrides:", "'@kb-labs/sdk': '>=2.0.0'"} {
 		if !strings.Contains(string(workspace), want) {
 			t.Errorf("pnpm-workspace.yaml missing %q: got %q", want, string(workspace))
 		}
