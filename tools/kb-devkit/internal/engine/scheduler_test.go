@@ -74,6 +74,25 @@ func TestBuildPkgDepMapKeepsLegitDeps(t *testing.T) {
 	}
 }
 
+func TestExpandBuildDependencyClosureAddsUpstreamPackages(t *testing.T) {
+	root := t.TempDir()
+
+	coreDir := filepath.Join(root, "core")
+	writePkgJSON(t, coreDir, `{"name":"@kb/core"}`)
+	appDir := filepath.Join(root, "app")
+	writePkgJSON(t, appDir, `{"name":"@kb/app","dependencies":{"@kb/core":"workspace:*"}}`)
+
+	all := []workspace.Package{
+		{Name: "@kb/core", Dir: coreDir},
+		{Name: "@kb/app", Dir: appDir},
+	}
+	closure := expandBuildDependencyClosure(all[1:], all)
+
+	if len(closure) != 2 || closure[0].Name != "@kb/core" || closure[1].Name != "@kb/app" {
+		t.Fatalf("closure = %v, want [@kb/core @kb/app]", closure)
+	}
+}
+
 func TestBuildDAGSelfDepDoesNotCreateCycle(t *testing.T) {
 	root := t.TempDir()
 

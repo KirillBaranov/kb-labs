@@ -70,6 +70,9 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 	if len(pkgs) == 0 {
 		pkgs = ws.Packages
 	}
+	if containsTask(opts.Tasks, "build") {
+		pkgs = expandBuildDependencyClosure(pkgs, ws.Packages)
+	}
 
 	// Validate all requested tasks exist in config (at least one variant).
 	for _, name := range opts.Tasks {
@@ -214,6 +217,56 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 	}
 
 	return RunResult{OK: ok, Results: allResults}, nil
+}
+
+func containsTask(tasks []string, wanted string) bool {
+	for _, task := range tasks {
+		if task == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+// expandBuildDependencyClosure adds all upstream workspace dependencies needed
+// to build the selected packages on a clean runner. Affected detection starts
+// from changed packages and walks downstream; build ordering also needs the
+// reverse direction so every dependency has its dist artifacts first.
+func expandBuildDependencyClosure(selected, all []workspace.Package) []workspace.Package {
+	byName := make(map[string]workspace.Package, len(all))
+	for _, pkg := range all {
+		byName[pkg.Name] = pkg
+	}
+
+	seen := make(map[string]bool, len(selected))
+	queue := make([]workspace.Package, 0, len(selected))
+	for _, pkg := range selected {
+		if !seen[pkg.Name] {
+			seen[pkg.Name] = true
+			queue = append(queue, pkg)
+		}
+	}
+
+	for len(queue) > 0 {
+		pkg := queue[0]
+		queue = queue[1:]
+		for _, depName := range readWorkspaceDeps(pkg.Dir, byName) {
+			dep, ok := byName[depName]
+			if ok && !seen[dep.Name] {
+				seen[dep.Name] = true
+				queue = append(queue, dep)
+			}
+		}
+	}
+
+	// Preserve workspace order for deterministic scheduling and output.
+	result := make([]workspace.Package, 0, len(seen))
+	for _, pkg := range all {
+		if seen[pkg.Name] {
+			result = append(result, pkg)
+		}
+	}
+	return result
 }
 
 // ─── DAG construction ─────────────────────────────────────────────────────────
