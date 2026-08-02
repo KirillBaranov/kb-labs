@@ -6,7 +6,20 @@ import { buildPlan, matchesGlob, parseNameStatus } from './resolve-e2e-zones.mjs
 const zones = [
   { zone: 'mind', watch: ['plugins/mind/**', 'e2e/mind/**'], suites: ['e2e-mind'] },
   { zone: 'auth', watch: ['services/gateway/auth/**'], suites: ['e2e-auth', 'e2e-oauth'] },
-  { zone: '_global', mode: 'global', watch: ['core/**', 'pnpm-lock.yaml'], ignore: ['docs/**', '**/*.md'] },
+  {
+    zone: '_global',
+    mode: 'global',
+    watch: [
+      'core/**',
+      'pnpm-lock.yaml',
+      'e2e/install-flow/**',
+      'e2e/scripts/**',
+      'e2e/tests/**',
+      'package.json',
+      'pnpm-workspace.yaml',
+    ],
+    ignore: ['docs/**', '**/*.md'],
+  },
 ];
 
 test('glob matching accepts zero or more directories for **', () => {
@@ -24,6 +37,18 @@ test('a rename selects the old zone and warns when the new path loses ownership'
 
 test('global changes select every zone and docs are ignored', () => {
   const plan = buildPlan(parseNameStatus('M\tcore/types/src/index.ts\nM\tdocs/ci.md\n'), zones);
+  assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'auth']);
+  assert.deepEqual(plan.warnings, []);
+});
+
+test('shared install and packaging infrastructure is covered globally', () => {
+  const plan = buildPlan(parseNameStatus([
+    'M\te2e/install-flow/Dockerfile',
+    'M\te2e/scripts/pack-all.sh',
+    'M\te2e/tests/Dockerfile',
+    'M\tpackage.json',
+    'M\tpnpm-workspace.yaml',
+  ].join('\n')), zones);
   assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'auth']);
   assert.deepEqual(plan.warnings, []);
 });
