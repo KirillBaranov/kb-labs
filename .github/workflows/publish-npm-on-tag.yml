@@ -31,8 +31,8 @@ name: Publish npm (on release tag)
 on:
   push:
     tags:
-      - 'platform-v*'
-      - 'sdk-v*'
+      - "platform-v*"
+      - "sdk-v*"
 
 permissions:
   contents: read
@@ -139,7 +139,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
           cache: pnpm
 
       - name: Restore pnpm store
@@ -281,7 +281,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
       - uses: actions/download-artifact@v4
         with:
           name: release-artifacts
@@ -291,20 +291,48 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          while IFS=$'\t' read -r name version; do
-            spec="${name}@${version}"
-            echo "Promoting ${spec} to latest"
-            actual=""
-            for attempt in 1 2 3 4 5; do
-              npm dist-tag add "${spec}" latest --registry https://registry.npmjs.org || true
-              actual=$(npm view "${name}" dist-tags.latest --registry https://registry.npmjs.org 2>/dev/null || true)
+
+          # npm's dist-tag write is eventually consistent with `npm view`.
+          # Use an online read and retry the idempotent write instead of
+          # failing a release on a stale registry/cache response.
+          npm_latest() {
+            npm view "$1" dist-tags.latest \
+              --registry https://registry.npmjs.org \
+              --prefer-online \
+              --fetch-retries=3 \
+              --fetch-retry-mintimeout=1000 \
+              --fetch-retry-maxtimeout=5000 \
+              2>/dev/null || true
+          }
+
+          promote_and_verify() {
+            local name="$1"
+            local version="$2"
+            local spec="${name}@${version}"
+            local actual=""
+
+            for attempt in $(seq 1 12); do
+              echo "Promoting ${spec} to latest (attempt ${attempt}/12)"
+              npm dist-tag add "${spec}" latest \
+                --registry https://registry.npmjs.org \
+                --prefer-online \
+                >/dev/null 2>&1 || true
+
+              actual="$(npm_latest "${name}")"
               if test "${actual}" = "${version}"; then
-                break
+                return 0
               fi
-              echo "Waiting for npm to expose latest=${version} for ${name} (attempt ${attempt}/5)"
-              sleep 2
+
+              echo "Waiting for npm registry convergence: ${name} latest=${actual:-<unavailable>}, expected=${version}"
+              sleep 5
             done
-            test "${actual}" = "${version}"
+
+            echo "::error::npm latest tag did not converge for ${name}: got '${actual}', expected '${version}'"
+            return 1
+          }
+
+          while IFS=$'\t' read -r name version; do
+            promote_and_verify "${name}" "${version}"
           done < <(node -e '
             const manifest = require("./.kb/release/artifacts/manifest.json");
             for (const artifact of manifest) console.log(artifact.name + "\t" + artifact.version);
