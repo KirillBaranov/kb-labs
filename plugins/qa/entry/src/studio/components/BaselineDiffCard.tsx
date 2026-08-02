@@ -5,13 +5,10 @@
 import * as React from 'react';
 import {
   UICard,
-  UIRow,
-  UICol,
   UITag,
   UITypographyText,
   UIAlert,
   UISpace,
-  UIStatistic,
   UIIcon,
   UISpin,
   useData,
@@ -52,6 +49,12 @@ function DiffContent({ diff }: { diff: BaselineCheckDiff }) {
   const hasNewIssues = diff.newIssueCount > 0;
   const hasFixed = diff.fixedIssueCount > 0;
 
+  const scoreDeltaColor = diff.scoreDelta < 0
+    ? token.colorError
+    : diff.scoreDelta > 0
+      ? token.colorSuccess
+      : token.colorTextSecondary;
+
   return (
     <UICard
       title={
@@ -60,62 +63,34 @@ function DiffContent({ diff }: { diff: BaselineCheckDiff }) {
           <span>Baseline Diff</span>
           {hasNewIssues && <UITag color="error">+{diff.newIssueCount} new issues</UITag>}
           {hasFixed && <UITag color="success">{diff.fixedIssueCount} fixed</UITag>}
+          <span style={{ color: scoreDeltaColor, fontWeight: 600, fontSize: 13 }}>
+            {diff.scoreDelta > 0 ? '▲' : diff.scoreDelta < 0 ? '▼' : '–'} {Math.abs(diff.scoreDelta)} score
+            {diff.gradeDelta ? ` (${diff.gradeDelta})` : ''}
+          </span>
         </UISpace>
       }
     >
-      <UIRow gutter={[16, 16]}>
-        {/* Score delta */}
-        <UICol xs={24} sm={8}>
-          <UICard size="small" style={{ textAlign: 'center' }}>
-            <UITypographyText strong>Score Delta</UITypographyText>
-            <div style={{ marginTop: token.marginXS }}>
-              <UIStatistic
-                value={Math.abs(diff.scoreDelta)}
-                prefix={
-                  diff.scoreDelta > 0
-                    ? <UIIcon name="ArrowUpOutlined" />
-                    : diff.scoreDelta < 0
-                      ? <UIIcon name="ArrowDownOutlined" />
-                      : null
-                }
-                valueStyle={{
-                  color: diff.scoreDelta < 0
-                    ? token.colorError
-                    : diff.scoreDelta > 0
-                      ? token.colorSuccess
-                      : token.colorTextSecondary,
-                  fontSize: token.fontSizeHeading3,
-                }}
-                suffix={diff.gradeDelta ? ` (${diff.gradeDelta})` : undefined}
-              />
-            </div>
-          </UICard>
-        </UICol>
-
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         {/* New issues */}
         {diff.newIssues.length > 0 && (
-          <UICol xs={24} sm={8}>
-            <UICard size="small">
-              <UITypographyText type="danger" strong>New Issues ({diff.newIssues.length})</UITypographyText>
-              <div style={{ marginTop: token.marginXS }}>
-                <IssueList issues={diff.newIssues} color="error" />
-              </div>
-            </UICard>
-          </UICol>
+          <div style={{ flex: '1 1 260px' }}>
+            <UITypographyText type="danger" strong>New Issues ({diff.newIssues.length})</UITypographyText>
+            <div style={{ marginTop: token.marginXS }}>
+              <IssueList issues={diff.newIssues} color="error" />
+            </div>
+          </div>
         )}
 
         {/* Fixed issues */}
         {diff.fixedIssues.length > 0 && (
-          <UICol xs={24} sm={8}>
-            <UICard size="small">
-              <UITypographyText type="success" strong>Fixed Issues ({diff.fixedIssues.length})</UITypographyText>
-              <div style={{ marginTop: token.marginXS }}>
-                <IssueList issues={diff.fixedIssues} color="success" />
-              </div>
-            </UICard>
-          </UICol>
+          <div style={{ flex: '1 1 260px' }}>
+            <UITypographyText type="success" strong>Fixed Issues ({diff.fixedIssues.length})</UITypographyText>
+            <div style={{ marginTop: token.marginXS }}>
+              <IssueList issues={diff.fixedIssues} color="success" />
+            </div>
+          </div>
         )}
-      </UIRow>
+      </div>
     </UICard>
   );
 }

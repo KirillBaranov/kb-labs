@@ -1,17 +1,15 @@
 import {
-  UIRow,
-  UICol,
   UITable,
   UICard,
-  UIStatistic,
   UIProgress,
   UIAlert,
-  UIIcon,
+  UITag,
 } from '@kb-labs/studio-ui-kit';
 import { useStateBrokerStats } from '@kb-labs/studio-data-client';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import type { NamespaceStats } from '@kb-labs/studio-data-client';
 import { UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
+import { AnalyticsSummaryStrip } from '../../analytics/components/analytics-summary-strip';
 
 /**
  * Format uptime in milliseconds to human-readable string
@@ -84,6 +82,8 @@ export function StateBrokerPage() {
   const hitRatePercent = Math.round(data.hitRate * 100);
   const missRatePercent = Math.round(data.missRate * 100);
 
+  const namespaceCount = Object.keys(data.namespaces).length;
+
   return (
     <UIPage width="full">
       <UIPageHeader
@@ -91,139 +91,110 @@ export function StateBrokerPage() {
         description="In-memory cache statistics - Auto-refresh every 5s"
       />
 
-      {/* Overview Stats */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Uptime"
-              value={formatUptime(data.uptime)}
-              prefix={<UIIcon name="ClockCircleOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Cache Entries"
-              value={data.totalEntries}
-              prefix={<UIIcon name="DatabaseOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Cache Size"
-              value={formatBytes(data.totalSize)}
-              prefix={<UIIcon name="DatabaseOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={12} lg={6}>
-          <UICard>
-            <UIStatistic
-              title="Evictions"
-              value={data.evictions}
-              prefix={<UIIcon name="DeleteOutlined" />}
-            />
-          </UICard>
-        </UICol>
-      </UIRow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        {/* Headline — the numbers you check first: how big, how full, is it leaking */}
+        <AnalyticsSummaryStrip
+          metrics={[
+            { label: 'Uptime', value: formatUptime(data.uptime) },
+            { label: 'Cache Entries', value: data.totalEntries },
+            { label: 'Cache Size', value: formatBytes(data.totalSize) },
+            { label: 'Evictions', value: data.evictions, valueColor: data.evictions > 0 ? 'var(--warning)' : undefined },
+          ]}
+        />
 
-      {/* Hit/Miss Rate */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <UICol xs={24} lg={12}>
-          <UICard title="Cache Hit Rate" extra={<UIIcon name="CheckCircleOutlined" style={{ color: '#52c41a' }} />}>
+        {/* Hit/Miss Rate */}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <UICard title="Cache Hit Rate" style={{ flex: '1 1 320px' }}>
             <UIProgress
               percent={hitRatePercent}
               status={hitRatePercent >= 70 ? 'success' : hitRatePercent >= 50 ? 'normal' : 'exception'}
-              strokeColor={hitRatePercent >= 70 ? '#52c41a' : hitRatePercent >= 50 ? '#1890ff' : '#ff4d4f'}
+              strokeColor={hitRatePercent >= 70 ? 'var(--success)' : hitRatePercent >= 50 ? 'var(--info)' : 'var(--error)'}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {hitRatePercent >= 70 ? 'Excellent cache performance' :
                hitRatePercent >= 50 ? 'Good cache performance' :
                'Poor cache performance - consider increasing TTL'}
             </div>
           </UICard>
-        </UICol>
-        <UICol xs={24} lg={12}>
-          <UICard title="Cache Miss Rate" extra={<UIIcon name="CloseCircleOutlined" style={{ color: '#ff4d4f' }} />}>
+          <UICard title="Cache Miss Rate" style={{ flex: '1 1 320px' }}>
             <UIProgress
               percent={missRatePercent}
               status={missRatePercent <= 30 ? 'success' : missRatePercent <= 50 ? 'normal' : 'exception'}
-              strokeColor={missRatePercent <= 30 ? '#52c41a' : missRatePercent <= 50 ? '#faad14' : '#ff4d4f'}
+              strokeColor={missRatePercent <= 30 ? 'var(--success)' : missRatePercent <= 50 ? 'var(--warning)' : 'var(--error)'}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {missRatePercent <= 30 ? 'Low miss rate - good cache efficiency' :
                missRatePercent <= 50 ? 'Moderate miss rate' :
                'High miss rate - cache not effective'}
             </div>
           </UICard>
-        </UICol>
-      </UIRow>
+        </div>
 
-      {/* Namespaces Table */}
-      <UICard title="Namespaces Breakdown" style={{ marginBottom: 24 }}>
-        <UITable<{ key: string; name: string } & NamespaceStats>
-          dataSource={Object.entries(data.namespaces).map(([name, stats]) => ({
-            key: name,
-            name,
-            ...stats,
-          }))}
-          columns={[
-            {
-              title: 'Namespace',
-              dataIndex: 'name',
-              key: 'name',
-              render: (name: string) => <strong>{name}</strong>,
-            },
-            {
-              title: 'Entries',
-              dataIndex: 'entries',
-              key: 'entries',
-              align: 'right' as const,
-            },
-            {
-              title: 'Hits',
-              dataIndex: 'hits',
-              key: 'hits',
-              align: 'right' as const,
-              render: (hits: number) => (
-                <span style={{ color: '#52c41a' }}>{hits}</span>
-              ),
-            },
-            {
-              title: 'Misses',
-              dataIndex: 'misses',
-              key: 'misses',
-              align: 'right' as const,
-              render: (misses: number) => (
-                <span style={{ color: '#ff4d4f' }}>{misses}</span>
-              ),
-            },
-            {
-              title: 'Hit Rate',
-              key: 'hitRate',
-              align: 'right' as const,
-              render: (_: unknown, record: { hits: number; misses: number }) => {
-                const total = record.hits + record.misses;
-                const rate = total > 0 ? (record.hits / total) * 100 : 0;
-                return `${Math.round(rate)}%`;
+        {/* Namespaces Table */}
+        <UICard
+          title="Namespaces Breakdown"
+          extra={<UITag color="blue">{namespaceCount} namespace{namespaceCount === 1 ? '' : 's'}</UITag>}
+        >
+          <UITable<{ key: string; name: string } & NamespaceStats>
+            dataSource={Object.entries(data.namespaces).map(([name, stats]) => ({
+              key: name,
+              name,
+              ...stats,
+            }))}
+            columns={[
+              {
+                title: 'Namespace',
+                dataIndex: 'name',
+                key: 'name',
+                render: (name: string) => <strong>{name}</strong>,
               },
-            },
-            {
-              title: 'Size',
-              dataIndex: 'size',
-              key: 'size',
-              align: 'right' as const,
-              render: (size: number) => formatBytes(size),
-            },
-          ]}
-          pagination={false}
-          size="small"
-        />
-      </UICard>
+              {
+                title: 'Entries',
+                dataIndex: 'entries',
+                key: 'entries',
+                align: 'right' as const,
+              },
+              {
+                title: 'Hits',
+                dataIndex: 'hits',
+                key: 'hits',
+                align: 'right' as const,
+                render: (hits: number) => (
+                  <span style={{ color: 'var(--success)' }}>{hits}</span>
+                ),
+              },
+              {
+                title: 'Misses',
+                dataIndex: 'misses',
+                key: 'misses',
+                align: 'right' as const,
+                render: (misses: number) => (
+                  <span style={{ color: 'var(--error)' }}>{misses}</span>
+                ),
+              },
+              {
+                title: 'Hit Rate',
+                key: 'hitRate',
+                align: 'right' as const,
+                render: (_: unknown, record: { hits: number; misses: number }) => {
+                  const total = record.hits + record.misses;
+                  const rate = total > 0 ? (record.hits / total) * 100 : 0;
+                  return `${Math.round(rate)}%`;
+                },
+              },
+              {
+                title: 'Size',
+                dataIndex: 'size',
+                key: 'size',
+                align: 'right' as const,
+                render: (size: number) => formatBytes(size),
+              },
+            ]}
+            pagination={false}
+            size="small"
+          />
+        </UICard>
+      </div>
     </UIPage>
   );
 }

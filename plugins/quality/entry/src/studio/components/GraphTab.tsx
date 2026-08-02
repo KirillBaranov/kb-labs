@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import type { DataNode } from 'antd/es/tree';
-import { useData, UICard, UISelect, UISkeleton, UIAlert, UITree, UIRow, UICol, UIStatistic } from '@kb-labs/sdk/studio';
+import { useData, UICard, UISelect, UISkeleton, UIAlert, UITree } from '@kb-labs/sdk/studio';
 import type { GraphResponse, BuildOrderResponse, GraphMode, GraphNode } from '@kb-labs/quality-contracts';
 
 export function GraphTab() {
@@ -75,27 +75,28 @@ export function GraphTab() {
     }
     return (
       <div>
-        <UIRow gutter={16} style={{ marginBottom: 24 }}>
-          <UICol span={8}>
-            <UICard>
-              <UIStatistic title="Total Packages" value={data.stats.totalPackages} />
-            </UICard>
-          </UICol>
-          <UICol span={8}>
-            <UICard>
-              <UIStatistic title="Max Depth" value={data.stats.maxDepth} />
-            </UICard>
-          </UICol>
-          <UICol span={8}>
-            <UICard>
-              <UIStatistic
-                title="Avg Dependencies"
-                value={data.stats.avgDependencies}
-                precision={1}
-              />
-            </UICard>
-          </UICol>
-        </UIRow>
+        <UICard styles={{ body: { padding: '18px 24px' } }} style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Total Packages', value: data.stats.totalPackages },
+              { label: 'Max Depth', value: data.stats.maxDepth },
+              { label: 'Avg Dependencies', value: data.stats.avgDependencies.toFixed(1) },
+            ].map((metric, i) => (
+              <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                {i > 0 && <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{
+                    fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                    fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                  }}>
+                    {metric.value}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </UICard>
         {data.stats.mostDepended && data.stats.mostDepended.length > 0 && (
           <UICard title="Most Depended On">
             <ul>
@@ -113,39 +114,31 @@ export function GraphTab() {
 
   return (
     <div>
-      {/* Controls */}
-      <UICard title="Visualization Options" style={{ marginBottom: 24 }}>
-        <UIRow gutter={16}>
-          <UICol span={12}>
-            <label>Mode:</label>
-            <UISelect
-              style={{ width: '100%', marginTop: 8 }}
-              value={mode}
-              onChange={(val) => setMode(val as GraphMode)}
-              options={[
-                { label: 'Dependency Tree', value: 'tree' },
-                { label: 'Reverse Dependencies', value: 'reverse' },
-                { label: 'Impact Analysis', value: 'impact' },
-                { label: 'Statistics', value: 'stats' },
-              ]}
-            />
-          </UICol>
-          {mode !== 'stats' && (
-            <UICol span={12}>
-              <label>Package{mode === 'tree' ? ' (optional)' : ''}:</label>
-              <UISelect
-                style={{ width: '100%', marginTop: 8 }}
-                placeholder={mode === 'tree' ? 'All packages' : 'Select a package'}
-                value={selectedPackage}
-                onChange={(val) => setSelectedPackage(val as string | undefined)}
-                allowClear
-                showSearch
-                options={buildOrderData?.sorted?.map((pkg) => ({ label: pkg, value: pkg })) ?? []}
-              />
-            </UICol>
-          )}
-        </UIRow>
-      </UICard>
+      {/* Toolbar — one row, no labels, placeholders do the talking */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+        <UISelect
+          style={{ width: 200 }}
+          value={mode}
+          onChange={(val) => setMode(val as GraphMode)}
+          options={[
+            { label: 'Dependency Tree', value: 'tree' },
+            { label: 'Reverse Dependencies', value: 'reverse' },
+            { label: 'Impact Analysis', value: 'impact' },
+            { label: 'Statistics', value: 'stats' },
+          ]}
+        />
+        {mode !== 'stats' && (
+          <UISelect
+            style={{ width: 260 }}
+            placeholder={mode === 'tree' ? 'All packages' : 'Select a package'}
+            value={selectedPackage}
+            onChange={(val) => setSelectedPackage(val as string | undefined)}
+            allowClear
+            showSearch
+            options={buildOrderData?.sorted?.map((pkg) => ({ label: pkg, value: pkg })) ?? []}
+          />
+        )}
+      </div>
 
       {/* Visualization */}
       <UICard title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} View`}>

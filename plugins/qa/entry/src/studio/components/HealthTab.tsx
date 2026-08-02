@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
-  UIRow, UICol, UICard, UIStatistic, UITag, UIAlert,
-  UISpin, UISpace, UITable, UIBadge,
+  UICard, UITag, UIAlert,
+  UISpin, UISpace, UITable,
   useData, useTheme,
 } from '@kb-labs/sdk/studio';
 import type { StatsSnapshot, BaselineCheckDiff } from '@kb-labs/qa-contracts';
@@ -109,44 +109,41 @@ export function HealthTab() {
         />
       )}
 
-      {/* Score card */}
-      <UIRow gutter={[16, 16]} align="stretch">
-        <UICol xs={24} sm={8}>
-          <UICard style={{ height: '100%' }}>
-            <UIStatistic
-              title="Health Score"
-              value={stats.score}
-              suffix="/ 100"
-              valueStyle={{ color: gradeValueColor(stats.grade, token), fontSize: 40 }}
-            />
-            <UITag
-              color={gradeTagColor(stats.grade)}
-              style={{ marginTop: token.marginSM, fontSize: 16, padding: '2px 14px' }}
-            >
-              {stats.grade}
-            </UITag>
-          </UICard>
-        </UICol>
-        <UICol xs={24} sm={16}>
-          <UIRow gutter={[16, 16]} style={{ height: '100%' }}>
-            <UICol span={8}>
-              <UICard style={{ height: '100%' }}>
-                <UIStatistic title="Healthy" value={stats.summary.healthy} valueStyle={{ color: token.colorSuccess }} />
-              </UICard>
-            </UICol>
-            <UICol span={8}>
-              <UICard style={{ height: '100%' }}>
-                <UIStatistic title="Warning" value={stats.summary.warning} valueStyle={{ color: token.colorWarning }} />
-              </UICard>
-            </UICol>
-            <UICol span={8}>
-              <UICard style={{ height: '100%' }}>
-                <UIStatistic title="Error" value={stats.summary.error} valueStyle={{ color: token.colorError }} />
-              </UICard>
-            </UICol>
-          </UIRow>
-        </UICol>
-      </UIRow>
+      {/* Score strip — single row, not four separate cards */}
+      <UICard styles={{ body: { padding: '18px 24px' } }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{
+              fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-heading)',
+              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+              color: gradeValueColor(stats.grade, token),
+            }}>
+              {stats.score}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>/ 100 health score</span>
+            <UITag color={gradeTagColor(stats.grade)}>{stats.grade}</UITag>
+          </div>
+          {[
+            { label: 'Healthy', value: stats.summary.healthy, color: token.colorSuccess },
+            { label: 'Warning', value: stats.summary.warning, color: token.colorWarning },
+            { label: 'Error', value: stats.summary.error, color: token.colorError },
+          ].map((metric) => (
+            <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                  fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                  color: metric.color,
+                }}>
+                  {metric.value}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </UICard>
 
       {/* Category breakdown */}
       <UICard title="By Category">

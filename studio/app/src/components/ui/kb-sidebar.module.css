@@ -24,13 +24,26 @@
   min-height: 0;
 }
 
-.profileCard {
+.profileRow {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 4px;
+  padding: 12px 12px 4px;
+}
+
+.profileRowCollapsed {
+  flex-direction: column;
+  padding: 4px 0 4px;
+}
+
+.profileCard {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
   gap: 10px;
-  width: calc(100% - 24px);
-  margin: 12px 12px 12px;
+  margin: 0;
   padding: 8px 10px;
   border-radius: 14px;
   border: 1px solid transparent;
@@ -46,7 +59,7 @@
 
 .profileCardCollapsed {
   width: 40px;
-  margin: 4px auto 12px;
+  margin: 0 auto;
   padding: 6px;
   justify-content: center;
 }
@@ -87,6 +100,60 @@
 
 .profileChevron {
   color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.searchTrigger {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 24px);
+  margin: 0 12px 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-hover);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.searchTrigger:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-tertiary);
+}
+
+.searchTriggerCollapsed {
+  width: 40px;
+  margin: 0 auto 8px;
+  padding: 0;
+  justify-content: center;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+}
+
+.searchLabel {
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+}
+
+.kbd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
   flex-shrink: 0;
 }
 
@@ -134,35 +201,19 @@
   padding-top: 4px;
 }
 
-.utilityRow {
+.settingsRow {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 16px 12px;
+  padding: 4px 8px 8px 0;
 }
 
-.brandMark {
-  display: flex;
+.settingsRowCollapsed {
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: transparent;
-  font-family: var(--font-heading);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-decoration: none;
-  flex-shrink: 0;
-  transition: background-color 150ms ease, color 150ms ease;
-}
-
-.brandMark:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  padding: 4px 0 8px;
 }
 
 .collapseButton {
-  margin-left: auto;
+  flex-shrink: 0;
 }

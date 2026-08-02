@@ -44,39 +44,37 @@ export function SystemEventsPage() {
         description="Real-time system event stream - Auto-updates via Server-Sent Events"
       />
 
-      {/* Connection Status */}
-      {!isConnected && !error && (
-        <UIAlert
-          message="Connecting to event stream..."
-          variant="info"
-          showIcon
-          icon={<UIIcon name="SyncOutlined" spin />}
-          style={{ marginBottom: 24 }}
-        />
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+        {/* Connection Status */}
+        {!isConnected && !error && (
+          <UIAlert
+            message="Connecting to event stream..."
+            variant="info"
+            showIcon
+            icon={<UIIcon name="SyncOutlined" spin />}
+          />
+        )}
 
-      {error && (
-        <UIAlert
-          message="Connection failed"
-          description={error.message + ' - Make sure REST API is running on localhost:5050'}
-          variant="error"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-      )}
+        {error && (
+          <UIAlert
+            message="Connection failed"
+            description={error.message + ' - Make sure REST API is running on localhost:5050'}
+            variant="error"
+            showIcon
+          />
+        )}
 
-      {isConnected && (
-        <UIAlert
-          message="Connected to event stream"
-          variant="success"
-          showIcon
-          icon={<UIIcon name="CheckCircleOutlined" />}
-          style={{ marginBottom: 24 }}
-        />
-      )}
+        {isConnected && (
+          <UIAlert
+            message="Connected to event stream"
+            variant="success"
+            showIcon
+            icon={<UIIcon name="CheckCircleOutlined" />}
+          />
+        )}
 
-      {/* Current System Status */}
-      <UIRow gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* Current System Status */}
+        <UIRow gutter={[16, 16]}>
         <UICol xs={24} lg={12}>
           <UICard
             title="Latest Health Status"
@@ -96,7 +94,7 @@ export function SystemEventsPage() {
                   <UIStatistic
                     title="Status"
                     value={latestHealth.status}
-                    valueStyle={{ color: latestHealth.status === 'healthy' ? '#52c41a' : '#ff4d4f' }}
+                    valueStyle={{ color: latestHealth.status === 'healthy' ? 'var(--success)' : 'var(--error)' }}
                   />
                 </UICol>
                 <UICol span={8}>
@@ -116,8 +114,8 @@ export function SystemEventsPage() {
                       : 'Disabled'}
                     valueStyle={{
                       color: !latestHealth.redisEnabled
-                        ? '#8c8c8c'
-                        : (latestHealth.redisHealthy ? '#52c41a' : '#ff4d4f')
+                        ? 'var(--text-tertiary)'
+                        : (latestHealth.redisHealthy ? 'var(--success)' : 'var(--error)')
                     }}
                   />
                 </UICol>
@@ -170,7 +168,7 @@ export function SystemEventsPage() {
           <UIBadge
             count={events.length}
             overflowCount={99}
-            style={{ backgroundColor: '#1890ff' }}
+            style={{ backgroundColor: 'var(--info)' }}
           />
         }
       >
@@ -194,7 +192,7 @@ export function SystemEventsPage() {
                         {!healthEvent.ready && healthEvent.reason && (
                           <UITag color="orange">{healthEvent.reason}</UITag>
                         )}
-                        <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
                           {formatTime(healthEvent.ts)}
                         </span>
                       </div>
@@ -224,7 +222,7 @@ export function SystemEventsPage() {
                         <UITag>{String(registryEvent.rev).substring(0, 8)}</UITag>
                         {registryEvent.stale && <UITag color="orange">STALE</UITag>}
                         {registryEvent.partial && <UITag color="orange">PARTIAL</UITag>}
-                        <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
                           {formatTime(registryEvent.generatedAt)}
                         </span>
                       </div>
@@ -250,6 +248,7 @@ export function SystemEventsPage() {
           />
         )}
       </UICard>
+      </div>
     </UIPage>
   );
 }

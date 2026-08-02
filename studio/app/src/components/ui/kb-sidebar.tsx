@@ -1,9 +1,8 @@
 import * as React from 'react';
 import { Layout, Menu, Dropdown, Avatar, type MenuProps } from 'antd';
-import { PanelLeftClose, PanelLeftOpen, User, ChevronsUpDown } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, User, ChevronsUpDown, Search } from 'lucide-react';
 import { UIButton } from '@kb-labs/studio-ui-kit';
-import { KBThemeToggle } from './kb-theme-toggle';
-import { KBNotificationBell, type LogNotification } from './kb-notification-bell';
+import { KBNotificationBell, type KBNotificationBellProps } from './kb-notification-bell';
 import styles from './kb-sidebar.module.css';
 
 const { Sider: AntSider } = Layout;
@@ -26,25 +25,23 @@ export interface KBSidebarProps {
   currentPath?: string;
   onNavigate?: (path: string) => void;
 
-  // Brand
-  logo?: React.ReactNode;
-  logoLink?: string;
-  LinkComponent?: React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>;
-
   // Identity (was header)
   onLogout?: () => void;
   profileMenuItems?: MenuProps['items'];
   userAvatar?: string;
   userName?: string;
 
-  // Notifications (was header)
-  notifications?: LogNotification[];
+  // Search
+  onOpenSearch?: () => void;
+
+  // Notifications
+  notifications?: KBNotificationBellProps['notifications'];
   unreadNotificationsCount?: number;
-  onMarkNotificationAsRead?: (id: string) => void;
-  onMarkAllNotificationsAsRead?: () => void;
-  onClearAllNotifications?: () => void;
-  onClearNotification?: (id: string) => void;
-  onNotificationClick?: (notification: LogNotification) => void;
+  onMarkNotificationAsRead?: KBNotificationBellProps['onMarkAsRead'];
+  onMarkAllNotificationsAsRead?: KBNotificationBellProps['onMarkAllAsRead'];
+  onClearAllNotifications?: KBNotificationBellProps['onClearAll'];
+  onClearNotification?: KBNotificationBellProps['onClearNotification'];
+  onNotificationClick?: KBNotificationBellProps['onNotificationClick'];
 }
 
 export function KBSidebar({
@@ -55,13 +52,11 @@ export function KBSidebar({
   collapsedWidth = 64,
   currentPath,
   onNavigate,
-  logo = 'KB Labs',
-  logoLink = '/',
-  LinkComponent,
   onLogout,
   profileMenuItems,
   userAvatar,
   userName = 'User',
+  onOpenSearch,
   notifications = [],
   unreadNotificationsCount = 0,
   onMarkNotificationAsRead,
@@ -203,26 +198,56 @@ export function KBSidebar({
       className={styles.sider}
       theme="light"
     >
-      <Dropdown menu={{ items: profileItems }} placement="bottomLeft">
+      <div className={[styles.profileRow, collapsed && styles.profileRowCollapsed].filter(Boolean).join(' ')}>
+        <Dropdown menu={{ items: profileItems }} placement="bottomLeft">
+          <button
+            type="button"
+            className={[styles.profileCard, collapsed && styles.profileCardCollapsed].filter(Boolean).join(' ')}
+          >
+            <Avatar size={30} icon={!userAvatar && <User size={14} />} src={userAvatar} />
+            {!collapsed && (
+              <>
+                <div className={styles.profileMeta}>
+                  <span className={styles.profileName}>{userName}</span>
+                  <span className={styles.profileStatus}>
+                    <span className={styles.profileStatusDot} />
+                    Online
+                  </span>
+                </div>
+                <ChevronsUpDown size={14} className={styles.profileChevron} />
+              </>
+            )}
+          </button>
+        </Dropdown>
+
+        {hasNotifications && !collapsed && (
+          <KBNotificationBell
+            notifications={notifications}
+            unreadCount={unreadNotificationsCount}
+            onMarkAsRead={onMarkNotificationAsRead!}
+            onMarkAllAsRead={onMarkAllNotificationsAsRead!}
+            onClearAll={onClearAllNotifications!}
+            onClearNotification={onClearNotification!}
+            onNotificationClick={onNotificationClick}
+          />
+        )}
+      </div>
+
+      {onOpenSearch && (
         <button
           type="button"
-          className={[styles.profileCard, collapsed && styles.profileCardCollapsed].filter(Boolean).join(' ')}
+          className={[styles.searchTrigger, collapsed && styles.searchTriggerCollapsed].filter(Boolean).join(' ')}
+          onClick={onOpenSearch}
         >
-          <Avatar size={30} icon={!userAvatar && <User size={14} />} src={userAvatar} />
+          <Search size={14} className={styles.searchIcon} />
           {!collapsed && (
             <>
-              <div className={styles.profileMeta}>
-                <span className={styles.profileName}>{userName}</span>
-                <span className={styles.profileStatus}>
-                  <span className={styles.profileStatusDot} />
-                  Online
-                </span>
-              </div>
-              <ChevronsUpDown size={14} className={styles.profileChevron} />
+              <span className={styles.searchLabel}>Search</span>
+              <span className={styles.kbd}>⌘K</span>
             </>
           )}
         </button>
-      </Dropdown>
+      )}
 
       <div className={styles.scrollArea}>
         <Menu
@@ -236,39 +261,17 @@ export function KBSidebar({
       </div>
 
       <div className={styles.bottomStack}>
-        {settingsItems.length > 0 && (
-          <Menu
-            mode="inline"
-            selectedKeys={selectedKeys}
-            items={settingsItems}
-            onClick={handleMenuClick}
-            className={styles.menu}
-          />
-        )}
-
-        <div className={styles.utilityRow}>
-          {LinkComponent ? (
-            <LinkComponent to={logoLink} className={styles.brandMark}>
-              {typeof logo === 'string' ? logo.slice(0, 1) : logo}
-            </LinkComponent>
-          ) : (
-            <a href={logoLink} className={styles.brandMark}>
-              {typeof logo === 'string' ? logo.slice(0, 1) : logo}
-            </a>
-          )}
-
-          {hasNotifications && (
-            <KBNotificationBell
-              notifications={notifications}
-              unreadCount={unreadNotificationsCount}
-              onMarkAsRead={onMarkNotificationAsRead!}
-              onMarkAllAsRead={onMarkAllNotificationsAsRead!}
-              onClearAll={onClearAllNotifications!}
-              onClearNotification={onClearNotification!}
-              onNotificationClick={onNotificationClick}
+        <div className={[styles.settingsRow, collapsed && styles.settingsRowCollapsed].filter(Boolean).join(' ')}>
+          {settingsItems.length > 0 && (
+            <Menu
+              mode="inline"
+              selectedKeys={selectedKeys}
+              items={settingsItems}
+              onClick={handleMenuClick}
+              className={styles.menu}
+              style={collapsed ? undefined : { flex: 1 }}
             />
           )}
-          <KBThemeToggle />
 
           <UIButton
             variant="text"
