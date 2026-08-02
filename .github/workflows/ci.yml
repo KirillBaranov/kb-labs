@@ -84,7 +84,10 @@ jobs:
           path: |
             e2e/packages-base
             base-dist-artifacts.tar
-          key: e2e-base-tgz-v5-${{ github.sha }}
+          # v6 invalidates snapshots produced before published package metadata
+          # was verified end-to-end; those snapshots could contain workspace:*
+          # references even though the current pack step is clean.
+          key: e2e-base-tgz-v6-${{ github.sha }}
       - name: Validate exact main E2E snapshot
         run: |
           count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
