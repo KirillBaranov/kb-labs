@@ -10,6 +10,9 @@
   },
   "devDependencies": {
     "@kb-labs/e2e-shared": "workspace:*",
+    "@kb-labs/gateway-app": "workspace:*",
+    "@kb-labs/gateway-auth": "workspace:*",
+    "@kb-labs/studio-app": "workspace:*",
     "@playwright/test": "^1.52.0",
     "typescript": "^5.4.0"
   }

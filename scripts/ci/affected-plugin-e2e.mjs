@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Compute the affected per-plugin E2E matrix for CI.
+ * Compute the affected E2E matrix for CI.
  *
  * Reuses kb-devkit's REAL affected engine (transitive over the workspace dep
  * graph) — it does NOT re-derive "what changed". It takes the set of affected
@@ -10,7 +10,8 @@
  * task, so they never appear in kb-devkit's task results directly; this bridges
  * the suite → its plugin packages using the suite's declared deps.)
  *
- * Source of truth for the suite list = the `plugin-e2e-suite` devkit category.
+ * The generic suites use the Docker E2E runner. Auth is deliberately separate:
+ * it needs the browser/IdP setup from reusable-e2e-playwright.yml.
  *
  * Usage:
  *   kb-devkit run build --affected --diff-only --json | node scripts/ci/affected-plugin-e2e.mjs
@@ -28,9 +29,25 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// The plugin-e2e matrix — mirror of devkit.yaml `plugin-e2e-suite` category.
-// suite = e2e/<dir>; deps are read live from that package's package.json.
-const PLUGIN_E2E_SUITES = ['mind', 'workflows', 'marketplace', 'plugins'];
+// Every suite that can use reusable-e2e-docker.yml. suite = e2e/<dir>; deps
+// are read live from that package's package.json.
+const DOCKER_E2E_SUITES = [
+  'mind',
+  'workflows',
+  'marketplace',
+  'plugins',
+  'services',
+  'platform',
+  'gateway',
+  'marketplace-registry',
+  'studio',
+  'rest-api',
+  'mcp',
+];
+
+// Both auth modes are backed by e2e/auth, but use different compose files and
+// Playwright configs. Keep them as a single affected signal for CI callers.
+const AUTH_E2E_SUITES = ['auth'];
 
 function suiteWorkspaceDeps(suite) {
   const pj = path.join(REPO_ROOT, 'e2e', suite, 'package.json');
@@ -84,31 +101,45 @@ export function computeSuites({ affected = [], changedFiles = [] } = {}) {
   );
 
   if (globalInvalidator) {
-    return [...PLUGIN_E2E_SUITES];
+    return [...DOCKER_E2E_SUITES];
   }
 
   const affectedSet = new Set(affected);
   const changedSuiteDirs = new Set(
     changedFiles
       .map((file) => file.match(/^e2e\/([^/]+)\//)?.[1])
-      .filter((suite) => PLUGIN_E2E_SUITES.includes(suite)),
+      .filter((suite) => DOCKER_E2E_SUITES.includes(suite)),
   );
 
-  return PLUGIN_E2E_SUITES.filter(
+  return DOCKER_E2E_SUITES.filter(
     (suite) =>
       changedSuiteDirs.has(suite) ||
       suiteWorkspaceDeps(suite).some((dep) => affectedSet.has(dep)),
   );
 }
 
+export function hasAffectedAuth({ affected = [], changedFiles = [] } = {}) {
+  const globalInvalidator = changedFiles.some((file) =>
+    /^(\.github\/workflows\/|e2e\/(shared|auth|oidc-idp|platform|publisher)\/|e2e\/docker-compose[^/]*$|scripts\/ci\/|devkit\.yaml$|pnpm-lock\.yaml$)/.test(file),
+  );
+  if (globalInvalidator) return true;
+
+  if (changedFiles.some((file) => file.startsWith('e2e/auth/'))) return true;
+  return AUTH_E2E_SUITES.some((suite) =>
+    suiteWorkspaceDeps(suite).some((dep) => affected.includes(dep)),
+  );
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const affected = readAffectedFromArgs() ?? readAffectedFromStdin();
+  const changedFiles = readChangedFilesFromArgs();
   const suites = computeSuites({
     affected,
-    changedFiles: readChangedFilesFromArgs(),
+    changedFiles,
   });
+  const auth = hasAffectedAuth({ affected, changedFiles });
 
   process.stdout.write(
-    JSON.stringify({ suites, include: suites.map((suite) => ({ suite })) }) + '\n',
+    JSON.stringify({ suites, auth, include: suites.map((suite) => ({ suite })) }) + '\n',
   );
 }

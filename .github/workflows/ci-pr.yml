@@ -2,7 +2,9 @@ name: CI (PR)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # A maintainer can request the expensive full regression by adding
+    # `full-ci`; removing it returns the PR to the affected-only lane.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   # e2e-platform publishes flaky-history to the ci-data branch. Jobs below
@@ -45,6 +47,36 @@ jobs:
     permissions:
       contents: read
 
+  # ── 1a. Determine the E2E closure before spending E2E resources ──────────
+  e2e-discover:
+    name: Discover affected E2E suites
+    runs-on: ubuntu-latest
+    needs: [preflight, build-tools]
+    permissions:
+      contents: read
+    outputs:
+      has-generic: ${{ steps.set.outputs.has-generic }}
+      has-auth: ${{ steps.set.outputs.has-auth }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - name: Install kb-devkit
+        run: chmod +x tools-bin/* && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Compute affected E2E suites
+        id: set
+        run: |
+          .devkit/affected.sh > /tmp/changed-files
+          ./tools/kb-devkit/kb-devkit affected --json > /tmp/affected.json
+          OUT=$(node scripts/ci/affected-plugin-e2e.mjs --changed-files /tmp/changed-files < /tmp/affected.json)
+          echo "computed E2E selection: $OUT"
+          echo "has-generic=$(echo "$OUT" | jq -r '(.suites | length) > 0')" >> "$GITHUB_OUTPUT"
+          echo "has-auth=$(echo "$OUT" | jq -r '.auth')" >> "$GITHUB_OUTPUT"
+
   # ── 2. Build TS packages in the complete PR diff closure ───────────────────
   build:
     name: Build TS (affected)
@@ -73,8 +105,8 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, complete workspace)
-        run: ./tools/kb-devkit/kb-devkit run build
+      - name: Build (affected dependency closure)
+        run: ./tools/kb-devkit/kb-devkit run build --affected
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
@@ -91,7 +123,10 @@ jobs:
   base-snapshot:
     name: Build exact base E2E snapshot
     runs-on: ubuntu-latest
-    needs: [preflight, build-tools]
+    needs: [preflight, build-tools, e2e-discover]
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'full-ci') &&
+      needs.e2e-discover.outputs.has-generic == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -416,6 +451,7 @@ jobs:
   # ── E2E suites — run after the shared build, in parallel with checks ───────
 
   e2e-platform:
+    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [build]
     uses: ./.github/workflows/e2e-platform.yml
     permissions:
@@ -426,8 +462,11 @@ jobs:
       contents: write
       actions: read
   fast-plugin-e2e:
-    name: Fast Plugin E2E
-    needs: [build, base-snapshot]
+    name: Affected E2E
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'full-ci') &&
+      needs.e2e-discover.outputs.has-generic == 'true'
+    needs: [build, base-snapshot, e2e-discover]
     uses: ./.github/workflows/e2e-plugins.yml
     with:
       dist-artifact: dist
@@ -437,7 +476,10 @@ jobs:
       contents: read
       actions: read
   e2e-auth:
-    needs: [build]
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
+      needs.e2e-discover.outputs.has-auth == 'true'
+    needs: [build, e2e-discover]
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
       suite: auth
@@ -453,7 +495,10 @@ jobs:
       contents: read
 
   e2e-oauth:
-    needs: [build]
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
+      needs.e2e-discover.outputs.has-auth == 'true'
+    needs: [build, e2e-discover]
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
       suite: oauth
@@ -470,6 +515,7 @@ jobs:
       contents: read
 
   e2e-marketplace:
+    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [build]
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:
@@ -482,6 +528,7 @@ jobs:
       contents: read
 
   e2e-rest-api:
+    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [build]
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:

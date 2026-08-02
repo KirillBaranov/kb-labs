@@ -1,4 +1,4 @@
-name: Fast Plugin E2E (affected)
+name: Affected E2E
 
 on:
   workflow_call:
@@ -25,7 +25,7 @@ env:
 
 jobs:
   discover:
-    name: Discover affected suites
+    name: Discover affected E2E suites
     runs-on: ubuntu-latest
     outputs:
       include: ${{ steps.set.outputs.include }}
@@ -40,7 +40,7 @@ jobs:
           path: tools-bin/
       - name: Install kb-devkit
         run: chmod +x tools-bin/* && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
-      - name: Compute affected plugin-e2e matrix
+      - name: Compute affected E2E matrix
         id: set
         run: |
           .devkit/affected.sh > /tmp/changed-files
