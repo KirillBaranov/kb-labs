@@ -77,7 +77,7 @@ publish_set() {
   find "$set_dir" -maxdepth 1 -type f -name '*.tgz' -print 2>/dev/null | sort
 }
 
-# Worker: published-or-409 → echo ✓/~ and exit 0; anything else → exit 1.
+# Worker: published-or-conflict → echo ✓/~ and exit 0; anything else → exit 1.
 # REGISTRY is exported above; the worker reads it from env.
 WORKER='
   tarball="$1"
@@ -86,7 +86,7 @@ WORKER='
     echo "  ✓ $pkg"
     exit 0
   } || true
-  if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published"; then
+  if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published\|cannot publish over the previously published versions"; then
     echo "  ~ $pkg (already exists — skipped)"
     exit 0
   fi
