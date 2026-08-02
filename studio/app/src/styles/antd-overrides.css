@@ -125,6 +125,11 @@
   color: var(--text-inverse) !important;
 }
 
+/* Fix pagination active page number text color (same blue as its bg otherwise) */
+.ant-pagination-item-active a {
+  color: var(--text-inverse) !important;
+}
+
 /* Fix dropdown menu selected item */
 .ant-dropdown-menu-item-selected,
 .ant-dropdown-menu-submenu-title-selected {
