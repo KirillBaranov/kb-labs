@@ -138,7 +138,15 @@ jobs:
           echo "Base snapshot tarballs: $count"
           test "$count" -gt 100
           test -s "$GITHUB_WORKSPACE/base-dist-artifacts.tar"
-          bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages-base"
+          invalid=0
+          for tarball in "$GITHUB_WORKSPACE"/e2e/packages-base/*.tgz; do
+            if ! tar -xOzf "$tarball" package/package.json 2>/dev/null \
+              | jq -e '[.. | strings | select(startswith("workspace:"))] | length == 0' >/dev/null; then
+              echo "ERROR: workspace dependency leaked into $(basename "$tarball")"
+              invalid=$((invalid + 1))
+            fi
+          done
+          test "$invalid" -eq 0
 
   # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
