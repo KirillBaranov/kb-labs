@@ -31,7 +31,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Check Single Version Policy (versions + format)
@@ -60,7 +60,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -101,7 +101,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -158,7 +158,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
@@ -193,7 +193,7 @@ jobs:
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - uses: actions/download-artifact@v4
         with:
@@ -248,7 +248,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - uses: actions/setup-go@v5
