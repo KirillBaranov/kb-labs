@@ -1,0 +1,133 @@
+name: Affected E2E
+
+# The fast PR gate completes first. This workflow then runs only the E2E zones
+# selected from the same complete PR diff. `workflow_run` is deliberately used
+# instead of a `pull_request` dependency so Docker/browser work cannot extend
+# the author feedback loop.
+on:
+  workflow_run:
+    workflows: [CI (PR)]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Pull request number to evaluate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  discover:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      generic: ${{ steps.matrix.outputs.generic }}
+      has-auth: ${{ steps.matrix.outputs.has-auth }}
+      pr-number: ${{ steps.pr.outputs.number }}
+    steps:
+      - name: Resolve pull request refs
+        id: pr
+        uses: actions/github-script@v7
+        env:
+          INPUT_PR: ${{ inputs.pr-number }}
+          WORKFLOW_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+        with:
+          script: |
+            const number = process.env.INPUT_PR || process.env.WORKFLOW_PR;
+            if (!number) core.setFailed('Affected E2E requires a pull request run.');
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo, pull_number: Number(number),
+            });
+            core.setOutput('number', String(pr.number));
+            core.setOutput('base', pr.base.ref);
+            core.setOutput('head', pr.head.sha);
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head }}
+          fetch-depth: 0
+      - name: Resolve affected E2E zones
+        env:
+          KB_DEVKIT_BASE_REF: origin/${{ steps.pr.outputs.base }}...HEAD
+        run: |
+          mkdir -p .ci
+          node scripts/ci/resolve-e2e-zones.mjs \
+            --base-ref "$KB_DEVKIT_BASE_REF" \
+            --output .ci/e2e-test-plan.json \
+            --markdown .ci/e2e-test-plan.md
+          cat .ci/e2e-test-plan.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Create runner matrix
+        id: matrix
+        run: |
+          generic=$(node -e '
+            const plan = require("./.ci/e2e-test-plan.json");
+            const suites = [...new Set(plan.selected
+              .flatMap((zone) => zone.suites)
+              .filter((suite) => !["e2e-auth", "e2e-oauth"].includes(suite))
+              .map((suite) => suite.replace(/^e2e-/, "")))];
+            process.stdout.write(JSON.stringify(suites));
+          ')
+          auth=$(node -e '
+            const plan = require("./.ci/e2e-test-plan.json");
+            process.stdout.write(String(plan.selected.some((zone) => zone.suites.includes("e2e-auth"))));
+          ')
+          echo "generic=$generic" >> "$GITHUB_OUTPUT"
+          echo "has-auth=$auth" >> "$GITHUB_OUTPUT"
+
+  docker-e2e:
+    needs: discover
+    if: needs.discover.outputs.generic != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.discover.outputs.generic) }}
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: ${{ matrix.suite }}
+      e2e-package: "@kb-labs/e2e-${{ matrix.suite }}"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      playwright-dir: e2e/plugins
+      compose-project: kb-e2e-affected-${{ matrix.suite }}
+      artifact-prefix: affected
+    permissions:
+      contents: read
+
+  auth-e2e:
+    needs: discover
+    if: needs.discover.outputs.has-auth == 'true'
+    uses: ./.github/workflows/reusable-e2e-playwright.yml
+    with:
+      suite: auth
+      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml
+      compose-project: kb-e2e-affected-auth
+      run-command: cd e2e/auth && pnpm e2e
+      report-dir: e2e/auth/report
+      artifact-prefix: affected-auth
+      studio: true
+      studio-https: false
+      idp: false
+    permissions:
+      contents: read
+
+  oauth-e2e:
+    needs: discover
+    if: needs.discover.outputs.has-auth == 'true'
+    uses: ./.github/workflows/reusable-e2e-playwright.yml
+    with:
+      suite: oauth
+      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml:e2e/docker-compose.oauth-ci.yml
+      compose-project: kb-e2e-affected-oauth
+      run-command: cd e2e/auth && pnpm e2e:oauth
+      report-dir: e2e/auth/report-oauth
+      artifact-prefix: affected-oauth
+      studio: true
+      studio-https: true
+      idp: true
+      hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
+    permissions:
+      contents: read

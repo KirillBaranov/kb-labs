@@ -11,9 +11,11 @@
     "pnpm-lock.yaml",
     "devkit.yaml",
     "e2e/shared/**",
+    "e2e/_global/**",
     "e2e/platform/**",
     "e2e/publisher/**",
     "e2e/docker-compose*.yml",
+    "scripts/ci/**",
     ".github/workflows/**"
   ],
   "ignore": ["docs/**", "**/*.md", ".github/ISSUE_TEMPLATE/**"]
