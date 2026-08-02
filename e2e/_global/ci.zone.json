@@ -1,0 +1,20 @@
+{
+  "zone": "_global",
+  "mode": "global",
+  "watch": [
+    "core/**",
+    "shared/**",
+    "sdk/**",
+    "cli/**",
+    "adapters/**",
+    "tools/**",
+    "pnpm-lock.yaml",
+    "devkit.yaml",
+    "e2e/shared/**",
+    "e2e/platform/**",
+    "e2e/publisher/**",
+    "e2e/docker-compose*.yml",
+    ".github/workflows/**"
+  ],
+  "ignore": ["docs/**", "**/*.md", ".github/ISSUE_TEMPLATE/**"]
+}

@@ -1,0 +1,1 @@
+{"zone":"marketplace","watch":["plugins/marketplace/**","e2e/marketplace/**"],"suites":["e2e-marketplace"]}
