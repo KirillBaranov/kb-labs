@@ -1,17 +1,17 @@
 # KB Labs E2E — Full install flow test
 #
-# Simulates a fresh machine: Node 20, pnpm, git, curl — nothing else.
+# Simulates a fresh machine: Node 24, pnpm, git, curl — nothing else.
 # Runs test.sh which installs KB Labs from kblabs.ru and exercises
 # the full user journey.
 #
 # Build:  docker build -t kb-e2e -f e2e/install-flow/Dockerfile e2e/install-flow
 # Run:    docker run --rm kb-e2e
 
-FROM node:22-bullseye
+FROM node:24-bullseye
 
 RUN apt-get update -qq && \
     apt-get install -y -qq curl ca-certificates git jq && \
-    npm install -g pnpm@9 && \
+    npm install -g pnpm@11.4.0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN git config --global user.email "e2e@kblabs.test" && \

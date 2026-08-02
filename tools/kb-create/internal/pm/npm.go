@@ -151,6 +151,17 @@ func ensurePackageJSON(dir string) error {
 		overrides[k] = v
 	}
 	pnpmBlock["overrides"] = overrides
+	// pnpm 10+ blocks dependency build scripts by default. The platform is an
+	// installer-managed runtime, so explicitly allow the native/runtime builds
+	// required by its packages instead of asking every user to run approve-builds.
+	pnpmBlock["onlyBuiltDependencies"] = []string{
+		"@kb-labs/devkit",
+		"@parcel/watcher",
+		"@swc/core",
+		"better-sqlite3",
+		"esbuild",
+		"unrs-resolver",
+	}
 	pkg["pnpm"] = pnpmBlock
 
 	// npm does not read pnpm.overrides. Keep the native overrides block for

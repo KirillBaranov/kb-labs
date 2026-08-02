@@ -172,14 +172,14 @@ jobs:
           command -v node >/dev/null || { echo "::error::node missing on host"; exit 1; }
           # pnpm is required for the shared-store install path (kb-create falls
           # back to npm without it, which copies node_modules per release and
-          # fills the disk). Provision it via corepack (ships with Node 20+).
-          # Pin pnpm 9 — pnpm@latest (10+) requires Node 22+, but the host runs
-          # Node 20.
+          # fills the disk). Provision it via corepack.
+          # Keep the deployment host on the same supported toolchain as the
+          # platform installer.
           if ! command -v pnpm >/dev/null; then
-            echo "pnpm missing — provisioning pnpm@9 via corepack"
+            echo "pnpm missing — provisioning pnpm@11 via corepack"
             sudo corepack enable pnpm 2>/dev/null || true
-            corepack prepare pnpm@9.15.9 --activate 2>/dev/null \
-              || sudo npm install -g pnpm@9 2>/dev/null \
+            corepack prepare pnpm@11.4.0 --activate 2>/dev/null \
+              || sudo npm install -g pnpm@11.4.0 2>/dev/null \
               || { echo "::error::failed to install pnpm on host"; exit 1; }
           fi
           echo "pnpm: $(pnpm --version 2>&1 | head -1)"

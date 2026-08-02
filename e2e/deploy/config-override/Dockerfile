@@ -7,7 +7,7 @@
 #
 # Build from the REPO ROOT as context:
 #   docker build -f e2e/deploy/config-override/Dockerfile -t kb-config-override-fixture .
-FROM node:22-slim AS runner
+FROM node:24-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

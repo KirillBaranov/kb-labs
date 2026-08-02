@@ -101,6 +101,34 @@ func TestEnsurePackageJSONCreates(t *testing.T) {
 	}
 }
 
+func TestEnsurePackageJSONAllowsPlatformBuildDependencies(t *testing.T) {
+	dir := t.TempDir()
+	if err := ensurePackageJSON(dir); err != nil {
+		t.Fatalf("ensurePackageJSON: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		t.Fatalf("read package.json: %v", err)
+	}
+	var pkg struct {
+		Pnpm struct {
+			OnlyBuiltDependencies []string `json:"onlyBuiltDependencies"`
+		} `json:"pnpm"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatalf("parse package.json: %v", err)
+	}
+	got := make(map[string]bool, len(pkg.Pnpm.OnlyBuiltDependencies))
+	for _, name := range pkg.Pnpm.OnlyBuiltDependencies {
+		got[name] = true
+	}
+	for _, name := range []string{"@kb-labs/devkit", "@parcel/watcher", "@swc/core", "better-sqlite3", "esbuild", "unrs-resolver"} {
+		if !got[name] {
+			t.Errorf("package.json pnpm.onlyBuiltDependencies missing %q", name)
+		}
+	}
+}
+
 // TestEnsurePackageJSONMergesOverrides verifies that ensurePackageJSON always
 // injects pnpm.overrides into an existing package.json while preserving
 // other fields (name, version, etc.).

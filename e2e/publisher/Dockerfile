@@ -4,13 +4,13 @@
 #
 # Build context: e2e/  (so COPY packages/ works)
 
-FROM node:22-alpine
+FROM node:24-alpine
 
 # pnpm is required for publishing — it writes sha512 integrity hashes that
 # pnpm on the consuming side (platform container) can verify.
 # npm publish writes sha1, which causes ERR_PNPM_TARBALL_INTEGRITY.
 RUN apk add --no-cache curl python3 && \
-    npm install -g pnpm@9 --quiet
+    npm install -g pnpm@11.4.0 --quiet
 
 RUN mkdir -p /packages
 
