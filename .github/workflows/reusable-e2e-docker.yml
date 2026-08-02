@@ -252,7 +252,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
           # No restore-keys: Verdaccio storage must only be reused when it
           # was populated from the exact same tgzs. A stale storage + skipped
           # publish = platform installs wrong package versions.

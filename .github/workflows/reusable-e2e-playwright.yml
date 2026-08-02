@@ -213,7 +213,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
           # No restore-keys: storage must only be reused when built from the exact
           # same tarballs — a partial-match restore leaves stale package versions.
 
