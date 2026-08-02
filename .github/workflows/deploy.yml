@@ -93,10 +93,10 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run build
 
       - name: Deploy gateway-app (pnpm deploy)
-        run: pnpm --filter @kb-labs/gateway-app deploy --prod .kb/deploy/gateway-app
+        run: pnpm deploy --filter @kb-labs/gateway-app --prod --legacy .kb/deploy/gateway-app
 
       - name: Deploy marketplace-registry-app (pnpm deploy)
-        run: pnpm --filter @kb-labs/marketplace-registry-app deploy --prod .kb/deploy/marketplace-registry-app
+        run: pnpm deploy --filter @kb-labs/marketplace-registry-app --prod --legacy .kb/deploy/marketplace-registry-app
 
       - name: Capture pre-deploy images (for rollback)
         id: pre_deploy
