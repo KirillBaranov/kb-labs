@@ -6,11 +6,10 @@
 
 FROM node:24-alpine
 
-# pnpm is required for publishing — it writes sha512 integrity hashes that
-# pnpm on the consuming side (platform container) can verify.
-# npm publish writes sha1, which causes ERR_PNPM_TARBALL_INTEGRITY.
-RUN apk add --no-cache curl python3 && \
-    npm install -g pnpm@11.4.0 --quiet
+# npm is used to publish the already-packed tarballs. It reads package.json
+# from inside each tarball; pnpm publish <tarball> can resolve the package from
+# the publisher cwd and leak workspace:* metadata into the registry manifest.
+RUN apk add --no-cache curl python3
 
 RUN mkdir -p /packages
 

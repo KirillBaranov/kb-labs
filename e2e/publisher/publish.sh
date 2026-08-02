@@ -1,7 +1,8 @@
 #!/bin/sh
-# Publish all @kb-labs/*.tgz tarballs to Verdaccio using pnpm.
-# pnpm publish writes sha512 integrity hashes; npm publish writes sha1,
-# which causes ERR_PNPM_TARBALL_INTEGRITY on the consuming side.
+# Publish all @kb-labs/*.tgz tarballs to Verdaccio using npm.
+# The input is already a packed tarball. npm publish reads the manifest from
+# inside that tarball; pnpm publish <tarball> can resolve the package from its
+# current working directory and republish workspace:* metadata.
 #
 # Idempotent: runs safely on warm Verdaccio volumes (packages already exist).
 # Runs once and exits 0 — Docker Compose waits for this to complete
@@ -61,7 +62,7 @@ else
 fi
 
 PARALLELISM="${PUBLISH_PARALLELISM:-4}"
-echo "==> Publishing packages (pnpm publish for sha512 integrity, parallel x${PARALLELISM})..."
+echo "==> Publishing packages (npm publish from tarballs, parallel x${PARALLELISM})..."
 
 # Each pnpm publish handshakes with Verdaccio per package. Sequential
 # loop over 160+ tarballs takes ~160s of mostly-idle waiting. Running
@@ -81,7 +82,7 @@ publish_set() {
 WORKER='
   tarball="$1"
   pkg=$(basename "$tarball")
-  OUTPUT=$(pnpm publish "$tarball" --registry "$REGISTRY" --no-git-checks 2>&1) && {
+  OUTPUT=$(npm publish "$tarball" --registry "$REGISTRY" 2>&1) && {
     echo "  ✓ $pkg"
     exit 0
   } || true
