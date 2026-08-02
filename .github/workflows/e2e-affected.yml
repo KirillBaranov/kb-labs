@@ -14,6 +14,10 @@ on:
         description: Pull request number to evaluate
         required: true
         type: string
+  # Allows validating a newly introduced selector before this workflow reaches
+  # the default branch. It is also a useful maintainer escape hatch later.
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
@@ -23,7 +27,8 @@ jobs:
   discover:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     runs-on: ubuntu-latest
     outputs:
       generic: ${{ steps.matrix.outputs.generic }}
@@ -36,9 +41,10 @@ jobs:
         env:
           INPUT_PR: ${{ inputs.pr-number }}
           WORKFLOW_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          EVENT_PR: ${{ github.event.pull_request.number }}
         with:
           script: |
-            const number = process.env.INPUT_PR || process.env.WORKFLOW_PR;
+            const number = process.env.INPUT_PR || process.env.WORKFLOW_PR || process.env.EVENT_PR;
             if (!number) core.setFailed('Affected E2E requires a pull request run.');
             const { data: pr } = await github.rest.pulls.get({
               ...context.repo, pull_number: Number(number),
