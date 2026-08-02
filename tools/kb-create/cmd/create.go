@@ -309,8 +309,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// When platformDir == projectDir, WritePlatformConfig already wrote the full config
 	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
-		if errors.Is(err, scaffold.ErrIncompatibleLegacyConfig) && !flagYes && confirmToolchain("Legacy project routes are incompatible and will be removed (backup will be created). Continue? [y/N] ") {
-			scaffoldOpts.AllowIncompatibleLegacyMigration = true
+		if errors.Is(err, scaffold.ErrIncompatibleLegacyConfig) {
+			if flagYes {
+				scaffoldOpts.AllowIncompatibleLegacyMigration = true
+			} else if confirmToolchain("Legacy project routes are incompatible and will be removed (backup will be created). Continue? [y/N] ") {
+				scaffoldOpts.AllowIncompatibleLegacyMigration = true
+			} else {
+				return fmt.Errorf("scaffold project config: %w", err)
+			}
 			if retryErr := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); retryErr != nil {
 				return fmt.Errorf("scaffold project config: %w", retryErr)
 			}
