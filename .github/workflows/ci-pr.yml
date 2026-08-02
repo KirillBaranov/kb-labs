@@ -49,6 +49,7 @@ jobs:
   build:
     name: Build TS (affected)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [preflight, build-tools]
     permissions:
       contents: read
@@ -74,7 +75,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build (devkit, complete workspace)
-        run: ./tools/kb-devkit/kb-devkit run build
+        run: timeout --signal=TERM --kill-after=60s 15m ./tools/kb-devkit/kb-devkit run build
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
