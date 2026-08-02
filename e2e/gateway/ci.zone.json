@@ -1,0 +1,1 @@
+{"zone":"gateway","watch":["services/gateway/**","e2e/gateway/**"],"suites":["e2e-gateway"]}

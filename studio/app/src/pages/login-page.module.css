@@ -1,0 +1,214 @@
+/* ── Login page ───────────────────────────────────────────────────────── */
+
+.screen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(circle at 1px 1px, var(--border-primary) 1px, transparent 0);
+  background-size: 28px 28px;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.screen::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  right: -10%;
+  width: 640px;
+  height: 640px;
+  background: radial-gradient(circle, var(--link) 0%, transparent 70%);
+  opacity: 0.07;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  box-shadow: var(--shadow-elevated);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--link), var(--link-hover));
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--link), var(--link-hover));
+  color: var(--text-inverse);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.heading {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.lede {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+/* AntD injects a hidden .ant-form-item-margin-offset sibling that mirrors
+   and cancels out any margin-bottom set on .ant-form-item itself (their
+   anti-collapse trick for the error-message height animation) — so spacing
+   between fields has to live on a plain wrapper div instead. */
+.fieldWrap {
+  margin-bottom: 22px;
+}
+
+.field :global(.ant-form-item-label) {
+  padding-bottom: 6px;
+}
+
+.field :global(.ant-form-item-label > label) {
+  height: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.field :global(.ant-form-item-explain) {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  font-size: 13px;
+}
+
+.submit {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-primary);
+}
+
+.providerLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 13.5px;
+  text-align: center;
+  text-decoration: none;
+  text-transform: capitalize;
+  box-sizing: border-box;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.providerLink:hover {
+  border-color: var(--link);
+  background: var(--bg-tertiary);
+}
+
+.providerLinkDisabled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 0;
+  border-radius: 8px;
+  border: 1px dashed var(--border-primary);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 13.5px;
+  text-align: center;
+  box-sizing: border-box;
+  cursor: not-allowed;
+}
+
+.soonBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}

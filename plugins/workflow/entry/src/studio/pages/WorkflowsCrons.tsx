@@ -125,27 +125,29 @@ export default function WorkflowsCrons() {
         ]}
       />
 
-      <UICard style={{ marginBottom: 'var(--spacing-section)' }}>
-        <UISpace className="gap-section">
-          <div>
-            <UITypographyText className="typo-label text-secondary">Total Cron Jobs</UITypographyText>
-            <div>
-              <UITypographyText className="typo-section-title">{cronsData?.crons?.length || 0}</UITypographyText>
+      {/* Headline stats — compact single-row strip, not a stack of big cards */}
+      <UICard styles={{ body: { padding: '18px 24px' } }} style={{ marginBottom: 'var(--spacing-section)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total Cron Jobs', value: cronsData?.crons?.length || 0 },
+            { label: 'Enabled', value: enabledCount, valueColor: 'var(--success)' },
+            { label: 'Disabled', value: disabledCount },
+          ].map((metric, i) => (
+            <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              {i > 0 && <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                  fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                  color: metric.valueColor ?? 'var(--text-primary)',
+                }}>
+                  {metric.value}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <UITypographyText className="typo-label text-secondary">Enabled</UITypographyText>
-            <div>
-              <UITypographyText className="typo-section-title text-success">{enabledCount}</UITypographyText>
-            </div>
-          </div>
-          <div>
-            <UITypographyText className="typo-label text-secondary">Disabled</UITypographyText>
-            <div>
-              <UITypographyText className="typo-section-title">{disabledCount}</UITypographyText>
-            </div>
-          </div>
-        </UISpace>
+          ))}
+        </div>
       </UICard>
 
       <UICard>

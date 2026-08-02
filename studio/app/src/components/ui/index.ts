@@ -1,7 +1,6 @@
 // Theme & Config
 export { KBConfigProvider, useKBTheme, type ThemeMode, type KBConfigProviderProps } from './kb-config-provider';
 export { ThemeTransitionOverlay, type ThemeTransitionOverlayProps } from './theme-transition-overlay';
-export { KBThemeToggle } from './kb-theme-toggle';
 
 // Layout Components
 export { KBSidebar, type KBSidebarProps, type NavigationItem } from './kb-sidebar';

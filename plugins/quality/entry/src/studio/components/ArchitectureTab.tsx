@@ -1,8 +1,6 @@
 import * as React from 'react';
 import {
   useData,
-  UIRow,
-  UICol,
   UICard,
   UITable,
   UITag,
@@ -10,7 +8,6 @@ import {
   UISkeleton,
   UISpace,
   UIIcon,
-  UIStatistic,
 } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type { LayeringResponse, CouplingResponse } from '@kb-labs/quality-contracts';
@@ -115,37 +112,34 @@ export function ArchitectureTab() {
 
   return (
     <div>
-      {/* Summary row */}
-      <UIRow gutter={16} style={{ marginBottom: 24 }}>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic
-              title="Layering Violations"
-              value={layersData?.totalViolations ?? 0}
-              valueStyle={{ color: hasViolations ? '#ff4d4f' : '#52c41a' }}
-              prefix={<UIIcon name={hasViolations ? 'WarningOutlined' : 'CheckCircleOutlined'} />}
-            />
-          </UICard>
-        </UICol>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic
-              title="Avg Instability"
-              value={(couplingData?.avgInstability ?? 0).toFixed(2)}
-              prefix={<UIIcon name="NodeIndexOutlined" />}
-            />
-          </UICard>
-        </UICol>
-        <UICol span={8}>
-          <UICard>
-            <UIStatistic
-              title="Affected Packages"
-              value={layersData?.affectedPackages?.length ?? 0}
-              prefix={<UIIcon name="ApartmentOutlined" />}
-            />
-          </UICard>
-        </UICol>
-      </UIRow>
+      {/* Summary strip — single row, not three separate cards */}
+      <UICard styles={{ body: { padding: '18px 24px' } }} style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          {[
+            {
+              label: 'Layering Violations',
+              value: layersData?.totalViolations ?? 0,
+              color: hasViolations ? '#ff4d4f' : '#52c41a',
+            },
+            { label: 'Avg Instability', value: (couplingData?.avgInstability ?? 0).toFixed(2) },
+            { label: 'Affected Packages', value: layersData?.affectedPackages?.length ?? 0 },
+          ].map((metric, i) => (
+            <div key={metric.label} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              {i > 0 && <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-heading)',
+                  fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                  color: metric.color,
+                }}>
+                  {metric.value}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{metric.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </UICard>
 
       {/* Layering violations */}
       {hasViolations && (

@@ -23,10 +23,15 @@ services:
     type: docker
     container: qdrant
     command: >-
-      docker stop qdrant 2>/dev/null || true &&
-      docker rm qdrant 2>/dev/null || true &&
-      docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 qdrant/qdrant
-    stop_command: docker stop qdrant
+      name="qdrant$KB_NET_OFFSET" &&
+      docker stop "$name" 2>/dev/null || true &&
+      docker rm "$name" 2>/dev/null || true &&
+      docker run --name "$name" --rm
+      -p $((6333 + KB_NET_OFFSET)):6333
+      -p $((6334 + KB_NET_OFFSET)):6334
+      qdrant/qdrant
+    stop_command: >-
+      name="qdrant$KB_NET_OFFSET" && docker stop "$name"
     health_check: http://localhost:6333/
     port: 6333
     url: http://localhost:6333
@@ -38,10 +43,14 @@ services:
     type: docker
     container: redis
     command: >-
-      docker stop redis 2>/dev/null || true &&
-      docker rm redis 2>/dev/null || true &&
-      docker run --name redis -p 6379:6379 redis:7-alpine
-    stop_command: docker stop redis
+      name="redis$KB_NET_OFFSET" &&
+      docker stop "$name" 2>/dev/null || true &&
+      docker rm "$name" 2>/dev/null || true &&
+      docker run --name "$name"
+      -p $((6379 + KB_NET_OFFSET)):6379
+      redis:7-alpine
+    stop_command: >-
+      name="redis$KB_NET_OFFSET" && docker stop "$name"
     health_check: localhost:6379
     port: 6379
     optional: true
@@ -174,7 +183,11 @@ services:
     description: Web UI for KB Labs platform
     group: ui
     type: node
-    command: cd studio/app && pnpm dev
+    command: >-
+      cd studio/app &&
+      PORT=$((3000 + KB_NET_OFFSET))
+      API_PROXY_TARGET="http://localhost:$((4000 + KB_NET_OFFSET))"
+      pnpm dev
     health_check: http://localhost:3000/
     port: 3000
     url: http://localhost:3000

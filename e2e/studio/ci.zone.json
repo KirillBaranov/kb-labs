@@ -1,0 +1,1 @@
+{"zone":"studio","watch":["studio/**","e2e/studio/**"],"suites":["e2e-studio"]}
