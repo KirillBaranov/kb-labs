@@ -51,13 +51,13 @@ get_token() {
 TOKEN=$(get_token)
 
 if [ -n "$TOKEN" ]; then
-  pnpm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN" 2>/dev/null || true
   echo "    Auth token acquired"
 else
-  # Last resort: use basic-auth (base64-encoded user:pass) in pnpm config
+  # Last resort: use basic-auth (base64-encoded user:pass) in npm config
   B64=$(echo -n "${USER}:${PASS}" | base64)
-  pnpm config set "//${REGISTRY_HOST}/:_auth" "$B64" 2>/dev/null || true
-  pnpm config set "//${REGISTRY_HOST}/:username" "$USER" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:_auth" "$B64" 2>/dev/null || true
+  npm config set "//${REGISTRY_HOST}/:username" "$USER" 2>/dev/null || true
   echo "    Using basic-auth (no token available)"
 fi
 
