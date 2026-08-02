@@ -97,22 +97,29 @@
   color: var(--text-secondary);
 }
 
-.field {
-  margin-bottom: 16px;
+/* AntD injects a hidden .ant-form-item-margin-offset sibling that mirrors
+   and cancels out any margin-bottom set on .ant-form-item itself (their
+   anti-collapse trick for the error-message height animation) — so spacing
+   between fields has to live on a plain wrapper div instead. */
+.fieldWrap {
+  margin-bottom: 22px;
 }
 
-.label {
-  display: block;
-  margin-bottom: 6px;
+.field :global(.ant-form-item-label) {
+  padding-bottom: 6px;
+}
+
+.field :global(.ant-form-item-label > label) {
+  height: auto;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
-.fieldError {
-  margin: 6px 0 0;
-  color: var(--error);
+.field :global(.ant-form-item-explain) {
+  margin-top: 2px;
   font-size: 12px;
+  line-height: 1.4;
 }
 
 .error {
@@ -126,7 +133,7 @@
 
 .submit {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .divider {

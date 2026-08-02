@@ -25,9 +25,21 @@
 import * as React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Building2, Lock } from 'lucide-react';
-import { UIButton, UIInput, UIInputPassword } from '@kb-labs/studio-ui-kit';
+import {
+  UIButton,
+  UIForm,
+  UIFormItem,
+  UIInput,
+  UIInputPassword,
+  useUIForm,
+} from '@kb-labs/studio-ui-kit';
 import { useAuth } from '@/auth/auth-provider';
 import styles from './login-page.module.css';
+
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
 
 // ── Provider types ────────────────────────────────────────────────────────────
 
@@ -50,28 +62,10 @@ export function LoginPage() {
 
   const { login } = auth;
 
+  const [form] = useUIForm<LoginFormValues>();
   const [providers, setProviders] = React.useState<AuthProvider[]>([]);
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = React.useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = React.useState(false);
-
-  // Minimal client-side check — the server is the source of truth for
-  // credential validity, this is just fast feedback before a round-trip.
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const validate = (candidateEmail: string, candidatePassword: string) => {
-    const errors: { email?: string; password?: string } = {};
-    if (!candidateEmail.trim()) {
-      errors.email = 'Email is required';
-    } else if (!EMAIL_RE.test(candidateEmail)) {
-      errors.email = 'Enter a valid email address';
-    }
-    if (!candidatePassword) {
-      errors.password = 'Password is required';
-    }
-    return errors;
-  };
 
   // Auto-navigate when auth resolves to authenticated (handles transparent
   // token refresh: RequireAuth sends the user here while loading, auth-provider
@@ -103,19 +97,11 @@ export function LoginPage() {
       });
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: LoginFormValues) => {
     setError(null);
-
-    const errors = validate(email, password);
-    setFieldErrors(errors);
-    if (errors.email || errors.password) {
-      return;
-    }
-
     setLoading(true);
     try {
-      await login(email, password);
+      await login(values.email, values.password);
       navigate(from, { replace: true });
     } catch {
       setError('Invalid credentials');
@@ -153,50 +139,36 @@ export function LoginPage() {
 
         {/* Password form */}
         {showPasswordForm && (
-          <form
+          <UIForm
             aria-label="login form"
-            onSubmit={(e) => { void handleSubmit(e); }}
-            noValidate
+            form={form}
+            layout="vertical"
+            requiredMark={false}
+            onFinish={(values) => { void handleSubmit(values); }}
           >
-            {/* Email field */}
-            <div className={styles.field}>
-              <label htmlFor="login-email" className={styles.label}>
-                Email
-              </label>
-              <UIInput
-                id="login-email"
-                type="email"
-                autoComplete="email"
-                required
-                size="large"
-                status={fieldErrors.email ? 'error' : undefined}
-                value={email}
-                onChange={(value) => {
-                  setEmail(value);
-                  if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
-                }}
-              />
-              {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
+            <div className={styles.fieldWrap}>
+              <UIFormItem
+                className={styles.field}
+                label="Email"
+                name="email"
+                rules={[
+                  { required: true, message: 'Email is required' },
+                  { type: 'email', message: 'Enter a valid email address' },
+                ]}
+              >
+                <UIInput id="login-email" autoComplete="email" size="large" />
+              </UIFormItem>
             </div>
 
-            {/* Password field */}
-            <div className={styles.field}>
-              <label htmlFor="login-password" className={styles.label}>
-                Password
-              </label>
-              <UIInputPassword
-                id="login-password"
-                autoComplete="current-password"
-                required
-                size="large"
-                status={fieldErrors.password ? 'error' : undefined}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
-                }}
-              />
-              {fieldErrors.password && <p className={styles.fieldError}>{fieldErrors.password}</p>}
+            <div className={styles.fieldWrap}>
+              <UIFormItem
+                className={styles.field}
+                label="Password"
+                name="password"
+                rules={[{ required: true, message: 'Password is required' }]}
+              >
+                <UIInputPassword id="login-password" autoComplete="current-password" size="large" />
+              </UIFormItem>
             </div>
 
             {/* Error message */}
@@ -216,7 +188,7 @@ export function LoginPage() {
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </UIButton>
-          </form>
+          </UIForm>
         )}
 
         {/* Divider between password form and redirect providers */}
