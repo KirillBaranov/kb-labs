@@ -36,6 +36,9 @@ func LatestBinariesTag(repo string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req) // #nosec G704

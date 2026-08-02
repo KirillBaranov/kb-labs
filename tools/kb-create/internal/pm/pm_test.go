@@ -80,10 +80,8 @@ func TestPnpmInstallArgsUseAppendOnlyReporter(t *testing.T) {
 	if !slices.Contains(args, "--registry") || !slices.Contains(args, "http://localhost:4873") {
 		t.Errorf("pnpm install args = %q, want configured registry", args)
 	}
-	for _, name := range []string{"@kb-labs/devkit", "@parcel/watcher", "@swc/core", "better-sqlite3", "esbuild", "unrs-resolver"} {
-		if !slices.Contains(args, "--allow-build="+name) {
-			t.Errorf("pnpm install args = %q, want --allow-build=%s", args, name)
-		}
+	if slices.Contains(args, "--allow-build=@kb-labs/devkit") {
+		t.Errorf("pnpm install args = %q, must not use unsupported --allow-build CLI flag", args)
 	}
 }
 

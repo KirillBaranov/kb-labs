@@ -41,20 +41,9 @@ func (p *PnpmManager) Update(dir string, pkgs []string, progress chan<- Progress
 // error report; it is simply no longer allowed to redraw the user's terminal.
 func (p *PnpmManager) installArgs(command, dir string, pkgs []string) []string {
 	args := []string{command, "--dir", dir, "--reporter=append-only"}
-	// pnpm 11 requires an explicit build allowlist. Keep this on the command
-	// line as well as in pnpm-workspace.yaml: `pnpm add --dir` can resolve a
-	// workspace from a generated project, and the CLI flag makes the policy
-	// deterministic across pnpm patch releases and config discovery modes.
-	for _, name := range []string{
-		"@kb-labs/devkit",
-		"@parcel/watcher",
-		"@swc/core",
-		"better-sqlite3",
-		"esbuild",
-		"unrs-resolver",
-	} {
-		args = append(args, "--allow-build="+name)
-	}
+	// Build permissions are written to pnpm-workspace.yaml by ensureNpmrc.
+	// Do not pass --allow-build here: it is not supported by all pnpm 11
+	// patch releases, while the workspace config is the stable interface.
 	args = append(args, pkgs...)
 	if p.Registry != "" {
 		args = append(args, "--registry", p.Registry)

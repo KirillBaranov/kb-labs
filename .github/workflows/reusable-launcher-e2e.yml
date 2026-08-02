@@ -191,6 +191,7 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          GITHUB_TOKEN: ${{ github.token }}
 
       # ── Cleanup ───────────────────────────────────────────────────────
 

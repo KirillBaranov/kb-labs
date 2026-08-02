@@ -400,6 +400,7 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          GITHUB_TOKEN: ${{ github.token }}
           # Unlimited failure output — kb-devkit's default 50-line truncation
           # hides exactly the per-service LogsTail/state detail needed to
           # diagnose a failure here, and this job has no log-upload step
