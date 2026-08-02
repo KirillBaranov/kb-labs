@@ -4,6 +4,9 @@ package process
 
 import (
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -62,4 +65,15 @@ func groupAlive(pgid int) bool {
 // getListenerPIDs finds PIDs listening on a TCP port using lsof.
 func getListenerPIDs(port int) []int {
 	return getListenerPIDsLsof(port)
+}
+
+func commandLine(pid int) string {
+	if pid <= 0 {
+		return ""
+	}
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "command=").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

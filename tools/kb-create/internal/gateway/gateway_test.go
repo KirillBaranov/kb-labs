@@ -7,6 +7,9 @@ import "testing"
 // websocket, workflow strips its prefix, rest aliases widgets + plugins).
 func TestDefaultPlan(t *testing.T) {
 	p := DefaultPlan()
+	if err := p.Validate(); err != nil {
+		t.Fatalf("DefaultPlan validation failed: %v", err)
+	}
 
 	for _, id := range []string{"rest", "workflow", "marketplace", "widgets", "plugins"} {
 		if _, ok := p.Gateway.Upstreams[id]; !ok {
@@ -32,5 +35,13 @@ func TestDefaultPlan(t *testing.T) {
 		if got := p.Transport[id].URL; got != want {
 			t.Errorf("transport %q URL = %q, want %q", id, got, want)
 		}
+	}
+}
+
+func TestValidateRejectsDuplicatePrefixes(t *testing.T) {
+	p := DefaultPlan()
+	p.Gateway.Upstreams["legacy-widgets"] = Upstream{ServiceID: "rest", Prefix: "/plugins"}
+	if err := p.Validate(); err == nil {
+		t.Fatal("expected duplicate prefix to be rejected")
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/kb-labs/create/internal/toolchain"
 )
 
 // PnpmManager implements PackageManager using pnpm.
@@ -80,6 +82,9 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 	if err := ensurePackageJSON(dir); err != nil {
 		return err
 	}
+	if err := pinPnpmPackageJSON(dir); err != nil {
+		return err
+	}
 	if err := p.ensureNpmrc(dir); err != nil {
 		return err
 	}
@@ -124,6 +129,30 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 	<-done
 
 	return cmd.Wait()
+}
+
+func pinPnpmPackageJSON(dir string) error {
+	path := filepath.Join(dir, "package.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return fmt.Errorf("parse platform package.json: %w", err)
+	}
+	pkg["packageManager"] = "pnpm@" + toolchain.PnpmVersion
+	engines, _ := pkg["engines"].(map[string]interface{})
+	if engines == nil {
+		engines = map[string]interface{}{}
+	}
+	engines["node"] = ">=24"
+	pkg["engines"] = engines
+	rendered, err := json.MarshalIndent(pkg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(rendered, '\n'), 0o600)
 }
 
 // ensureNpmrc writes a platform-local .npmrc. It is always written (even when

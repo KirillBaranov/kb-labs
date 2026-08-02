@@ -1,12 +1,38 @@
 package pm
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
+
+func TestPinPnpmPackageJSON(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"kb-platform"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := pinPnpmPackageJSON(dir); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if got := pkg["packageManager"]; got != "pnpm@11.4.0" {
+		t.Fatalf("packageManager = %v, want pnpm@11.4.0", got)
+	}
+	engines, ok := pkg["engines"].(map[string]interface{})
+	if !ok || engines["node"] != ">=24" {
+		t.Fatalf("engines = %#v, want node >=24", pkg["engines"])
+	}
+}
 
 // TestDetectReturnsNonNil verifies that Detect always returns a non-nil manager.
 func TestDetectReturnsNonNil(t *testing.T) {

@@ -6,6 +6,8 @@
 // duplicate definitions.
 package gateway
 
+import "fmt"
+
 // Upstream describes a single proxy route for the gateway.
 // ServiceID references a key in Plan.Transport.
 type Upstream struct {
@@ -64,4 +66,24 @@ func DefaultPlan() *Plan {
 			"marketplace": {URL: "http://127.0.0.1:5070"},
 		},
 	}
+}
+
+// Validate rejects an invalid route plan before the gateway registers routes.
+// Prefixes are the externally visible route identity; upstream map keys alone
+// are not sufficient because two aliases may target the same service.
+func (p *Plan) Validate() error {
+	seen := make(map[string]string, len(p.Gateway.Upstreams))
+	for id, upstream := range p.Gateway.Upstreams {
+		if upstream.Prefix == "" {
+			return fmt.Errorf("gateway upstream %q has an empty prefix", id)
+		}
+		if previous, ok := seen[upstream.Prefix]; ok {
+			return fmt.Errorf("gateway route prefix %q is declared by upstreams %q and %q", upstream.Prefix, previous, id)
+		}
+		seen[upstream.Prefix] = id
+		if _, ok := p.Transport[upstream.ServiceID]; !ok {
+			return fmt.Errorf("gateway upstream %q references missing transport service %q", id, upstream.ServiceID)
+		}
+	}
+	return nil
 }

@@ -1,11 +1,13 @@
 package manager
 
 import (
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/kb-labs/dev/internal/config"
+	"github.com/kb-labs/dev/internal/service"
 )
 
 func testServices() map[string]config.Service {
@@ -31,6 +33,35 @@ func testServices() map[string]config.Service {
 			Name: "Studio", Type: config.ServiceTypeNode, Port: 3000,
 			DependsOn: []string{"rest"},
 		},
+	}
+}
+
+func TestStatusReportsPortOccupantForFailedService(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	port := listener.Addr().(*net.TCPAddr).Port
+	cfg := &config.Config{
+		Services: map[string]config.Service{
+			"gateway": {Name: "Gateway", Type: config.ServiceTypeNode, Port: port},
+		},
+		Settings: config.Settings{LogsDir: ".kb/logs"},
+	}
+	m := New(cfg, t.TempDir(), t.TempDir())
+	_ = m.services["gateway"].SetState(service.StateFailed, "health check failed")
+
+	status := m.Status().Services["gateway"]
+	if status.PortOccupant == nil {
+		t.Skip("lsof/netstat did not report the test listener")
+	}
+	if status.PortOccupant.PID <= 0 {
+		t.Errorf("port occupant PID = %d, want positive PID", status.PortOccupant.PID)
+	}
+	if status.Cleanup != "kb-dev stop gateway --force" {
+		t.Errorf("cleanup command = %q", status.Cleanup)
 	}
 }
 

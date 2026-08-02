@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -121,6 +122,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Do not create a checkpoint, platform directory, or log until the local
 	// environment can support the selected install.
 	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
+	if err := ensureToolchain(flagYes, packageManager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
 	if err := preflight.Check(sel.ProjectCWD, sel.PlatformDir, packageManager); err != nil {
 		return fmt.Errorf("preflight failed: %w", err)
 	}
@@ -305,7 +309,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// When platformDir == projectDir, WritePlatformConfig already wrote the full config
 	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
-		return fmt.Errorf("scaffold project config: %w", err)
+		if errors.Is(err, scaffold.ErrIncompatibleLegacyConfig) && !flagYes && confirmToolchain("Legacy project routes are incompatible and will be removed (backup will be created). Continue? [y/N] ") {
+			scaffoldOpts.AllowIncompatibleLegacyMigration = true
+			if retryErr := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); retryErr != nil {
+				return fmt.Errorf("scaffold project config: %w", retryErr)
+			}
+		} else {
+			return fmt.Errorf("scaffold project config: %w", err)
+		}
 	}
 	customPluginDir := ""
 	agentHandoffPath := ""

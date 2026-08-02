@@ -92,3 +92,5 @@ func getListenerPIDs(port int) []int {
 	}
 	return pids
 }
+
+func commandLine(_ int) string { return "" }

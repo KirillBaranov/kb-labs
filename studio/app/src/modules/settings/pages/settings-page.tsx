@@ -21,9 +21,11 @@ import { ApiRoutesViewer } from '../components/api-routes-viewer';
 import { NavigationSettings } from '../components/navigation-settings';
 import { AccountSettings } from '../components/account-settings';
 import { SystemSettings } from '../components/system-settings';
+import { useFeatureFlags } from '@/hooks/use-feature-flags';
 
 export function SettingsPage() {
   const sources = useDataSources();
+  const { isEnabled } = useFeatureFlags();
   const [invalidating, setInvalidating] = React.useState(false);
 
   const handleInvalidateCache = async () => {
@@ -122,7 +124,7 @@ export function SettingsPage() {
         </UIPageSection>
       ),
     },
-    {
+    ...(isEnabled('devtools-panel') ? [{
       key: 'developer',
       label: 'Developer',
       icon: <UIIcon name="ToolOutlined" />,
@@ -175,7 +177,7 @@ export function SettingsPage() {
           </UIPageSection>
         </>
       ),
-    },
+    }] : []),
   ];
 
   return (

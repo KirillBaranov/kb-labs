@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -478,7 +479,7 @@ func TestWriteProjectConfig_SkipsIfJsoncExists(t *testing.T) {
 	}
 }
 
-func TestWriteProjectConfig_SkipsIfJsonExists(t *testing.T) {
+func TestWriteProjectConfig_MigratesLegacyJsonWithBackup(t *testing.T) {
 	projectDir := t.TempDir()
 
 	// Pre-create kb.config.json (not jsonc) — the dev config convention.
@@ -486,26 +487,40 @@ func TestWriteProjectConfig_SkipsIfJsonExists(t *testing.T) {
 	if err := os.MkdirAll(kbDir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	customContent := `{"platform":{"dir":"/old/path"}}`
+	customContent := `{"platform":{"dir":"/old/path","custom":"keep"},"custom":{"enabled":true},"gateway":{"upstreams":{"legacy":{"serviceId":"missing","prefix":"/old"},"rest":{"serviceId":"rest","prefix":"/api/v1"},"duplicate":{"serviceId":"rest","prefix":"/api/v1"}}}}`
 	jsonPath := filepath.Join(kbDir, "kb.config.json")
 	if err := os.WriteFile(jsonPath, []byte(customContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	// WriteProjectConfig must not create kb.config.jsonc when kb.config.json exists.
-	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform"}); err != nil {
+	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform"}); !errors.Is(err, ErrIncompatibleLegacyConfig) {
+		t.Fatalf("expected explicit confirmation error, got %v", err)
+	}
+	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform", AllowIncompatibleLegacyMigration: true}); err != nil {
 		t.Fatal(err)
 	}
 
-	// jsonc must not be created.
 	jsoncPath := filepath.Join(kbDir, "kb.config.jsonc")
-	if _, err := os.Stat(jsoncPath); !os.IsNotExist(err) {
-		t.Error("WriteProjectConfig created kb.config.jsonc even though kb.config.json already existed")
+	migrated, err := os.ReadFile(jsoncPath)
+	if err != nil {
+		t.Fatalf("migrated jsonc was not created: %v", err)
 	}
-	// json must be unchanged.
-	data, _ := os.ReadFile(jsonPath)
-	if string(data) != customContent {
-		t.Errorf("existing json config was modified; got %q", string(data))
+	if !strings.Contains(string(migrated), `"dir": "/some/platform"`) || !strings.Contains(string(migrated), `"custom": "keep"`) || !strings.Contains(string(migrated), `"enabled": true`) {
+		t.Errorf("migration did not preserve managed pointer and user fields: %s", migrated)
+	}
+	if strings.Contains(string(migrated), `"missing"`) || strings.Count(string(migrated), `"prefix": "/api/v1"`) != 1 {
+		t.Errorf("migration did not remove stale/duplicate routes: %s", migrated)
+	}
+	if _, err := os.Stat(jsonPath); !os.IsNotExist(err) {
+		t.Errorf("legacy json still exists after migration: %v", err)
+	}
+	backups, err := filepath.Glob(jsonPath + ".bak-*")
+	if err != nil || len(backups) != 1 {
+		t.Fatalf("expected one legacy config backup, got %v (%v)", backups, err)
+	}
+	backup, err := os.ReadFile(backups[0])
+	if err != nil || string(backup) != customContent {
+		t.Errorf("backup does not contain original config: %v", err)
 	}
 }
 

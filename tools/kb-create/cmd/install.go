@@ -122,6 +122,9 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	defer func() { _ = log.Close() }()
 
 	packageManager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
+	if err := ensureToolchain(true, packageManager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
 	out.Info(fmt.Sprintf("Installing %s via %s", describeSelection(plugins, services), packageManager.Name()))
 
 	ins := &installer.Installer{
@@ -136,12 +139,13 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 
 	scaffoldOpts := scaffold.Options{
-		PlatformDir: sel.PlatformDir,
-		Services:    sel.Services,
-		Plugins:     sel.Plugins,
-		Gateway:     result.Gateway,
-		Catalog:     m,
-		Adapters:    adapters,
+		PlatformDir:                      sel.PlatformDir,
+		Services:                         sel.Services,
+		Plugins:                          sel.Plugins,
+		Gateway:                          result.Gateway,
+		Catalog:                          m,
+		Adapters:                         adapters,
+		AllowIncompatibleLegacyMigration: true, // install is explicitly non-interactive
 	}
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold platform config: %w", err)
