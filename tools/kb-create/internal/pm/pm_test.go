@@ -210,6 +210,15 @@ func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 	if !strings.Contains(string(data), wantDefault) {
 		t.Errorf(".npmrc missing default registry: got %q, want it to contain %q", string(data), wantDefault)
 	}
+	workspace, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	if err != nil {
+		t.Fatalf("pnpm-workspace.yaml not written: %v", err)
+	}
+	for _, want := range []string{"onlyBuiltDependencies:", "'@kb-labs/devkit'", "'esbuild'", "overrides:", "'@kb-labs/sdk': '>=2.0.0'"} {
+		if !strings.Contains(string(workspace), want) {
+			t.Errorf("pnpm-workspace.yaml missing %q: got %q", want, string(workspace))
+		}
+	}
 }
 
 // TestNpmRegistryURL verifies NpmManager.RegistryURL reflects the configured value.

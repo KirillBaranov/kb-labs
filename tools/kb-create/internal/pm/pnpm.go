@@ -174,5 +174,34 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	if p.StoreDir != "" {
 		content += "store-dir=" + p.StoreDir + "\npackage-import-method=hardlink\n"
 	}
-	return os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600); err != nil {
+		return err
+	}
+	// pnpm 10+ reads workspace settings from pnpm-workspace.yaml, not from
+	// package.json. The platform is intentionally a standalone workspace so
+	// clean installs can allow native build scripts without an interactive
+	// `pnpm approve-builds` prompt and retain the platform overrides.
+	workspaceConfig := "onlyBuiltDependencies:\n"
+	for _, name := range []string{
+		"@kb-labs/devkit",
+		"@parcel/watcher",
+		"@swc/core",
+		"better-sqlite3",
+		"esbuild",
+		"unrs-resolver",
+	} {
+		workspaceConfig += "  - '" + name + "'\n"
+	}
+	workspaceConfig += "overrides:\n"
+	for _, name := range []string{
+		"@kb-labs/gateway-contracts",
+		"@kb-labs/gateway-auth",
+		"@kb-labs/gateway-core",
+		"@kb-labs/sdk",
+		"@kb-labs/core-runtime",
+		"@kb-labs/core-platform",
+	} {
+		workspaceConfig += "  '" + name + "': '>=2.0.0'\n"
+	}
+	return os.WriteFile(filepath.Join(dir, "pnpm-workspace.yaml"), []byte(workspaceConfig), 0o600)
 }
