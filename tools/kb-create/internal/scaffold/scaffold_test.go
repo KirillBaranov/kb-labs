@@ -524,6 +524,56 @@ func TestWriteProjectConfig_MigratesLegacyJsonWithBackup(t *testing.T) {
 	}
 }
 
+func TestWriteProjectConfig_MergesLegacyJsonWhenPointerJsoncAlreadyExists(t *testing.T) {
+	projectDir := t.TempDir()
+	kbDir := filepath.Join(projectDir, ".kb")
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kbDir, "kb.config.jsonc"), []byte(`{"platform":{"dir":"/generated/platform"},"profiles":["rest"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `{"platform":{"adapters":{"llm":"@kb-labs/adapters-openai","vectorStore":"@kb-labs/adapters-qdrant"},"adapterOptions":{"llm":{"defaultTier":"small"}}},"custom":{"keep":true}}`
+	jsonPath := filepath.Join(kbDir, "kb.config.json")
+	if err := os.WriteFile(jsonPath, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/selected/platform"}); err != nil {
+		t.Fatalf("WriteProjectConfig: %v", err)
+	}
+	migrated := readKbConfig(t, projectDir)
+	for _, want := range []string{
+		`"dir": "/selected/platform"`,
+		`"llm": "@kb-labs/adapters-openai"`,
+		`"vectorStore": "@kb-labs/adapters-qdrant"`,
+		`"defaultTier": "small"`,
+		`"keep": true`,
+		`"profiles": [`,
+	} {
+		if !strings.Contains(migrated, want) {
+			t.Errorf("merged config missing %q:\n%s", want, migrated)
+		}
+	}
+	if _, err := os.Stat(jsonPath); !os.IsNotExist(err) {
+		t.Errorf("legacy json still exists after migration: %v", err)
+	}
+	if backups, err := filepath.Glob(jsonPath + ".bak-*"); err != nil || len(backups) != 1 {
+		t.Fatalf("expected one legacy config backup, got %v (%v)", backups, err)
+	}
+}
+
+func TestStripGeneratedJsoncPreservesCommentMarkersInStrings(t *testing.T) {
+	input := `{"scope":"sites/**","url":"http://localhost:5050",/* comment */"enabled":true}`
+	var got map[string]any
+	if err := json.Unmarshal([]byte(stripGeneratedJsonc(input)), &got); err != nil {
+		t.Fatalf("stripGeneratedJsonc produced invalid JSON: %v", err)
+	}
+	if got["scope"] != "sites/**" || got["url"] != "http://localhost:5050" {
+		t.Fatalf("comment-like string values were corrupted: %#v", got)
+	}
+}
+
 func TestWriteProjectConfig_CreatesDir(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "a", "b", "project")
 
@@ -922,6 +972,37 @@ func TestEnsureGitignore_ExcludesClaudeDir(t *testing.T) {
 	}
 	if !strings.Contains(string(data), ".claude/") {
 		t.Errorf(".gitignore should exclude .claude/, got:\n%s", string(data))
+	}
+}
+
+func TestEnsureGitignore_UpdatesExistingKBBlockIdempotently(t *testing.T) {
+	projectDir := t.TempDir()
+	path := filepath.Join(projectDir, ".gitignore")
+	initial := "node_modules/\n\n# kb-labs-ignore\n.env\n.kb/logs/\n# end-kb-labs-ignore\nkeep-me\n"
+	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureGitignore(projectDir); err != nil {
+		t.Fatalf("first ensureGitignore: %v", err)
+	}
+	first, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"*.log", ".kb/runtime/", ".kb/database/", "keep-me"} {
+		if !strings.Contains(string(first), want) {
+			t.Errorf("updated .gitignore missing %q:\n%s", want, first)
+		}
+	}
+	if err := ensureGitignore(projectDir); err != nil {
+		t.Fatalf("second ensureGitignore: %v", err)
+	}
+	second, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(first) != string(second) {
+		t.Errorf("ensureGitignore is not idempotent\nfirst=%q\nsecond=%q", string(first), string(second))
 	}
 }
 

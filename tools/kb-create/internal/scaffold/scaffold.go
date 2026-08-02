@@ -197,7 +197,13 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	cfgJson := filepath.Join(dir, "kb.config.json")
 	_, jsoncErr := os.Stat(cfgJsonc)
 	_, jsonErr := os.Stat(cfgJson)
-	if os.IsNotExist(jsoncErr) && !os.IsNotExist(jsonErr) {
+	if !os.IsNotExist(jsoncErr) && !os.IsNotExist(jsonErr) {
+		if isGeneratedPointerConfig(cfgJsonc) {
+			if err := migrateLegacyProjectConfig(cfgJson, cfgJsonc, opts, cfgJsonc); err != nil {
+				return fmt.Errorf("migrate legacy project config: %w", err)
+			}
+		}
+	} else if os.IsNotExist(jsoncErr) && !os.IsNotExist(jsonErr) {
 		if err := migrateLegacyProjectConfig(cfgJson, cfgJsonc, opts); err != nil {
 			return fmt.Errorf("migrate legacy project config: %w", err)
 		}
@@ -244,7 +250,7 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 // migrateLegacyProjectConfig promotes the old JSON project config to JSONC.
 // User-defined fields are retained; only the installer-managed platform pointer
 // and stale gateway routes are reconciled with the current install plan.
-func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options) error {
+func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options, basePath ...string) error {
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return err
@@ -252,6 +258,17 @@ func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options) error 
 	var config map[string]any
 	if err := json.Unmarshal([]byte(stripGeneratedJsonc(string(data))), &config); err != nil {
 		return fmt.Errorf("parse %s: %w", jsonPath, err)
+	}
+	if len(basePath) > 0 {
+		baseData, readErr := os.ReadFile(basePath[0])
+		if readErr != nil {
+			return fmt.Errorf("read pointer %s: %w", basePath[0], readErr)
+		}
+		var baseConfig map[string]any
+		if err := json.Unmarshal([]byte(stripGeneratedJsonc(string(baseData))), &baseConfig); err != nil {
+			return fmt.Errorf("parse pointer %s: %w", basePath[0], err)
+		}
+		config = mergeConfigMaps(baseConfig, config)
 	}
 
 	platform, _ := config["platform"].(map[string]any)
@@ -308,6 +325,48 @@ func migrateLegacyProjectConfig(jsonPath, jsoncPath string, opts Options) error 
 		return fmt.Errorf("remove legacy config: %w", err)
 	}
 	return nil
+}
+
+// isGeneratedPointerConfig distinguishes the installer-created project pointer
+// from a user-owned JSONC config. A pointer may also contain generated profile
+// selections, but it must not contain platform adapter settings.
+func isGeneratedPointerConfig(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var config map[string]any
+	if err := json.Unmarshal([]byte(stripGeneratedJsonc(string(data))), &config); err != nil {
+		return false
+	}
+	platform, _ := config["platform"].(map[string]any)
+	if platform == nil {
+		return false
+	}
+	_, hasDir := platform["dir"].(string)
+	_, hasAdapters := platform["adapters"]
+	_, hasAdapterOptions := platform["adapterOptions"]
+	return hasDir && !hasAdapters && !hasAdapterOptions
+}
+
+// mergeConfigMaps preserves pointer-only settings while retaining every field
+// from the legacy config. Nested objects are merged recursively; legacy values
+// win where the two configs define the same setting.
+func mergeConfigMaps(base, legacy map[string]any) map[string]any {
+	merged := make(map[string]any, len(base)+len(legacy))
+	for key, value := range base {
+		merged[key] = value
+	}
+	for key, value := range legacy {
+		baseMap, baseOK := merged[key].(map[string]any)
+		legacyMap, legacyOK := value.(map[string]any)
+		if baseOK && legacyOK {
+			merged[key] = mergeConfigMaps(baseMap, legacyMap)
+			continue
+		}
+		merged[key] = value
+	}
+	return merged
 }
 
 // ReadPlatformOptions reads Services and Plugins selections from an existing
@@ -468,12 +527,54 @@ func readEnvCredentials(projectDir string) *GatewayCreds {
 // values. Block comments are still stripped globally (we never write URLs
 // inside /* */ blocks).
 func stripGeneratedJsonc(src string) string {
-	// Block comments (/* ... */) — safe to strip globally; never contain URLs.
-	src = regexp.MustCompile(`/\*[\s\S]*?\*/`).ReplaceAllString(src, "")
-	// Pure-comment lines: optional whitespace then "//" until end of line.
-	// Does NOT match "url": "http://localhost:5050" because that line starts
-	// with a quote character, not "//".
-	src = regexp.MustCompile(`(?m)^\s*//[^\n]*\n?`).ReplaceAllString(src, "")
+	// Remove comments with a small lexer so comment markers inside strings stay
+	// intact. A global /\*...*/ replacement would corrupt legitimate JSON values
+	// such as the glob "sites/**".
+	var cleaned strings.Builder
+	cleaned.Grow(len(src))
+	inString := false
+	escaped := false
+	for i := 0; i < len(src); i++ {
+		ch := src[i]
+		if inString {
+			cleaned.WriteByte(ch)
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			cleaned.WriteByte(ch)
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '/' {
+			i += 2
+			for i < len(src) && src[i] != '\n' {
+				i++
+			}
+			if i < len(src) {
+				cleaned.WriteByte('\n')
+			}
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '*' {
+			i += 2
+			for i+1 < len(src) && !(src[i] == '*' && src[i+1] == '/') {
+				i++
+			}
+			if i+1 < len(src) {
+				i++
+			}
+			continue
+		}
+		cleaned.WriteByte(ch)
+	}
+	src = cleaned.String()
 	// Trailing commas before } or ]
 	src = regexp.MustCompile(`,(\s*[}\]])`).ReplaceAllString(src, "$1")
 	return src
@@ -1039,24 +1140,31 @@ func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey, boot
 // Uses sentinel markers so re-runs are idempotent and existing user content is preserved.
 func ensureGitignore(projectDir string) error {
 	const (
-		marker = "# kb-labs-ignore"
-		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/commit/\n.kb/mind/\n.kb/database/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n"
+		marker    = "# kb-labs-ignore"
+		endMarker = "# end-kb-labs-ignore"
+		block     = "# kb-labs-ignore\n.env\n*.log\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/runtime/\n.kb/commit/\n.kb/mind/\n.kb/database/\n.kb/onboarding/\n.kb/qa/\n.kb/run-artifacts/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.dev.yaml\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n"
 	)
 	path := filepath.Join(projectDir, ".gitignore")
 	existing, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if strings.Contains(string(existing), marker) {
-		return nil // already present
+	content := string(existing)
+	if start := strings.Index(content, marker); start >= 0 {
+		end := strings.Index(content[start:], endMarker)
+		if end >= 0 {
+			end += start + len(endMarker)
+			content = content[:start] + block + strings.TrimLeft(content[end:], "\r\n")
+		} else {
+			content = content[:start] + block
+		}
+		return os.WriteFile(path, []byte(content), 0o644)
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // #nosec G306
-	if err != nil {
-		return err
+	separator := "\n"
+	if content == "" || strings.HasSuffix(content, "\n") {
+		separator = ""
 	}
-	defer f.Close()
-	_, err = f.WriteString(block)
-	return err
+	return os.WriteFile(path, []byte(content+separator+block), 0o644)
 }
 
 // writeDemoWorkflow generates .kb/workflows/demo.yaml inside the project .kb dir.
