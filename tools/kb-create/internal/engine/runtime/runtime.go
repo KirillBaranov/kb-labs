@@ -30,7 +30,7 @@ func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (exe
 		return executor.Journal{}, fmt.Errorf("platform root is required")
 	}
 	if err := os.MkdirAll(compiled.PlatformRoot, 0o750); err != nil {
-		return executor.Journal{}, err
+		return executor.Journal{}, fmt.Errorf("platform destination %q is not writable: %w", compiled.PlatformRoot, err)
 	}
 	base := options.BaseConfig
 	if base == nil {
