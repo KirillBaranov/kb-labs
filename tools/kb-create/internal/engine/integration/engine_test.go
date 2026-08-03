@@ -128,19 +128,30 @@ func TestDeclarativeProjectOutputUsesManagedOverlay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	managedOverlay := false
+	projectPointer := false
 	for _, output := range cat.Outputs {
-		if output.Scope == config.ScopeProject && output.Path == ".kb/kb.config.jsonc" {
-			t.Fatal("declarative catalog writes user-owned project config directly")
+		if output.Scope != config.ScopeProject {
+			continue
 		}
+		managedOverlay = managedOverlay || output.Path == ".kb/generated/kb-create.overlay.jsonc"
+		projectPointer = projectPointer || output.Path == ".kb/kb.config.jsonc"
+	}
+	if !managedOverlay || !projectPointer {
+		t.Fatalf("project outputs must include managed overlay and compatibility pointer: %#v", cat.Outputs)
 	}
 	request := plan.InstallRequest{Source: plan.SourceDirect, ProjectRoot: t.TempDir(), PlatformRoot: t.TempDir()}
 	compiled, err := plan.Compile(request, cat)
 	if err != nil {
 		t.Fatal(err)
 	}
+	projectOutputs := 0
 	for _, output := range compiled.Assembly.Outputs {
-		if output.Scope == config.ScopeProject && output.Path != ".kb/generated/kb-create.overlay.jsonc" {
-			t.Fatalf("project output = %#v", output)
+		if output.Scope == config.ScopeProject {
+			projectOutputs++
 		}
+	}
+	if projectOutputs != 2 {
+		t.Fatalf("project outputs = %#v", compiled.Assembly.Outputs)
 	}
 }

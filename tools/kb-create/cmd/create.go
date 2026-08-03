@@ -107,7 +107,11 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if err := writeDeclarativeInstallState(compiled); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "\nInstalled successfully (declarative intent %q).\n", intent)
+	fmt.Fprintf(cmd.OutOrStdout(), "\ninstalled successfully (declarative intent %q).\n", intent)
+	fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", compiled.PlatformRoot)
+	if compiled.ProjectRoot != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
+	}
 	return nil
 }
 

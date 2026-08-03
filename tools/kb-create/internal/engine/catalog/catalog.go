@@ -42,14 +42,15 @@ type Effect struct {
 }
 
 type Catalog struct {
-	Core       []string                    `json:"core,omitempty"`
-	Digest     string                      `json:"digest"`
-	Defaults   []engineconfig.ConfigPatch  `json:"defaults,omitempty"`
-	Components []Component                 `json:"components"`
-	Providers  []Provider                  `json:"providers"`
-	Effects    []Effect                    `json:"effects,omitempty"`
-	Migrations []migrate.Definition        `json:"migrations,omitempty"`
-	Outputs    []engineconfig.ConfigOutput `json:"outputs,omitempty"`
+	Core       []string                     `json:"core,omitempty"`
+	Digest     string                       `json:"digest"`
+	Defaults   []engineconfig.ConfigPatch   `json:"defaults,omitempty"`
+	Components []Component                  `json:"components"`
+	Providers  []Provider                   `json:"providers"`
+	Effects    []Effect                     `json:"effects,omitempty"`
+	Migrations []migrate.Definition         `json:"migrations,omitempty"`
+	Outputs    []engineconfig.ConfigOutput  `json:"outputs,omitempty"`
+	Artifacts  []engineconfig.ArtifactWrite `json:"artifacts,omitempty"`
 }
 
 func (c Catalog) Component(id string) (Component, bool) {

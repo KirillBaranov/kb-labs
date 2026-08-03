@@ -276,6 +276,33 @@
       "path": ".kb/generated/kb-create.overlay.jsonc",
       "format": "jsonc",
       "overwrite": "replace"
+    },
+    {
+      "scope": "project",
+      "root": "project",
+      "path": ".kb/kb.config.jsonc",
+      "format": "jsonc",
+      "overwrite": "replace"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "platform.marketplace-lock",
+      "root": "platform",
+      "path": ".kb/marketplace.lock",
+      "format": "json",
+      "content": {},
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
+    },
+    {
+      "id": "platform.devservices",
+      "root": "platform",
+      "path": ".kb/devservices.yaml",
+      "format": "text",
+      "text": "services:\n",
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
     }
   ],
   "effects": [

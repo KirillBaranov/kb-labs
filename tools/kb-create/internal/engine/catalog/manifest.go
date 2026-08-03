@@ -19,6 +19,9 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 	for _, output := range source.Outputs {
 		catalog.Outputs = append(catalog.Outputs, engineconfig.ConfigOutput{Scope: engineconfig.ConfigScope(output.Scope), Root: engineconfig.Root(output.Root), Path: output.Path, Format: engineconfig.Format(output.Format), Overwrite: engineconfig.OverwritePolicy(output.Overwrite)})
 	}
+	for _, artifact := range source.Artifacts {
+		catalog.Artifacts = append(catalog.Artifacts, engineconfig.ArtifactWrite{ID: artifact.ID, Root: engineconfig.Root(artifact.Root), Path: artifact.Path, Format: engineconfig.Format(artifact.Format), Content: append(json.RawMessage(nil), artifact.Content...), Text: artifact.Text, Owner: artifact.Owner, Overwrite: engineconfig.OverwritePolicy(artifact.Overwrite), Required: true})
+	}
 	for _, patch := range source.Defaults {
 		catalog.Defaults = append(catalog.Defaults, convertPatch(patch, "catalog:default"))
 	}

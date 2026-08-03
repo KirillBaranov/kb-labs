@@ -109,6 +109,17 @@ type ConfigOutput struct {
 	Overwrite string `json:"overwrite,omitempty"`
 }
 
+type ConfigArtifact struct {
+	ID        string          `json:"id"`
+	Root      string          `json:"root"`
+	Path      string          `json:"path"`
+	Format    string          `json:"format"`
+	Content   json.RawMessage `json:"content,omitempty"`
+	Text      string          `json:"text,omitempty"`
+	Owner     string          `json:"owner"`
+	Overwrite string          `json:"overwrite,omitempty"`
+}
+
 // ConfigEffect is a reusable product configuration contribution. Scenarios
 // select effect IDs; they do not duplicate the patch bodies in each option.
 type ConfigEffect struct {
@@ -168,8 +179,9 @@ type Manifest struct {
 	// Defaults and Outputs define the config contract consumed by the generic
 	// compiler. They are deliberately data so adding a product default does not
 	// require a launcher release.
-	Defaults []ConfigPatch  `json:"defaults,omitempty"`
-	Outputs  []ConfigOutput `json:"outputs,omitempty"`
+	Defaults  []ConfigPatch    `json:"defaults,omitempty"`
+	Outputs   []ConfigOutput   `json:"outputs,omitempty"`
+	Artifacts []ConfigArtifact `json:"artifacts,omitempty"`
 	// Migrations are versioned, deterministic transformations for launcher-owned
 	// state/config subjects. They are data, not Go callbacks.
 	Migrations []Migration `json:"migrations,omitempty"`

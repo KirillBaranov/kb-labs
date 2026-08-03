@@ -105,6 +105,7 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	}
 	componentIDs := catalog.SortedIDs(request.Components)
 	assembly := engineconfig.ConfigAssembly{Outputs: append([]engineconfig.ConfigOutput(nil), source.Outputs...)}
+	assembly.Artifacts = append(assembly.Artifacts, source.Artifacts...)
 	assembly.Outputs = append(assembly.Outputs, request.AssemblyOutputs...)
 	assembly.Patches = append(assembly.Patches, source.Defaults...)
 	if request.PlatformRoot != "" {
