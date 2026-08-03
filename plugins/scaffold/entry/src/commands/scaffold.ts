@@ -69,6 +69,7 @@ const FALLBACK_VERSIONS = {
 const GENERATED_WORKSPACE_BUILD_POLICY = `
 
 # Required native builds for the generated plugin toolchain.
+strictDepBuilds: false
 allowBuilds:
   '@kb-labs/devkit': true
   '@parcel/watcher': true
