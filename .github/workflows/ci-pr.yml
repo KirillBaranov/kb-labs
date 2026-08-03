@@ -40,8 +40,7 @@ jobs:
         run: pnpm deps:lint
 
   # ── 0a. Resolve E2E ownership from the complete PR diff ──────────────────
-  # Report-only initially: the same JSON plan will drive selective E2E shards
-  # once its coverage warnings have been audited on real PRs.
+  # The same JSON plan drives the selective E2E jobs below.
   e2e-test-plan:
     name: E2E test plan
     runs-on: ubuntu-latest
@@ -183,7 +182,7 @@ jobs:
   devkit-checks:
     name: Devkit checks
     runs-on: ubuntu-latest
-    needs: [build-tools, build]
+    needs: [build-tools, build, e2e-test-plan]
     permissions:
       contents: read
     steps:
@@ -268,16 +267,20 @@ jobs:
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
 
-      - name: Should run e2e?
-        id: gate
+      - name: Download E2E test plan
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-test-plan
+          path: .ci
+
+      - name: Apply E2E zone gate
+        id: gate-result
         run: |
           set -euo pipefail
-          changed=$(.devkit/affected.sh || true)
-          # tools/kb-create e2e also exercises tools/kb-dev (the e2e suite
-          # installs a real platform and drives kb-dev's register/switch/
-          # projects commands against it — see e2e/kbdev_registry_test.go),
-          # so a kb-dev-only PR must trigger this job too, not just kb-create.
-          if echo "$changed" | grep -qE '^tools/(kb-create|kb-dev)/'; then
+          if node -e '
+            const plan = require("./.ci/e2e-test-plan.json");
+            process.exit(plan.selected.some((zone) => zone.runner === "launcher") ? 0 : 1);
+          '; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -287,22 +290,22 @@ jobs:
       # neither kb-create nor kb-dev sources changed.
 
       - uses: actions/download-artifact@v4
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         with:
           name: dist
 
       - name: Extract dist artifacts
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: tar xf dist-artifacts.tar
 
       - name: Install dependencies
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
 
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
       - name: Pack @kb-labs/* packages
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: bash e2e/scripts/pack-all.sh
 
       # ── Start Verdaccio ──────────────────────────────────────────────────
@@ -310,11 +313,11 @@ jobs:
       # tests running on the host can reach http://localhost:4873.
 
       - name: Set up Docker Buildx
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build publisher image
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: |
           docker buildx build \
             --cache-from "type=gha,scope=e2e-publisher" \
@@ -325,17 +328,17 @@ jobs:
             e2e/
 
       - name: Prepare Verdaccio storage permissions
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: |
           mkdir -p e2e/.verdaccio-storage
           sudo chown -R 10001:65533 e2e/.verdaccio-storage
 
       - name: Start Verdaccio
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: docker compose up -d verdaccio
 
       - name: Wait for Verdaccio to be healthy
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: |
           for i in $(seq 1 30); do
             if docker compose ps verdaccio | grep -q "healthy"; then
@@ -345,7 +348,7 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: docker compose run --rm publisher
 
       # ── Run kb-create Go e2e tests ───────────────────────────────────────
@@ -353,7 +356,7 @@ jobs:
       # will point to local Verdaccio instead of npm.org.
 
       - name: Run kb-create e2e via devkit
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate-result.outputs.run == 'true'
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
         env:
           KB_REGISTRY_URL: http://localhost:4873
@@ -367,18 +370,18 @@ jobs:
       # ── Cleanup ──────────────────────────────────────────────────────────
 
       - name: Stop Verdaccio
-        if: always() && steps.gate.outputs.run == 'true'
+        if: always() && steps.gate-result.outputs.run == 'true'
         run: docker compose down --volumes --remove-orphans || true
 
       - name: Restore Verdaccio storage ownership for cache save
-        if: always() && steps.gate.outputs.run == 'true'
+        if: always() && steps.gate-result.outputs.run == 'true'
         run: |
           if [ -d e2e/.verdaccio-storage ]; then
             sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
           fi
 
       - name: Skipped
-        if: steps.gate.outputs.run != 'true'
+        if: steps.gate-result.outputs.run != 'true'
         run: echo "kb-create e2e skipped (no kb-create changes in this PR)"
 
   # ── Full E2E — opt in per PR; always runs after a successful main CI ──────

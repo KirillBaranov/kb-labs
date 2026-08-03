@@ -1,0 +1,6 @@
+{
+  "zone": "kb-create",
+  "runner": "launcher",
+  "watch": ["tools/kb-create/**", "e2e/kb-create/**"],
+  "suites": ["e2e-kb-create"]
+}

@@ -72,6 +72,7 @@ jobs:
           generic=$(node -e '
             const plan = require("./.ci/e2e-test-plan.json");
             const suites = [...new Set(plan.selected
+              .filter((zone) => zone.runner === "docker")
               .flatMap((zone) => zone.suites)
               .filter((suite) => !["e2e-auth", "e2e-oauth"].includes(suite))
               .map((suite) => suite.replace(/^e2e-/, "")))];
