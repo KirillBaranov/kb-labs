@@ -60,6 +60,8 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	if !force {
 		selectedPlugins := append([]string(nil), current.SelectedPlugins...)
 		selectedServices := append([]string(nil), current.SelectedServices...)
+		selectedPlugins = canonicalizeComponentIDs(selectedPlugins, "plugin")
+		selectedServices = canonicalizeComponentIDs(selectedServices, "service")
 		plugins, services = &selectedPlugins, &selectedServices
 	}
 	var directConfig []byte
@@ -111,6 +113,18 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	}
 	out.OK(fmt.Sprintf("Declarative update complete (%d actions)", completed))
 	return nil
+}
+
+func canonicalizeComponentIDs(ids []string, kind string) []string {
+	result := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if strings.HasPrefix(id, kind+":") {
+			result = append(result, id)
+			continue
+		}
+		result = append(result, kind+":"+id)
+	}
+	return result
 }
 
 func confirm(prompt string) bool {

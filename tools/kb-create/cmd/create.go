@@ -16,6 +16,7 @@ import (
 	engineagent "github.com/kb-labs/create/internal/engine/agent"
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
 	"github.com/kb-labs/create/internal/engine/scenario"
+	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/telemetry"
 )
 
@@ -112,6 +113,10 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if compiled.ProjectRoot != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
 	}
+	printCompletionBlock(&installer.Result{
+		PlatformDir: compiled.PlatformRoot,
+		ProjectCWD:  compiled.ProjectRoot,
+	}, nil, "", "", "", "", nil, false, false)
 	return nil
 }
 
