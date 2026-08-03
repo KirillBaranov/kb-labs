@@ -45,21 +45,25 @@ export default function CommitOverview() {
     />
   );
 
+  const showScopeSelect = scopeOptions.length > 1;
+
   return (
     <UIPage>
       <UIPageHeader
         title="Commit"
         description="AI-powered commit generation"
         actions={
-          <UISelect
-            style={{ width: 260 }}
-            placeholder="Select repository..."
-            value={scope || undefined}
-            onChange={(v) => setScope(v as string)}
-            loading={scopesLoading}
-            showSearch
-            options={scopeOptions}
-          />
+          showScopeSelect ? (
+            <UISelect
+              style={{ width: 260 }}
+              placeholder="Select repository..."
+              value={scope || undefined}
+              onChange={(v) => setScope(v as string)}
+              loading={scopesLoading}
+              showSearch
+              options={scopeOptions}
+            />
+          ) : undefined
         }
         tabs={tabs}
       />

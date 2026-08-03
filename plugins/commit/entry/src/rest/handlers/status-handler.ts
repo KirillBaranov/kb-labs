@@ -1,6 +1,7 @@
 import { defineHandler, useConfig, type RestInput, type PluginContextV3, rethrowForRest } from '@kb-labs/sdk';
 import { loadPlan } from '@kb-labs/commit-core/storage';
-import { getGitStatus } from '@kb-labs/commit-core/analyzer';
+import { getGitStatus, getCurrentBranch } from '@kb-labs/commit-core/analyzer';
+import { checkPlanStaleness } from '@kb-labs/commit-core/validator';
 import { COMMIT_CACHE_PREFIX, type StatusResponse, type PlanStatus, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { resolveScopePath } from './scope-resolver';
 
@@ -23,6 +24,13 @@ export default defineHandler({
       const plan = await loadPlan(ctx.cwd, scope);
       ctx.platform.logger.info(`[status-handler] Plan loaded: ${!!plan}`);
 
+      // Resolve scope to actual directory path (same as files-handler) — needed
+      // for git status, branch lookup, and disambiguating which checkout/worktree
+      // this Studio instance is pointed at.
+      const fileConfig = await useConfig<Partial<CommitPluginConfig>>();
+      const config = resolveCommitConfig(fileConfig ?? {});
+      const scopeCwd = resolveScopePath(ctx.cwd, scope, config.scope?.scopes);
+
       // Get git status (with platform cache)
       let filesChanged = 0;
       let gitStatus: { staged: string[]; unstaged: string[]; untracked: string[] } | null = null;
@@ -39,11 +47,6 @@ export default defineHandler({
         filesChanged = cachedData.count;
         gitStatus = cachedData.status;
       } else {
-        // Fetch fresh git status
-        // Resolve scope to actual directory path (same as files-handler)
-        const fileConfig = await useConfig<Partial<CommitPluginConfig>>();
-        const config = resolveCommitConfig(fileConfig ?? {});
-        const scopeCwd = resolveScopePath(ctx.cwd, scope, config.scope?.scopes);
         ctx.platform.logger.info(`[status-handler] Resolved scope CWD: ${scopeCwd}`);
 
         gitStatus = await getGitStatus(scopeCwd);
@@ -88,6 +91,19 @@ export default defineHandler({
         }
       }
 
+      const branch = await getCurrentBranch(scopeCwd).catch(() => undefined);
+
+      // Proactively surface plan staleness — the same check `applyCommitPlan`
+      // runs as a last-second guard, but here it's informational so Studio/CLI/MCP
+      // can warn the user before they even attempt Apply.
+      let planStale: boolean | undefined;
+      let planStaleReason: string | undefined;
+      if (plan) {
+        const staleness = await checkPlanStaleness(scopeCwd, plan, scope);
+        planStale = staleness.isStale;
+        planStaleReason = staleness.isStale ? staleness.reason : undefined;
+      }
+
       return {
         scope,
         hasPlan: !!plan,
@@ -97,6 +113,10 @@ export default defineHandler({
         commitsApplied,
         planTimestamp: plan?.createdAt,
         gitStatus: gitStatus || undefined,
+        branch,
+        workingDir: ctx.cwd,
+        planStale,
+        planStaleReason,
       };
     } catch (error) {
       rethrowForRest(error);
