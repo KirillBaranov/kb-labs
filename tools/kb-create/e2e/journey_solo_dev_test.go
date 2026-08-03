@@ -48,6 +48,14 @@ func TestSoloDeveloperJourney(t *testing.T) {
 		_, _, _ = runKbDev(t, platformDir, "stop")
 	})
 
+	scaffoldJS, err := os.ReadFile(filepath.Join(platformDir, "node_modules", "@kb-labs", "scaffold", "dist", "commands", "scaffold.js")) // #nosec G304 -- path is under t.TempDir()
+	if err != nil {
+		t.Fatalf("installed scaffold entrypoint missing: %v", err)
+	}
+	if !strings.Contains(string(scaffoldJS), "ensureWorkspaceBuildPolicyInFiles") {
+		t.Fatalf("installed @kb-labs/scaffold does not contain the current workspace policy implementation")
+	}
+
 	// Phase 5, step 15: scaffold a plugin — "scaffold" ships enabled by
 	// default, after the platform has been started as required by the
 	// canonical marketplace registration API.
