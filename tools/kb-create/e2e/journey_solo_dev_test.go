@@ -92,8 +92,17 @@ func TestSoloDeveloperJourney(t *testing.T) {
 	// scaffolded plugin dir, exactly as the scaffold command's own "Next
 	// steps" hint tells the user to.
 	pluginRoot := filepath.Join(projectDir, ".kb", "plugins", "demo")
+	workspacePath := filepath.Join(pluginRoot, "pnpm-workspace.yaml")
+	workspaceData, err := os.ReadFile(workspacePath) // #nosec G304 -- path is under t.TempDir()
+	if err != nil {
+		t.Fatalf("scaffolded plugin pnpm-workspace.yaml missing: %v", err)
+	}
+	workspace := string(workspaceData)
+	if !strings.Contains(workspace, "allowBuilds:") {
+		t.Fatalf("scaffolded plugin pnpm-workspace.yaml has no build policy:\n%s", workspace)
+	}
 	if out, code := runPM(t, pluginRoot, "install"); code != 0 {
-		t.Fatalf("pnpm install (scaffolded plugin) exited %d:\n%s", code, out)
+		t.Fatalf("pnpm install (scaffolded plugin) exited %d; workspace config:\n%s\noutput:\n%s", code, workspace, out)
 	}
 	if out, code := runPM(t, pluginRoot, "run", "build"); code != 0 {
 		t.Fatalf("pnpm run build (scaffolded plugin) exited %d:\n%s", code, out)
