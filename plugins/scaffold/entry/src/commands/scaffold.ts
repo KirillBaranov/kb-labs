@@ -1,6 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
 import {
   defineCommand,
   validationError,
