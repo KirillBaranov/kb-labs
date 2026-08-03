@@ -464,6 +464,7 @@ tasks:
         - "tsconfig*.json"
         - "rspack.studio.config.*"
         - "package.json"
+        - "^dist/**"
       outputs:
         - "dist/**"
       deps:
@@ -476,6 +477,7 @@ tasks:
         - "tsup.config.ts"
         - "tsup.config.js"
         - "tsconfig*.json"
+        - "^dist/**"
       outputs:
         - "dist/**"
       deps:
@@ -492,6 +494,7 @@ tasks:
         - "postcss.config.*"
         - "index.html"
         - "package.json"
+        - "^dist/**"
       outputs:
         - "dist/**"
       deps:
@@ -522,6 +525,7 @@ tasks:
         - "next.config.*"
         - "tailwind.config.*"
         - "package.json"
+        - "^dist/**"
       outputs:
         - ".next/**"
       deps:
@@ -532,6 +536,7 @@ tasks:
       inputs:
         - "src/**"
         - "tsconfig*.json"
+        - "^dist/**"
       outputs: []
       deps:
         - "^build"

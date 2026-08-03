@@ -142,7 +142,7 @@ workspace:
 Each task can have multiple **variants** — one per package category. The scheduler picks the first variant whose `categories` list includes the package's category. Packages with no matching variant are silently skipped for that task.
 
 <Callout type="info">
-Each task has its own independent cache keyed by `(taskName, package, inputHash)`. Running `build` does not populate the `lint` cache — they track different inputs and are stored separately. The only link between tasks is `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache if available), then lint runs fresh.
+Each task has its own independent cache keyed by its task name, package, declared task semantics, runtime/toolchain fingerprint, and input hash. Running `build` does not populate the `lint` cache — they track different inputs and are stored separately. The only link between tasks is `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache if available), then lint runs fresh.
 </Callout>
 
 ```yaml
@@ -483,11 +483,11 @@ kb-devkit doctor --json
 
 ## How caching works
 
-1. `kb-devkit` collects all files matching the `inputs:` glob patterns for the `(package × task)` pair and computes a SHA256 hash of their contents and paths.
+1. `kb-devkit` collects all files matching the `inputs:` glob patterns for the `(package × task)` pair and computes a SHA256 hash of their contents and paths. A package manifest is always included when present; task command, input/output declarations, dependency graph, cache setting, toolchain versions, and the executing binary are also fingerprinted.
 2. **Cache hit** — output files are restored from `.kb/devkit/objects/` in ~1ms and the task is marked `cached`.
 3. **Cache miss** — the task command runs, output files are stored in the object store, and a manifest is written to `.kb/devkit/tasks/<pkg>/<task>/<hash>.json`.
 
-**Each task has its own independent cache.** The cache key is `(taskName, package, inputHash)` — running `build` does not populate the `lint` cache. If you run `build` then `lint`, lint executes fresh. If you run `build` again, build is served from cache. Tasks are only linked through `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache), then lint runs fresh.
+**Each task has its own independent cache.** The cache key combines task name, package, task semantics, toolchain fingerprint, and input hash — running `build` does not populate the `lint` cache. If you run `build` then `lint`, lint executes fresh. If you run `build` again, build is served from cache. Tasks are only linked through `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache), then lint runs fresh. To make generated dependency output affect a consumer's cache key, list that output (for example `^dist/**`) in the consumer's `inputs:`.
 
 Cache layout:
 

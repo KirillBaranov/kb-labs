@@ -82,6 +82,18 @@ what it checks, and how to see the current state.
 **Structure:** 8-shard matrix (one per `@kb-labs/e2e-<suite>`) + aggregator. Branch protection points at the aggregator's `Platform E2E` check.
 **Typical duration:** ~8 min wall-clock; per shard ~5–8 min.
 
+### Cache policy
+
+PR callers use the `read-write` cache mode: kb-devkit's addressable build CAS
+and BuildKit's GHA layer cache may be restored and updated. Packed packages and
+Verdaccio storage are never restored from a cross-run cache; the prepare job
+passes an immutable same-run bundle to its shards.
+
+Main, scheduled, and release-triggered E2E runs use `off`: they rebuild the
+platform, npm tarballs, Verdaccio registry, and images from source. This is the
+authoritative verification path. See [ADR-0038](./adr/0038-ci-cache-policy-and-authoritative-builds.md)
+for fingerprints, metrics, and the warm-vs-cold audit.
+
 ### Post-publish Smoke (`e2e-user-journey.yml`)
 **Purpose:** verify delivery of the public installer and published artifacts in
 a clean container. Full source/CI user journeys run against Verdaccio in

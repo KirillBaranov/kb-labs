@@ -20,6 +20,9 @@ jobs:
     uses: ./.github/workflows/reusable-e2e-platform-build.yml
     with:
       artifact-name: e2e-platform-prebuilt-${{ github.run_id }}
+      # PR callers opt into the fast, addressable CAS. Main, scheduled, and
+      # release-triggered runs are authoritative cold builds.
+      cache-mode: ${{ github.event_name == 'workflow_call' && 'read-write' || 'off' }}
     permissions:
       contents: read
 
@@ -39,6 +42,7 @@ jobs:
       playwright-dir: e2e/plugins
       compose-project: kb-e2e-ci-${{ matrix.suite }}
       prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
+      cache-mode: ${{ github.event_name == 'workflow_call' && 'read-write' || 'off' }}
     permissions:
       contents: read
 
@@ -53,6 +57,7 @@ jobs:
       health-steps: 60
       compose-project: kb-e2e-ci-mcp
       prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
+      cache-mode: ${{ github.event_name == 'workflow_call' && 'read-write' || 'off' }}
     permissions:
       contents: read
 
@@ -60,6 +65,7 @@ jobs:
   # pull-request gate. It remains available in a PR through the `full-ci`
   # label, which calls this workflow.
   e2e-auth:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
@@ -72,10 +78,13 @@ jobs:
       studio: true
       studio-https: false
       idp: false
+      cache-mode: ${{ github.event_name == 'workflow_call' && 'read-write' || 'off' }}
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
     permissions:
       contents: read
 
   e2e-oauth:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
@@ -89,6 +98,8 @@ jobs:
       studio-https: true
       idp: true
       hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
+      cache-mode: ${{ github.event_name == 'workflow_call' && 'read-write' || 'off' }}
+      prebuilt-artifact: e2e-platform-prebuilt-${{ github.run_id }}
     permissions:
       contents: read
 

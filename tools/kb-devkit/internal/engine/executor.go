@@ -2,11 +2,14 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,21 +19,23 @@ import (
 
 // Executor runs a single (package, task) pair with cache lookup/store.
 type Executor struct {
-	objects    cache.ObjectStore
-	manifests  *cache.ManifestStore
-	states     *cache.StateStore
-	wsRoot     string
-	liveOutput bool // stream stdout/stderr while running
+	objects            cache.ObjectStore
+	manifests          *cache.ManifestStore
+	states             *cache.StateStore
+	wsRoot             string
+	liveOutput         bool // stream stdout/stderr while running
+	runtimeFingerprint string
 }
 
 // NewExecutor creates an Executor backed by the given cache stores.
 func NewExecutor(objects cache.ObjectStore, manifests *cache.ManifestStore, states *cache.StateStore, wsRoot string, liveOutput bool) *Executor {
 	return &Executor{
-		objects:    objects,
-		manifests:  manifests,
-		states:     states,
-		wsRoot:     wsRoot,
-		liveOutput: liveOutput,
+		objects:            objects,
+		manifests:          manifests,
+		states:             states,
+		wsRoot:             wsRoot,
+		liveOutput:         liveOutput,
+		runtimeFingerprint: cache.RuntimeFingerprint(),
 	}
 }
 
@@ -47,7 +52,13 @@ func (e *Executor) Run(pkg workspace.Package, def TaskDef, noCache bool, depDirs
 	start := time.Now()
 
 	// 1. Compute input hash.
-	inputHash, err := cache.HashInputs(pkg.Dir, depDirs, def.Inputs)
+	inputs := append([]string(nil), def.Inputs...)
+	if !containsInput(inputs, "package.json") {
+		// Package metadata controls exports, scripts and dependency resolution,
+		// all of which can change dist without touching src/.
+		inputs = append(inputs, "package.json")
+	}
+	inputHash, err := cache.HashInputsWithFingerprint(pkg.Dir, depDirs, inputs, e.taskFingerprint(def))
 	if err != nil {
 		return TaskResult{
 			Package: pkg.Name, Task: def.Name,
@@ -127,6 +138,29 @@ func (e *Executor) Run(pkg workspace.Package, def TaskDef, noCache bool, depDirs
 	}
 
 	return result
+}
+
+func (e *Executor) taskFingerprint(def TaskDef) string {
+	parts := append([]string{
+		cache.FormatVersion,
+		e.runtimeFingerprint,
+		def.Name,
+		def.Command,
+		strings.Join(def.Inputs, "\x00"),
+		strings.Join(def.Outputs, "\x00"),
+		strings.Join(def.Deps, "\x00"),
+	}, strconv.FormatBool(def.Cache))
+	digest := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(digest[:])
+}
+
+func containsInput(inputs []string, wanted string) bool {
+	for _, input := range inputs {
+		if input == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 // runCommand executes a shell command in dir, returning stdout, stderr, exit code.

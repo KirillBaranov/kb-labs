@@ -1,0 +1,23 @@
+name: Restore kb-devkit CAS
+description: Restore the addressable kb-devkit build cache for fast CI lanes.
+
+inputs:
+  mode:
+    description: 'read-write restores and saves the CAS; off always builds cold'
+    required: false
+    default: read-write
+
+runs:
+  using: composite
+  steps:
+    - name: Restore kb-devkit CAS
+      if: inputs.mode == 'read-write'
+      uses: actions/cache@v4
+      with:
+        path: .kb/devkit/
+        # Source changes are addressed inside kb-devkit. This outer key only
+        # partitions incompatible workspace configuration; the per-SHA suffix
+        # lets a changed run save its accumulated CAS without overwriting one.
+        key: devkit-cas-${{ runner.os }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'devkit.yaml', '**/tsconfig*.json', '**/tsup.config.*', '**/vite.config.*', '**/rspack*.config.*') }}-${{ github.sha }}
+        restore-keys: |
+          devkit-cas-${{ runner.os }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'devkit.yaml', '**/tsconfig*.json', '**/tsup.config.*', '**/vite.config.*', '**/rspack*.config.*') }}-

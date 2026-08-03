@@ -71,6 +71,22 @@ func TestExecutorStoresAndRestoresOutputsThroughCache(t *testing.T) {
 	}
 }
 
+func TestTaskFingerprintChangesWhenTaskDefinitionChanges(t *testing.T) {
+	exec := &Executor{runtimeFingerprint: "toolchain"}
+	base := TaskDef{Name: "build", Command: "tsup", Inputs: []string{"src/**"}, Outputs: []string{"dist/**"}, Deps: []string{"^build"}, Cache: true}
+	changedCommand := base
+	changedCommand.Command = "pnpm build"
+	changedDeps := base
+	changedDeps.Deps = nil
+
+	if exec.taskFingerprint(base) == exec.taskFingerprint(changedCommand) {
+		t.Fatal("command must be part of the task fingerprint")
+	}
+	if exec.taskFingerprint(base) == exec.taskFingerprint(changedDeps) {
+		t.Fatal("dependency graph must be part of the task fingerprint")
+	}
+}
+
 func TestResolveBinPrefersWorkspaceNodeModulesBin(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "node_modules", ".bin", "eslint"), "#!/bin/sh\n")

@@ -78,16 +78,15 @@ jobs:
         run: bash e2e/scripts/pack-all.sh "$GITHUB_WORKSPACE/e2e/packages-base"
       - name: Archive exact main dist snapshot
         run: find . -path '*/node_modules/*' -prune -o -path '*/.kb/*' -prune -o -type d -name dist -print | tar cf base-dist-artifacts.tar -T -
-      - name: Cache exact main E2E snapshot
-        uses: actions/cache@v4
+      - name: Upload exact main E2E snapshot
+        uses: actions/upload-artifact@v4
         with:
+          name: e2e-base-snapshot-${{ github.sha }}
           path: |
             e2e/packages-base
             base-dist-artifacts.tar
-          # v6 invalidates snapshots produced before published package metadata
-          # was verified end-to-end; those snapshots could contain workspace:*
-          # references even though the current pack step is clean.
-          key: e2e-base-tgz-v6-${{ github.sha }}
+          retention-days: 7
+          compression-level: 0
       - name: Validate exact main E2E snapshot
         run: |
           count=$(find "$GITHUB_WORKSPACE/e2e/packages-base" -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
@@ -278,19 +277,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Restore packed .tgz cache
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          # Bump this namespace whenever packed workspace dependency metadata
-          # changes. pnpm pack materializes workspace:* ranges into exact
-          # versions, so reusing an older tarball can make the Verdaccio e2e
-          # job test a package graph that is not present in this checkout.
-          key: e2e-tgz-v6-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml', 'plugins/scaffold/entry/templates/**') }}
-
       - name: Pack @kb-labs/* packages
-        if: steps.tgz-cache.outputs.cache-hit != 'true'
         run: bash e2e/scripts/pack-all.sh
 
       - name: Validate packed package metadata
@@ -308,33 +295,13 @@ jobs:
         uses: docker/setup-buildx-action@v3
         timeout-minutes: 5
 
-      - name: Cache Docker layers (publisher)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
       - name: Build publisher image
         run: |
           docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
             --load \
             -t kb-e2e-ci-publisher:latest \
             -f e2e/publisher/Dockerfile \
             e2e/
-
-      - name: Restore Verdaccio storage cache
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          # The registry contains immutable package versions. A content hash
-          # alone can restore a warm Verdaccio volume that was populated by a
-          # previous build of the same version; scope it to the commit so the
-          # publisher always loads the exact packages tested by this run.
-          key: verdaccio-storage-v3-${{ runner.os }}-${{ github.sha }}
 
       - name: Prepare Verdaccio storage permissions
         run: |
@@ -354,19 +321,7 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
         run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio warm cache
-        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' 2>/dev/null | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Storage incomplete, re-publishing"
-            docker compose run --rm publisher
-          fi
 
       - name: Test curl installer entrypoint
         run: bash tools/kb-create/install_test.sh
