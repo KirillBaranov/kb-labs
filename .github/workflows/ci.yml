@@ -330,7 +330,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/.verdaccio-storage
-          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          # The registry contains immutable package versions. A content hash
+          # alone can restore a warm Verdaccio volume that was populated by a
+          # previous build of the same version; scope it to the commit so the
+          # publisher always loads the exact packages tested by this run.
+          key: verdaccio-storage-v3-${{ runner.os }}-${{ github.sha }}
 
       - name: Prepare Verdaccio storage permissions
         run: |
