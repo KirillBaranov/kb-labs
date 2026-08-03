@@ -10,6 +10,7 @@ import (
 
 	"github.com/kb-labs/create/internal/customplugin"
 	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/onboarding"
 )
 
@@ -41,6 +42,14 @@ func runContinue(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	declarativeManifest, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest for completion: %w", err)
+	}
+	declarativeIntent := declarativeManifest.IntentByID(state.Outcome)
+	if declarativeIntent == nil {
+		return fmt.Errorf("declarative manifest has no intent %q", state.Outcome)
+	}
 	printCompletionBlock(
 		&installer.Result{ProjectCWD: projectDir, PlatformDir: state.PlatformDir},
 		state.FirstCommand,
@@ -49,6 +58,8 @@ func runContinue(_ *cobra.Command, args []string) error {
 		state.CustomCommandName,
 		state.AgentHandoff,
 		nil,
+		declarativeIntent.Docs,
+		declarativeIntent.NextSteps,
 		false,
 		false,
 	)

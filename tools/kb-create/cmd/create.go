@@ -17,6 +17,7 @@ import (
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/telemetry"
 )
 
@@ -113,10 +114,18 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if compiled.ProjectRoot != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
 	}
+	declarativeManifest, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest for completion: %w", err)
+	}
+	declarativeIntent := declarativeManifest.IntentByID(intent)
+	if declarativeIntent == nil {
+		return fmt.Errorf("declarative manifest has no intent %q", intent)
+	}
 	printCompletionBlock(&installer.Result{
 		PlatformDir: compiled.PlatformRoot,
 		ProjectCWD:  compiled.ProjectRoot,
-	}, nil, "", "", "", "", nil, false, false)
+	}, declarativeIntent.FirstCommand, "", "", "", "", nil, declarativeIntent.Docs, declarativeIntent.NextSteps, false, false)
 	return nil
 }
 

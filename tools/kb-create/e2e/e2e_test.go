@@ -508,15 +508,12 @@ func TestFirstCommitPromptShown(t *testing.T) {
 		t.Errorf("install banner missing:\n%s", out)
 	}
 
-	// For an untracked-only repo (reviewableCount==0) the demo shows "Try it now:"
-	// with kb review / kb commit instructions.
-	// This requires kb to be on PATH — the installer writes it to ~/.local/bin
-	// which must be in the test process PATH (true on dev and GitHub Actions ubuntu).
-	if !strings.Contains(out, "Try it now") {
-		t.Errorf("expected 'Try it now' hint for untracked-only repo:\n%s", out)
-	}
-	if !strings.Contains(out, "kb review run") {
-		t.Errorf("expected 'kb review run' in demo hints:\n%s", out)
+	// The completion rail is driven by the selected intent in manifest.json.
+	// The default explore intent currently advertises these two next steps.
+	for _, nextStep := range []string{"kb-dev start", "pnpm kb --help"} {
+		if !strings.Contains(out, nextStep) {
+			t.Errorf("expected manifest next step %q in completion rail:\n%s", nextStep, out)
+		}
 	}
 }
 

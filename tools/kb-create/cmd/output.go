@@ -105,7 +105,7 @@ type railBlock struct {
 // printCompletionBlock renders the single end-of-install handoff. Keep all
 // user-facing next steps here so success output does not fragment into a
 // collection of unrelated notices.
-func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pendingInput, pluginDir, commandName, handoffPath string, agentLines []string, llmEnabled, analyticsEnabled bool) {
+func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pendingInput, pluginDir, commandName, handoffPath string, agentLines []string, docs []manifest.IntentDoc, nextSteps []string, llmEnabled, analyticsEnabled bool) {
 	// Keep a stable plain-text success marker for scripts and older clients;
 	// the structured rail below remains the canonical human presentation.
 	fmt.Println("KB Labs installed successfully")
@@ -136,10 +136,20 @@ func printCompletionBlock(r *installer.Result, first *manifest.FirstCommand, pen
 		"With an agent — paste this prompt:",
 		"Create a KB Labs plugin that [describe your business case].",
 		"It should expose a safe first command and include tests.",
-		railKeyValue("Read docs", styleBlue.Render("https://docs.kblabs.ru/en/guides/first-plugin")),
-		"Try it now:",
-		"kb review run",
-		"kb commit commit",
+	}
+	for _, doc := range docs {
+		if doc.Label == "" || doc.URL == "" {
+			continue
+		}
+		continueLines = append(continueLines, railKeyValue("Read "+doc.Label, styleBlue.Render(doc.URL)))
+	}
+	if len(nextSteps) > 0 {
+		continueLines = append(continueLines, "Next steps:")
+		for _, step := range nextSteps {
+			if step != "" {
+				continueLines = append(continueLines, "  "+styleWhite.Render(step))
+			}
+		}
 	}
 	if handoffPath != "" {
 		continueLines = append(continueLines, railKeyValue("Handoff", styleMuted.Render(handoffPath)))
