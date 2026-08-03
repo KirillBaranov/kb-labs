@@ -1,6 +1,11 @@
 packages:
   - packages/*
 
+# Older pnpm releases can report an allowlist mismatch as a hard error.
+# Keep the explicit allowlist above, but let the generated workspace install
+# with a warning when running under such a release.
+strictDepBuilds: false
+
 # pnpm 10+ blocks dependency build scripts unless they are explicitly
 # allowed in workspace settings. Keep a fresh scaffold non-interactive and
 # make the native builds required by the generated plugin toolchain reliable.
