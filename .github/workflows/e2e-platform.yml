@@ -65,6 +65,7 @@ jobs:
   # pull-request gate. It remains available in a PR through the `full-ci`
   # label, which calls this workflow.
   e2e-auth:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
@@ -83,6 +84,7 @@ jobs:
       contents: read
 
   e2e-oauth:
+    needs: prepare
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-playwright.yml
     with:
