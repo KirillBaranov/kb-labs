@@ -58,3 +58,73 @@ func TestCompileUsesPreferredCompatibleProvider(t *testing.T) {
 		t.Fatalf("actions = %#v", result.Actions)
 	}
 }
+
+func TestCompileCarriesSelectedEffectsAfterProviderConfig(t *testing.T) {
+	cat := catalog.Catalog{
+		Digest: "catalog-v1",
+		Components: []catalog.Component{{
+			ID: "commit", Kind: "plugin", Package: "commit",
+			Requires: []catalog.Requirement{{Capability: "cache"}},
+		}},
+		Providers: []catalog.Provider{{
+			ID: "state-broker", Capability: "cache", Package: "state",
+			Config: []engineconfig.ConfigPatch{{
+				ID: "provider.cache.option", Scope: engineconfig.ScopePlatform,
+				Operation: engineconfig.OperationSet, Path: "/adapterOptions/cache/mode",
+				Value: []byte(`"shared"`), Owner: "provider:state-broker",
+			}},
+		}},
+		Effects: []catalog.Effect{{
+			ID: "gateway.access.local",
+			Config: []engineconfig.ConfigPatch{{
+				ID: "gateway.local.auth", Scope: engineconfig.ScopePlatform,
+				Operation: engineconfig.OperationSet, Path: "/gateway/auth/enabled",
+				Value: []byte(`false`), Owner: "catalog:effect/gateway.access.local",
+			}},
+		}},
+	}
+	result, err := Compile(InstallRequest{Components: []string{"commit"}, Effects: []string{"gateway.access.local"}}, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Assembly.Patches) != 3 {
+		t.Fatalf("patch count = %d, patches = %#v", len(result.Assembly.Patches), result.Assembly.Patches)
+	}
+	last := result.Assembly.Patches[len(result.Assembly.Patches)-1]
+	if last.ID != "gateway.local.auth" || string(last.Value) != "false" {
+		t.Fatalf("last patch = %#v", last)
+	}
+}
+
+func TestCompileRejectsUnknownEffect(t *testing.T) {
+	_, err := Compile(InstallRequest{Effects: []string{"missing"}}, catalog.Catalog{})
+	if err == nil || !strings.Contains(err.Error(), `unknown effect "missing"`) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestCompileRejectsDuplicateEffects(t *testing.T) {
+	cat := catalog.Catalog{Effects: []catalog.Effect{{ID: "local"}}}
+	_, err := Compile(InstallRequest{Effects: []string{"local", "local"}}, cat)
+	if err == nil || !strings.Contains(err.Error(), `duplicate effect "local"`) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestCompileSortsEffectIDsForDeterministicPlans(t *testing.T) {
+	cat := catalog.Catalog{Effects: []catalog.Effect{
+		{ID: "z", Config: []engineconfig.ConfigPatch{{ID: "z.patch", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/z", Value: []byte(`true`), Owner: "effect:z"}}},
+		{ID: "a", Config: []engineconfig.ConfigPatch{{ID: "a.patch", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/a", Value: []byte(`true`), Owner: "effect:a"}}},
+	}}
+	first, err := Compile(InstallRequest{Effects: []string{"z", "a"}}, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Compile(InstallRequest{Effects: []string{"a", "z"}}, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.PlanHash != second.PlanHash {
+		t.Fatalf("effect order changed plan hash: %q != %q", first.PlanHash, second.PlanHash)
+	}
+}

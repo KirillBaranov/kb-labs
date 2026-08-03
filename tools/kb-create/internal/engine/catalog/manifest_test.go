@@ -3,6 +3,7 @@ package catalog
 import (
 	"testing"
 
+	engineconfig "github.com/kb-labs/create/internal/engine/config"
 	"github.com/kb-labs/create/internal/manifest"
 )
 
@@ -21,5 +22,37 @@ func TestFromManifestKeepsJSONManifestAsComponentSource(t *testing.T) {
 	}
 	if result.Providers[0].ID != "cache" || result.Providers[0].Package != "@kb-labs/adapters-redis" {
 		t.Fatalf("providers = %#v", result.Providers)
+	}
+}
+
+func TestFromManifestConvertsReusableEffects(t *testing.T) {
+	source := manifest.Manifest{Effects: []manifest.ConfigEffect{{
+		ID: "gateway.access.local",
+		Config: []manifest.ConfigPatch{{
+			ID:        "gateway.local.auth",
+			Scope:     "platform",
+			Operation: "set",
+			Path:      "/gateway/auth/enabled",
+			Value:     []byte("false"),
+		}},
+	}}}
+	result, err := FromManifest(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	effect, ok := result.Effect("gateway.access.local")
+	if !ok || len(effect.Config) != 1 {
+		t.Fatalf("effects = %#v", result.Effects)
+	}
+	patch := effect.Config[0]
+	if patch.Scope != engineconfig.ScopePlatform || patch.Operation != engineconfig.OperationSet || patch.Owner != "catalog:effect/gateway.access.local" {
+		t.Fatalf("converted patch = %#v", patch)
+	}
+}
+
+func TestCatalogRejectsDuplicateEffects(t *testing.T) {
+	err := (Catalog{Effects: []Effect{{ID: "same"}, {ID: "same"}}}).Validate()
+	if err == nil {
+		t.Fatal("Validate() accepted duplicate effect IDs")
 	}
 }

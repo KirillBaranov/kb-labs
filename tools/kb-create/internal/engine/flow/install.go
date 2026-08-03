@@ -13,6 +13,7 @@ import (
 type InstallSpec struct {
 	Components          []ComponentBinding `json:"components,omitempty"`
 	ProviderPreferences []ProviderBinding  `json:"providerPreferences,omitempty"`
+	Effects             []EffectBinding    `json:"effects,omitempty"`
 }
 
 type ComponentBinding struct {
@@ -23,6 +24,11 @@ type ComponentBinding struct {
 type ProviderBinding struct {
 	Capability string `json:"capability"`
 	Field      string `json:"field"`
+}
+
+type EffectBinding struct {
+	ID   string     `json:"id"`
+	When *Predicate `json:"when,omitempty"`
 }
 
 func (s *Scenario) installSpec() *InstallSpec { return s.Install }
@@ -46,6 +52,16 @@ func BuildInstallRequest(scenario Scenario, state State, projectRoot, platformRo
 			components = append(components, binding.ID)
 		}
 	}
+	effects := make([]string, 0, len(scenario.Install.Effects))
+	for _, binding := range scenario.Install.Effects {
+		if binding.ID == "" {
+			return plan.InstallRequest{}, fmt.Errorf("scenario has an empty effect binding")
+		}
+		if binding.When == nil || binding.When.Evaluate(state.Values) {
+			effects = append(effects, binding.ID)
+		}
+	}
+	sort.Strings(effects)
 	sort.Strings(components)
 	preferences := make(map[string][]string)
 	for _, binding := range scenario.Install.ProviderPreferences {
@@ -59,5 +75,5 @@ func BuildInstallRequest(scenario Scenario, state State, projectRoot, platformRo
 		}
 		preferences[binding.Capability] = []string{provider}
 	}
-	return plan.InstallRequest{Schema: "kb.install/1", Source: plan.SourceScenario, CatalogDigest: catalogDigest, ProjectRoot: projectRoot, PlatformRoot: platformRoot, Components: components, ProviderPreferences: preferences, Values: state.Values}, nil
+	return plan.InstallRequest{Schema: "kb.install/1", Source: plan.SourceScenario, CatalogDigest: catalogDigest, ProjectRoot: projectRoot, PlatformRoot: platformRoot, Components: components, Effects: effects, ProviderPreferences: preferences, Values: state.Values}, nil
 }

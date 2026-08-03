@@ -76,6 +76,23 @@ func TestWriteThenRead(t *testing.T) {
 	}
 }
 
+func TestSelectedEffectsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	manifest := sampleManifest()
+	want := NewConfig(dir, "/project", "pnpm", "", "kb-create/declarative", &manifest, TelemetryConfig{})
+	want.SelectedEffects = []string{"gateway.access.local"}
+	if err := Write(dir, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Read(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.IsEffectSelected("gateway.access.local") || got.IsEffectSelected("gateway.access.secured") {
+		t.Fatalf("selected effects = %#v", got.SelectedEffects)
+	}
+}
+
 // TestReadMissing verifies that reading a non-existent config returns an error.
 func TestReadMissing(t *testing.T) {
 	dir := t.TempDir()

@@ -28,6 +28,7 @@ type InstallRequest struct {
 	ProjectRoot         string                      `json:"projectRoot"`
 	PlatformRoot        string                      `json:"platformRoot"`
 	Components          []string                    `json:"components"`
+	Effects             []string                    `json:"effects,omitempty"`
 	ProviderPreferences map[string][]string         `json:"providerPreferences,omitempty"`
 	Values              map[string]json.RawMessage  `json:"values,omitempty"`
 	AssemblyOutputs     []engineconfig.ConfigOutput `json:"assemblyOutputs,omitempty"`
@@ -68,6 +69,7 @@ type InstallPlan struct {
 	Source        Source                      `json:"source"`
 	ProjectRoot   string                      `json:"projectRoot"`
 	PlatformRoot  string                      `json:"platformRoot"`
+	Effects       []string                    `json:"effects,omitempty"`
 	Assembly      engineconfig.ConfigAssembly `json:"assembly"`
 	Actions       []PlanAction                `json:"actions"`
 	PlanHash      string                      `json:"planHash"`
@@ -180,8 +182,24 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		sort.Strings(dependencies)
 		actions = append(actions, PlanAction{ID: "bind:" + capability, Kind: ActionBindProvider, DependsOn: dependencies, Inputs: map[string]string{"capability": capability, "provider": provider.ID, "package": provider.Package}})
 	}
+	// Scenario/direct effects are applied after component and provider
+	// contributions. Effect IDs are sorted so request ordering cannot change
+	// the compiled plan or its hash.
+	effectIDs := catalog.SortedIDs(request.Effects)
+	seenEffects := make(map[string]struct{}, len(effectIDs))
+	for _, effectID := range effectIDs {
+		if _, exists := seenEffects[effectID]; exists {
+			return InstallPlan{}, fmt.Errorf("duplicate effect %q", effectID)
+		}
+		seenEffects[effectID] = struct{}{}
+		effect, ok := source.Effect(effectID)
+		if !ok {
+			return InstallPlan{}, fmt.Errorf("unknown effect %q", effectID)
+		}
+		assembly.Patches = append(assembly.Patches, effect.Config...)
+	}
 	actions = append(actions, PlanAction{ID: "config:runtime", Kind: ActionWriteConfig, DependsOn: actionIDs(actions)})
-	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Assembly: assembly, Actions: actions}
+	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
 }

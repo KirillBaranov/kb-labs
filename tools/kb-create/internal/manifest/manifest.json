@@ -140,6 +140,50 @@
       "serviceTransport": "@kb-labs/adapters-service-transport-http"
     }
   },
+  "effects": [
+    {
+      "id": "gateway.access.local",
+      "config": [
+        {
+          "id": "gateway.access.local.host",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/host",
+          "value": "127.0.0.1",
+          "owner": "catalog:effect/gateway.access.local"
+        },
+        {
+          "id": "gateway.access.local.auth",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/auth/enabled",
+          "value": false,
+          "owner": "catalog:effect/gateway.access.local"
+        }
+      ]
+    },
+    {
+      "id": "gateway.access.secured",
+      "config": [
+        {
+          "id": "gateway.access.secured.host",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/host",
+          "value": "0.0.0.0",
+          "owner": "catalog:effect/gateway.access.secured"
+        },
+        {
+          "id": "gateway.access.secured.auth",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/auth/enabled",
+          "value": true,
+          "owner": "catalog:effect/gateway.access.secured"
+        }
+      ]
+    }
+  ],
   "extensions": [
     {
       "id": "studio",

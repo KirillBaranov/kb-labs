@@ -2,6 +2,27 @@
   "schema": "kb.scenario/1",
   "id": "custom",
   "title": "Custom platform",
-  "install": {"components": []},
-  "pages": [{"id": "components", "sections": []}]
+  "install": {
+    "components": [],
+    "effects": [
+      {"id": "gateway.access.local", "when": {"path": "access.mode", "equals": "local"}},
+      {"id": "gateway.access.secured", "when": {"path": "access.mode", "equals": "secured"}}
+    ]
+  },
+  "pages": [{
+    "id": "access",
+    "sections": [{
+      "id": "gateway",
+      "fields": [{
+        "id": "access.mode",
+          "type": "select",
+        "label": "Studio access",
+        "default": "local",
+        "options": [
+          {"value": "local", "label": "Local (no login)"},
+          {"value": "secured", "label": "Secured"}
+        ]
+      }]
+    }]
+  }]
 }

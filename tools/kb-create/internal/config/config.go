@@ -72,8 +72,9 @@ type PlatformConfig struct {
 	CWD              string            `json:"cwd"`
 	PM               string            `json:"pm"`
 	Manifest         manifest.Manifest `json:"manifest"`
-	SelectedServices []string          `json:"selectedServices"` // component IDs chosen at install
-	SelectedPlugins  []string          `json:"selectedPlugins"`  // component IDs chosen at install
+	SelectedServices []string          `json:"selectedServices"`          // component IDs chosen at install
+	SelectedPlugins  []string          `json:"selectedPlugins"`           // component IDs chosen at install
+	SelectedEffects  []string          `json:"selectedEffects,omitempty"` // manifest effect IDs selected at install
 	Telemetry        TelemetryConfig   `json:"telemetry"`
 	Project          ProjectProfile    `json:"project,omitempty"`
 	Demo             types.DemoConfig  `json:"demo,omitempty"`
@@ -99,6 +100,17 @@ func (c *PlatformConfig) IsServiceSelected(id string) bool {
 func (c *PlatformConfig) IsPluginSelected(id string) bool {
 	for _, p := range c.SelectedPlugins {
 		if p == id {
+			return true
+		}
+	}
+	return false
+}
+
+// IsEffectSelected reports whether a manifest configuration effect was part of
+// the last declarative install/update plan.
+func (c *PlatformConfig) IsEffectSelected(id string) bool {
+	for _, effect := range c.SelectedEffects {
+		if effect == id {
 			return true
 		}
 	}

@@ -45,3 +45,26 @@ func TestScenarioAndDirectInputsCompileToEquivalentRequests(t *testing.T) {
 		t.Fatalf("plan hashes differ: %s / %s", scenarioPlan.PlanHash, directPlan.PlanHash)
 	}
 }
+
+func TestScenarioProjectsConditionalEffectsIntoInstallRequest(t *testing.T) {
+	scenario := Scenario{
+		Schema: "kb.scenario/1", ID: "access",
+		Install: &InstallSpec{Effects: []EffectBinding{
+			{ID: "gateway.access.local", When: &Predicate{Path: "mode", Equals: json.RawMessage(`"local"`)}},
+			{ID: "gateway.access.secured", When: &Predicate{Path: "mode", Equals: json.RawMessage(`"secured"`)}},
+		}},
+		Pages: []Page{{ID: "p", Sections: []Section{{ID: "s", Fields: []Field{{ID: "mode", Type: "choice", Required: true}}}}}},
+	}
+	state, err := New(scenario)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.Values["mode"] = json.RawMessage(`"local"`)
+	request, err := BuildInstallRequest(scenario, state, "/project", "/platform", "catalog-v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(request.Effects) != 1 || request.Effects[0] != "gateway.access.local" {
+		t.Fatalf("effects = %#v", request.Effects)
+	}
+}

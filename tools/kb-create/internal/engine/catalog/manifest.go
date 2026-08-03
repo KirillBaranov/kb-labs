@@ -14,7 +14,7 @@ import (
 // this function only changes representation and never invents compatibility.
 func FromManifest(source manifest.Manifest) (Catalog, error) {
 	foundation := append(source.CorePackageSpecs(), source.AdapterPackageSpecs()...)
-	catalog := Catalog{Core: foundation, Components: make([]Component, 0, len(source.Services)+len(source.Plugins)), Outputs: []engineconfig.ConfigOutput{{Scope: engineconfig.ScopePlatform, Root: engineconfig.RootPlatform, Path: ".kb/kb.config.jsonc", Format: engineconfig.FormatJSONC}, {Scope: engineconfig.ScopeProject, Root: engineconfig.RootProject, Path: ".kb/kb.config.jsonc", Format: engineconfig.FormatJSONC}}, Defaults: []engineconfig.ConfigPatch{{ID: "platform.execution.mode", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/platform/execution/mode", Value: json.RawMessage(`"worker-pool"`), Owner: "kb-create"}, {ID: "adapterOptions.serviceTransport.services", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/adapterOptions/serviceTransport/services", Value: json.RawMessage(`{}`), Owner: "kb-create"}}}
+	catalog := Catalog{Core: foundation, Components: make([]Component, 0, len(source.Services)+len(source.Plugins)), Effects: make([]Effect, 0, len(source.Effects)), Outputs: []engineconfig.ConfigOutput{{Scope: engineconfig.ScopePlatform, Root: engineconfig.RootPlatform, Path: ".kb/kb.config.jsonc", Format: engineconfig.FormatJSONC}, {Scope: engineconfig.ScopeProject, Root: engineconfig.RootProject, Path: ".kb/kb.config.jsonc", Format: engineconfig.FormatJSONC}}, Defaults: []engineconfig.ConfigPatch{{ID: "platform.execution.mode", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/platform/execution/mode", Value: json.RawMessage(`"worker-pool"`), Owner: "kb-create"}, {ID: "adapterOptions.serviceTransport.services", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/adapterOptions/serviceTransport/services", Value: json.RawMessage(`{}`), Owner: "kb-create"}}}
 	for _, service := range source.Services {
 		if service.ID == "" || service.Pkg == "" {
 			return Catalog{}, fmt.Errorf("service requires id and package")
@@ -40,6 +40,19 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 			value, _ := json.Marshal(packageSpec)
 			catalog.Defaults = append(catalog.Defaults, engineconfig.ConfigPatch{ID: "adapter." + capability, Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/platform/adapters/" + capability, Value: value, Owner: "kb-create"})
 		}
+	}
+	for _, effect := range source.Effects {
+		converted := Effect{ID: effect.ID, Config: make([]engineconfig.ConfigPatch, 0, len(effect.Config))}
+		for _, patch := range effect.Config {
+			operation := engineconfig.Operation(patch.Operation)
+			scope := engineconfig.ConfigScope(patch.Scope)
+			owner := patch.Owner
+			if owner == "" {
+				owner = "catalog:effect/" + effect.ID
+			}
+			converted.Config = append(converted.Config, engineconfig.ConfigPatch{ID: patch.ID, Scope: scope, Operation: operation, Path: patch.Path, Value: append(json.RawMessage(nil), patch.Value...), SchemaRef: patch.SchemaRef, Owner: owner})
+		}
+		catalog.Effects = append(catalog.Effects, converted)
 	}
 	catalog = Normalize(catalog)
 	catalog.Digest = Digest(catalog)

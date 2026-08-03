@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kb-labs/create/internal/engine/bootstrap"
 	"github.com/kb-labs/create/internal/engine/catalog"
 	"github.com/kb-labs/create/internal/engine/config"
 	"github.com/kb-labs/create/internal/engine/executor"
@@ -81,4 +82,39 @@ func TestAllScenarioFixturesHaveValidInstallProjection(t *testing.T) {
 			t.Fatalf("%s has no install projection", id)
 		}
 	}
+}
+
+func TestCustomScenarioSelectsGatewayEffectIntoRuntimePlan(t *testing.T) {
+	loaded, err := scenario.Load("custom")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := flow.New(loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := flow.BuildInstallRequest(loaded, state, t.TempDir(), t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(request.Effects) != 1 || request.Effects[0] != "gateway.access.local" {
+		t.Fatalf("request effects = %#v", request.Effects)
+	}
+	cat, err := bootstrap.DefaultCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	compiled, err := plan.Compile(request, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, patch := range compiled.Assembly.Patches {
+		if patch.ID == "gateway.access.local.auth" {
+			if string(patch.Value) != "false" {
+				t.Fatalf("local auth patch = %s", patch.Value)
+			}
+			return
+		}
+	}
+	t.Fatalf("compiled plan has no local gateway auth effect: %#v", compiled.Assembly.Patches)
 }

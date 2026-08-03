@@ -165,6 +165,8 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan) error {
 	}
 	sort.Strings(cfg.SelectedPlugins)
 	sort.Strings(cfg.SelectedServices)
+	cfg.SelectedEffects = append([]string(nil), compiled.Effects...)
+	sort.Strings(cfg.SelectedEffects)
 	return installconfig.Write(compiled.PlatformRoot, cfg)
 }
 

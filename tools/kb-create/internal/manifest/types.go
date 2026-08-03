@@ -1,6 +1,9 @@
 package manifest
 
-import "os"
+import (
+	"encoding/json"
+	"os"
+)
 
 // packageTag returns an optional npm dist-tag used by release smoke tests.
 // Normal users keep the stable `latest` resolution; CI can set this to
@@ -83,6 +86,27 @@ type AdapterConfig struct {
 	Adapters map[string]string `json:"adapters,omitempty"`
 }
 
+// ConfigPatch is the manifest-level representation of a declarative runtime
+// config contribution. The engine catalog converts it to its typed patch
+// contract; keeping this leaf type here avoids coupling the product manifest
+// loader to the engine packages.
+type ConfigPatch struct {
+	ID        string          `json:"id"`
+	Scope     string          `json:"scope"`
+	Operation string          `json:"operation"`
+	Path      string          `json:"path"`
+	Value     json.RawMessage `json:"value,omitempty"`
+	SchemaRef string          `json:"schemaRef,omitempty"`
+	Owner     string          `json:"owner,omitempty"`
+}
+
+// ConfigEffect is a reusable product configuration contribution. Scenarios
+// select effect IDs; they do not duplicate the patch bodies in each option.
+type ConfigEffect struct {
+	ID     string        `json:"id"`
+	Config []ConfigPatch `json:"config,omitempty"`
+}
+
 // Manifest describes all installable parts of the KB Labs platform.
 type Manifest struct {
 	Version     string            `json:"version"`
@@ -96,6 +120,10 @@ type Manifest struct {
 	// AdapterConfig specifies adapter bindings to include in the generated
 	// platform config. Optional — omit to use platform defaults.
 	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`
+	// Effects are reusable product-level config contributions. Guided scenarios
+	// select them by ID and the declarative engine carries their patches into
+	// the compiled install plan.
+	Effects []ConfigEffect `json:"effects,omitempty"`
 	// Intents are the named, guided scenarios offered by the interactive
 	// wizard (e.g. "automate releases", "add AI review") — each a bundle of
 	// services/plugins/adapters plus an ordered list of setup steps. Adding
