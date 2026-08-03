@@ -302,6 +302,21 @@ jobs:
         if: steps.gate-result.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: Build launcher package closure
+        if: steps.gate-result.outputs.run == 'true'
+        run: |
+          packages=$(node -e '
+            const manifest = require("./tools/kb-create/internal/manifest/manifest.json");
+            const names = [
+              ...(manifest.core ?? []).map((item) => item.name),
+              ...(manifest.services ?? []).map((item) => item.pkg),
+              ...(manifest.adapters ?? []).map((item) => item.name),
+              ...(manifest.plugins ?? []).map((item) => item.pkg),
+            ].filter(Boolean);
+            process.stdout.write([...new Set(names)].join(","));
+          ')
+          ./tools/kb-devkit/kb-devkit run build --packages "$packages" --no-cache
+
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
       - name: Pack @kb-labs/* packages
