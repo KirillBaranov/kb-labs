@@ -229,7 +229,9 @@ jobs:
     name: kb-create e2e
     runs-on: ubuntu-latest
     needs: [build-tools, build]
-    if: contains(github.event.pull_request.labels.*.name, 'full-ci')
+    # The step-level gate below selects launcher changes. Keep the job itself
+    # unconditional so tools/kb-create/** changes reach that gate even when a
+    # PR does not carry the optional full-ci label.
     timeout-minutes: 30
     permissions:
       contents: read
