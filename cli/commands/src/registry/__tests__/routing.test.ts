@@ -308,6 +308,42 @@ describe('Group Routing', () => {
   });
 });
 
+// ─── Command Namespace Routing ───────────────────────────────────────────────
+
+describe('Command Namespace Routing', () => {
+  it('prefers a multi-word command over a bare command namespace', () => {
+    const reg = makeRegistry();
+    const defaultCommand = makePlugin('commit', '');
+    const openCommand = makePlugin('open', 'commit');
+    reg.registerManifest(defaultCommand);
+    reg.registerManifest(openCommand);
+
+    const result = reg.resolve(['commit', 'open']);
+
+    expect(result.type).toBe('command');
+    if (result.type === 'command') {
+      expect(result.command).toBe(openCommand);
+      expect(result.rest).toEqual([]);
+    }
+  });
+
+  it('falls back to the bare command when the next token is an argument', () => {
+    const reg = makeRegistry();
+    const defaultCommand = makePlugin('commit', '');
+    const openCommand = makePlugin('open', 'commit');
+    reg.registerManifest(defaultCommand);
+    reg.registerManifest(openCommand);
+
+    const result = reg.resolve(['commit', 'message']);
+
+    expect(result.type).toBe('command');
+    if (result.type === 'command') {
+      expect(result.command).toBe(defaultCommand);
+      expect(result.rest).toEqual(['message']);
+    }
+  });
+});
+
 // ─── Multi-Plugin Registration ────────────────────────────────────────────────
 
 describe('Multiple Plugins in Same Group', () => {

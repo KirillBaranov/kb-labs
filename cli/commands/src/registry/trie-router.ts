@@ -259,20 +259,22 @@ export class TrieRouter {
       const child = node.children.get(tok);
 
       if (!child) {
+        // A command may also act as a namespace for more specific commands,
+        // e.g. `commit` and `commit open`. Prefer the specific command when
+        // the next token is registered; only fall back to the shorter command
+        // when the token is not a child and should be passed as an argument.
+        if (node.command && i > 0) {
+          return { type: 'command', command: node.command, rest: tokens.slice(i) };
+        }
+        if (node.systemCommand && i > 0) {
+          return { type: 'system-cmd', cmd: node.systemCommand, rest: tokens.slice(i) };
+        }
         // Token not found — run "did you mean?" logic
         return this._notFound(node, tokens, i);
       }
 
       node = child;
       i++;
-
-      // If we hit a command node and there are more tokens → positional args
-      if (node.command && i < tokens.length) {
-        return { type: 'command', command: node.command, rest: tokens.slice(i) };
-      }
-      if (node.systemCommand && i < tokens.length) {
-        return { type: 'system-cmd', cmd: node.systemCommand, rest: tokens.slice(i) };
-      }
     }
 
     // Consumed all tokens — check what's at current node
