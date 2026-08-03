@@ -377,6 +377,7 @@ jobs:
             2>&1 | tee /tmp/kb-create-e2e-devkit.log; exit "${PIPESTATUS[0]}"
         env:
           KB_REGISTRY_URL: http://localhost:4873
+          GITHUB_TOKEN: ${{ github.token }}
           # setup-node may expose NPM_CONFIG_REGISTRY globally; keep the
           # launcher e2e install on the local testbed registry explicitly.
           NPM_CONFIG_REGISTRY: http://localhost:4873
