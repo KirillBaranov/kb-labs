@@ -60,6 +60,12 @@ describe('engine e2e: plugin/base block', () => {
 
     // pnpm-workspace.yaml is always generated (plugins are self-contained workspaces).
     expect(paths).toContain('pnpm-workspace.yaml');
+    const workspaceFile = result.files.find(
+      (f) => f.path === 'pnpm-workspace.yaml',
+    );
+    expect(workspaceFile?.contents).toContain('allowBuilds:');
+    expect(workspaceFile?.contents).toContain("'@kb-labs/devkit': true");
+    expect(workspaceFile?.contents).toContain('esbuild: true');
 
     const collisionsTree = formatTree(result.files);
     expect(collisionsTree).toBeTruthy();
