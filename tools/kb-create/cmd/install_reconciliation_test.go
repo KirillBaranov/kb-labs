@@ -147,15 +147,15 @@ func TestPrintAdapterReconciliation_ResolvesRelativeToPlatformDirNotCwd(t *testi
 	}
 }
 
-func TestPrintAdapterReconciliation_NoRolesFileIsSoft(t *testing.T) {
+func TestPrintAdapterReconciliation_NoRolesFileUsesLocalCatalog(t *testing.T) {
 	platformDir := t.TempDir() // no adapter-roles.json at all
 
 	out := newOutput()
 	output := captureStdout(t, func() {
-		printAdapterReconciliation(out, platformDir, map[string]string{"cache": "@kb-labs/adapters-redis"}, nil)
+		printAdapterReconciliation(out, platformDir, map[string]string{"bogus-role": "@some/pkg"}, nil)
 	})
 
-	if output != "" {
-		t.Errorf("missing adapter-roles.json should silently skip role-name validation, got:\n%s", output)
+	if !strings.Contains(output, `"bogus-role" is not a recognized capability role`) {
+		t.Errorf("missing adapter-roles.json should use local role validation, got:\n%s", output)
 	}
 }

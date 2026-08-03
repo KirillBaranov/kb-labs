@@ -49,6 +49,18 @@ var knownAdapterSlots = map[string]bool{
 	"environment":      true,
 }
 
+// KnownAdapterSlots returns the installer-facing capability catalog in stable
+// order. This local fallback keeps role validation active when an optional
+// generated artifact is absent from an installed package.
+func KnownAdapterSlots() []string {
+	slots := make([]string, 0, len(knownAdapterSlots))
+	for slot := range knownAdapterSlots {
+		slots = append(slots, slot)
+	}
+	sort.Strings(slots)
+	return slots
+}
+
 // Config mirrors the subset of kb.config.json this command inspects.
 // Unknown fields are ignored — this is a composition check, not a full
 // schema validator.

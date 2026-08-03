@@ -17,6 +17,7 @@ import (
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/scan"
+	"github.com/kb-labs/create/internal/validate"
 	"github.com/kb-labs/create/internal/wizard"
 )
 
@@ -68,11 +69,9 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Syntax-only validation here — "role=pkg[@version]" shape, no duplicate
-	// roles. Whether a role name is a *recognized* capability can only be
-	// checked once @kb-labs/plugin-runtime is actually on disk (it's a
-	// transitive dependency, not a core package installed up front), so that
-	// check happens later, after install, in the reconciliation report.
+	// Validate the "role=pkg[@version]" shape here. Capability role names are
+	// checked in the reconciliation report against the installed catalog, with
+	// a local fallback when the generated artifact is absent.
 	adapters, err := parseAdapters(flagInstallAdapters)
 	if err != nil {
 		return fmt.Errorf("--adapters: %w", err)
@@ -182,8 +181,8 @@ func mergeIDs(existing, requested []string) []string {
 }
 
 // printAdapterReconciliation reports on capability roles: whether an
-// --adapters role name is a recognized capability (when the canonical list
-// can be found — see LoadAdapterRoles's doc comment on why this is soft),
+// --adapters role name is a recognized capability (using the installed
+// generated list when available, with the local catalog as a fallback),
 // and whether each installed plugin's declared platform.requires/optional
 // roles actually have an adapter configured (scaffold defaults ∪ --adapters
 // overrides). Purely informational — never fails the install, matching
@@ -193,22 +192,23 @@ func mergeIDs(existing, requested []string) []string {
 func printAdapterReconciliation(out output, platformDir string, adapters map[string]string, plugins []scan.PluginEntry) {
 	rolesPath := filepath.Join(platformDir, "node_modules", "@kb-labs", "plugin-runtime", "dist", "adapter-roles.json")
 	knownRoles, rolesErr := devservices.LoadAdapterRoles(rolesPath)
-	if rolesErr == nil {
-		knownSet := make(map[string]bool, len(knownRoles))
-		for _, r := range knownRoles {
-			knownSet[r] = true
+	if rolesErr != nil {
+		knownRoles = validate.KnownAdapterSlots()
+	}
+	knownSet := make(map[string]bool, len(knownRoles))
+	for _, r := range knownRoles {
+		knownSet[r] = true
+	}
+	unknown := make([]string, 0)
+	for role := range adapters {
+		if !knownSet[role] {
+			unknown = append(unknown, role)
 		}
-		unknown := make([]string, 0)
-		for role := range adapters {
-			if !knownSet[role] {
-				unknown = append(unknown, role)
-			}
-		}
-		sort.Strings(unknown)
-		for _, role := range unknown {
-			out.Warn(fmt.Sprintf("--adapters: %q is not a recognized capability role (known: %s)",
-				role, strings.Join(knownRoles, ", ")))
-		}
+	}
+	sort.Strings(unknown)
+	for _, role := range unknown {
+		out.Warn(fmt.Sprintf("--adapters: %q is not a recognized capability role (known: %s)",
+			role, strings.Join(knownRoles, ", ")))
 	}
 
 	configured := make(map[string]bool, len(scaffold.DefaultAdapterRoles)+len(adapters))

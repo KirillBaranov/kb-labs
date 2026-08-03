@@ -1,2 +1,13 @@
 packages:
   - packages/*
+
+# pnpm 10+ blocks dependency build scripts unless they are explicitly
+# allowed in workspace settings. Keep a fresh scaffold non-interactive and
+# make the native builds required by the generated plugin toolchain reliable.
+allowBuilds:
+  '@kb-labs/devkit': true
+  '@parcel/watcher': true
+  '@swc/core': true
+  better-sqlite3: true
+  esbuild: true
+  unrs-resolver: true
