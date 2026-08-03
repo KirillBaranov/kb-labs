@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
+import { readFile, appendFile } from 'node:fs/promises';
 import {
   defineCommand,
   validationError,
@@ -65,6 +65,30 @@ const FALLBACK_VERSIONS = {
   devkit: '2.28.0',
   commandKit: '2.30.0',
 } as const;
+
+const GENERATED_WORKSPACE_BUILD_POLICY = `
+
+# Required native builds for the generated plugin toolchain.
+allowBuilds:
+  '@kb-labs/devkit': true
+  '@parcel/watcher': true
+  '@swc/core': true
+  better-sqlite3: true
+  esbuild: true
+  unrs-resolver: true
+`;
+
+async function ensureWorkspaceBuildPolicy(outRoot: string): Promise<void> {
+  const workspacePath = resolve(outRoot, 'pnpm-workspace.yaml');
+  try {
+    const contents = await readFile(workspacePath, 'utf8');
+    if (!contents.includes('\nallowBuilds:')) {
+      await appendFile(workspacePath, GENERATED_WORKSPACE_BUILD_POLICY, 'utf8');
+    }
+  } catch {
+    // Non-plugin entities may not have a pnpm workspace file.
+  }
+}
 
 async function detectVersions(): Promise<Record<string, string>> {
   const req = createRequire(import.meta.url);
@@ -239,6 +263,10 @@ async function runDefault(
   }
 
   await writeFiles({ outRoot, files: result.files, force: input.force });
+
+  if (entityArg === 'plugin') {
+    await ensureWorkspaceBuildPolicy(outRoot);
+  }
 
   const entryPkgDir =
     entityArg === 'plugin'
