@@ -196,6 +196,17 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	} {
 		workspaceConfig += "  '" + name + "': true\n"
 	}
+	workspaceConfig += "onlyBuiltDependencies:\n"
+	for _, name := range []string{
+		"@kb-labs/devkit",
+		"@parcel/watcher",
+		"@swc/core",
+		"better-sqlite3",
+		"esbuild",
+		"unrs-resolver",
+	} {
+		workspaceConfig += "  - '" + name + "'\n"
+	}
 	workspaceConfig += "overrides:\n"
 	for _, name := range []string{
 		"@kb-labs/gateway-contracts",
