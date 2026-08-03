@@ -57,6 +57,10 @@ on:
         description: 'Optional bundle containing built dist, tools, and E2E tarballs (images are built in each shard)'
         type: string
         default: ''
+      cache-mode:
+        description: 'read-write for fast PR lanes; off for authoritative lanes'
+        type: string
+        default: read-write
 
 permissions:
   contents: read
@@ -94,7 +98,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
+          cache: ${{ inputs.cache-mode == 'read-write' && 'pnpm' || '' }}
 
       # ── Compile Go tools for linux/amd64 ────────────────────────────────
       # The committed binaries in tools/ are macOS builds.
@@ -130,17 +134,18 @@ jobs:
 
       - name: Restore kb-devkit build cache
         if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        uses: actions/cache@v4
+        uses: ./.github/actions/devkit-cas
         with:
-          path: .kb/devkit/
-          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
-          restore-keys: |
-            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
-            devkit-build-${{ runner.os }}-
+          mode: ${{ inputs.cache-mode }}
 
       - name: Build all packages (topological order)
         if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
-        run: pnpm build
+        run: |
+          if [ "${{ inputs.cache-mode }}" = "off" ]; then
+            ./tools/kb-devkit/kb-devkit run build --no-cache
+          else
+            pnpm build
+          fi
 
       # ── Install Playwright browsers (optional) ───────────────────────────
 
@@ -150,31 +155,9 @@ jobs:
 
       # ── Phase 2 of ADR-0017: cache packed .tgz between runs ─────────────
 
-      - name: Restore packed .tgz cache
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
-          # No restore-keys: content-hash key must only hit when the cached
-          # tgzs were built from the same dist. restore-keys would restore
-          # stale tgzs and re-save them under the new key — permanently
-          # mapping wrong content to the new dist hash (cache poisoning).
-
       - name: Pack @kb-labs/* packages
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && (inputs.fast-build || steps.tgz-cache.outputs.cache-hit != 'true')
+        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
         run: bash e2e/scripts/pack-all.sh
-
-      - name: Verify packed .tgz cache contents
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build && steps.tgz-cache.outputs.cache-hit == 'true'
-        run: |
-          count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l)
-          echo "Restored $count packed tarballs from cache"
-          if [ "$count" -lt 100 ]; then
-            echo "::warning::Cached tgz set looks incomplete (<100 files), repacking"
-            bash e2e/scripts/pack-all.sh
-          fi
 
       - name: List packed packages
         if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
@@ -199,31 +182,18 @@ jobs:
         uses: docker/setup-buildx-action@v3
         timeout-minutes: 5
 
-      - name: Cache Docker layers (platform)
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-platform
-          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'e2e/platform/registry-manifest.json', 'tools/kb-create/**', 'tools/kb-dev/**') }}
-          restore-keys: buildx-platform-
-
-      - name: Cache Docker layers (publisher)
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
       - name: Build platform image
         if: inputs.prebuilt-artifact == ''
         run: |
           if [ "${{ inputs.fast-build }}" = "true" ]; then
             docker build -t kb-e2e-ci-platform:latest -f e2e/platform/Dockerfile .
           else
+            cache_args=()
+            if [ "${{ inputs.cache-mode }}" = "read-write" ]; then
+              cache_args=(--cache-from "type=gha,scope=e2e-platform" --cache-to "type=gha,mode=max,scope=e2e-platform")
+            fi
             docker buildx build \
-              --cache-from type=local,src=/tmp/.buildx-cache-platform \
-              --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+              "${cache_args[@]}" \
               --load \
               -t kb-e2e-ci-platform:latest \
               -f e2e/platform/Dockerfile .
@@ -235,27 +205,19 @@ jobs:
           if [ "${{ inputs.fast-build }}" = "true" ]; then
             docker build -t kb-e2e-ci-publisher:latest -f e2e/publisher/Dockerfile e2e/
           else
+            cache_args=()
+            if [ "${{ inputs.cache-mode }}" = "read-write" ]; then
+              cache_args=(--cache-from "type=gha,scope=e2e-publisher" --cache-to "type=gha,mode=max,scope=e2e-publisher")
+            fi
             docker buildx build \
-              --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-              --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+              "${cache_args[@]}" \
               --load \
               -t kb-e2e-ci-publisher:latest \
               -f e2e/publisher/Dockerfile \
               e2e/
           fi
 
-      # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
-
-      - name: Restore Verdaccio storage cache
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
-          # No restore-keys: Verdaccio storage must only be reused when it
-          # was populated from the exact same tgzs. A stale storage + skipped
-          # publish = platform installs wrong package versions.
+      # Verdaccio is reconstructed from this run's exact package tarballs.
 
       - name: Prepare Verdaccio storage permissions
         run: |
@@ -277,19 +239,8 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: inputs.prebuilt-artifact == '' && (inputs.fast-build || inputs.prebuilt-files-artifact != '' || steps.verdaccio-cache.outputs.cache-hit != 'true')
+        if: inputs.prebuilt-artifact == ''
         run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio has expected package count (warm cache)
-        if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build && steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs packed: $tgz_count   Verdaccio pkg dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Cached Verdaccio storage looks incomplete ($pkg_dirs < $tgz_count/2), running publish anyway"
-            docker compose run --rm publisher
-          fi
 
       - name: Start platform
         run: docker compose up -d --no-build platform

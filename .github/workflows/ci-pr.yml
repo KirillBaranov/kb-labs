@@ -299,16 +299,8 @@ jobs:
 
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
-      - name: Restore packed .tgz cache
-        if: steps.gate.outputs.run == 'true'
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          key: e2e-tgz-v3-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml', 'plugins/scaffold/entry/templates/**') }}
-
       - name: Pack @kb-labs/* packages
-        if: steps.gate.outputs.run == 'true' && steps.tgz-cache.outputs.cache-hit != 'true'
+        if: steps.gate.outputs.run == 'true'
         run: bash e2e/scripts/pack-all.sh
 
       # ── Start Verdaccio ──────────────────────────────────────────────────
@@ -319,32 +311,16 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers (publisher)
-        if: steps.gate.outputs.run == 'true'
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
       - name: Build publisher image
         if: steps.gate.outputs.run == 'true'
         run: |
           docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --cache-from "type=gha,scope=e2e-publisher" \
+            --cache-to "type=gha,mode=max,scope=e2e-publisher" \
             --load \
             -t kb-e2e-ci-publisher:latest \
             -f e2e/publisher/Dockerfile \
             e2e/
-
-      - name: Restore Verdaccio storage cache
-        if: steps.gate.outputs.run == 'true'
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
 
       - name: Prepare Verdaccio storage permissions
         if: steps.gate.outputs.run == 'true'
@@ -367,19 +343,8 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: steps.gate.outputs.run == 'true' && steps.verdaccio-cache.outputs.cache-hit != 'true'
+        if: steps.gate.outputs.run == 'true'
         run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio warm cache
-        if: steps.gate.outputs.run == 'true' && steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          tgz_count=$(find e2e/packages -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Storage incomplete, re-publishing"
-            docker compose run --rm publisher
-          fi
 
       # ── Run kb-create Go e2e tests ───────────────────────────────────────
       # KB_REGISTRY_URL is read by pm.Detect() — pnpm inside kb-create install

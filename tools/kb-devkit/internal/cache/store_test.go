@@ -111,6 +111,23 @@ func TestHashInputsIsDeterministicAndSkipsIgnoredDirs(t *testing.T) {
 	}
 }
 
+func TestHashInputsWithFingerprintPartitionsTaskSemantics(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "src", "index.ts"), "export const value = 1\n")
+
+	first, err := HashInputsWithFingerprint(root, nil, []string{"src/**"}, "command=tsup")
+	if err != nil {
+		t.Fatalf("HashInputsWithFingerprint error: %v", err)
+	}
+	second, err := HashInputsWithFingerprint(root, nil, []string{"src/**"}, "command=pnpm build")
+	if err != nil {
+		t.Fatalf("HashInputsWithFingerprint error: %v", err)
+	}
+	if first == second {
+		t.Fatal("task fingerprints must partition identical file inputs")
+	}
+}
+
 func TestHashInputsDepPatternInvalidatesOnDepChange(t *testing.T) {
 	pkgDir := t.TempDir()
 	dep1Dir := t.TempDir()

@@ -26,6 +26,14 @@ import (
 // Hash input: sorted list of (unique path key + content) for every matched file.
 // Skips node_modules, .git, dist, .turbo, coverage automatically.
 func HashInputs(pkgDir string, depDirs []string, patterns []string) (string, error) {
+	return HashInputsWithFingerprint(pkgDir, depDirs, patterns, "")
+}
+
+// HashInputsWithFingerprint is HashInputs with an additional stable task
+// fingerprint. The fingerprint is used for inputs which aren't files in a
+// package (the command, cache format, and toolchain). Keeping it in the same
+// digest prevents a remote CAS entry from surviving a semantic task change.
+func HashInputsWithFingerprint(pkgDir string, depDirs []string, patterns []string, fingerprint string) (string, error) {
 	type entry struct {
 		key  string // sort key written into hash (unique across local + dep files)
 		path string // absolute path for reading
@@ -87,6 +95,11 @@ func HashInputs(pkgDir string, depDirs []string, patterns []string) (string, err
 	sort.Strings(keys)
 
 	h := sha256.New()
+	if fingerprint != "" {
+		_, _ = io.WriteString(h, "task-fingerprint\x00")
+		_, _ = io.WriteString(h, fingerprint)
+		_, _ = io.WriteString(h, "\x00")
+	}
 	for _, key := range keys {
 		e := seen[key]
 		_, _ = io.WriteString(h, e.key+"\x00")

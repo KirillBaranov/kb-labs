@@ -51,6 +51,14 @@ on:
         description: 'Line to append to /etc/hosts (empty = skip)'
         type: string
         default: ''
+      cache-mode:
+        description: 'read-write for fast PR lanes; off for authoritative lanes'
+        type: string
+        default: read-write
+      prebuilt-artifact:
+        description: 'Optional immutable E2E bundle from the prepare job; skips duplicate platform builds'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -72,12 +80,14 @@ jobs:
       # ── Build toolchain ──────────────────────────────────────────────────────
 
       - name: Set up Go
+        if: inputs.prebuilt-artifact == ''
         uses: actions/setup-go@v5
         with:
           go-version-file: tools/kb-create/go.mod
           cache-dependency-path: |
             tools/kb-create/go.sum
             tools/kb-dev/go.sum
+          cache: ${{ inputs.cache-mode == 'read-write' }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -86,35 +96,55 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
+          cache: ${{ inputs.cache-mode == 'read-write' && 'pnpm' || '' }}
 
       # The committed binaries in tools/ are macOS builds; rebuild for linux/amd64.
       - name: Build Go tools (kb-devkit, kb-dev)
+        if: inputs.prebuilt-artifact == ''
         run: |
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
 
-      # ── Install + build monorepo ─────────────────────────────────────────────
+      # ── Restore or build the immutable platform inputs ────────────────────────
+
+      - name: Restore immutable prebuilt E2E bundle
+        if: inputs.prebuilt-artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.prebuilt-artifact }}
+          path: /tmp/e2e-prebuilt
+
+      - name: Extract immutable prebuilt E2E bundle
+        if: inputs.prebuilt-artifact != ''
+        run: |
+          tar xzf /tmp/e2e-prebuilt/e2e-files.tar.gz
+          if [ -f /tmp/e2e-prebuilt/e2e-images.tar ]; then
+            docker load --input /tmp/e2e-prebuilt/e2e-images.tar
+          fi
+          chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Restore kb-devkit build cache
-        uses: actions/cache@v4
+        if: inputs.prebuilt-artifact == ''
+        uses: ./.github/actions/devkit-cas
         with:
-          path: .kb/devkit/
-          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
-          restore-keys: |
-            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
-            devkit-build-${{ runner.os }}-
+          mode: ${{ inputs.cache-mode }}
 
       - name: Build all packages
-        run: pnpm build
+        if: inputs.prebuilt-artifact == ''
+        run: |
+          if [ "${{ inputs.cache-mode }}" = "off" ]; then
+            ./tools/kb-devkit/kb-devkit run build --no-cache
+          else
+            pnpm build
+          fi
 
       # ── Build Studio SPA (optional) ──────────────────────────────────────────
 
       - name: Build Studio
-        if: inputs.studio == true
+        if: inputs.studio == true && inputs.prebuilt-artifact == ''
         run: pnpm --filter @kb-labs/studio-app build
 
       # ── Install Playwright ───────────────────────────────────────────────────
@@ -124,62 +154,38 @@ jobs:
 
       # ── Pack + publish to Verdaccio ──────────────────────────────────────────
 
-      - name: Restore packed .tgz cache
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          key: e2e-tgz-v5-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
-          restore-keys: |
-            e2e-tgz-${{ runner.os }}-
-
       - name: Pack @kb-labs/* packages
-        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        if: inputs.prebuilt-artifact == ''
         run: bash e2e/scripts/pack-all.sh
-
-      - name: Verify packed .tgz cache
-        if: steps.tgz-cache.outputs.cache-hit == 'true'
-        run: |
-          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
-          echo "Restored $count tarballs from cache"
-          if [ "$count" -lt 100 ]; then
-            echo "::warning::Cache looks incomplete, repacking"
-            bash e2e/scripts/pack-all.sh
-          fi
 
       # ── Docker layer caching ─────────────────────────────────────────────────
 
       - name: Set up Docker Buildx
+        if: inputs.prebuilt-artifact == '' || inputs.idp == true
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers (platform)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-platform
-          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'tools/kb-create/**', 'tools/kb-dev/**') }}
-          restore-keys: buildx-platform-
-
-      - name: Cache Docker layers (publisher)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
       - name: Build platform image
+        if: inputs.prebuilt-artifact == ''
         run: |
+          cache_args=()
+          if [ "${{ inputs.cache-mode }}" = "read-write" ]; then
+            cache_args=(--cache-from "type=gha,scope=e2e-platform" --cache-to "type=gha,mode=max,scope=e2e-platform")
+          fi
           docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-platform \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            "${cache_args[@]}" \
             --load \
             -t kb-e2e-ci-platform:latest \
             -f e2e/platform/Dockerfile .
 
       - name: Build publisher image
+        if: inputs.prebuilt-artifact == ''
         run: |
+          cache_args=()
+          if [ "${{ inputs.cache-mode }}" = "read-write" ]; then
+            cache_args=(--cache-from "type=gha,scope=e2e-publisher" --cache-to "type=gha,mode=max,scope=e2e-publisher")
+          fi
           docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            "${cache_args[@]}" \
             --load \
             -t kb-e2e-ci-publisher:latest \
             -f e2e/publisher/Dockerfile \
@@ -187,35 +193,21 @@ jobs:
 
       # ── Build idp-stub image (optional) ──────────────────────────────────────
 
-      - name: Cache Docker layers (idp-stub)
-        if: inputs.idp == true
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-idp
-          key: buildx-idp-${{ hashFiles('e2e/oidc-idp/Dockerfile', 'e2e/oidc-idp/src/**', 'e2e/oidc-idp/package.json') }}
-          restore-keys: buildx-idp-
-
       - name: Build idp-stub image
         if: inputs.idp == true
         run: |
+          cache_args=()
+          if [ "${{ inputs.cache-mode }}" = "read-write" ]; then
+            cache_args=(--cache-from "type=gha,scope=e2e-idp" --cache-to "type=gha,mode=max,scope=e2e-idp")
+          fi
           docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-idp \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-idp,mode=max \
+            "${cache_args[@]}" \
             --load \
             -t kb-e2e-oidc-idp:latest \
             -f e2e/oidc-idp/Dockerfile \
             e2e/oidc-idp
 
       # ── Start Verdaccio + publish packages ───────────────────────────────────
-
-      - name: Restore Verdaccio storage cache
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          key: verdaccio-storage-v2-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
-          # No restore-keys: storage must only be reused when built from the exact
-          # same tarballs — a partial-match restore leaves stale package versions.
 
       - name: Prepare Verdaccio storage permissions
         run: |
@@ -235,19 +227,8 @@ jobs:
           done
 
       - name: Publish packages to Verdaccio
-        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
+        if: inputs.prebuilt-artifact == ''
         run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio warm cache
-        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Storage incomplete, re-publishing"
-            docker compose run --rm publisher
-          fi
 
       # ── Populate Studio dist volume (optional) ───────────────────────────────
 
@@ -273,7 +254,7 @@ jobs:
             if docker compose ps idp-stub | grep -q "healthy"; then
               echo "idp-stub healthy after $((i * 5))s"; break
             fi
-            if [ $i -eq 24 ]; then
+            if [ "$i" -eq 24 ]; then
               echo "idp-stub failed to start — dumping logs"
               docker compose logs idp-stub | tail -100
               exit 1
@@ -293,7 +274,7 @@ jobs:
             if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
               echo "Gateway ready after $((i * 5))s"; break
             fi
-            if [ $i -eq 36 ]; then
+            if [ "$i" -eq 36 ]; then
               echo "Gateway failed to start — dumping logs"
               docker compose logs platform | tail -100
               exit 1
@@ -314,7 +295,7 @@ jobs:
             if docker compose ps studio-https | grep -q "healthy"; then
               echo "studio-https healthy after $((i * 3))s"; break
             fi
-            if [ $i -eq 20 ]; then
+            if [ "$i" -eq 20 ]; then
               echo "studio-https failed to start — dumping logs"
               docker compose logs studio-https | tail -50
               exit 1
@@ -333,7 +314,7 @@ jobs:
             if docker compose ps studio | grep -q "healthy"; then
               echo "Studio nginx healthy after $((i * 3))s"; break
             fi
-            if [ $i -eq 20 ]; then
+            if [ "$i" -eq 20 ]; then
               echo "Studio nginx failed to start — dumping logs"
               docker compose logs studio | tail -50
               exit 1
