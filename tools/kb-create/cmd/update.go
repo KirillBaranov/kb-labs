@@ -2,32 +2,30 @@ package cmd
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
-	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
-	"github.com/kb-labs/create/internal/installer"
-	"github.com/kb-labs/create/internal/logger"
-	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/engine/bootstrap"
+	"github.com/kb-labs/create/internal/engine/direct"
+	"github.com/kb-labs/create/internal/engine/executor"
+	engineplan "github.com/kb-labs/create/internal/engine/plan"
+	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/pm"
-	"github.com/kb-labs/create/internal/scaffold"
-	"github.com/kb-labs/create/internal/selfupdate"
-	"github.com/kb-labs/create/internal/telemetry"
 	"github.com/kb-labs/create/internal/userstate"
 )
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an installed platform",
-	Long: `Compares the current manifest against the installed snapshot,
-shows what changed, and applies updates after confirmation.`,
-	RunE: runUpdate,
+	Long:  "Rebuilds the desired state from the installed manifest snapshot and applies its declarative update plan.",
+	RunE:  runUpdate,
 }
 
 func init() {
@@ -40,192 +38,79 @@ func init() {
 func runUpdate(cmd *cobra.Command, args []string) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	registry, _ := cmd.Flags().GetString("registry")
-	out := newOutput()
-
 	platformDir, err := resolvePlatformDir(cmd)
 	if err != nil {
 		return err
 	}
+	return runDeclarativeUpdate(cmd, platformDir, yes, registry)
+}
 
-	m, err := manifest.LoadDefault()
-	if err != nil {
-		return fmt.Errorf("load manifest: %w", err)
-	}
-
-	log, err := logger.New(platformDir)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = log.Close() }()
-
-	registry = resolveUpdateRegistry(registry, platformDir)
-
-	packageManager := pm.Detect(pm.DetectOptions{Registry: registry})
-
-	ins := &installer.Installer{
-		PM:      packageManager,
-		Log:     log,
-		Version: rootCmd.Version,
-	}
-
-	// Init telemetry from the platform config. Non-fatal: if config is
-	// unreadable (e.g. first run before install) we get a Nop client.
-	var tc *telemetry.Client
-	if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
-		tc = initTelemetry(rootCmd.Version, &cfg.Telemetry)
-	} else {
-		tc = telemetry.Nop()
-	}
-	defer tc.Flush()
-
-	out.Info("Checking for updates...")
-
-	// Self-update kb-create binary before touching platform packages.
-	if didSelfUpdate := runSelfUpdate(out, tc); didSelfUpdate {
-		// Re-exec with the freshly downloaded binary so refreshDerivedConfigs
-		// and all subsequent logic run with the new code.
-		exe, exeErr := selfupdate.ExecutablePath()
-		if exeErr != nil {
-			return fmt.Errorf("self-update: resolve executable path: %w", exeErr)
-		}
-		if execErr := syscall.Exec(exe, os.Args, os.Environ()); execErr != nil {
-			// syscall.Exec replaces the process on success and never returns.
-			// If it does return, the exec failed — report the error so the
-			// user knows the update succeeded but the new binary didn't start.
-			return fmt.Errorf("self-update: re-exec %s: %w", exe, execErr)
-		}
-	}
-
-	diff, err := ins.Diff(platformDir, m)
+func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, registry string) error {
+	out := newOutput()
+	current, err := config.Read(platformDir)
 	if err != nil {
 		return err
 	}
-
-	if !diff.HasChanges() {
-		out.OK("Already up to date")
-		return nil
+	catalog, err := bootstrap.DefaultCatalog()
+	if err != nil {
+		return fmt.Errorf("load declarative catalog: %w", err)
 	}
-
-	// Warn when the user is switching registries mid-update.
-	if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
-		prevRegistry := cfg.Source.EffectiveRegistry()
-		newRegistry := packageManager.RegistryURL()
-		if newRegistry == "" {
-			newRegistry = "https://registry.npmjs.org/"
-		}
-		if prevRegistry != newRegistry {
-			out.Warn(fmt.Sprintf("Registry changed: %s → %s", prevRegistry, newRegistry))
-			out.Warn("Some packages may resolve to different versions.")
-			if !yes && !confirmDestructive("Continue with new registry? [y/N] ") {
-				tc.Track("update_cancelled", nil)
-				out.Warn("Cancelled.")
-				return nil
-			}
+	force, _ := cmd.Flags().GetBool("force")
+	var plugins, services *[]string
+	if !force {
+		selectedPlugins := append([]string(nil), current.SelectedPlugins...)
+		selectedServices := append([]string(nil), current.SelectedServices...)
+		plugins, services = &selectedPlugins, &selectedServices
+	}
+	var directConfig []byte
+	if !force {
+		directConfig, err = json.Marshal(direct.Config{Effects: append([]string(nil), current.SelectedEffects...)})
+		if err != nil {
+			return err
 		}
 	}
-
-	printDiff(out, diff)
-
-	if !yes && !confirm("Apply updates? [Y/n] ") {
-		tc.Track("update_cancelled", nil)
+	request, err := direct.Build(direct.Input{
+		Plugins:       plugins,
+		Services:      services,
+		Config:        directConfig,
+		ProjectRoot:   current.CWD,
+		PlatformRoot:  platformDir,
+		CatalogDigest: catalog.Digest,
+	}, catalog)
+	if err != nil {
+		return fmt.Errorf("build update request: %w", err)
+	}
+	request.RefreshPackages = true
+	request.Source = engineplan.SourceDirect
+	compiled, err := engineplan.Compile(request, catalog)
+	if err != nil {
+		return fmt.Errorf("compile update plan: %w", err)
+	}
+	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
+	if !yes && !confirm("Apply declarative update? [Y/n] ") {
 		out.Warn("Cancelled.")
 		return nil
 	}
-
-	tc.Track("update_started", map[string]string{
-		"packages_added":   fmt.Sprintf("%d", len(diff.Added)),
-		"packages_updated": fmt.Sprintf("%d", len(diff.Updated)),
-		"packages_removed": fmt.Sprintf("%d", len(diff.Removed)),
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: pm.Detect(pm.DetectOptions{Registry: registry}),
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "update.lock"),
+		Rollback:       true,
 	})
-	start := time.Now()
-
-	result, err := ins.Update(platformDir, m)
 	if err != nil {
-		tc.Track("update_failed", map[string]string{"error": err.Error()})
-		return fmt.Errorf("update failed: %w", err)
+		return fmt.Errorf("declarative update failed: %w", err)
 	}
-
-	// Refresh platform config with updated defaults.
-	// By default, preserve existing services/plugins/LLM settings.
-	// --force resets everything to manifest defaults.
-	force, _ := cmd.Flags().GetBool("force")
-	var platformOpts scaffold.Options
-	if force {
-		platformOpts = scaffold.Options{PlatformDir: platformDir}
-	} else {
-		// Pass projectDir so ReadPlatformOptions can recover gateway credentials
-		// from projectDir/.env when the platform config has empty "llm": {}.
-		projectDir := ""
-		if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
-			projectDir = cfg.CWD
-		}
-		platformOpts = scaffold.ReadPlatformOptions(platformDir, projectDir)
+	if err := writeDeclarativeInstallState(compiled); err != nil {
+		return fmt.Errorf("write declarative install state: %w", err)
 	}
-	// Render the freshly re-derived gateway plan so upstreams reflect any
-	// added/removed service packages from this update.
-	platformOpts.Gateway = result.Gateway
-	platformOpts.Catalog = m
-	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
-		log.Printf("platform config refresh: %v (continuing)", cfgErr)
-	}
-
-	tc.Track("update_completed", map[string]string{
-		"duration_ms":      fmt.Sprintf("%d", time.Since(start).Milliseconds()),
-		"packages_added":   fmt.Sprintf("%d", len(diff.Added)),
-		"packages_updated": fmt.Sprintf("%d", len(diff.Updated)),
-		"packages_removed": fmt.Sprintf("%d", len(diff.Removed)),
-	})
-	out.OK(fmt.Sprintf("Update complete (%s)", result.Duration.Round(100*time.Millisecond)))
-
-	// Refresh Claude Code assets from the just-updated devkit. Non-fatal:
-	// the platform itself is already updated; missing or broken assets must
-	// not block the user.
-	if !flagSkipClaude {
-		cfg, cfgErr := config.Read(platformDir)
-		if cfgErr != nil {
-			log.Printf("claude assets: %v (continuing)", cfgErr)
-		} else {
-			cr, cerr := claude.Update(claude.Options{
-				ProjectDir:   cfg.CWD,
-				PlatformDir:  platformDir,
-				SkipClaudeMd: flagNoClaudeMd,
-				Yes:          yes,
-				Log:          log,
-				Prompter:     stdPrompter{},
-			})
-			if cerr != nil {
-				log.Printf("claude assets: %v (continuing)", cerr)
-			} else if cr != nil {
-				printClaudeSummary(cfg.CWD, cr)
-			}
+	completed := 0
+	for _, entry := range journal.Entries {
+		if entry.Status == executor.StatusCompleted {
+			completed++
 		}
 	}
-
+	out.OK(fmt.Sprintf("Declarative update complete (%d actions)", completed))
 	return nil
-}
-
-func printDiff(out output, d *installer.UpdateDiff) {
-	out.Section("Update plan")
-
-	if len(d.Added) > 0 {
-		out.Info("Add:")
-		for _, p := range d.Added {
-			fmt.Printf("  %s %s\n", out.bullet.Render("+"), p)
-		}
-	}
-	if len(d.Updated) > 0 {
-		out.Info("Update:")
-		for _, p := range d.Updated {
-			fmt.Printf("  %s %s\n", out.bullet.Render("↑"), out.dim.Render(p))
-		}
-	}
-	if len(d.Removed) > 0 {
-		out.Info("Remove:")
-		for _, p := range d.Removed {
-			fmt.Printf("  %s %s\n", out.bullet.Render("-"), p)
-		}
-	}
-	fmt.Println()
 }
 
 func confirm(prompt string) bool {
@@ -236,44 +121,6 @@ func confirm(prompt string) bool {
 	return line == "" || line == "y" || line == "yes"
 }
 
-// runSelfUpdate checks GitHub for a newer *-binaries release and replaces the
-// running binary if one is found. Returns true when the binary was replaced.
-func runSelfUpdate(out output, tc *telemetry.Client) bool {
-	const repo = "kb-labs-team/kb-labs"
-	currentVersion := rootCmd.Version
-
-	latestTag, err := selfupdate.LatestBinariesTag(repo)
-	if err != nil {
-		out.Warn(fmt.Sprintf("self-update check failed: %v (skipping)", err))
-		return false
-	}
-
-	if !selfupdate.NeedsUpdate(currentVersion, latestTag) {
-		return false
-	}
-
-	out.Info(fmt.Sprintf("New kb-create version available: %s → %s", currentVersion, latestTag))
-
-	result, err := selfupdate.Apply(repo, latestTag, currentVersion)
-	if err != nil {
-		tc.Track("self_update_failed", map[string]string{
-			"from_version": currentVersion,
-			"to_version":   latestTag,
-			"error":        err.Error(),
-		})
-		out.Warn(fmt.Sprintf("self-update failed: %v (continuing with current version)", err))
-		return false
-	}
-
-	tc.Track("self_update_completed", map[string]string{
-		"from_version": result.PreviousVersion,
-		"to_version":   result.LatestVersion,
-	})
-	out.OK(fmt.Sprintf("kb-create updated to %s", result.LatestVersion))
-	return true
-}
-
-// confirmDestructive requires explicit "y" or "yes" — empty input = no.
 func confirmDestructive(prompt string) bool {
 	fmt.Print(prompt)
 	r := bufio.NewReader(os.Stdin)
@@ -282,17 +129,16 @@ func confirmDestructive(prompt string) bool {
 	return line == "y" || line == "yes"
 }
 
-// resolvePlatformDir returns the platform dir, trying in order:
-//  1. --platform flag on this command
-//  2. --platform persistent flag on the root command
-//  3. .kb/install.json in the current working directory
-//  4. user state file (last successful install)
-//
-// (4) makes `kb-create status` (and friends) work right after install
-// without requiring the user to remember where the platform was placed.
-// Stale state (dir no longer exists) is ignored — we fall through to the
-// "not specified" error so the user gets a clear message rather than a
-// confusing "config not found" further down the stack.
+func resolveUpdateRegistry(flagRegistry, platformDir string) string {
+	if flagRegistry != "" {
+		return flagRegistry
+	}
+	if cfg, err := config.Read(platformDir); err == nil && cfg.Source.Registry != "" {
+		return cfg.Source.Registry
+	}
+	return ""
+}
+
 func resolvePlatformDir(cmd *cobra.Command) (string, error) {
 	if p, _ := cmd.Flags().GetString("platform"); p != "" {
 		return p, nil
@@ -300,34 +146,14 @@ func resolvePlatformDir(cmd *cobra.Command) (string, error) {
 	if p, _ := cmd.Root().PersistentFlags().GetString("platform"); p != "" {
 		return p, nil
 	}
-	// Try reading config from current directory.
 	cwd, _ := os.Getwd()
 	if cfg, err := config.Read(cwd); err == nil {
 		return cfg.Platform, nil
 	}
-	// Fall back to the last known install.
-	if st, err := userstate.Read(); err == nil && st != nil && st.LastPlatformDir != "" {
-		if _, statErr := os.Stat(st.LastPlatformDir); statErr == nil {
-			return st.LastPlatformDir, nil
+	if state, err := userstate.Read(); err == nil && state != nil && state.LastPlatformDir != "" {
+		if _, statErr := os.Stat(state.LastPlatformDir); statErr == nil {
+			return state.LastPlatformDir, nil
 		}
 	}
 	return "", fmt.Errorf("platform directory not specified — use --platform or run from the platform directory")
-}
-
-// resolveUpdateRegistry returns the npm registry to use for an update.
-// If flagRegistry is explicitly provided (non-empty), it takes priority.
-// Otherwise falls back to the registry saved in the platform config so that
-// updates fetch from the same source as the original install.
-// This prevents silently switching from a local Verdaccio to npmjs.org,
-// which can cause version mismatches when local packages shadow npm ones (B-014).
-func resolveUpdateRegistry(flagRegistry, platformDir string) string {
-	if flagRegistry != "" {
-		return flagRegistry
-	}
-	if cfg, err := config.Read(platformDir); err == nil {
-		if saved := cfg.Source.Registry; saved != "" {
-			return saved
-		}
-	}
-	return ""
 }

@@ -33,12 +33,24 @@ func (a *PMAdapter) Installed(_ context.Context, packageSpec string) (bool, erro
 }
 
 func (a *PMAdapter) Install(ctx context.Context, packageSpec string) error {
+	return a.run(ctx, packageSpec, false)
+}
+
+func (a *PMAdapter) Update(ctx context.Context, packageSpec string) error {
+	return a.run(ctx, packageSpec, true)
+}
+
+func (a *PMAdapter) run(ctx context.Context, packageSpec string, update bool) error {
 	if a.Manager == nil || a.Dir == "" {
 		return fmt.Errorf("package manager adapter is not configured")
 	}
 	progress := make(chan pm.Progress)
 	result := make(chan error, 1)
 	go func() {
+		if update {
+			result <- a.Manager.Update(a.Dir, []string{packageSpec}, progress)
+			return
+		}
 		result <- a.Manager.Install(a.Dir, []string{packageSpec}, progress)
 	}()
 	for {

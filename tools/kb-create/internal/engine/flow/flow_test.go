@@ -7,7 +7,7 @@ import (
 )
 
 func TestFlowUsesOneReducerForConditionalPagesAndValidation(t *testing.T) {
-	scenario := Scenario{Schema: "kb.scenario/1", ID: "commit", Pages: []Page{
+	scenario := Scenario{Schema: "kb.scenario/2", ID: "commit", Pages: []Page{
 		{ID: "components", Sections: []Section{{ID: "selection", Fields: []Field{{ID: "mode", Type: "select", Required: true, Options: []Option{{Value: "quick"}, {Value: "advanced"}}}}}}},
 		{ID: "advanced", When: &Predicate{Path: "mode", Equals: json.RawMessage(`"advanced"`)}, Sections: []Section{{ID: "options", Fields: []Field{{ID: "cache", Type: "select", Required: true, Default: json.RawMessage(`"state-broker"`), Options: []Option{{Value: "state-broker"}, {Value: "redis"}}}}}}},
 	}}
@@ -33,7 +33,7 @@ func TestFlowUsesOneReducerForConditionalPagesAndValidation(t *testing.T) {
 }
 
 func TestFlowRejectsUnknownAndInvalidAnswers(t *testing.T) {
-	scenario := Scenario{Schema: "kb.scenario/1", ID: "x", Pages: []Page{{ID: "p", Sections: []Section{{ID: "s", Fields: []Field{{ID: "choice", Type: "select", Options: []Option{{Value: "a"}}}}}}}}}
+	scenario := Scenario{Schema: "kb.scenario/2", ID: "x", Pages: []Page{{ID: "p", Sections: []Section{{ID: "s", Fields: []Field{{ID: "choice", Type: "select", Options: []Option{{Value: "a"}}}}}}}}}
 	state, _ := New(scenario)
 	_, err := scenario.Answer(state, Answer{FieldID: "missing", Value: json.RawMessage(`"a"`)})
 	if err == nil || !strings.Contains(err.Error(), "UNKNOWN_FIELD") {

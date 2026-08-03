@@ -12,11 +12,10 @@ import (
 
 	installconfig "github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/engine/agent"
-	engineconfig "github.com/kb-labs/create/internal/engine/config"
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
-	"github.com/kb-labs/create/internal/engine/handlers"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
+	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	engineui "github.com/kb-labs/create/internal/engine/ui"
 	terminalui "github.com/kb-labs/create/internal/engine/ui/terminal"
@@ -146,6 +145,20 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan) error {
 		return err
 	}
 	cfg := installconfig.NewConfig(compiled.PlatformRoot, compiled.ProjectRoot, pm.Detect().Name(), "", "kb-create/declarative", source, installconfig.TelemetryConfig{})
+	cfg.Mode = string(compiled.Source)
+	cfg.ScenarioID = compiled.ScenarioID
+	cfg.LastPlanHash = compiled.PlanHash
+	cfg.Provenance = []string{"plan:" + compiled.PlanHash, "catalog:" + compiled.CatalogDigest}
+	if len(compiled.Values) > 0 {
+		cfg.Answers = make(map[string]any, len(compiled.Values))
+		for key, raw := range compiled.Values {
+			var value any
+			if err := json.Unmarshal(raw, &value); err != nil {
+				return fmt.Errorf("decode answer %q: %w", key, err)
+			}
+			cfg.Answers[key] = value
+		}
+	}
 	for _, action := range compiled.Actions {
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
@@ -188,27 +201,10 @@ func containsString(values []string, want string) bool {
 }
 
 func executeFlowPlan(compiled engineplan.InstallPlan) (executor.Journal, error) {
-	if compiled.PlatformRoot == "" {
-		return executor.Journal{}, fmt.Errorf("platform root is required for apply")
-	}
-	if err := os.MkdirAll(compiled.PlatformRoot, 0o750); err != nil {
-		return executor.Journal{}, err
-	}
-	base, err := os.ReadFile(filepath.Join(compiled.PlatformRoot, ".kb", "kb.config.jsonc"))
-	if err != nil && !os.IsNotExist(err) {
-		return executor.Journal{}, err
-	}
-	manager := pm.Detect()
-	registry := handlers.Registry(handlers.RegistryOptions{
-		Packages:   &handlers.PMAdapter{Manager: manager, Dir: compiled.PlatformRoot},
-		Providers:  handlers.FileProviderBinder{Root: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "providers")},
-		Assembly:   compiled.Assembly,
-		Roots:      engineconfig.Roots{engineconfig.RootPlatform: compiled.PlatformRoot, engineconfig.RootProject: compiled.ProjectRoot},
-		BaseConfig: base,
-	})
-	return executor.Run(context.Background(), compiled, registry, executor.Options{
-		Store: executor.FileJournalStore{Dir: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs")},
-		Lock:  executor.FileLock{Path: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock")},
+	return engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: pm.Detect(),
+		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 	})
 }
 

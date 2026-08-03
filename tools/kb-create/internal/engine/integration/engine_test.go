@@ -78,8 +78,12 @@ func TestAllScenarioFixturesHaveValidInstallProjection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", id, err)
 		}
-		if loaded.Install == nil {
-			t.Fatalf("%s has no install projection", id)
+		state, stateErr := flow.New(loaded)
+		if stateErr != nil {
+			t.Fatalf("%s state: %v", id, stateErr)
+		}
+		if _, requestErr := flow.BuildInstallRequest(loaded, state, t.TempDir(), t.TempDir(), "catalog-test"); requestErr != nil {
+			t.Fatalf("%s install projection: %v", id, requestErr)
 		}
 	}
 }
@@ -117,4 +121,26 @@ func TestCustomScenarioSelectsGatewayEffectIntoRuntimePlan(t *testing.T) {
 		}
 	}
 	t.Fatalf("compiled plan has no local gateway auth effect: %#v", compiled.Assembly.Patches)
+}
+
+func TestDeclarativeProjectOutputUsesManagedOverlay(t *testing.T) {
+	cat, err := bootstrap.DefaultCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, output := range cat.Outputs {
+		if output.Scope == config.ScopeProject && output.Path == ".kb/kb.config.jsonc" {
+			t.Fatal("declarative catalog writes user-owned project config directly")
+		}
+	}
+	request := plan.InstallRequest{Source: plan.SourceDirect, ProjectRoot: t.TempDir(), PlatformRoot: t.TempDir()}
+	compiled, err := plan.Compile(request, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, output := range compiled.Assembly.Outputs {
+		if output.Scope == config.ScopeProject && output.Path != ".kb/generated/kb-create.overlay.jsonc" {
+			t.Fatalf("project output = %#v", output)
+		}
+	}
 }

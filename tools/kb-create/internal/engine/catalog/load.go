@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	engineconfig "github.com/kb-labs/create/internal/engine/config"
+	"github.com/kb-labs/create/internal/engine/migrate"
 )
 
 func Load(data []byte) (Catalog, error) {
@@ -32,6 +33,7 @@ func Normalize(source Catalog) Catalog {
 	source.Components = append([]Component(nil), source.Components...)
 	source.Providers = append([]Provider(nil), source.Providers...)
 	source.Effects = append([]Effect(nil), source.Effects...)
+	source.Migrations = append([]migrate.Definition(nil), source.Migrations...)
 	for i := range source.Components {
 		source.Components[i].Requires = append([]Requirement(nil), source.Components[i].Requires...)
 		source.Components[i].DependsOn = append([]string(nil), source.Components[i].DependsOn...)

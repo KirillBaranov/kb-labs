@@ -137,11 +137,17 @@ func controlKind(source string) (ControlKind, error) {
 		return ControlSecret, nil
 	case "select":
 		return ControlSelect, nil
+	case "choice", "provider":
+		return ControlSelect, nil
 	case "multiselect":
+		return ControlMultiSelect, nil
+	case "multiChoice":
 		return ControlMultiSelect, nil
 	case "confirm":
 		return ControlConfirm, nil
 	case "path":
+		return ControlPath, nil
+	case "directory":
 		return ControlPath, nil
 	case "number":
 		return ControlNumber, nil

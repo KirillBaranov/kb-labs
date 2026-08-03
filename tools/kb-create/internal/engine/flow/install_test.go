@@ -10,7 +10,7 @@ import (
 
 func TestScenarioAndDirectInputsCompileToEquivalentRequests(t *testing.T) {
 	scenario := Scenario{
-		Schema: "kb.scenario/1", ID: "commit",
+		Schema: "kb.scenario/2", ID: "commit",
 		Install: &InstallSpec{
 			Components:          []ComponentBinding{{ID: "commit"}},
 			ProviderPreferences: []ProviderBinding{{Capability: "cache", Field: "cache"}},
@@ -48,7 +48,7 @@ func TestScenarioAndDirectInputsCompileToEquivalentRequests(t *testing.T) {
 
 func TestScenarioProjectsConditionalEffectsIntoInstallRequest(t *testing.T) {
 	scenario := Scenario{
-		Schema: "kb.scenario/1", ID: "access",
+		Schema: "kb.scenario/2", ID: "access",
 		Install: &InstallSpec{Effects: []EffectBinding{
 			{ID: "gateway.access.local", When: &Predicate{Path: "mode", Equals: json.RawMessage(`"local"`)}},
 			{ID: "gateway.access.secured", When: &Predicate{Path: "mode", Equals: json.RawMessage(`"secured"`)}},

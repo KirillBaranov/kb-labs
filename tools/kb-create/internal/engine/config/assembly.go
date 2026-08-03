@@ -70,10 +70,11 @@ type ConfigPatch struct {
 }
 
 type ConfigOutput struct {
-	Scope  ConfigScope `json:"scope"`
-	Root   Root        `json:"root"`
-	Path   string      `json:"path"`
-	Format Format      `json:"format"`
+	Scope     ConfigScope     `json:"scope"`
+	Root      Root            `json:"root"`
+	Path      string          `json:"path"`
+	Format    Format          `json:"format"`
+	Overwrite OverwritePolicy `json:"overwrite,omitempty"`
 }
 
 type ArtifactWrite struct {
@@ -157,8 +158,11 @@ func Assemble(assembly ConfigAssembly, roots Roots, base []byte) (Result, error)
 			Format:    output.Format,
 			Content:   content,
 			Owner:     "runtime.config",
-			Overwrite: OverwriteReplace,
+			Overwrite: output.Overwrite,
 			Required:  true,
+		}
+		if artifact.Overwrite == "" {
+			artifact.Overwrite = OverwriteReplace
 		}
 		if err := addArtifact(&artifacts, seen, roots, artifact); err != nil {
 			return Result{}, err

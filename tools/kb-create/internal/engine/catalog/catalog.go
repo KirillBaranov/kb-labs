@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	engineconfig "github.com/kb-labs/create/internal/engine/config"
+	"github.com/kb-labs/create/internal/engine/migrate"
 )
 
 type Requirement struct {
@@ -47,6 +48,7 @@ type Catalog struct {
 	Components []Component                 `json:"components"`
 	Providers  []Provider                  `json:"providers"`
 	Effects    []Effect                    `json:"effects,omitempty"`
+	Migrations []migrate.Definition        `json:"migrations,omitempty"`
 	Outputs    []engineconfig.ConfigOutput `json:"outputs,omitempty"`
 }
 
@@ -117,6 +119,16 @@ func (c Catalog) Validate() error {
 				return fmt.Errorf("effect %q contains an invalid config patch", effect.ID)
 			}
 		}
+	}
+	seenMigrations := make(map[string]struct{}, len(c.Migrations))
+	for _, migration := range c.Migrations {
+		if migration.ID == "" || migration.Subject == "" || migration.From == "" || migration.To == "" {
+			return fmt.Errorf("migration requires id, subject, from, and to")
+		}
+		if _, ok := seenMigrations[migration.ID]; ok {
+			return fmt.Errorf("duplicate migration %q", migration.ID)
+		}
+		seenMigrations[migration.ID] = struct{}{}
 	}
 	return nil
 }

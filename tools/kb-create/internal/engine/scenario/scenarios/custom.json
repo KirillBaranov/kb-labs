@@ -1,14 +1,8 @@
 {
-  "schema": "kb.scenario/1",
+  "schema": "kb.scenario/2",
   "id": "custom",
   "title": "Custom platform",
-  "install": {
-    "components": [],
-    "effects": [
-      {"id": "gateway.access.local", "when": {"path": "access.mode", "equals": "local"}},
-      {"id": "gateway.access.secured", "when": {"path": "access.mode", "equals": "secured"}}
-    ]
-  },
+  "selection": {"components": []},
   "pages": [{
     "id": "access",
     "sections": [{
@@ -19,8 +13,8 @@
         "label": "Studio access",
         "default": "local",
         "options": [
-          {"value": "local", "label": "Local (no login)"},
-          {"value": "secured", "label": "Secured"}
+          {"value": "local", "label": "Local (no login)", "effects": ["gateway.access.local"]},
+          {"value": "secured", "label": "Secured", "effects": ["gateway.access.secured"]}
         ]
       }]
     }]

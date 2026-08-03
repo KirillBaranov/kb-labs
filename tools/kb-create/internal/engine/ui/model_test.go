@@ -8,7 +8,7 @@ import (
 )
 
 func TestFromPageBuildsCommonScreenModelAndRedactsSecret(t *testing.T) {
-	scenario := flow.Scenario{Schema: "kb.scenario/1", ID: "x", Pages: []flow.Page{{ID: "setup", Title: "Setup", Sections: []flow.Section{{ID: "main", Fields: []flow.Field{{ID: "name", Type: "text", Label: "Name"}, {ID: "token", Type: "secret", Secret: true}}}}}}}
+	scenario := flow.Scenario{Schema: "kb.scenario/2", ID: "x", Pages: []flow.Page{{ID: "setup", Title: "Setup", Sections: []flow.Section{{ID: "main", Fields: []flow.Field{{ID: "name", Type: "text", Label: "Name"}, {ID: "token", Type: "secret", Secret: true}}}}}}}
 	state, err := flow.New(scenario)
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestFromPageBuildsCommonScreenModelAndRedactsSecret(t *testing.T) {
 }
 
 func TestFromPageRejectsScenarioSpecificControlTypes(t *testing.T) {
-	scenario := flow.Scenario{Schema: "kb.scenario/1", ID: "x", Pages: []flow.Page{{ID: "p", Sections: []flow.Section{{ID: "s", Fields: []flow.Field{{ID: "custom", Type: "my-widget"}}}}}}}
+	scenario := flow.Scenario{Schema: "kb.scenario/2", ID: "x", Pages: []flow.Page{{ID: "p", Sections: []flow.Section{{ID: "s", Fields: []flow.Field{{ID: "custom", Type: "my-widget"}}}}}}}
 	state, _ := flow.New(scenario)
 	if _, err := FromPage(scenario, state); err == nil {
 		t.Fatal("custom widget accepted")

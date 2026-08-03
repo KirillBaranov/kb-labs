@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Plugins  []string                   `json:"plugins,omitempty"`
 	Services []string                   `json:"services,omitempty"`
+	Effects  []string                   `json:"effects,omitempty"`
 	Adapters map[string]string          `json:"adapters,omitempty"`
 	Values   map[string]json.RawMessage `json:"values,omitempty"`
 }
@@ -69,6 +70,7 @@ func Build(input Input, source catalog.Catalog) (plan.InstallRequest, error) {
 		ProjectRoot:         input.ProjectRoot,
 		PlatformRoot:        input.PlatformRoot,
 		Components:          components,
+		Effects:             append([]string(nil), file.Effects...),
 		ProviderPreferences: preferences,
 		Values:              file.Values,
 	}, nil

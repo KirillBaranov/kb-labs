@@ -11,10 +11,8 @@ import (
 
 	"github.com/kb-labs/clikit/diag"
 	"github.com/kb-labs/create/internal/engine/agent"
-	engineconfig "github.com/kb-labs/create/internal/engine/config"
-	"github.com/kb-labs/create/internal/engine/executor"
 	"github.com/kb-labs/create/internal/engine/flow"
-	"github.com/kb-labs/create/internal/engine/handlers"
+	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/spf13/cobra"
@@ -172,24 +170,12 @@ func runAgentApply(cmd *cobra.Command, _ []string) error {
 	if compiled.PlatformRoot == "" {
 		return diag.New("ERR_AGENT_ROOT", "plan.platformRoot is required for apply")
 	}
-	roots := engineconfig.Roots{engineconfig.RootPlatform: compiled.PlatformRoot, engineconfig.RootProject: compiled.ProjectRoot}
-	base := []byte(nil)
-	configPath := filepath.Join(compiled.PlatformRoot, ".kb", "kb.config.jsonc")
-	if data, readErr := os.ReadFile(configPath); readErr == nil {
-		base = data
-	} else if !os.IsNotExist(readErr) {
-		return readErr
-	}
 	manager := pm.Detect()
-	registry := handlers.Registry(handlers.RegistryOptions{
-		Packages:  &handlers.PMAdapter{Manager: manager, Dir: compiled.PlatformRoot},
-		Providers: handlers.FileProviderBinder{Root: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "providers")},
-		Assembly:  compiled.Assembly, Roots: roots, BaseConfig: base,
-	})
-	journal, runErr := executor.Run(context.Background(), compiled, registry, executor.Options{
-		DryRun: agentPlanOnly,
-		Store:  executor.FileJournalStore{Dir: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs")},
-		Lock:   executor.FileLock{Path: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock")},
+	journal, runErr := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: manager,
+		DryRun:         agentPlanOnly,
+		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 	})
 	if runErr == nil && !agentPlanOnly {
 		if stateErr := writeDeclarativeInstallState(compiled); stateErr != nil {

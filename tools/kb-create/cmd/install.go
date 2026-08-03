@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,14 +13,16 @@ import (
 
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/devservices"
-	"github.com/kb-labs/create/internal/installer"
-	"github.com/kb-labs/create/internal/logger"
+	"github.com/kb-labs/create/internal/engine/bootstrap"
+	"github.com/kb-labs/create/internal/engine/direct"
+	"github.com/kb-labs/create/internal/engine/executor"
+	engineplan "github.com/kb-labs/create/internal/engine/plan"
+	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/scan"
 	"github.com/kb-labs/create/internal/validate"
-	"github.com/kb-labs/create/internal/wizard"
 )
 
 var (
@@ -50,119 +54,121 @@ func init() {
 }
 
 func runInstall(cmd *cobra.Command, args []string) error {
+	return runDeclarativeInstall(cmd)
+}
+
+func runDeclarativeInstall(cmd *cobra.Command) error {
 	out := newOutput()
-
-	m, err := manifest.Load(manifest.LoadOptions{
-		LocalOverride: flagInstallDevManifest,
-	})
-	if err != nil {
-		return fmt.Errorf("load manifest: %w", err)
-	}
-
 	plugins, pluginVersions := splitVersionedIDs(flagInstallPlugins)
 	services, serviceVersions := splitVersionedIDs(flagInstallServices)
-
-	if err := validateComponentIDs("plugin", plugins, m.Plugins); err != nil {
-		return err
+	if len(pluginVersions) > 0 || len(serviceVersions) > 0 {
+		return fmt.Errorf("version-pinned components are not supported by the declarative manifest yet; update the manifest package spec instead")
 	}
-	if err := validateComponentIDs("service", services, m.Services); err != nil {
-		return err
-	}
-
-	// Validate the "role=pkg[@version]" shape here. Capability role names are
-	// checked in the reconciliation report against the installed catalog, with
-	// a local fallback when the generated artifact is absent.
 	adapters, err := parseAdapters(flagInstallAdapters)
 	if err != nil {
 		return fmt.Errorf("--adapters: %w", err)
 	}
-
-	// Reuse the wizard's existing non-interactive defaulting (same path
-	// `--yes` already takes) for platform dir / consent / telemetry, then
-	// overwrite the selection with exactly what was requested on the flags.
-	sel, err := wizard.Run(m, wizard.WizardOptions{
-		Yes:                true,
-		DefaultPlatformDir: flagInstallPlatform,
-	})
+	if len(pluginVersions) != 0 || len(serviceVersions) != 0 {
+		return fmt.Errorf("version pins are not supported")
+	}
+	catalog, err := bootstrap.DefaultCatalog()
+	if err != nil {
+		return fmt.Errorf("load declarative catalog: %w", err)
+	}
+	platformDir := flagInstallPlatform
+	if platformDir == "" {
+		if current, readErr := config.Read("."); readErr == nil {
+			platformDir = current.Platform
+		} else {
+			home, _ := os.UserHomeDir()
+			platformDir = filepath.Join(home, "kb-platform")
+		}
+	}
+	platformDir, err = filepath.Abs(platformDir)
+	if err != nil {
+		return fmt.Errorf("resolve platform directory: %w", err)
+	}
+	projectDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	// Explicit component installs are additive to an existing installation.
-	// The wizard still supplies defaults for a brand-new platform, but a
-	// follow-up `install --plugins X` must not silently remove prior choices.
-	if previous, readErr := config.Read(sel.PlatformDir); readErr == nil {
-		if flagInstallServices != "" {
-			services = mergeIDs(previous.SelectedServices, services)
+	if current, readErr := config.Read(platformDir); readErr == nil {
+		if flagInstallPlugins == "" {
+			plugins = append([]string(nil), current.SelectedPlugins...)
 		} else {
-			services = append([]string(nil), previous.SelectedServices...)
+			plugins = mergeIDs(current.SelectedPlugins, plugins)
 		}
-		if flagInstallPlugins != "" {
-			plugins = mergeIDs(previous.SelectedPlugins, plugins)
+		if flagInstallServices == "" {
+			services = append([]string(nil), current.SelectedServices...)
 		} else {
-			plugins = append([]string(nil), previous.SelectedPlugins...)
+			services = mergeIDs(current.SelectedServices, services)
+		}
+		if current.CWD != "" {
+			projectDir = current.CWD
 		}
 	}
-	sel.Services = services
-	sel.Plugins = plugins
-	sel.Adapters = adapters
-	sel.ServiceVersions = serviceVersions
-	sel.PluginVersions = pluginVersions
-	sel.DevMode = flagInstallDevManifest != ""
-	sel.Registry = flagInstallRegistry
-
-	if err := os.MkdirAll(sel.PlatformDir, 0o750); err != nil {
-		return fmt.Errorf("create platform dir: %w", err)
-	}
-
-	log, err := logger.New(sel.PlatformDir)
+	configData, err := json.Marshal(direct.Config{Adapters: adapters})
 	if err != nil {
 		return err
 	}
-	defer func() { _ = log.Close() }()
-
-	packageManager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
-	if err := ensureToolchain(true, packageManager.Name()); err != nil {
+	canonicalPlugins := make([]string, 0, len(plugins))
+	for _, id := range plugins {
+		canonical := "plugin:" + id
+		if _, ok := catalog.Component(canonical); !ok {
+			return fmt.Errorf("unknown plugin %q", id)
+		}
+		canonicalPlugins = append(canonicalPlugins, canonical)
+	}
+	canonicalServices := make([]string, 0, len(services))
+	for _, id := range services {
+		canonical := "service:" + id
+		if _, ok := catalog.Component(canonical); !ok {
+			return fmt.Errorf("unknown service %q", id)
+		}
+		canonicalServices = append(canonicalServices, canonical)
+	}
+	request, err := direct.Build(direct.Input{
+		Plugins:       &canonicalPlugins,
+		Services:      &canonicalServices,
+		Config:        configData,
+		ProjectRoot:   projectDir,
+		PlatformRoot:  platformDir,
+		CatalogDigest: catalog.Digest,
+	}, catalog)
+	if err != nil {
+		return fmt.Errorf("build declarative install request: %w", err)
+	}
+	request.Source = engineplan.SourceDirect
+	compiled, err := engineplan.Compile(request, catalog)
+	if err != nil {
+		return fmt.Errorf("compile declarative install plan: %w", err)
+	}
+	if err := ensureToolchain(true, pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}).Name()); err != nil {
 		return fmt.Errorf("toolchain preflight failed: %w", err)
 	}
-	out.Info(fmt.Sprintf("Installing %s via %s", describeSelection(plugins, services), packageManager.Name()))
-
-	ins := &installer.Installer{
-		PM:      packageManager,
-		Log:     log,
-		Version: cmd.Root().Version,
-	}
-
-	result, err := ins.Install(sel, m)
+	out.Info(fmt.Sprintf("Installing %s declaratively", describeSelection(plugins, services)))
+	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}),
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "install.lock"),
+		Rollback:       true,
+	})
 	if err != nil {
-		return fmt.Errorf("installation failed: %w", err)
+		return fmt.Errorf("declarative installation failed: %w", err)
 	}
-
-	scaffoldOpts := scaffold.Options{
-		PlatformDir:                      sel.PlatformDir,
-		Services:                         sel.Services,
-		Plugins:                          sel.Plugins,
-		Gateway:                          result.Gateway,
-		Catalog:                          m,
-		Adapters:                         adapters,
-		AllowIncompatibleLegacyMigration: true, // install is explicitly non-interactive
+	if err := writeDeclarativeInstallState(compiled); err != nil {
+		return fmt.Errorf("write declarative install state: %w", err)
 	}
-	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
-		return fmt.Errorf("scaffold platform config: %w", err)
+	completed := 0
+	for _, entry := range journal.Entries {
+		if entry.Status == executor.StatusCompleted {
+			completed++
+		}
 	}
-	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
-		return fmt.Errorf("scaffold project config: %w", err)
-	}
-
-	out.OK(fmt.Sprintf("Installed in %s", result.Duration.Round(1)))
-	out.KeyValue("config", result.ConfigPath)
-	if result.ServicesWarning != "" {
-		out.Warn(result.ServicesWarning)
-	}
-
-	printEnvHints(out, sel.PlatformDir, result.InstalledPlugins)
-	printAdapterReconciliation(out, sel.PlatformDir, adapters, result.InstalledPlugins)
-
+	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
+
 }
 
 func mergeIDs(existing, requested []string) []string {

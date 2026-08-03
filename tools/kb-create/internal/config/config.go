@@ -14,14 +14,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/kb-labs/create/internal/engine/migrate"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/types"
 )
 
 const (
-	configVersion = 1
+	configVersion = 2
+	configSchema  = "kb.install-state/2"
 	configDir     = ".kb"
 	// installStateFile is kb-create's own state file. It deliberately lives
 	// outside the kb.config.* namespace owned by the platform runtime config.
@@ -67,6 +70,13 @@ func (s InstallSource) EffectiveRegistry() string {
 // PlatformConfig is kb-create's install state, written to
 // <platform>/.kb/install.json. Version field enables future migrations.
 type PlatformConfig struct {
+	Schema           string            `json:"schema"`
+	Mode             string            `json:"mode,omitempty"`
+	ScenarioID       string            `json:"scenarioId,omitempty"`
+	Answers          map[string]any    `json:"answers,omitempty"`
+	ConfigSchemas    map[string]int    `json:"configSchemas,omitempty"`
+	LastPlanHash     string            `json:"lastPlanHash,omitempty"`
+	Provenance       []string          `json:"provenance,omitempty"`
 	InstalledAt      time.Time         `json:"installedAt"`
 	Platform         string            `json:"platform"`
 	CWD              string            `json:"cwd"`
@@ -171,7 +181,25 @@ func Read(platformDir string) (*PlatformConfig, error) {
 	// #nosec G304 -- path is deterministic (<platformDir>/.kb/install.json).
 	data, err := os.ReadFile(path)
 	if err == nil {
-		return parseConfig(data)
+		cfg, parseErr := parseConfig(data)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		if cfg.Schema == "" || cfg.Schema != configSchema {
+			from := "1"
+			if cfg.Schema != "" {
+				from = strings.TrimPrefix(cfg.Schema, "kb.install-state/")
+			}
+			migrated, migrationErr := migrateInstallState(data, from, "2")
+			if migrationErr != nil {
+				return nil, fmt.Errorf("migrate install state: %w", migrationErr)
+			}
+			if err := Write(platformDir, mustConfig(migrated)); err != nil {
+				return nil, fmt.Errorf("persist migrated install state: %w", err)
+			}
+			return parseConfig(migrated)
+		}
+		return cfg, nil
 	}
 	if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -193,11 +221,50 @@ func Read(platformDir string) (*PlatformConfig, error) {
 		// happens to be named kb.config.json). Leave it untouched.
 		return nil, fmt.Errorf("no config found at %s — is the platform installed?", path)
 	}
+	if migrated, migrationErr := migrateInstallState(legacyData, "1", "2"); migrationErr != nil {
+		return nil, fmt.Errorf("migrate legacy config: %w", migrationErr)
+	} else if migrated != nil {
+		legacyData = migrated
+		cfg, perr = parseConfig(legacyData)
+		if perr != nil {
+			return nil, fmt.Errorf("parse migrated config: %w", perr)
+		}
+	}
 	// Persist under the new name and drop the legacy file (Write handles both).
 	if werr := Write(platformDir, cfg); werr != nil {
 		return nil, fmt.Errorf("migrate legacy config: %w", werr)
 	}
 	return cfg, nil
+}
+
+func mustConfig(data []byte) *PlatformConfig {
+	var cfg PlatformConfig
+	_ = json.Unmarshal(data, &cfg)
+	return &cfg
+}
+
+func migrateInstallState(data []byte, from, to string) ([]byte, error) {
+	source, err := manifest.LoadDefault()
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(source.Migrations)
+	if err != nil {
+		return nil, err
+	}
+	var definitions []migrate.Definition
+	if err := json.Unmarshal(raw, &definitions); err != nil {
+		return nil, err
+	}
+	chain, err := migrate.Resolve(definitions, "kb.install-state", from, to)
+	if err != nil {
+		return nil, err
+	}
+	result, err := migrate.Apply(data, chain)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // parseConfig unmarshals install-state JSON into a PlatformConfig.
@@ -245,13 +312,16 @@ func NewConfig(platformDir, cwd, pmName, registry, installedBy string, m *manife
 	absCWD, _ := filepath.Abs(cwd)
 	now := time.Now().UTC()
 	return &PlatformConfig{
-		Version:     configVersion,
-		Platform:    abs,
-		CWD:         absCWD,
-		PM:          pmName,
-		InstalledAt: now,
-		Manifest:    *m,
-		Telemetry:   t,
+		Schema:        configSchema,
+		Mode:          "direct",
+		ConfigSchemas: map[string]int{"platform": 1, "project": 1},
+		Version:       configVersion,
+		Platform:      abs,
+		CWD:           absCWD,
+		PM:            pmName,
+		InstalledAt:   now,
+		Manifest:      *m,
+		Telemetry:     t,
 		Source: InstallSource{
 			Registry:    registry,
 			InstalledBy: installedBy,

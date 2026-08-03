@@ -24,11 +24,13 @@ const (
 type InstallRequest struct {
 	Schema              string                      `json:"schema"`
 	Source              Source                      `json:"source"`
+	ScenarioID          string                      `json:"scenarioId,omitempty"`
 	CatalogDigest       string                      `json:"catalogDigest"`
 	ProjectRoot         string                      `json:"projectRoot"`
 	PlatformRoot        string                      `json:"platformRoot"`
 	Components          []string                    `json:"components"`
 	Effects             []string                    `json:"effects,omitempty"`
+	RefreshPackages     bool                        `json:"refreshPackages,omitempty"`
 	ProviderPreferences map[string][]string         `json:"providerPreferences,omitempty"`
 	Values              map[string]json.RawMessage  `json:"values,omitempty"`
 	AssemblyOutputs     []engineconfig.ConfigOutput `json:"assemblyOutputs,omitempty"`
@@ -67,9 +69,11 @@ type InstallPlan struct {
 	Schema        string                      `json:"schema"`
 	CatalogDigest string                      `json:"catalogDigest"`
 	Source        Source                      `json:"source"`
+	ScenarioID    string                      `json:"scenarioId,omitempty"`
 	ProjectRoot   string                      `json:"projectRoot"`
 	PlatformRoot  string                      `json:"platformRoot"`
 	Effects       []string                    `json:"effects,omitempty"`
+	Values        map[string]json.RawMessage  `json:"values,omitempty"`
 	Assembly      engineconfig.ConfigAssembly `json:"assembly"`
 	Actions       []PlanAction                `json:"actions"`
 	PlanHash      string                      `json:"planHash"`
@@ -153,7 +157,11 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	for _, packageSpec := range catalog.SortedIDs(source.Core) {
 		id := "install:core:" + packageSpec
 		foundation = append(foundation, id)
-		actions = append(actions, PlanAction{ID: id, Kind: ActionInstallPackage, Inputs: map[string]string{"component": "core", "package": packageSpec}})
+		inputs := map[string]string{"component": "core", "package": packageSpec}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: id, Kind: ActionInstallPackage, Inputs: inputs})
 	}
 	for _, id := range componentIDs {
 		component := selected[id]
@@ -162,7 +170,11 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		for _, dependency := range catalog.SortedIDs(component.DependsOn) {
 			dependencies = append(dependencies, "install:"+dependency)
 		}
-		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: map[string]string{"component": id, "package": component.Package}})
+		inputs := map[string]string{"component": id, "package": component.Package}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: inputs})
 	}
 	capabilities := make([]string, 0, len(providers))
 	for capability := range providers {
@@ -173,7 +185,11 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		provider := providers[capability]
 		providerInstall := "install:provider:" + capability
 		providerDeps := append([]string(nil), foundation...)
-		actions = append(actions, PlanAction{ID: providerInstall, Kind: ActionInstallPackage, DependsOn: providerDeps, Inputs: map[string]string{"component": "provider:" + capability, "package": provider.Package}})
+		inputs := map[string]string{"component": "provider:" + capability, "package": provider.Package}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: providerInstall, Kind: ActionInstallPackage, DependsOn: providerDeps, Inputs: inputs})
 		dependencies := make([]string, 0, len(providerDependencies[capability])+1)
 		dependencies = append(dependencies, providerInstall)
 		for dependency := range providerDependencies[capability] {
@@ -199,9 +215,20 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		assembly.Patches = append(assembly.Patches, effect.Config...)
 	}
 	actions = append(actions, PlanAction{ID: "config:runtime", Kind: ActionWriteConfig, DependsOn: actionIDs(actions)})
-	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Assembly: assembly, Actions: actions}
+	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
+}
+
+func cloneValues(values map[string]json.RawMessage) map[string]json.RawMessage {
+	if len(values) == 0 {
+		return nil
+	}
+	result := make(map[string]json.RawMessage, len(values))
+	for key, value := range values {
+		result[key] = append(json.RawMessage(nil), value...)
+	}
+	return result
 }
 
 func resolveProvider(requirement catalog.Requirement, component string, preferences []string, source catalog.Catalog) (catalog.Provider, error) {
@@ -232,6 +259,10 @@ func actionIDs(actions []PlanAction) []string {
 func hashPlan(plan InstallPlan) string {
 	copyPlan := plan
 	copyPlan.PlanHash = ""
+	// Scenario metadata and persisted non-secret answers describe provenance;
+	// execution equivalence is determined by the resolved actions/assembly.
+	copyPlan.ScenarioID = ""
+	copyPlan.Values = nil
 	data, _ := json.Marshal(copyPlan)
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:])

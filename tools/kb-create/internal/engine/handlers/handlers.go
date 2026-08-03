@@ -19,6 +19,10 @@ type PackageManager interface {
 	Install(context.Context, string) error
 }
 
+type PackageUpdater interface {
+	Update(context.Context, string) error
+}
+
 type ProviderBinder interface {
 	Bound(context.Context, string, string) (bool, error)
 	Bind(context.Context, string, string, string) error
@@ -46,13 +50,26 @@ func (h *packageHandler) Check(ctx context.Context, action plan.PlanAction) (boo
 	if h.manager == nil {
 		return false, fmt.Errorf("package manager is not configured")
 	}
+	if action.Inputs["mode"] == "update" {
+		return false, nil
+	}
 	return h.manager.Installed(ctx, action.Inputs["package"])
 }
 func (h *packageHandler) Apply(ctx context.Context, action plan.PlanAction) (executor.ActionResult, error) {
 	if h.manager == nil {
 		return executor.ActionResult{}, fmt.Errorf("package manager is not configured")
 	}
-	if err := h.manager.Install(ctx, action.Inputs["package"]); err != nil {
+	var err error
+	if action.Inputs["mode"] == "update" {
+		updater, ok := h.manager.(PackageUpdater)
+		if !ok {
+			return executor.ActionResult{}, fmt.Errorf("package manager does not support updates")
+		}
+		err = updater.Update(ctx, action.Inputs["package"])
+	} else {
+		err = h.manager.Install(ctx, action.Inputs["package"])
+	}
+	if err != nil {
 		return executor.ActionResult{}, err
 	}
 	return executor.ActionResult{}, nil

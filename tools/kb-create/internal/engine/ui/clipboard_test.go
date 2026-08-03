@@ -37,5 +37,5 @@ func TestCopyOffersNeverExposeSecretFields(t *testing.T) {
 }
 
 func testScenarioForClipboard() flow.Scenario {
-	return flow.Scenario{Schema: "kb.scenario/1", ID: "clipboard", Pages: []flow.Page{{ID: "p", Sections: []flow.Section{{ID: "s", Fields: []flow.Field{{ID: "public", Type: "text"}, {ID: "secret", Type: "secret", Secret: true}}}}}}}
+	return flow.Scenario{Schema: "kb.scenario/2", ID: "clipboard", Pages: []flow.Page{{ID: "p", Sections: []flow.Section{{ID: "s", Fields: []flow.Field{{ID: "public", Type: "text"}, {ID: "secret", Type: "secret", Secret: true}}}}}}}
 }

@@ -11,11 +11,12 @@ import (
 )
 
 type Scenario struct {
-	Schema  string       `json:"schema"`
-	ID      string       `json:"id"`
-	Title   string       `json:"title,omitempty"`
-	Pages   []Page       `json:"pages"`
-	Install *InstallSpec `json:"install,omitempty"`
+	Selection Selection    `json:"selection,omitempty"`
+	Schema    string       `json:"schema"`
+	ID        string       `json:"id"`
+	Title     string       `json:"title,omitempty"`
+	Pages     []Page       `json:"pages"`
+	Install   *InstallSpec `json:"install,omitempty"`
 }
 
 type Page struct {
@@ -23,6 +24,11 @@ type Page struct {
 	Title    string     `json:"title,omitempty"`
 	Sections []Section  `json:"sections,omitempty"`
 	When     *Predicate `json:"when,omitempty"`
+}
+
+type Selection struct {
+	Components          []string          `json:"components,omitempty"`
+	ProviderPreferences []ProviderBinding `json:"providerPreferences,omitempty"`
 }
 
 type Section struct {
@@ -47,8 +53,9 @@ type Field struct {
 }
 
 type Option struct {
-	Value string `json:"value"`
-	Label string `json:"label,omitempty"`
+	Value   string   `json:"value"`
+	Label   string   `json:"label,omitempty"`
+	Effects []string `json:"effects,omitempty"`
 }
 
 type Validator struct {
