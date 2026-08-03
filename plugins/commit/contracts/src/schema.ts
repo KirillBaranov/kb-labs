@@ -221,6 +221,8 @@ export const OpenOutputSchema = z.object({
   hasPlan: z.boolean(),
   plan: CommitPlanSchema.optional(),
   planPath: z.string().optional(),
+  stale: z.boolean().optional(),
+  staleReason: z.string().optional(),
 });
 
 export type OpenOutput = z.infer<typeof OpenOutputSchema>;
