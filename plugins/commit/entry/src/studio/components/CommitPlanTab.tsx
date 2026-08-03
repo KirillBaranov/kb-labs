@@ -2,11 +2,11 @@
  * CommitPlanTab — commit plan viewer with generate/apply/push/reset actions.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { theme } from 'antd';
 import {
-  useData, useMutateData, useNotification,
-  UICard, UIButton, UIEmptyState, UISpin, UIAlert, UIBadge, UITag,
+  useData, useMutateData, useNotification, useTheme, useElapsedTimer,
+  UICard, UIButton, UIEmptyState, UISpin, UIAlert, UITag,
   UITooltip, UIIcon, UISpace, UICheckbox, UIInput, UIDropdown,
   UIPopconfirm, UITypographyText, UIModalConfirm, UIModalError, UIFlex,
   UISkeletonText, UIShimmerText,
@@ -38,6 +38,9 @@ interface StatusData {
   filesChanged: number;
   hasPlan: boolean;
   planStatus: string;
+  branch?: string;
+  planStale?: boolean;
+  planStaleReason?: string;
 }
 
 // Semantic commit type → Ant Design token color name
@@ -47,8 +50,16 @@ const TYPE_COLOR_MAP: Record<string, string> = {
   ci: 'blue', build: 'geekblue',
 };
 
+const GENERATE_PHRASES = [
+  'Analyzing changed files…',
+  'Grouping into logical commits…',
+  'Writing commit messages…',
+  'Checking for secrets…',
+];
+
 export function CommitPlanTab({ scope }: CommitPlanTabProps) {
   const { token } = useToken();
+  const { semantic } = useTheme();
   const notify = useNotification();
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -57,6 +68,8 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
   const [editMsg, setEditMsg] = useState('');
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [allowSecrets, setAllowSecrets] = useState(false);
+  const [genStartedAt, setGenStartedAt] = useState<string | undefined>(undefined);
+  const [phraseIdx, setPhraseIdx] = useState(0);
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useData<StatusData>(
     '/v1/plugins/commit/status', { params: { scope }, enabled: !!scope },
@@ -73,6 +86,20 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
   const reset = useMutateData<{ scope: string }, any>('/v1/plugins/commit/plan', 'DELETE');
   const patch = useMutateData<{ scope: string; commitId: string; message: string }, any>('/v1/plugins/commit/plan', 'PATCH');
   const regenerate = useMutateData<{ scope: string; commitId: string }, any>('/v1/plugins/commit/regenerate-commit');
+
+  const isGenerating = generate.isLoading;
+  const elapsed = useElapsedTimer(genStartedAt);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenStartedAt(undefined);
+      return;
+    }
+    setGenStartedAt((prev) => prev ?? new Date().toISOString());
+    setPhraseIdx(0);
+    const id = setInterval(() => setPhraseIdx((i) => (i + 1) % GENERATE_PHRASES.length), 3800);
+    return () => clearInterval(id);
+  }, [isGenerating]);
 
   const filesChanged = statusData?.filesChanged ?? 0;
   const commits = planData?.plan?.commits ?? [];
@@ -192,87 +219,140 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
     return <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />;
   }
 
-  const statusBadge: Record<string, { text: string; status: 'default' | 'processing' | 'success' }> = {
-    idle: { text: 'No Plan', status: 'default' },
-    ready: { text: 'Ready to Apply', status: 'processing' },
-    applied: { text: 'Applied', status: 'success' },
-    pushed: { text: 'Pushed', status: 'success' },
+  const statusDot: Record<string, string> = {
+    idle: semantic.disabled,
+    ready: semantic.info,
+    applied: semantic.success,
+    pushed: semantic.success,
   };
-  const badge = statusBadge[planStatus] ?? statusBadge.idle!;
+  const statusLabel: Record<string, string> = {
+    idle: 'No plan', ready: 'Ready to apply', applied: 'Applied', pushed: 'Pushed',
+  };
+
+  const dot = <span style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: semantic.textTertiary }}>&middot;</span>;
+
+  const isStale = hasPlan && !!statusData?.planStale;
+  const pillColor = isStale ? semantic.warning : (statusDot[planStatus] ?? semantic.disabled);
+  const pillLabel = isStale ? 'Outdated' : (statusLabel[planStatus] ?? statusLabel.idle);
+  const pill = (
+    <span
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+        background: `${pillColor}1F`,
+        color: pillColor,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+      {pillLabel}
+    </span>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: token.marginSM }}>
-      {/* Summary bar */}
-      <UICard size="small">
-        <UIFlex justify="between" align="center">
-          <UISpace size={24}>
-            <UIBadge {...badge} />
-            <Text type="secondary">{commits.length} commit{commits.length !== 1 ? 's' : ''}</Text>
-            <Text type="secondary">{filesChanged} file{filesChanged !== 1 ? 's' : ''} changed</Text>
-          </UISpace>
-          {hasPlan && (
-            <UISpace size={8}>
-              {planStatus === 'ready' && (
-                selected.size > 0 ? (
-                  <UIButton variant="primary" size="small" onClick={() => handleApply([...selected])} loading={apply.isLoading} disabled={isAnyLoading}>
-                    Apply Selected ({selected.size})
-                  </UIButton>
-                ) : (
-                  <UIButton variant="primary" size="small" onClick={() => handleApply()} loading={apply.isLoading} disabled={isAnyLoading}>
-                    Apply All
-                  </UIButton>
-                )
-              )}
-              {(planStatus === 'applied' || planStatus === 'pushed') && (
-                <UIButton size="small" icon={<UIIcon name="CloudUploadOutlined" />} onClick={handlePush} loading={push.isLoading} disabled={isAnyLoading}>
-                  Push
+      {/* Toolbar */}
+      <UICard size="small" styles={{ body: { padding: '8px 14px' } }}>
+        <UIFlex justify="between" align="center" wrap="wrap" gap={12}>
+          <UIFlex align="center" gap={10} style={{ minWidth: 0, flex: '1 1 auto' }}>
+            {isStale ? (
+              <UITooltip title={statusData?.planStaleReason ?? 'Plan no longer matches the current changes'}>
+                {pill}
+              </UITooltip>
+            ) : pill}
+            {hasPlan && (
+              <>
+                {dot}
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  <Text strong style={{ fontVariantNumeric: 'tabular-nums' }}>{commits.length}</Text> commit{commits.length !== 1 ? 's' : ''}
+                </Text>
+              </>
+            )}
+            {dot}
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text strong style={{ fontVariantNumeric: 'tabular-nums' }}>{filesChanged}</Text> file{filesChanged !== 1 ? 's' : ''} changed
+            </Text>
+            {statusData?.branch && (
+              <>
+                {dot}
+                <UITooltip title={statusData.branch}>
+                  <span
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 12, fontFamily: 'monospace', color: semantic.textSecondary,
+                      maxWidth: 150, minWidth: 0,
+                    }}
+                  >
+                    <UIIcon name="BranchesOutlined" style={{ fontSize: 11, flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{statusData.branch}</span>
+                  </span>
+                </UITooltip>
+              </>
+            )}
+          </UIFlex>
+
+          <UISpace size={8} style={{ flexShrink: 0 }}>
+            {!hasPlan && (
+              <>
+                <UICheckbox checked={allowSecrets} onChange={(v) => setAllowSecrets(v)}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>Allow secrets</Text>
+                </UICheckbox>
+                <UIButton variant="primary" size="small" icon={<UIIcon name="ThunderboltOutlined" />} onClick={handleGenerate} loading={generate.isLoading} disabled={filesChanged === 0}>
+                  Generate plan
                 </UIButton>
-              )}
-              <UIButton size="small" icon={<UIIcon name="ReloadOutlined" />} onClick={handleGenerate} loading={generate.isLoading} disabled={isAnyLoading}>
-                Regenerate
+              </>
+            )}
+            {hasPlan && planStatus === 'ready' && (
+              selected.size > 0 ? (
+                <UIButton variant="primary" size="small" onClick={() => handleApply([...selected])} loading={apply.isLoading} disabled={isAnyLoading}>
+                  Apply Selected ({selected.size})
+                </UIButton>
+              ) : (
+                <UIButton variant="primary" size="small" onClick={() => handleApply()} loading={apply.isLoading} disabled={isAnyLoading}>
+                  Apply All
+                </UIButton>
+              )
+            )}
+            {hasPlan && (planStatus === 'applied' || planStatus === 'pushed') && (
+              <UIButton size="small" icon={<UIIcon name="CloudUploadOutlined" />} onClick={handlePush} loading={push.isLoading} disabled={isAnyLoading}>
+                Push
               </UIButton>
-              <UIPopconfirm title="Reset commit plan?" description="This deletes the current plan." onConfirm={handleReset} okText="Reset" okType="danger">
-                <span>
-                  <UIButton size="small" danger icon={<UIIcon name="DeleteOutlined" />} loading={reset.isLoading} disabled={isAnyLoading}>
-                    Reset
-                  </UIButton>
-                </span>
-              </UIPopconfirm>
-            </UISpace>
-          )}
+            )}
+            {hasPlan && (
+              <>
+                <UIButton variant={isStale ? 'primary' : undefined} size="small" icon={<UIIcon name="ReloadOutlined" />} onClick={handleGenerate} loading={generate.isLoading} disabled={isAnyLoading}>
+                  Regenerate
+                </UIButton>
+                <UIPopconfirm title="Reset commit plan?" description="This deletes the current plan." onConfirm={handleReset} okText="Reset" okType="danger">
+                  <span>
+                    <UIButton size="small" danger icon={<UIIcon name="DeleteOutlined" />} loading={reset.isLoading} disabled={isAnyLoading}>
+                      Reset
+                    </UIButton>
+                  </span>
+                </UIPopconfirm>
+              </>
+            )}
+          </UISpace>
         </UIFlex>
       </UICard>
 
-      {/* Generating */}
+      {/* Generating — skeleton with a rotating status line on top of it */}
       {generate.isLoading && (
-        <UICard style={{ padding: '16px 24px' }}>
+        <UICard style={{ padding: '20px 24px' }}>
           <UISkeletonText width={['100%', '85%', '65%']} height="16px" gap={12} />
-          <div style={{ textAlign: 'center', paddingTop: 20 }}>
-            <UIShimmerText duration="1.8s">
-              Analyzing {filesChanged} files...
-            </UIShimmerText>
+          <div style={{ textAlign: 'center', paddingTop: 18 }}>
+            <UIShimmerText duration="1.8s">{GENERATE_PHRASES[phraseIdx]}</UIShimmerText>
+            {elapsed && (
+              <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 6 }}>{elapsed} elapsed</div>
+            )}
           </div>
         </UICard>
       )}
 
-      {/* Empty state */}
-      {(!hasPlan || commits.length === 0) && !generate.isLoading && (
-        <UICard>
-          <UIEmptyState
-            icon={<UIIcon name="FileOutlined" />}
-            title="No commit plan yet"
-            description={filesChanged > 0 ? `${filesChanged} file${filesChanged !== 1 ? 's' : ''} changed` : undefined}
-          >
-            <UISpace direction="vertical" align="center">
-              <UICheckbox checked={allowSecrets} onChange={(v) => setAllowSecrets(v)}>
-                <Text type="secondary" style={{ fontSize: 13 }}>Allow secrets</Text>
-              </UICheckbox>
-              <UIButton variant="primary" icon={<UIIcon name="ThunderboltOutlined" />} onClick={handleGenerate} disabled={filesChanged === 0}>
-                Generate Plan
-              </UIButton>
-            </UISpace>
-          </UIEmptyState>
-        </UICard>
+      {/* Empty state — quiet placeholder, actions already live in the toolbar */}
+      {!hasPlan && commits.length === 0 && !generate.isLoading && (
+        <div style={{ textAlign: 'center', padding: '28px 0', color: token.colorTextTertiary, fontSize: 13 }}>
+          {filesChanged > 0 ? 'No commit plan yet — generate one from the toolbar above.' : 'No changes to commit.'}
+        </div>
       )}
 
       {/* Commit list */}
@@ -340,43 +420,39 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
             </UIFlex>
 
             {isExpanded && (
-              <div style={{ paddingTop: token.paddingSM }}>
+              <div style={{ paddingTop: token.paddingSM, fontSize: 13 }}>
                 {isRegenerating && (
-                  <UIFlex justify="center" style={{ padding: token.padding }}>
+                  <UIFlex justify="center" style={{ padding: token.paddingSM }}>
                     <UISpin size="small" />
-                    <Text type="secondary" style={{ marginLeft: 8 }}>Regenerating...</Text>
+                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 13 }}>Regenerating...</Text>
                   </UIFlex>
                 )}
                 {commit.body && (
-                  <Text type="secondary" style={{ whiteSpace: 'pre-wrap', display: 'block', marginBottom: token.marginSM }}>
+                  <Text type="secondary" style={{ whiteSpace: 'pre-wrap', display: 'block', fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>
                     {commit.body}
                   </Text>
                 )}
                 {commit.files && commit.files.length > 0 && (
-                  <div style={{ marginBottom: token.marginSM }}>
+                  <div style={{ marginBottom: 10 }}>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                       {commit.files.length} file{commit.files.length !== 1 ? 's' : ''}
                     </Text>
-                    <UICard size="small" style={{ background: token.colorFillAlter }}>
+                    <div style={{ background: token.colorFillAlter, borderRadius: token.borderRadiusSM, padding: '6px 10px' }}>
                       {commit.files.map((file, i) => (
                         <div key={i} style={{ padding: '2px 0', fontFamily: 'monospace', fontSize: 12 }}>{file}</div>
                       ))}
-                    </UICard>
+                    </div>
                   </div>
                 )}
                 {commit.reasoning && (
-                  <UIAlert
-                    message="AI Reasoning"
-                    description={
-                      <Text type="secondary">
-                        {commit.reasoning.explanation}
-                        {commit.reasoning.confidence !== undefined && (
-                          <> ({(commit.reasoning.confidence * 100).toFixed(0)}% confidence)</>
-                        )}
-                      </Text>
-                    }
-                    variant="info"
-                  />
+                  <div style={{ borderLeft: `2px solid ${semantic.info}`, padding: '2px 10px', fontSize: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.6 }}>
+                      {commit.reasoning.explanation}
+                      {commit.reasoning.confidence !== undefined && (
+                        <> &middot; {(commit.reasoning.confidence * 100).toFixed(0)}% confidence</>
+                      )}
+                    </Text>
+                  </div>
                 )}
               </div>
             )}

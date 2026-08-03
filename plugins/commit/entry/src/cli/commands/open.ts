@@ -3,10 +3,12 @@
  * Show current commit plan
  */
 
-import { defineCommand, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, findRepoRoot, useConfig, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import type { CommandResult } from '@kb-labs/sdk';
 import { loadPlan, getCurrentPlanPath, formatCommitMessage } from '@kb-labs/commit-core';
-import type { OpenOutput } from '@kb-labs/commit-contracts';
+import { checkPlanStaleness } from '@kb-labs/commit-core/validator';
+import { resolveCommitConfig, type CommitPluginConfig, type OpenOutput } from '@kb-labs/commit-contracts';
+import { resolveScopePath } from '../../rest/handlers/scope-resolver';
 
 type OpenInput = {
   json?: boolean;
@@ -36,11 +38,27 @@ export default defineCommand({
       }
       const planPath = getCurrentPlanPath(cwd, scope);
 
+      // Proactively check staleness — same shared check applyCommitPlan runs
+      // as a last-second guard, but here it's informational so the user finds
+      // out before running `kb commit:apply` and hitting a raw git error.
+      let stale: boolean | undefined;
+      let staleReason: string | undefined;
+      if (plan) {
+        const fileConfig = await useConfig<Partial<CommitPluginConfig>>();
+        const config = resolveCommitConfig(fileConfig ?? {});
+        const scopeCwd = resolveScopePath(cwd, scope, config.scope?.scopes);
+        const staleness = await checkPlanStaleness(scopeCwd, plan, scope);
+        stale = staleness.isStale;
+        staleReason = staleness.isStale ? staleness.reason : undefined;
+      }
+
       // Output
       const output: OpenOutput = {
         hasPlan: plan !== null,
         plan: plan ?? undefined,
         planPath: plan ? planPath : undefined,
+        stale,
+        staleReason,
       };
 
       if (input.json) {
@@ -49,6 +67,10 @@ export default defineCommand({
         if (!plan) {
           ctx.ui?.info?.('No commit plan found. Run `kb commit:generate` to create one.');
         } else {
+          if (stale) {
+            ctx.ui?.warn?.(`Plan is outdated: ${staleReason}`);
+          }
+
           // Build commits section
           const commitsItems = plan.commits.map((commit, i) => {
             const message = formatCommitMessage(commit);
@@ -81,6 +103,7 @@ export default defineCommand({
             `Created: ${plan.createdAt}`,
             `Total files: ${plan.metadata.totalFiles}`,
             `Total commits: ${plan.metadata.totalCommits}`,
+            `Status: ${stale ? `⚠️  Outdated — ${staleReason}` : '✅ Up to date'}`,
           ];
 
           if (plan.metadata.llmUsed) {

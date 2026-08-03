@@ -59,6 +59,10 @@ export const StatusResponseSchema = z.object({
   filesChanged: z.number().int().min(0).default(0),
   commitsInPlan: z.number().int().min(0).default(0),
   commitsApplied: z.number().int().min(0).default(0),
+  branch: z.string().optional(),
+  workingDir: z.string().optional(),
+  planStale: z.boolean().optional(),
+  planStaleReason: z.string().optional(),
 });
 
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;

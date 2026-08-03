@@ -10,6 +10,7 @@ export default defineConfig({
     'src/generator/index.ts',
     'src/applier/index.ts',
     'src/storage/index.ts',
+    'src/validator/index.ts',
   ],
   dts: {
     resolve: true,

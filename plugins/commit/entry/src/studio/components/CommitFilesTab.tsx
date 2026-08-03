@@ -107,14 +107,19 @@ export function CommitFilesTab({ scope }: CommitFilesTabProps) {
 
   return (
     <div>
-      {/* Summary bar */}
-      <UICard size="small" style={{ marginBottom: 16 }}>
+      {/* Toolbar */}
+      <UICard size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: '8px 14px' } }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <Text type="secondary">{files.length} file{files.length !== 1 ? 's' : ''} changed</Text>
-            {groups.map((g) => (
-              <UITag key={g.key} color={g.tagColor} style={{ margin: 0 }}>{g.label}: {g.files.length}</UITag>
-            ))}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text strong style={{ fontVariantNumeric: 'tabular-nums' }}>{files.length}</Text> file{files.length !== 1 ? 's' : ''} changed
+            </Text>
+            <span style={{ fontSize: 13, color: semantic.textTertiary }}>&middot;</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {groups.map((g) => (
+                <UITag key={g.key} color={g.tagColor} style={{ margin: 0 }}>{g.label}: {g.files.length}</UITag>
+              ))}
+            </div>
           </div>
           <UIButton size="small" icon={<UIIcon name="RobotOutlined" />} onClick={handleSummarizeAll} loading={isSummarizingAll}>
             Summarize All
