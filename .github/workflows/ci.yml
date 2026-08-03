@@ -287,7 +287,7 @@ jobs:
           # changes. pnpm pack materializes workspace:* ranges into exact
           # versions, so reusing an older tarball can make the Verdaccio e2e
           # job test a package graph that is not present in this checkout.
-          key: e2e-tgz-v5-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml') }}
+          key: e2e-tgz-v6-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml', 'plugins/scaffold/entry/templates/**') }}
 
       - name: Pack @kb-labs/* packages
         if: steps.tgz-cache.outputs.cache-hit != 'true'

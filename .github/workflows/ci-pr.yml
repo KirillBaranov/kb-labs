@@ -305,7 +305,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          key: e2e-tgz-v3-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json', 'pnpm-lock.yaml', 'plugins/scaffold/entry/templates/**') }}
 
       - name: Pack @kb-labs/* packages
         if: steps.gate.outputs.run == 'true' && steps.tgz-cache.outputs.cache-hit != 'true'

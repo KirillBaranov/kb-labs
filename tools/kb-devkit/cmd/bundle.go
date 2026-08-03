@@ -229,10 +229,19 @@ func writeManifests(outDir, wsRoot string, closure []workspace.Package) error {
 		relPaths[i] = p.RelPath
 	}
 
-	type wsYAML struct {
-		Packages []string `yaml:"packages"`
+	// Keep workspace-level pnpm settings (overrides, allowBuilds, auditConfig,
+	// etc.) when pruning package globs. The lockfile still contains those
+	// settings, so dropping them makes frozen installs fail with a config
+	// mismatch inside Docker bundles.
+	workspaceConfig := make(map[string]interface{})
+	workspacePath := filepath.Join(wsRoot, "pnpm-workspace.yaml")
+	if source, err := os.ReadFile(workspacePath); err == nil {
+		if err := yaml.Unmarshal(source, &workspaceConfig); err != nil {
+			return fmt.Errorf("parse %s: %w", workspacePath, err)
+		}
 	}
-	data, err := yaml.Marshal(wsYAML{Packages: relPaths})
+	workspaceConfig["packages"] = relPaths
+	data, err := yaml.Marshal(workspaceConfig)
 	if err != nil {
 		return fmt.Errorf("marshal pnpm-workspace.yaml: %w", err)
 	}

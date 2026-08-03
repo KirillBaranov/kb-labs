@@ -173,6 +173,9 @@ func TestBuildClosureHandlesDiamondDeps(t *testing.T) {
 func TestWriteManifestsCreatesWorkspaceYAMLAndPackageJSONFiles(t *testing.T) {
 	root := t.TempDir()
 	outDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "pnpm-workspace.yaml"), []byte("packages:\n  - '**/*'\nallowBuilds:\n  esbuild: true\noverrides:\n  react: ^19.0.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create source package.json files.
 	mkPkg(t, root, "packages/lib-a", `{"name":"@kb/lib-a"}`)
@@ -193,13 +196,18 @@ func TestWriteManifestsCreatesWorkspaceYAMLAndPackageJSONFiles(t *testing.T) {
 		t.Fatalf("read pnpm-workspace.yaml: %v", err)
 	}
 	var ws struct {
-		Packages []string `yaml:"packages"`
+		Packages    []string               `yaml:"packages"`
+		AllowBuilds map[string]bool        `yaml:"allowBuilds"`
+		Overrides   map[string]interface{} `yaml:"overrides"`
 	}
 	if err := yaml.Unmarshal(data, &ws); err != nil {
 		t.Fatalf("parse pnpm-workspace.yaml: %v", err)
 	}
 	if len(ws.Packages) != 2 {
 		t.Fatalf("pnpm-workspace.yaml packages = %v, want 2", ws.Packages)
+	}
+	if !ws.AllowBuilds["esbuild"] || ws.Overrides["react"] != "^19.0.0" {
+		t.Fatalf("workspace settings were not preserved: allowBuilds=%v overrides=%v", ws.AllowBuilds, ws.Overrides)
 	}
 
 	// Check package.json files were copied.
