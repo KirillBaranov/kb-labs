@@ -26,6 +26,10 @@
       "types": "./dist/storage/index.d.ts",
       "import": "./dist/storage/index.js"
     },
+    "./validator": {
+      "types": "./dist/validator/index.d.ts",
+      "import": "./dist/validator/index.js"
+    },
     "./dist/*": "./dist/*"
   },
   "files": [

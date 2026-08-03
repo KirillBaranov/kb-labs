@@ -36,6 +36,9 @@ export {
 // Applier
 export { applyCommitPlan, formatCommitMessage, pushCommits } from './applier';
 
+// Validator
+export { validatePlanIntegrity, checkPlanStaleness, groupFilesByRepo } from './validator';
+
 // Storage
 export {
   getCommitStoragePath,
