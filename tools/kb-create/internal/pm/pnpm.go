@@ -167,6 +167,9 @@ func pinPnpmPackageJSON(dir string) error {
 func (p *PnpmManager) ensureNpmrc(dir string) error {
 	registry := p.Registry
 	if registry == "" {
+		registry = os.Getenv("NPM_CONFIG_REGISTRY")
+	}
+	if registry == "" {
 		registry = "https://registry.npmjs.org/"
 	}
 	// shamefully-hoist ensures all transitive KB Labs packages are reachable

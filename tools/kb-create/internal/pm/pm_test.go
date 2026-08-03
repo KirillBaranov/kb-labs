@@ -197,6 +197,7 @@ func TestEnsurePackageJSONCreatesDir(t *testing.T) {
 // unresolved ${NPM_TOKEN} references that produce noisy warnings).
 func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 	dir := t.TempDir()
+	t.Setenv("NPM_CONFIG_REGISTRY", "")
 	p := &PnpmManager{}
 
 	if err := p.ensureNpmrc(dir); err != nil {
@@ -221,6 +222,25 @@ func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 		if !strings.Contains(string(workspace), want) {
 			t.Errorf("pnpm-workspace.yaml missing %q: got %q", want, string(workspace))
 		}
+	}
+}
+
+func TestEnsureNpmrcPreservesEnvironmentRegistry(t *testing.T) {
+	dir := t.TempDir()
+	const registry = "http://localhost:4873"
+	t.Setenv("NPM_CONFIG_REGISTRY", registry)
+
+	if err := (&PnpmManager{}).ensureNpmrc(dir); err != nil {
+		t.Fatalf("ensureNpmrc() error = %v", err)
+	}
+
+	// #nosec G304 -- path under t.TempDir().
+	data, err := os.ReadFile(filepath.Join(dir, ".npmrc"))
+	if err != nil {
+		t.Fatalf(".npmrc not written: %v", err)
+	}
+	if !strings.Contains(string(data), "registry="+registry) {
+		t.Fatalf(".npmrc did not preserve NPM_CONFIG_REGISTRY: %q", string(data))
 	}
 }
 
