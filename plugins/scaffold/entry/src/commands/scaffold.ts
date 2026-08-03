@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { readFile, appendFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import {
   defineCommand,
   validationError,
@@ -79,15 +79,10 @@ allowBuilds:
   unrs-resolver: true
 `;
 
-async function ensureWorkspaceBuildPolicy(outRoot: string): Promise<void> {
-  const workspacePath = resolve(outRoot, 'pnpm-workspace.yaml');
-  try {
-    const contents = await readFile(workspacePath, 'utf8');
-    if (!contents.includes('\nallowBuilds:')) {
-      await appendFile(workspacePath, GENERATED_WORKSPACE_BUILD_POLICY, 'utf8');
-    }
-  } catch {
-    // Non-plugin entities may not have a pnpm workspace file.
+function ensureWorkspaceBuildPolicyInFiles(files: Array<{ path: string; contents: string }>): void {
+  const workspace = files.find((file) => file.path === 'pnpm-workspace.yaml');
+  if (workspace && !workspace.contents.includes('\nallowBuilds:')) {
+    workspace.contents += GENERATED_WORKSPACE_BUILD_POLICY;
   }
 }
 
@@ -240,6 +235,10 @@ async function runDefault(
     context,
   });
 
+  if (entityArg === 'plugin') {
+    ensureWorkspaceBuildPolicyInFiles(result.files);
+  }
+
   const outRoot = input.out ?? result.outRoot;
   const state = await inspectTarget(outRoot);
 
@@ -264,10 +263,6 @@ async function runDefault(
   }
 
   await writeFiles({ outRoot, files: result.files, force: input.force });
-
-  if (entityArg === 'plugin') {
-    await ensureWorkspaceBuildPolicy(outRoot);
-  }
 
   const entryPkgDir =
     entityArg === 'plugin'
