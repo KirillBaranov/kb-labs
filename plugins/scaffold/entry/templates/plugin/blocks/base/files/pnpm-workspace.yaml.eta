@@ -11,3 +11,12 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
   unrs-resolver: true
+
+# Compatibility with pnpm versions that predate the allowBuilds map.
+onlyBuiltDependencies:
+  - '@kb-labs/devkit'
+  - '@parcel/watcher'
+  - '@swc/core'
+  - better-sqlite3
+  - esbuild
+  - unrs-resolver

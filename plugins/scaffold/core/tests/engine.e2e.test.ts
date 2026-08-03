@@ -64,6 +64,7 @@ describe('engine e2e: plugin/base block', () => {
       (f) => f.path === 'pnpm-workspace.yaml',
     );
     expect(workspaceFile?.contents).toContain('allowBuilds:');
+    expect(workspaceFile?.contents).toContain('onlyBuiltDependencies:');
     expect(workspaceFile?.contents).toContain("'@kb-labs/devkit': true");
     expect(workspaceFile?.contents).toContain('esbuild: true');
 
