@@ -231,7 +231,7 @@ jobs:
     # The step-level gate below selects launcher changes. Keep the job itself
     # unconditional so tools/kb-create/** changes reach that gate even when a
     # PR does not carry the optional full-ci label.
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
 
