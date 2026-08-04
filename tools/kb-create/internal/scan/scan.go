@@ -343,7 +343,10 @@ func GenerateDevServicesYAML(r *ScanResult, baseDir string) string {
 	b.WriteString("settings:\n")
 	b.WriteString("  logs_dir: .kb/logs/tmp\n")
 	b.WriteString("  pid_dir: .kb/tmp\n")
-	b.WriteString("  start_timeout_ms: 30000\n")
+	// Services may need longer than the default startup window while their
+	// adapters initialize (notably rest-api with persistent stores). Keep the
+	// generated config tolerant of that real startup path.
+	b.WriteString("  start_timeout_ms: 120000\n")
 	b.WriteString("  health_check_interval_ms: 1000\n")
 
 	return b.String()

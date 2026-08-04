@@ -256,6 +256,9 @@ func TestGenerateDevServicesYAML(t *testing.T) {
 	if strings.Contains(yaml, "depends_on") {
 		t.Errorf("YAML should not contain depends_on (unknown dep should be filtered), got:\n%s", yaml)
 	}
+	if !strings.Contains(yaml, "start_timeout_ms: 120000") {
+		t.Errorf("YAML should allow slow adapter startup, got:\n%s", yaml)
+	}
 }
 
 // TestGenerateDevServicesYAML_KeepsKnownDeps verifies that when a dependency
