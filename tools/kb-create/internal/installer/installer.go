@@ -124,6 +124,37 @@ type Result struct {
 	InstalledPlugins []scan.PluginEntry
 }
 
+// FinalizeDeclarative materializes outputs selected by the declarative plan
+// after its package and config actions have completed.
+func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) (*Result, error) {
+	if sel == nil || m == nil || ins.Log == nil {
+		return nil, fmt.Errorf("declarative finalization requires selection, manifest, and logger")
+	}
+	start := time.Now()
+	installedBinaries, err := ins.installBinaries(sel.PlatformDir, filterBinaries(m.Binaries, sel.Binaries))
+	if err != nil {
+		return nil, fmt.Errorf("install required binaries: %w", err)
+	}
+	scanResult, err := scan.Run(sel.PlatformDir)
+	if err != nil {
+		return nil, fmt.Errorf("scan installed manifests: %w", err)
+	}
+	if err := scan.WriteConfigs(sel.PlatformDir, scanResult, sel.ProjectCWD); err != nil {
+		return nil, fmt.Errorf("write discovered configs: %w", err)
+	}
+	ins.logPluginManifests(sel.PlatformDir, scanResult.Plugins)
+	ins.symlinkCLI(sel.PlatformDir)
+	if sel.ProjectCWD != "" {
+		if err := os.MkdirAll(filepath.Join(sel.ProjectCWD, ".kb"), 0o750); err != nil {
+			return nil, fmt.Errorf("create project .kb dir: %w", err)
+		}
+	}
+	if err := userstate.Write(&userstate.State{LastPlatformDir: sel.PlatformDir, LastProjectDir: sel.ProjectCWD}); err != nil {
+		ins.Log.Printf("  [WARN] write user state: %v", err)
+	}
+	return &Result{PlatformDir: sel.PlatformDir, ProjectCWD: sel.ProjectCWD, ConfigPath: config.ConfigPath(sel.PlatformDir), Duration: time.Since(start), InstalledBinaries: installedBinaries, HasServices: len(scanResult.Services) > 0, InstalledPlugins: scanResult.Plugins}, nil
+}
+
 // UpdateDiff describes changes between the installed manifest and the current one.
 type UpdateDiff struct {
 	Updated []string // packages with version changes

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,9 @@ import (
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
+	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/logger"
+	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/userstate"
 )
@@ -55,7 +59,25 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	if err != nil {
 		return fmt.Errorf("load declarative catalog: %w", err)
 	}
+	manifestNow, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest: %w", err)
+	}
 	force, _ := cmd.Flags().GetBool("force")
+	if !force {
+		previous, marshalErr := json.Marshal(current.Manifest)
+		if marshalErr != nil {
+			return marshalErr
+		}
+		now, marshalErr := json.Marshal(manifestNow)
+		if marshalErr != nil {
+			return marshalErr
+		}
+		if bytes.Equal(previous, now) {
+			out.OK("Declarative platform already up to date")
+			return nil
+		}
+	}
 	var plugins, services *[]string
 	if !force {
 		selectedPlugins := append([]string(nil), current.SelectedPlugins...)
@@ -102,6 +124,19 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	if err != nil {
 		return fmt.Errorf("declarative update failed: %w", err)
 	}
+	log, err := logger.NewFileOnly(platformDir)
+	if err != nil {
+		return fmt.Errorf("create declarative update log: %w", err)
+	}
+	_, finalizeErr := (&installer.Installer{Log: log}).FinalizeDeclarative(&installer.Selection{
+		PlatformDir: platformDir,
+		ProjectCWD:  current.CWD,
+		Binaries:    intentBinaries(current.ScenarioID, manifestNow),
+	}, manifestNow)
+	_ = log.Close()
+	if finalizeErr != nil {
+		return finalizeErr
+	}
 	if err := writeDeclarativeInstallState(compiled); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -112,6 +147,13 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		}
 	}
 	out.OK(fmt.Sprintf("Declarative update complete (%d actions)", completed))
+	return nil
+}
+
+func intentBinaries(intentID string, source *manifest.Manifest) []string {
+	if intent := source.IntentByID(intentID); intent != nil {
+		return append([]string(nil), intent.Bundle.Binaries...)
+	}
 	return nil
 }
 

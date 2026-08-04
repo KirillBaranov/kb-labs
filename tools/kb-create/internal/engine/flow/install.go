@@ -12,6 +12,7 @@ import (
 // installer. It contains no executable step or UI behavior.
 type InstallSpec struct {
 	Components          []ComponentBinding `json:"components,omitempty"`
+	Binaries            []string           `json:"binaries,omitempty"`
 	ProviderPreferences []ProviderBinding  `json:"providerPreferences,omitempty"`
 	Effects             []EffectBinding    `json:"effects,omitempty"`
 }
@@ -112,7 +113,7 @@ func BuildInstallRequest(scenario Scenario, state State, projectRoot, platformRo
 			}
 		}
 	}
-	return plan.InstallRequest{Schema: "kb.install/1", Source: plan.SourceScenario, ScenarioID: scenario.ID, CatalogDigest: catalogDigest, ProjectRoot: projectRoot, PlatformRoot: platformRoot, Components: components, Effects: effects, ProviderPreferences: preferences, Values: values}, nil
+	return plan.InstallRequest{Schema: "kb.install/1", Source: plan.SourceScenario, ScenarioID: scenario.ID, CatalogDigest: catalogDigest, ProjectRoot: projectRoot, PlatformRoot: platformRoot, Components: components, Binaries: append([]string(nil), install.Binaries...), Effects: effects, ProviderPreferences: preferences, Values: values}, nil
 }
 
 func uniqueStrings(values []string) []string {

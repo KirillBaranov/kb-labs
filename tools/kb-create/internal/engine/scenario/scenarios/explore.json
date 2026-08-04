@@ -3,6 +3,7 @@
   "id": "explore",
   "title": "KB Labs platform",
   "install": {
+    "binaries": ["kb-dev"],
     "components": [
       {"id": "service:rest"},
       {"id": "service:workflow"},

@@ -29,6 +29,7 @@ type InstallRequest struct {
 	ProjectRoot         string                      `json:"projectRoot"`
 	PlatformRoot        string                      `json:"platformRoot"`
 	Components          []string                    `json:"components"`
+	Binaries            []string                    `json:"binaries,omitempty"`
 	Effects             []string                    `json:"effects,omitempty"`
 	RefreshPackages     bool                        `json:"refreshPackages,omitempty"`
 	ProviderPreferences map[string][]string         `json:"providerPreferences,omitempty"`
@@ -74,6 +75,7 @@ type InstallPlan struct {
 	PlatformRoot  string                      `json:"platformRoot"`
 	Effects       []string                    `json:"effects,omitempty"`
 	Values        map[string]json.RawMessage  `json:"values,omitempty"`
+	Binaries      []string                    `json:"binaries,omitempty"`
 	Assembly      engineconfig.ConfigAssembly `json:"assembly"`
 	Actions       []PlanAction                `json:"actions"`
 	PlanHash      string                      `json:"planHash"`
@@ -216,7 +218,7 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		assembly.Patches = append(assembly.Patches, effect.Config...)
 	}
 	actions = append(actions, PlanAction{ID: "config:runtime", Kind: ActionWriteConfig, DependsOn: actionIDs(actions)})
-	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Assembly: assembly, Actions: actions}
+	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Binaries: catalog.SortedIDs(request.Binaries), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
 }

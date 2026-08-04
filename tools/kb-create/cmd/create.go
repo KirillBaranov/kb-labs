@@ -17,7 +17,9 @@ import (
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/telemetry"
 )
 
@@ -106,6 +108,27 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if _, err := executeFlowPlan(compiled); err != nil {
 		return err
 	}
+	declarativeManifest, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest: %w", err)
+	}
+	declarativeIntent := declarativeManifest.IntentByID(intent)
+	if declarativeIntent == nil {
+		return fmt.Errorf("declarative manifest has no intent %q", intent)
+	}
+	log, err := logger.NewFileOnly(compiled.PlatformRoot)
+	if err != nil {
+		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	_, finalizeErr := (&installer.Installer{PM: pm.Detect(), Log: log}).FinalizeDeclarative(&installer.Selection{
+		PlatformDir: compiled.PlatformRoot,
+		ProjectCWD:  compiled.ProjectRoot,
+		Binaries:    compiled.Binaries,
+	}, declarativeManifest)
+	_ = log.Close()
+	if finalizeErr != nil {
+		return finalizeErr
+	}
 	if err := writeDeclarativeInstallState(compiled); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -113,14 +136,6 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", compiled.PlatformRoot)
 	if compiled.ProjectRoot != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
-	}
-	declarativeManifest, err := manifest.LoadDefault()
-	if err != nil {
-		return fmt.Errorf("load declarative manifest for completion: %w", err)
-	}
-	declarativeIntent := declarativeManifest.IntentByID(intent)
-	if declarativeIntent == nil {
-		return fmt.Errorf("declarative manifest has no intent %q", intent)
 	}
 	printCompletionBlock(&installer.Result{
 		PlatformDir: compiled.PlatformRoot,
