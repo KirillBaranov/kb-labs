@@ -225,13 +225,20 @@ jobs:
   # NPM_CONFIG_REGISTRY is intentionally NOT set: pm.Detect() only falls back
   # to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
   launcher-e2e:
-    name: kb-create e2e
+    name: kb-create e2e / ${{ matrix.shard }}
     runs-on: ubuntu-latest
     needs: [build-tools, build]
     # The step-level gate below selects launcher changes. Keep the job itself
     # unconditional so tools/kb-create/** changes reach that gate even when a
     # PR does not carry the optional full-ci label.
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - core
+          - journeys
+          - lifecycle
     permissions:
       contents: read
 
@@ -376,6 +383,8 @@ jobs:
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}
+          E2E_RUN: >-
+            ${{ matrix.shard == 'core' && '^Test(Help|Version|SubcommandHelp|StatusMissingPlatform|DoctorNoArgs|InstallYes|FirstCommitNoChanges|FirstCommitPromptShown|Update|ReinstallIdempotent|LogsCommand|KbCliSmoke|ServicesStartStop|LLMFlagRemoved|NoLLMByDefault|DefaultKeepsAuthOn|LocalModeWritesAuthOff|NoPeerDepWarnings|PlatformFilesGenerated|GitignoreEntries|DemoReviewSkipsUntrackedOnly|DemoHintShownAfterZeroFindings|KbConfigShowSplitRoot|DeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply|GeneratedWorkflowsUseWorkflowIdFlag|GeneratedDemoWorkflowUsesRealCommands|DemoFlagDoesNotChangeInstalledPackages|DoctorDockerCheckIsAdvisoryNotFatal|InstallScopedPlugin|InstallUnknownPluginFailsFast)$' || matrix.shard == 'journeys' && '^Test(TwoProjectsShareOnePlatformIsolated|NoPlaceholderValuesInGeneratedConfigs|SoloDeveloperJourney|LegacyProjectMigrationJourney|CIInstallJourney_PinnedPluginsServicesAndAdapters|CIInstallJourney_UnconfiguredRequiredCapabilityWarns|CIInstallJourney_ExecutesInstalledPlugin|PlatformUpdateAndUninstallPreservesUserArtifacts|AdapterSwitchJourney|KbDevRegistrySwitch_MultiProjectSharedPlatform)$' || '^Test(Lifecycle_InstallSwapRollback|PlatformDirMkdirFailsHardAbort|UninstallRetryThenHardFail)$' }}
           # Unlimited failure output — kb-devkit's default 50-line truncation
           # hides exactly the per-service LogsTail/state detail needed to
           # diagnose a failure here, and this job has no log-upload step
