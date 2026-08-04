@@ -131,6 +131,8 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	_, finalizeErr := (&installer.Installer{Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir: platformDir,
 		ProjectCWD:  current.CWD,
+		Plugins:     append([]string(nil), current.SelectedPlugins...),
+		Services:    append([]string(nil), current.SelectedServices...),
 		Binaries:    intentBinaries(current.ScenarioID, manifestNow),
 	}, manifestNow)
 	_ = log.Close()

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -128,10 +129,16 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
+	selectedPlugins, selectedServices := selectedComponentsFromPlan(compiled)
 	_, finalizeErr := (&installer.Installer{PM: pm.Detect(), Log: log}).FinalizeDeclarative(&installer.Selection{
-		PlatformDir: compiled.PlatformRoot,
-		ProjectCWD:  compiled.ProjectRoot,
-		Binaries:    compiled.Binaries,
+		PlatformDir:                      compiled.PlatformRoot,
+		ProjectCWD:                       compiled.ProjectRoot,
+		Binaries:                         compiled.Binaries,
+		Plugins:                          selectedPlugins,
+		Services:                         selectedServices,
+		LocalMode:                        flagLocal,
+		DemoMode:                         flagDemo,
+		AllowIncompatibleLegacyMigration: true,
 	}, declarativeManifest)
 	_ = log.Close()
 	if finalizeErr != nil {
@@ -150,6 +157,24 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		ProjectCWD:  compiled.ProjectRoot,
 	}, declarativeIntent.FirstCommand, "", "", "", "", nil, declarativeIntent.Docs, declarativeIntent.NextSteps, false, false)
 	return nil
+}
+
+func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, services []string) {
+	for _, action := range compiled.Actions {
+		if action.Kind != engineplan.ActionInstallPackage {
+			continue
+		}
+		kind, id := manifestComponent(action.Inputs["component"])
+		switch kind {
+		case "plugin":
+			plugins = append(plugins, id)
+		case "service":
+			services = append(services, id)
+		}
+	}
+	sort.Strings(plugins)
+	sort.Strings(services)
+	return plugins, services
 }
 
 func telemetryFailureCategory(err error) string {

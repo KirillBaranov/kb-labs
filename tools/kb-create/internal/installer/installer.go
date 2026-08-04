@@ -22,6 +22,7 @@ import (
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/platform"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/scan"
 	"github.com/kb-labs/create/internal/types"
 	"github.com/kb-labs/create/internal/userstate"
@@ -29,23 +30,24 @@ import (
 
 // Selection holds what the user chose to install.
 type Selection struct {
-	PlatformDir      string
-	ProjectCWD       string
-	Services         []string // component IDs
-	Plugins          []string // component IDs
-	Binaries         []string // binary IDs to install
-	Telemetry        config.TelemetryConfig
-	Project          *detect.ProjectProfile // detected project info (may be nil)
-	DemoMode         bool
-	DevMode          bool   // true when --dev-manifest flag is set; enables pnpm pack pre-step
-	Registry         string // optional: custom npm registry URL (e.g. http://localhost:4873)
-	Consent          types.ConsentChoice
-	APIKey           string `json:"-"` // only when Consent == types.ConsentOwnKey // #nosec G117 -- not serialized
-	TelemetryEnabled bool
-	LLMEnabled       bool   // user explicitly opted in to LLM via wizard or --llm flag
-	LLMProvider      string // "openai" | "anthropic" | "" (skip)
-	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
-	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	PlatformDir                      string
+	ProjectCWD                       string
+	Services                         []string // component IDs
+	Plugins                          []string // component IDs
+	Binaries                         []string // binary IDs to install
+	Telemetry                        config.TelemetryConfig
+	Project                          *detect.ProjectProfile // detected project info (may be nil)
+	DemoMode                         bool
+	DevMode                          bool   // true when --dev-manifest flag is set; enables pnpm pack pre-step
+	Registry                         string // optional: custom npm registry URL (e.g. http://localhost:4873)
+	Consent                          types.ConsentChoice
+	APIKey                           string `json:"-"` // only when Consent == types.ConsentOwnKey // #nosec G117 -- not serialized
+	TelemetryEnabled                 bool
+	LLMEnabled                       bool   // user explicitly opted in to LLM via wizard or --llm flag
+	LLMProvider                      string // "openai" | "anthropic" | "" (skip)
+	LLMKey                           string `json:"-"` // API key for the chosen provider // #nosec G117
+	LocalMode                        bool   // user chose local single-user mode (gateway auth off, loopback bind)
+	AllowIncompatibleLegacyMigration bool
 	// ClaudeEnabled controls the optional KB Labs agent setup: managed skills
 	// under .claude/skills/kb-labs-* plus a separately marked CLAUDE.md section.
 	// It never authorizes replacing user-authored files.
@@ -145,14 +147,23 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 	ins.logPluginManifests(sel.PlatformDir, scanResult.Plugins)
 	ins.symlinkCLI(sel.PlatformDir)
 	if sel.ProjectCWD != "" {
-		if err := os.MkdirAll(filepath.Join(sel.ProjectCWD, ".kb"), 0o750); err != nil {
-			return nil, fmt.Errorf("create project .kb dir: %w", err)
+		if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffold.Options{
+			PlatformDir:                      sel.PlatformDir,
+			Services:                         sel.Services,
+			Plugins:                          sel.Plugins,
+			DemoMode:                         sel.DemoMode,
+			Adapters:                         sel.Adapters,
+			Catalog:                          m,
+			Gateway:                          buildGatewayPlan(scanResult, m),
+			AllowIncompatibleLegacyMigration: sel.AllowIncompatibleLegacyMigration,
+		}); err != nil {
+			return nil, fmt.Errorf("write project config: %w", err)
 		}
 	}
 	if err := userstate.Write(&userstate.State{LastPlatformDir: sel.PlatformDir, LastProjectDir: sel.ProjectCWD}); err != nil {
 		ins.Log.Printf("  [WARN] write user state: %v", err)
 	}
-	return &Result{PlatformDir: sel.PlatformDir, ProjectCWD: sel.ProjectCWD, ConfigPath: config.ConfigPath(sel.PlatformDir), Duration: time.Since(start), InstalledBinaries: installedBinaries, HasServices: len(scanResult.Services) > 0, InstalledPlugins: scanResult.Plugins}, nil
+	return &Result{PlatformDir: sel.PlatformDir, ProjectCWD: sel.ProjectCWD, ConfigPath: config.ConfigPath(sel.PlatformDir), Duration: time.Since(start), InstalledBinaries: installedBinaries, HasServices: len(scanResult.Services) > 0, Gateway: buildGatewayPlan(scanResult, m), InstalledPlugins: scanResult.Plugins}, nil
 }
 
 // UpdateDiff describes changes between the installed manifest and the current one.

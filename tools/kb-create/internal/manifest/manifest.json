@@ -158,6 +158,14 @@
       "owner": "catalog:default"
     },
     {
+      "id": "platform.projects",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/projects",
+      "value": {},
+      "owner": "catalog:default"
+    },
+    {
       "id": "service.rest.disabled",
       "scope": "platform",
       "operation": "set",
@@ -282,7 +290,7 @@
       "root": "project",
       "path": ".kb/kb.config.jsonc",
       "format": "jsonc",
-      "overwrite": "replace"
+      "overwrite": "createOnly"
     }
   ],
   "artifacts": [

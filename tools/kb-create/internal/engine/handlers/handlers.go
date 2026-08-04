@@ -157,6 +157,11 @@ func (h *configHandler) Verify(_ context.Context, _ plan.PlanAction, _ executor.
 		return err
 	}
 	for _, artifact := range result.Artifacts {
+		if artifact.Mode == config.OverwriteCreateOnly {
+			if _, readErr := os.Stat(artifact.Path); readErr == nil {
+				continue
+			}
+		}
 		data, readErr := os.ReadFile(filepath.Clean(artifact.Path)) // #nosec G304 -- path was root-validated by config.Assemble.
 		if readErr != nil {
 			return readErr

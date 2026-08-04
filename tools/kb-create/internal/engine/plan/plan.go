@@ -154,6 +154,35 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 			assembly.Patches = append(assembly.Patches, provider.Config...)
 		}
 	}
+	// Explicit adapter selections are configuration, not merely provider
+	// preferences. Materialize them even when the selected component does not
+	// currently declare a requirement for that capability (for example a CI
+	// install selecting a storage backend for a later command). When the
+	// package is not present in the catalog, it is still a valid user-supplied
+	// provider package and must be installed and written to runtime config.
+	for _, capability := range sortedPreferenceKeys(request.ProviderPreferences) {
+		preferences := request.ProviderPreferences[capability]
+		if len(preferences) == 0 || preferences[0] == "" {
+			continue
+		}
+		if _, exists := providers[capability]; exists {
+			continue
+		}
+		provider := catalog.Provider{ID: "explicit:" + capability, Capability: capability, Package: preferences[0]}
+		if known, ok := source.Provider(preferences[0]); ok {
+			provider = known
+		}
+		providers[capability] = provider
+		providerValue, _ := json.Marshal(provider.Package)
+		assembly.Patches = append(assembly.Patches, engineconfig.ConfigPatch{
+			ID:        "adapter." + capability,
+			Scope:     engineconfig.ScopePlatform,
+			Operation: engineconfig.OperationSet,
+			Path:      "/platform/adapters/" + capability,
+			Value:     providerValue,
+			Owner:     "provider:" + provider.ID,
+		})
+	}
 
 	actions := make([]PlanAction, 0, len(source.Core)+len(selected)+len(providers)+1)
 	foundation := make([]string, 0, len(source.Core))
@@ -221,6 +250,15 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Binaries: catalog.SortedIDs(request.Binaries), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
+}
+
+func sortedPreferenceKeys(preferences map[string][]string) []string {
+	keys := make([]string, 0, len(preferences))
+	for key := range preferences {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func cloneValues(values map[string]json.RawMessage) map[string]json.RawMessage {

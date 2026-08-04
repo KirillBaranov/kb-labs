@@ -18,6 +18,8 @@ import (
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
+	"github.com/kb-labs/create/internal/installer"
+	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scaffold"
@@ -157,6 +159,39 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("declarative installation failed: %w", err)
 	}
+	declarativeManifest, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest: %w", err)
+	}
+	log, err := logger.NewFileOnly(platformDir)
+	if err != nil {
+		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	selectedPlugins := make([]string, 0, len(canonicalPlugins))
+	selectedServices := make([]string, 0, len(canonicalServices))
+	for _, component := range append(append([]string(nil), canonicalPlugins...), canonicalServices...) {
+		kind, id := manifestComponent(component)
+		switch kind {
+		case "plugin":
+			selectedPlugins = append(selectedPlugins, id)
+		case "service":
+			selectedServices = append(selectedServices, id)
+		}
+	}
+	result, finalizeErr := (&installer.Installer{PM: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}), Log: log}).FinalizeDeclarative(&installer.Selection{
+		PlatformDir:                      platformDir,
+		ProjectCWD:                       projectDir,
+		Plugins:                          selectedPlugins,
+		Services:                         selectedServices,
+		Adapters:                         adapters,
+		AllowIncompatibleLegacyMigration: true,
+	}, declarativeManifest)
+	_ = log.Close()
+	if finalizeErr != nil {
+		return fmt.Errorf("finalize declarative installation: %w", finalizeErr)
+	}
+	printAdapterReconciliation(out, platformDir, adapters, result.InstalledPlugins)
+	printEnvHints(out, platformDir, result.InstalledPlugins)
 	if err := writeDeclarativeInstallState(compiled); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}

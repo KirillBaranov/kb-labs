@@ -426,7 +426,10 @@ func Write(result Result, assembly ConfigAssembly, roots Roots) error {
 	for _, artifact := range result.Artifacts {
 		if artifact.Mode == OverwriteCreateOnly {
 			if _, err := os.Stat(artifact.Path); err == nil {
-				return fmt.Errorf("artifact %s already exists", artifact.ID)
+				// createOnly is the declarative ownership contract for user-owned
+				// files: an existing file is preserved and any migration/materializer
+				// responsible for it may reconcile it afterwards.
+				continue
 			} else if !os.IsNotExist(err) {
 				return err
 			}
