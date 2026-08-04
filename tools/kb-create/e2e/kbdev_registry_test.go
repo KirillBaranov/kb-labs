@@ -198,7 +198,7 @@ func TestKbDevRegistrySwitch_MultiProjectSharedPlatform(t *testing.T) {
 	mustGit(t, projA, "commit", "--allow-empty", "-m", "init")
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
 
-	if _, code := run(t, bin, projA, "--yes", "--local", "--platform", platformDir); code != 0 {
+	if _, code := runInDir(t, bin, projA, "--yes", "--local", "--platform", platformDir); code != 0 {
 		t.Fatalf("install failed")
 	}
 

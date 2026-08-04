@@ -126,17 +126,16 @@ func TestAdapterSwitchJourney(t *testing.T) {
 		return out
 	}
 
-	sqliteVersion := readPkgVersion(t, filepath.Join("adapters", "sqlite", "package.json"))
-	install("@kb-labs/adapters-sqlite@" + sqliteVersion)
-	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/adapters-sqlite"`)
-	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "adapters-sqlite")); err != nil {
-		t.Fatalf("sqlite adapter artifact missing: %v", err)
+	install("@kb-labs/adapters-redis")
+	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/adapters-redis"`)
+	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "adapters-redis")); err != nil {
+		t.Fatalf("redis adapter artifact missing: %v", err)
 	}
 
-	install("@kb-labs/adapters-sqlite")
-	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/adapters-sqlite"`)
-	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "adapters-sqlite")); err != nil {
-		t.Fatalf("sqlite adapter artifact missing after switch: %v", err)
+	install("@kb-labs/data-store")
+	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/data-store"`)
+	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "data-store")); err != nil {
+		t.Fatalf("data-store adapter artifact missing after switch: %v", err)
 	}
 
 	if out, code := run(t, bin, "doctor", "--platform", platformDir); code != 0 {
