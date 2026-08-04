@@ -44,6 +44,15 @@ func TestSoloDeveloperJourney(t *testing.T) {
 	if stdout, stderr, startCode := runKbDev(t, platformDir, "start"); startCode != 0 {
 		t.Fatalf("kb-dev start exited %d\nstdout:\n%s\nstderr:\n%s", startCode, stdout, stderr)
 	}
+	// The E2E stack exposes the marketplace daemon directly on 5070. Use that
+	// service URL for the canonical registration call; the gateway route is
+	// intentionally covered by the marketplace API suite, while this journey
+	// verifies scaffold -> build -> run.
+	previousMarketplaceURL := os.Getenv("KB_MARKETPLACE_URL")
+	if err := os.Setenv("KB_MARKETPLACE_URL", "http://127.0.0.1:5070"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Setenv("KB_MARKETPLACE_URL", previousMarketplaceURL) })
 	t.Cleanup(func() {
 		_, _, _ = runKbDev(t, platformDir, "stop")
 	})

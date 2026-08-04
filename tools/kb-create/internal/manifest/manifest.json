@@ -166,6 +166,14 @@
       "owner": "catalog:default"
     },
     {
+      "id": "project.projects",
+      "scope": "project",
+      "operation": "set",
+      "path": "/projects",
+      "value": {},
+      "owner": "catalog:default"
+    },
+    {
       "id": "service.rest.disabled",
       "scope": "platform",
       "operation": "set",
