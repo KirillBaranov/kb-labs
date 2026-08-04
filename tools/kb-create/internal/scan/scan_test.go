@@ -261,6 +261,22 @@ func TestGenerateDevServicesYAML(t *testing.T) {
 	}
 }
 
+func TestGenerateDevServicesYAML_PreservesTCPHealthChecks(t *testing.T) {
+	r := &ScanResult{Services: []ServiceEntry{{
+		ID:      "rest",
+		Name:    "REST API",
+		Runtime: ServiceRuntime{Entry: "dist/index.js", Port: 5050, HealthCheck: "localhost:5050"},
+	}}}
+
+	yaml := GenerateDevServicesYAML(r, "")
+	if !strings.Contains(yaml, "health_check: localhost:5050") {
+		t.Fatalf("TCP health check was rewritten:\n%s", yaml)
+	}
+	if strings.Contains(yaml, "localhost:5050localhost:5050") {
+		t.Fatalf("TCP health check was concatenated as an HTTP path:\n%s", yaml)
+	}
+}
+
 // TestGenerateDevServicesYAML_KeepsKnownDeps verifies that when a dependency
 // target IS present in the scan, the depends_on reference is preserved.
 func TestGenerateDevServicesYAML_KeepsKnownDeps(t *testing.T) {

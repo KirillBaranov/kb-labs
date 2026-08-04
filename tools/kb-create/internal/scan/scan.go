@@ -271,11 +271,7 @@ func GenerateDevServicesYAML(r *ScanResult, baseDir string) string {
 		command := fmt.Sprintf("node %s/%s", resolvedPath, s.Runtime.Entry)
 		healthURL := ""
 		if s.Runtime.HealthCheck != "" {
-			proto := s.Runtime.Protocol
-			if proto == "" {
-				proto = "http"
-			}
-			healthURL = fmt.Sprintf("%s://localhost:%d%s", proto, s.Runtime.Port, s.Runtime.HealthCheck)
+			healthURL = normalizeHealthCheck(s.Runtime.HealthCheck, s.Runtime.Protocol, s.Runtime.Port)
 		}
 		url := fmt.Sprintf("http://localhost:%d", s.Runtime.Port)
 		filteredDeps := filterKnownDeps(s.DependsOn, known)
@@ -350,6 +346,19 @@ func GenerateDevServicesYAML(r *ScanResult, baseDir string) string {
 	b.WriteString("  health_check_interval_ms: 1000\n")
 
 	return b.String()
+}
+
+func normalizeHealthCheck(healthCheck, protocol string, port int) string {
+	if strings.HasPrefix(healthCheck, "http://") || strings.HasPrefix(healthCheck, "https://") {
+		return healthCheck
+	}
+	if strings.Contains(healthCheck, ":") && !strings.HasPrefix(healthCheck, "/") {
+		return healthCheck
+	}
+	if protocol == "" {
+		protocol = "http"
+	}
+	return fmt.Sprintf("%s://localhost:%d%s", protocol, port, healthCheck)
 }
 
 // filterKnownDeps returns a new slice containing only those dependency IDs
