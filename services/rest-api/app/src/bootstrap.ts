@@ -142,8 +142,9 @@ async function startRestApi({
   const restTransport =
     platform.getAdapter<IServiceTransport>("serviceTransport");
   const restAddr = restTransport?.listenAddress?.("rest");
+  const netOffset = Number(process.env.KB_NET_OFFSET) || 0;
   const listenPort =
-    restAddr && "port" in restAddr ? restAddr.port : config.port;
+    restAddr && "port" in restAddr ? restAddr.port : config.port + netOffset;
   const restAddrHost =
     restAddr && "host" in restAddr ? restAddr.host : undefined;
 
