@@ -201,10 +201,27 @@ func WriteProjects(platformDir string, projects map[string]string) error {
 	startIdx := strings.Index(content, projectsStartMarker)
 	endIdx := strings.Index(content, projectsEndMarker)
 	if startIdx < 0 || endIdx < 0 || endIdx < startIdx {
-		return fmt.Errorf(
-			"%s has no projects registry block — run `kb-create update` to add it",
-			path,
-		)
+		// Declarative kb-create output is valid JSONC and materializes the
+		// projects object without the legacy comment sentinels. Update that
+		// object semantically instead of requiring formatting markers.
+		cleaned := stripJSONC(data)
+		var document map[string]any
+		if err := json.Unmarshal([]byte(cleaned), &document); err != nil {
+			return fmt.Errorf("%s has no projects registry block — run `kb-create update` to add it", path)
+		}
+		if _, ok := document["projects"]; !ok {
+			return fmt.Errorf("%s has no projects registry block — run `kb-create update` to add it", path)
+		}
+		document["projects"] = projects
+		updated, err := json.MarshalIndent(document, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal projects registry: %w", err)
+		}
+		updated = append(updated, '\n')
+		if err := os.WriteFile(path, updated, 0o644); err != nil {
+			return fmt.Errorf("write projects registry: %w", err)
+		}
+		return nil
 	}
 	bodyStart := startIdx + len(projectsStartMarker)
 

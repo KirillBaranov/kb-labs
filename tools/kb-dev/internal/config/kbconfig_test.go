@@ -152,6 +152,21 @@ func TestWriteProjects_noBlock(t *testing.T) {
 	}
 }
 
+func TestWriteProjects_declarativeJSON(t *testing.T) {
+	platformDir := writeFixtureKBConfig(t, `{"platform": {"dir": "/x"}, "projects": {}}`)
+
+	if err := WriteProjects(platformDir, map[string]string{"a": "/a"}); err != nil {
+		t.Fatalf("WriteProjects declarative JSON: %v", err)
+	}
+	projects, err := ReadProjects(platformDir)
+	if err != nil {
+		t.Fatalf("ReadProjects declarative JSON: %v", err)
+	}
+	if projects["a"] != "/a" {
+		t.Fatalf("projects[a] = %q, want /a", projects["a"])
+	}
+}
+
 func writeProjectKBConfigJSON(t *testing.T, content string) string {
 	t.Helper()
 	dir := t.TempDir()
