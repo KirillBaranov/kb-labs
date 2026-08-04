@@ -1,6 +1,11 @@
 package scenario
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kb-labs/create/internal/engine/flow"
+	engineui "github.com/kb-labs/create/internal/engine/ui"
+)
 
 func TestAllScenarioFixturesLoadThroughFlowValidator(t *testing.T) {
 	for _, id := range IDs() {
@@ -10,6 +15,13 @@ func TestAllScenarioFixturesLoadThroughFlowValidator(t *testing.T) {
 		}
 		if loaded.ID != id {
 			t.Fatalf("%s loaded as %s", id, loaded.ID)
+		}
+		state, err := flow.New(loaded)
+		if err != nil {
+			t.Fatalf("%s cannot initialize state: %v", id, err)
+		}
+		if _, err := engineui.FromPage(loaded, state); err != nil {
+			t.Fatalf("%s cannot be rendered by the shared UI: %v", id, err)
 		}
 	}
 }

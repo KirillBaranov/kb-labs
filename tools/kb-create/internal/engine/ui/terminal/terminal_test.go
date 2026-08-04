@@ -16,7 +16,7 @@ func (c *clipboardStub) Copy(_ context.Context, value string) error { c.value = 
 func (*clipboardStub) Available() bool                              { return true }
 
 func terminalScenario() flow.Scenario {
-	return flow.Scenario{Schema: "kb.scenario/1", ID: "terminal", Title: "Terminal", Pages: []flow.Page{{
+	return flow.Scenario{Schema: "kb.scenario/2", ID: "terminal", Title: "Terminal", Pages: []flow.Page{{
 		ID: "page", Sections: []flow.Section{{ID: "section", Fields: []flow.Field{
 			{ID: "name", Type: "text", Label: "Name", Required: true},
 			{ID: "enabled", Type: "confirm", Label: "Enabled", Default: []byte("true")},

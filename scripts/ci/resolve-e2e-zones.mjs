@@ -84,7 +84,13 @@ export function buildPlan(changes, zones) {
   const warnings = [];
 
   const add = (zone, file, reason) => {
-    if (!selected.has(zone.zone)) selected.set(zone.zone, { zone: zone.zone, suites: zone.suites ?? [], files: [], reasons: new Set() });
+    if (!selected.has(zone.zone)) selected.set(zone.zone, {
+      zone: zone.zone,
+      runner: zone.runner ?? 'docker',
+      suites: zone.suites ?? [],
+      files: [],
+      reasons: new Set(),
+    });
     const item = selected.get(zone.zone);
     item.files.push(file);
     item.reasons.add(reason);
@@ -128,7 +134,7 @@ export function markdown(plan, baseRef) {
   else {
     lines.push('### Selected E2E zones', '');
     for (const zone of plan.selected) {
-      lines.push(`- **${zone.zone}** → ${zone.suites.map((suite) => `\`${suite}\``).join(', ')} _(${zone.reasons.join('; ')})_`);
+      lines.push(`- **${zone.zone}** [${zone.runner}] → ${zone.suites.map((suite) => `\`${suite}\``).join(', ')} _(${zone.reasons.join('; ')})_`);
     }
   }
   if (plan.warnings.length > 0) {

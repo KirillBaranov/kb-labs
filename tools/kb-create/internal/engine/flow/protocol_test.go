@@ -6,7 +6,7 @@ import (
 )
 
 func TestSessionEmitsSameMachineEventsForAnswerSources(t *testing.T) {
-	data := []byte(`{"schema":"kb.scenario/1","id":"commit","pages":[{"id":"p","sections":[{"id":"s","fields":[{"id":"mode","type":"select","required":true}]}]}]}`)
+	data := []byte(`{"schema":"kb.scenario/2","id":"commit","pages":[{"id":"p","sections":[{"id":"s","fields":[{"id":"mode","type":"select","required":true}]}]}]}`)
 	scenario, err := Load(data)
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestLoadRejectsOldScenarioSchemaAndDuplicateFields(t *testing.T) {
 	if _, err := Load([]byte(`{"schema":"kb.intent/legacy","id":"x","pages":[]}`)); err == nil {
 		t.Fatal("legacy schema was accepted")
 	}
-	_, err := Load([]byte(`{"schema":"kb.scenario/1","id":"x","pages":[{"id":"p","sections":[{"id":"a","fields":[{"id":"same","type":"text"}]},{"id":"b","fields":[{"id":"same","type":"text"}]}]}]}`))
+	_, err := Load([]byte(`{"schema":"kb.scenario/2","id":"x","pages":[{"id":"p","sections":[{"id":"a","fields":[{"id":"same","type":"text"}]},{"id":"b","fields":[{"id":"same","type":"text"}]}]}]}`))
 	if err == nil {
 		t.Fatal("duplicate field was accepted")
 	}

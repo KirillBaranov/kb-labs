@@ -24,11 +24,16 @@ const (
 type InstallRequest struct {
 	Schema              string                      `json:"schema"`
 	Source              Source                      `json:"source"`
+	ScenarioID          string                      `json:"scenarioId,omitempty"`
 	CatalogDigest       string                      `json:"catalogDigest"`
 	ProjectRoot         string                      `json:"projectRoot"`
 	PlatformRoot        string                      `json:"platformRoot"`
 	Components          []string                    `json:"components"`
+	Binaries            []string                    `json:"binaries,omitempty"`
+	Effects             []string                    `json:"effects,omitempty"`
+	RefreshPackages     bool                        `json:"refreshPackages,omitempty"`
 	ProviderPreferences map[string][]string         `json:"providerPreferences,omitempty"`
+	PackageOverrides    map[string]string           `json:"packageOverrides,omitempty"`
 	Values              map[string]json.RawMessage  `json:"values,omitempty"`
 	AssemblyOutputs     []engineconfig.ConfigOutput `json:"assemblyOutputs,omitempty"`
 }
@@ -66,8 +71,12 @@ type InstallPlan struct {
 	Schema        string                      `json:"schema"`
 	CatalogDigest string                      `json:"catalogDigest"`
 	Source        Source                      `json:"source"`
+	ScenarioID    string                      `json:"scenarioId,omitempty"`
 	ProjectRoot   string                      `json:"projectRoot"`
 	PlatformRoot  string                      `json:"platformRoot"`
+	Effects       []string                    `json:"effects,omitempty"`
+	Values        map[string]json.RawMessage  `json:"values,omitempty"`
+	Binaries      []string                    `json:"binaries,omitempty"`
 	Assembly      engineconfig.ConfigAssembly `json:"assembly"`
 	Actions       []PlanAction                `json:"actions"`
 	PlanHash      string                      `json:"planHash"`
@@ -99,6 +108,7 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	}
 	componentIDs := catalog.SortedIDs(request.Components)
 	assembly := engineconfig.ConfigAssembly{Outputs: append([]engineconfig.ConfigOutput(nil), source.Outputs...)}
+	assembly.Artifacts = append(assembly.Artifacts, source.Artifacts...)
 	assembly.Outputs = append(assembly.Outputs, request.AssemblyOutputs...)
 	assembly.Patches = append(assembly.Patches, source.Defaults...)
 	if request.PlatformRoot != "" {
@@ -114,6 +124,9 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		component, ok := source.Component(id)
 		if !ok {
 			return InstallPlan{}, fmt.Errorf("unknown component %q", id)
+		}
+		if override := request.PackageOverrides[id]; override != "" {
+			component.Package = override
 		}
 		selected[id] = component
 		assembly.Patches = append(assembly.Patches, component.Config...)
@@ -145,13 +158,46 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 			assembly.Patches = append(assembly.Patches, provider.Config...)
 		}
 	}
+	// Explicit adapter selections are configuration, not merely provider
+	// preferences. Materialize them even when the selected component does not
+	// currently declare a requirement for that capability (for example a CI
+	// install selecting a storage backend for a later command). When the
+	// package is not present in the catalog, it is still a valid user-supplied
+	// provider package and must be installed and written to runtime config.
+	for _, capability := range sortedPreferenceKeys(request.ProviderPreferences) {
+		preferences := request.ProviderPreferences[capability]
+		if len(preferences) == 0 || preferences[0] == "" {
+			continue
+		}
+		if _, exists := providers[capability]; exists {
+			continue
+		}
+		provider := catalog.Provider{ID: "explicit:" + capability, Capability: capability, Package: preferences[0]}
+		if known, ok := source.Provider(preferences[0]); ok {
+			provider = known
+		}
+		providers[capability] = provider
+		providerValue, _ := json.Marshal(provider.Package)
+		assembly.Patches = append(assembly.Patches, engineconfig.ConfigPatch{
+			ID:        "adapter." + capability,
+			Scope:     engineconfig.ScopePlatform,
+			Operation: engineconfig.OperationSet,
+			Path:      "/platform/adapters/" + capability,
+			Value:     providerValue,
+			Owner:     "provider:" + provider.ID,
+		})
+	}
 
 	actions := make([]PlanAction, 0, len(source.Core)+len(selected)+len(providers)+1)
 	foundation := make([]string, 0, len(source.Core))
 	for _, packageSpec := range catalog.SortedIDs(source.Core) {
 		id := "install:core:" + packageSpec
 		foundation = append(foundation, id)
-		actions = append(actions, PlanAction{ID: id, Kind: ActionInstallPackage, Inputs: map[string]string{"component": "core", "package": packageSpec}})
+		inputs := map[string]string{"component": "core", "package": packageSpec}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: id, Kind: ActionInstallPackage, Inputs: inputs})
 	}
 	for _, id := range componentIDs {
 		component := selected[id]
@@ -160,7 +206,11 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		for _, dependency := range catalog.SortedIDs(component.DependsOn) {
 			dependencies = append(dependencies, "install:"+dependency)
 		}
-		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: map[string]string{"component": id, "package": component.Package}})
+		inputs := map[string]string{"component": id, "package": component.Package}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: inputs})
 	}
 	capabilities := make([]string, 0, len(providers))
 	for capability := range providers {
@@ -171,7 +221,11 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		provider := providers[capability]
 		providerInstall := "install:provider:" + capability
 		providerDeps := append([]string(nil), foundation...)
-		actions = append(actions, PlanAction{ID: providerInstall, Kind: ActionInstallPackage, DependsOn: providerDeps, Inputs: map[string]string{"component": "provider:" + capability, "package": provider.Package}})
+		inputs := map[string]string{"component": "provider:" + capability, "package": provider.Package}
+		if request.RefreshPackages {
+			inputs["mode"] = "update"
+		}
+		actions = append(actions, PlanAction{ID: providerInstall, Kind: ActionInstallPackage, DependsOn: providerDeps, Inputs: inputs})
 		dependencies := make([]string, 0, len(providerDependencies[capability])+1)
 		dependencies = append(dependencies, providerInstall)
 		for dependency := range providerDependencies[capability] {
@@ -180,10 +234,46 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		sort.Strings(dependencies)
 		actions = append(actions, PlanAction{ID: "bind:" + capability, Kind: ActionBindProvider, DependsOn: dependencies, Inputs: map[string]string{"capability": capability, "provider": provider.ID, "package": provider.Package}})
 	}
+	// Scenario/direct effects are applied after component and provider
+	// contributions. Effect IDs are sorted so request ordering cannot change
+	// the compiled plan or its hash.
+	effectIDs := catalog.SortedIDs(request.Effects)
+	seenEffects := make(map[string]struct{}, len(effectIDs))
+	for _, effectID := range effectIDs {
+		if _, exists := seenEffects[effectID]; exists {
+			return InstallPlan{}, fmt.Errorf("duplicate effect %q", effectID)
+		}
+		seenEffects[effectID] = struct{}{}
+		effect, ok := source.Effect(effectID)
+		if !ok {
+			return InstallPlan{}, fmt.Errorf("unknown effect %q", effectID)
+		}
+		assembly.Patches = append(assembly.Patches, effect.Config...)
+	}
 	actions = append(actions, PlanAction{ID: "config:runtime", Kind: ActionWriteConfig, DependsOn: actionIDs(actions)})
-	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Assembly: assembly, Actions: actions}
+	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Binaries: catalog.SortedIDs(request.Binaries), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
+}
+
+func sortedPreferenceKeys(preferences map[string][]string) []string {
+	keys := make([]string, 0, len(preferences))
+	for key := range preferences {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func cloneValues(values map[string]json.RawMessage) map[string]json.RawMessage {
+	if len(values) == 0 {
+		return nil
+	}
+	result := make(map[string]json.RawMessage, len(values))
+	for key, value := range values {
+		result[key] = append(json.RawMessage(nil), value...)
+	}
+	return result
 }
 
 func resolveProvider(requirement catalog.Requirement, component string, preferences []string, source catalog.Catalog) (catalog.Provider, error) {
@@ -214,6 +304,10 @@ func actionIDs(actions []PlanAction) []string {
 func hashPlan(plan InstallPlan) string {
 	copyPlan := plan
 	copyPlan.PlanHash = ""
+	// Scenario metadata and persisted non-secret answers describe provenance;
+	// execution equivalence is determined by the resolved actions/assembly.
+	copyPlan.ScenarioID = ""
+	copyPlan.Values = nil
 	data, _ := json.Marshal(copyPlan)
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:])

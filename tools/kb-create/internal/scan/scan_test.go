@@ -256,6 +256,25 @@ func TestGenerateDevServicesYAML(t *testing.T) {
 	if strings.Contains(yaml, "depends_on") {
 		t.Errorf("YAML should not contain depends_on (unknown dep should be filtered), got:\n%s", yaml)
 	}
+	if !strings.Contains(yaml, "start_timeout_ms: 120000") {
+		t.Errorf("YAML should allow slow adapter startup, got:\n%s", yaml)
+	}
+}
+
+func TestGenerateDevServicesYAML_PreservesTCPHealthChecks(t *testing.T) {
+	r := &ScanResult{Services: []ServiceEntry{{
+		ID:      "rest",
+		Name:    "REST API",
+		Runtime: ServiceRuntime{Entry: "dist/index.js", Port: 5050, HealthCheck: "localhost:5050"},
+	}}}
+
+	yaml := GenerateDevServicesYAML(r, "")
+	if !strings.Contains(yaml, "health_check: localhost:5050") {
+		t.Fatalf("TCP health check was rewritten:\n%s", yaml)
+	}
+	if strings.Contains(yaml, "localhost:5050localhost:5050") {
+		t.Fatalf("TCP health check was concatenated as an HTTP path:\n%s", yaml)
+	}
 }
 
 // TestGenerateDevServicesYAML_KeepsKnownDeps verifies that when a dependency

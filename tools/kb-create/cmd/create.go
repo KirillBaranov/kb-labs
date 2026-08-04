@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -15,22 +13,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/kb-labs/create/internal/agenthandoff"
-	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
-	"github.com/kb-labs/create/internal/customplugin"
-	"github.com/kb-labs/create/internal/detect"
-	"github.com/kb-labs/create/internal/eligibility"
+	engineagent "github.com/kb-labs/create/internal/engine/agent"
+	engineflow "github.com/kb-labs/create/internal/engine/flow"
+	engineplan "github.com/kb-labs/create/internal/engine/plan"
+	"github.com/kb-labs/create/internal/engine/scenario"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
-	"github.com/kb-labs/create/internal/onboarding"
 	"github.com/kb-labs/create/internal/pm"
-	"github.com/kb-labs/create/internal/preflight"
-	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/telemetry"
-	"github.com/kb-labs/create/internal/types"
-	"github.com/kb-labs/create/internal/wizard"
 )
 
 var (
@@ -60,378 +52,129 @@ func init() {
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	if flagEngine {
-		projectRoot := ""
-		if len(args) > 0 {
-			projectRoot = args[0]
-		}
-		flowProjectRoot = projectRoot
-		flowPlatformRoot = flagPlatform
-		flowApply = true
-		intent := flagIntent
-		if intent == "" {
-			intent = "explore"
-		}
-		return flowRunCmd.RunE(cmd, []string{intent})
+	if flagYes {
+		return runDeclarativeCreate(cmd, args)
 	}
-	// Resolve default project directory from arg or cwd.
-	projectCWD := ""
+	// Interactive creation is also a declarative scenario; the terminal UI is
+	// only a driver for the manifest-defined flow and never owns installation.
+	projectRoot := ""
 	if len(args) > 0 {
-		abs, err := filepath.Abs(args[0])
-		if err != nil {
-			return err
-		}
-		projectCWD = abs
+		projectRoot = args[0]
 	}
+	flowProjectRoot = projectRoot
+	flowPlatformRoot = flagPlatform
+	flowApply = true
+	intent := flagIntent
+	if intent == "" {
+		intent = "explore"
+	}
+	return flowRunCmd.RunE(cmd, []string{intent})
 
-	// Load manifest: dev-manifest overrides embedded prod manifest when provided.
-	m, err := manifest.Load(manifest.LoadOptions{
-		LocalOverride: flagDevManifest,
-	})
-	if err != nil {
-		return fmt.Errorf("load manifest: %w", err)
-	}
+}
 
-	// Show wizard or use defaults.
-	// Telemetry consent is now collected inside the wizard consent stage
-	// (demo mode) or defaults to off (--yes mode).
-	sel, err := wizard.Run(m, wizard.WizardOptions{
-		Yes:                flagYes,
-		Intent:             flagIntent,
-		DemoMode:           flagDemo,
-		DefaultProjectCWD:  projectCWD,
-		DefaultPlatformDir: flagPlatform,
-		ShowAgentSetup:     !flagYes && !flagSkipClaude,
-	})
-	if err != nil {
-		return err // includes "cancelled"
+func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
+	projectRoot := ""
+	if len(args) > 0 {
+		projectRoot = args[0]
 	}
-	sel.DevMode = flagDevManifest != ""
-	sel.Registry = flagRegistry
-	// Keep scripted --yes installs backward compatible: they continue to add
-	// the optional agent assets unless explicitly disabled. Interactive runs
-	// receive their own consent screen in the wizard.
-	if flagYes && !flagSkipClaude {
-		sel.ClaudeEnabled = true
-	}
-	if flagSkipClaude {
-		sel.ClaudeEnabled = false
-	}
-	sel.SkipClaudeMd = flagNoClaudeMd
-
-	// Do not create a checkpoint, platform directory, or log until the local
-	// environment can support the selected install.
-	packageManager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
-	if err := ensureToolchain(flagYes, packageManager.Name()); err != nil {
-		return fmt.Errorf("toolchain preflight failed: %w", err)
-	}
-	if err := preflight.Check(sel.ProjectCWD, sel.PlatformDir, packageManager); err != nil {
-		return fmt.Errorf("preflight failed: %w", err)
-	}
-
-	// ── Telemetry ────────────────────────────────────────────────────────
-	// Build TelemetryConfig from wizard result, then init client.
-	tcfg := config.TelemetryConfig{
-		Enabled:  sel.TelemetryEnabled,
-		DeviceID: telemetry.GenerateDeviceID(),
-	}
-	tc := initTelemetry(cmd.Root().Version, &tcfg)
-	defer tc.Flush()
-
-	sel.Telemetry = tcfg
-
-	// Detect project characteristics (language, PM, frameworks, monorepo).
-	profile, detectErr := detect.Detect(sel.ProjectCWD)
-	if detectErr != nil {
-		fmt.Fprintf(os.Stderr, "  project detection: %v (continuing)\n", detectErr)
-	}
-	sel.Project = profile
-	if sel.Intent == "commit" {
-		hasChanges, isGitRepo := eligibility.CommitInput(sel.ProjectCWD)
-		switch {
-		case !isGitRepo:
-			sel.PendingInput = "This folder is not a Git repository yet. Initialize Git and make a change before running this command."
-		case !hasChanges:
-			sel.PendingInput = "No changes found yet. Make or stage a change, then run this command to create your commit plan."
-		}
-	}
-	if sel.Intent == "release" && !eligibility.ReleaseEligible(sel.ProjectCWD, profile) {
-		return fmt.Errorf("release setup needs a publishable npm package (name and version, not private) — choose another outcome or run kb-create again in the package workspace")
-	}
-
-	if profile != nil {
-		out := newOutput()
-		out.Info("Detecting project")
-		if summary := profile.Summary(); summary != "" {
-			fmt.Println(summary)
-		}
-	}
-	// Create platform directory.
-	if err := os.MkdirAll(sel.PlatformDir, 0o750); err != nil {
-		return fmt.Errorf("create platform dir: %w", err)
-	}
-
-	// The wizard's spinner owns the terminal while installing. Keep raw package
-	// manager output in the install log instead of interleaving it with the UI.
-	log, err := logger.NewFileOnly(sel.PlatformDir)
+	projectRoot, err := absoluteOrCWD(projectRoot)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = log.Close() }()
-
-	log.Printf("Using %s", packageManager.Name())
-
-	tc.Set("pm", packageManager.Name())
-	tc.Set("outcome", sel.Intent)
-	tc.Set("local_mode", fmt.Sprintf("%t", flagLocal || sel.LocalMode))
-	tc.Set("services", strings.Join(sel.Services, ","))
-	tc.Set("plugins", strings.Join(sel.Plugins, ","))
-	tc.Track("install_started", nil)
-
-	sp := newSpinner()
-
-	ins := &installer.Installer{
-		PM:      packageManager,
-		Log:     log,
-		Version: cmd.Root().Version,
-		OnStep: func(step, total int, label string) {
-			sp.setLabel(fmt.Sprintf("[%d/%d] %s", step, total, label))
-		},
-		OnLine: func(line string) {
-			sp.setDetail(line)
-		},
-	}
-	if err := onboarding.Write(onboarding.State{
-		Outcome:           sel.Intent,
-		ProjectDir:        sel.ProjectCWD,
-		PlatformDir:       sel.PlatformDir,
-		LocalMode:         flagLocal || sel.LocalMode,
-		Status:            "installing",
-		FirstCommand:      sel.FirstCommand,
-		PendingInput:      sel.PendingInput,
-		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
-	}); err != nil {
-		return fmt.Errorf("save onboarding checkpoint: %w", err)
-	}
-
-	sp.start()
-	result, err := ins.Install(sel, m)
-	sp.stop(err)
-
+	platformRoot, err := absoluteOrCWD(flagPlatform)
 	if err != nil {
-		if details := sp.failureDetails(); details != "" {
-			err = fmt.Errorf("%w\n\nPackage-manager output:\n%s", err, details)
-		}
-		tc.Track("install_failed", map[string]string{"error_category": telemetryFailureCategory(err)})
-		return fmt.Errorf("installation failed: %w", err)
+		return err
 	}
-
-	tc.Track("install_completed", map[string]string{
-		"duration_s": fmt.Sprintf("%.0f", result.Duration.Seconds()),
-	})
-
-	// Write project .kb/kb.config.jsonc — after install so we can include
-	// Gateway credentials (demo mode) obtained from the already-registered
-	// telemetry identity.
-	scaffoldOpts := scaffold.Options{
-		PlatformDir: sel.PlatformDir,
-		Services:    sel.Services,
-		Plugins:     sel.Plugins,
-		DemoMode:    sel.DemoMode,
-		// Dynamic gateway plan from discovery → rendered into kb.config.jsonc.
-		Gateway:   result.Gateway,
-		Catalog:   m,
-		Adapters:  sel.Adapters,
-		EnvValues: sel.EnvValues,
+	intent := flagIntent
+	if intent == "" {
+		intent = "explore"
 	}
-	// Local single-user mode is an EXPLICIT opt-in (--local flag or the wizard
-	// "Studio access" choice) — never an implicit default of --yes. In local mode
-	// the gateway binds 127.0.0.1 and auth is disabled so Studio opens without
-	// login and is unreachable off the machine (B-023). Unattended/server installs
-	// (plain --yes, e2e, cloud) keep auth on and bind 0.0.0.0 — the safe default.
-	if flagLocal || sel.LocalMode {
-		authOff := false
-		scaffoldOpts.GatewayAuthEnabled = &authOff
-		scaffoldOpts.GatewayHost = "127.0.0.1"
-	} else {
-		// Non-local ("--yes" or wizard without the Studio-local opt-in) installs
-		// run with auth enabled but otherwise have no way to obtain a credential
-		// (#271): kb auth login needs a client-id/secret nobody has, and
-		// /auth/register needs an already-authenticated admin, which a fresh
-		// install has none of. Seed a bootstrap admin + let the gateway
-		// auto-provision the CLI's first credential on first start
-		// (ensureBootstrapCliCredentials, gateway-auth) so `kb` commands work
-		// with zero manual login step.
-		//
-		// GatewayAuthEnabled must be set explicitly here (not left nil): the
-		// bootstrap block in scaffold.WritePlatformConfig is gated on
-		// `opts.GatewayAuthEnabled != nil`, so leaving it nil silently drops
-		// the whole gateway.auth.bootstrap section even though the admin
-		// password below still gets written to .env — a fresh install then
-		// has a password pointing at an admin account that was never created.
-		//
-		// GATEWAY_BOOTSTRAP_ADMIN_EMAIL / GATEWAY_BOOTSTRAP_TENANT_ID are
-		// honored from the environment when set: the gateway's own bootstrap
-		// fallback (services/gateway/app/src/bootstrap.ts) reads the same env
-		// vars, but only when kb.config.jsonc's gateway.auth.bootstrap block
-		// is absent — since we now always write that block, a literal here
-		// would permanently shadow those env vars for every install. E2E
-		// fixtures (e2e/docker-compose.yml) set both to align the bootstrap
-		// admin with what their test suites expect; without this, the admin
-		// silently ends up under a different tenant/email than the tests use,
-		// and every login attempt fails with invalid_credentials.
-		authOn := true
-		scaffoldOpts.GatewayAuthEnabled = &authOn
-		scaffoldOpts.BootstrapAdminEmail = envOrDefault("GATEWAY_BOOTSTRAP_ADMIN_EMAIL", "admin@bootstrap.local")
-		scaffoldOpts.BootstrapTenantID = envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default")
-		scaffoldOpts.BootstrapAdminPassword = generateBootstrapAdminPassword()
+	loaded, err := scenario.Load(intent)
+	if err != nil {
+		return fmt.Errorf("load declarative intent %q: %w", intent, err)
 	}
-	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
-	// for environments where user auth is a core feature, not an optional overlay).
-	if ac := m.AdapterConfig; ac != nil {
-		scaffoldOpts.DocumentDatabase = ac.DocumentDatabase
-		scaffoldOpts.KVStore = ac.KVStore
+	state, err := engineflow.New(loaded)
+	if err != nil {
+		return err
 	}
-	// LLM provider key: set by wizard (sel.LLMProvider + sel.LLMKey).
-	// No auto-registration — the user explicitly chooses their provider.
-	wantsLLM := sel.LLMProvider != "" || sel.LLMEnabled || sel.Consent == types.ConsentDemo
-	if sel.LLMProvider != "" && sel.LLMKey != "" {
-		scaffoldOpts.LLMProvider = sel.LLMProvider
-		scaffoldOpts.LLMKey = sel.LLMKey
+	if flagLocal {
+		state.Values["access.mode"] = []byte(`"local"`)
 	}
-
-	// Write full platform config to platformDir (installer-owned, always overwritten).
-	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
-		return fmt.Errorf("scaffold platform config: %w", err)
+	state.Done = true
+	request := engineagent.Request{Command: engineagent.CommandPlan, Scenario: mustJSON(loaded), State: &state, ProjectRoot: projectRoot, PlatformRoot: platformRoot}
+	compiled, protocolErr := engineagent.CompilePlan(request)
+	if protocolErr != nil {
+		return fmt.Errorf("compile declarative create plan: %s", protocolErr.Message)
 	}
-
-	// Write pointer config + project artifacts to projectDir (user-owned, skip if exists).
-	// When platformDir == projectDir, WritePlatformConfig already wrote the full config
-	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
-	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
-		if errors.Is(err, scaffold.ErrIncompatibleLegacyConfig) {
-			if flagYes {
-				scaffoldOpts.AllowIncompatibleLegacyMigration = true
-			} else if confirmToolchain("Legacy project routes are incompatible and will be removed (backup will be created). Continue? [y/N] ") {
-				scaffoldOpts.AllowIncompatibleLegacyMigration = true
-			} else {
-				return fmt.Errorf("scaffold project config: %w", err)
-			}
-			if retryErr := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); retryErr != nil {
-				return fmt.Errorf("scaffold project config: %w", retryErr)
-			}
-		} else {
-			return fmt.Errorf("scaffold project config: %w", err)
+	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
+	if _, err := executeFlowPlan(compiled); err != nil {
+		return err
+	}
+	declarativeManifest, err := manifest.LoadDefault()
+	if err != nil {
+		return fmt.Errorf("load declarative manifest: %w", err)
+	}
+	declarativeIntent := declarativeManifest.IntentByID(intent)
+	if declarativeIntent == nil {
+		return fmt.Errorf("declarative manifest has no intent %q", intent)
+	}
+	log, err := logger.NewFileOnly(compiled.PlatformRoot)
+	if err != nil {
+		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	packageActions := 0
+	for _, action := range compiled.Actions {
+		if action.Kind == engineplan.ActionInstallPackage {
+			packageActions++
 		}
 	}
-	customPluginDir := ""
-	agentHandoffPath := ""
-	agentLines := []string{}
-	if sel.Intent == "plugin-author" {
-		customSpinner := newSpinner()
-		customSpinner.setLabel("[5/5] Installing custom plugin")
-		customSpinner.start()
-		custom, err := customplugin.Create(context.Background(), sel.ProjectCWD, customplugin.Contract{
-			Name:        sel.CustomCommandName,
-			Description: sel.CustomCommandDescription,
-		}, customplugin.Hooks{OnStep: customSpinner.setLabel})
-		customSpinner.stop(err)
-		if err != nil {
-			_ = onboarding.Write(onboarding.State{
-				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
-				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
-				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
-			})
-			return fmt.Errorf("create custom plugin: %w; run kb-create doctor", err)
-		}
-		customPluginDir = custom.PluginDir
-		if err := customplugin.CheckDiscovery(context.Background(), sel.ProjectCWD, sel.CustomCommandName); err != nil {
-			_ = onboarding.Write(onboarding.State{
-				Outcome: sel.Intent, ProjectDir: sel.ProjectCWD, PlatformDir: sel.PlatformDir,
-				LocalMode: flagLocal || sel.LocalMode, Status: "needs-repair", FirstCommand: sel.FirstCommand,
-				CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
-				CustomPluginDir: customPluginDir,
-			})
-			return fmt.Errorf("custom command is not discoverable: %w; run kb-create doctor", err)
-		}
-		agentHandoffPath, err = agenthandoff.Write(agenthandoff.Input{
-			ProjectDir: sel.ProjectCWD, PluginDir: customPluginDir,
-			CommandName: sel.CustomCommandName, Description: sel.CustomCommandDescription,
-		})
-		if err != nil {
-			return fmt.Errorf("write custom plugin agent handoff: %w", err)
-		}
+	log.Printf("Installing %d packages via declarative plan", packageActions)
+	selectedPlugins, selectedServices := selectedComponentsFromPlan(compiled)
+	_, finalizeErr := (&installer.Installer{PM: pm.Detect(), Log: log}).FinalizeDeclarative(&installer.Selection{
+		PlatformDir:                      compiled.PlatformRoot,
+		ProjectCWD:                       compiled.ProjectRoot,
+		Binaries:                         compiled.Binaries,
+		Plugins:                          selectedPlugins,
+		Services:                         selectedServices,
+		LocalMode:                        flagLocal,
+		DemoMode:                         flagDemo,
+		AllowIncompatibleLegacyMigration: true,
+	}, declarativeManifest)
+	_ = log.Close()
+	if finalizeErr != nil {
+		return finalizeErr
 	}
-
-	if err := onboarding.CheckReadiness(sel.PlatformDir, sel.FirstCommand); err != nil {
-		_ = onboarding.Write(onboarding.State{
-			Outcome:           sel.Intent,
-			ProjectDir:        sel.ProjectCWD,
-			PlatformDir:       sel.PlatformDir,
-			LocalMode:         flagLocal || sel.LocalMode,
-			Status:            "needs-repair",
-			FirstCommand:      sel.FirstCommand,
-			PendingInput:      sel.PendingInput,
-			CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
-			CustomPluginDir: customPluginDir,
-			AgentHandoff:    agentHandoffPath,
-		})
-		return fmt.Errorf("first command is not ready: %w; run kb-create doctor", err)
+	if err := writeDeclarativeInstallState(compiled); err != nil {
+		return fmt.Errorf("write declarative install state: %w", err)
 	}
-	if err := onboarding.Write(onboarding.State{
-		Outcome:           sel.Intent,
-		ProjectDir:        sel.ProjectCWD,
-		PlatformDir:       sel.PlatformDir,
-		LocalMode:         flagLocal || sel.LocalMode,
-		Status:            "ready",
-		FirstCommand:      sel.FirstCommand,
-		PendingInput:      sel.PendingInput,
-		CustomCommandName: sel.CustomCommandName, CustomCommandDescription: sel.CustomCommandDescription,
-		CustomPluginDir: customPluginDir,
-		AgentHandoff:    agentHandoffPath,
-	}); err != nil {
-		return fmt.Errorf("save onboarding readiness: %w", err)
+	fmt.Fprintf(cmd.OutOrStdout(), "\ninstalled successfully (declarative intent %q).\n", intent)
+	fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", compiled.PlatformRoot)
+	if compiled.ProjectRoot != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
 	}
-
-	// Non-local installs seed a bootstrap admin (see GatewayAuthEnabled above) —
-	// print the login once so the user can actually get in and isn't relying
-	// solely on .env / ~/.kb/credentials.json to recover it.
-	if scaffoldOpts.BootstrapAdminEmail != "" && scaffoldOpts.BootstrapAdminPassword != "" {
-		printBootstrapAdminCredentials(scaffoldOpts.BootstrapAdminEmail, scaffoldOpts.BootstrapAdminPassword)
-	}
-
-	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
-	// All failures here are non-fatal: the platform install itself is already
-	// complete and we never want to fail the run because of optional assets.
-	if sel.ClaudeEnabled {
-		cr, cerr := claude.Install(claude.Options{
-			ProjectDir:   result.ProjectCWD,
-			PlatformDir:  result.PlatformDir,
-			SkipClaudeMd: sel.SkipClaudeMd,
-			// The interactive agent-tools screen is the explicit consent to
-			// append the isolated managed section when CLAUDE.md already exists.
-			Yes: true,
-			Log: log,
-		})
-		if cerr != nil {
-			log.Printf("claude assets: %v (continuing)", cerr)
-		} else if cr != nil {
-			agentLines = claudeSummaryLines(result.ProjectCWD, cr)
-			tc.Track("claude_installed", map[string]string{
-				"devkit":   cr.DevkitVersion,
-				"added":    fmt.Sprintf("%d", len(cr.SkillsAdded)),
-				"updated":  fmt.Sprintf("%d", len(cr.SkillsUpdated)),
-				"claudemd": cr.ClaudeMdAction,
-			})
-		}
-	}
-
-	// Installation only prepares the chosen command. The user decides when to
-	// run it; onboarding never reviews code, creates a git commit, or contacts
-	// an external provider on their behalf.
-	printCompletionBlock(result, sel.FirstCommand, sel.PendingInput, customPluginDir, sel.CustomCommandName, agentHandoffPath, agentLines, wantsLLM, sel.TelemetryEnabled)
-
+	printCompletionBlock(&installer.Result{
+		PlatformDir: compiled.PlatformRoot,
+		ProjectCWD:  compiled.ProjectRoot,
+	}, declarativeIntent.FirstCommand, "", "", "", "", nil, declarativeIntent.Docs, declarativeIntent.NextSteps, false, false)
 	return nil
+}
+
+func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, services []string) {
+	for _, action := range compiled.Actions {
+		if action.Kind != engineplan.ActionInstallPackage {
+			continue
+		}
+		kind, id := manifestComponent(action.Inputs["component"])
+		switch kind {
+		case "plugin":
+			plugins = append(plugins, id)
+		case "service":
+			services = append(services, id)
+		}
+	}
+	sort.Strings(plugins)
+	sort.Strings(services)
+	return plugins, services
 }
 
 func telemetryFailureCategory(err error) string {

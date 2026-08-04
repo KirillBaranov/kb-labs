@@ -140,6 +140,256 @@
       "serviceTransport": "@kb-labs/adapters-service-transport-http"
     }
   },
+  "defaults": [
+    {
+      "id": "platform.execution.mode",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/platform/execution/mode",
+      "value": "worker-pool",
+      "owner": "catalog:default"
+    },
+    {
+      "id": "adapterOptions.serviceTransport.services",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/adapterOptions/serviceTransport/services",
+      "value": {},
+      "owner": "catalog:default"
+    },
+    {
+      "id": "platform.projects",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/projects",
+      "value": {},
+      "owner": "catalog:default"
+    },
+    {
+      "id": "project.projects",
+      "scope": "project",
+      "operation": "set",
+      "path": "/projects",
+      "value": {},
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.rest.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/rest/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.workflow.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/workflow/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.gateway.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/gateway/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.marketplace.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/marketplace/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.studio.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/studio/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "service.mcp.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/services/mcp/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.marketplace.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/marketplace/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.mind.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/mind/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.agents.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/agents/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.ai-review.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/ai-review/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.commit.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/commit/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.scaffold.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/scaffold/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    },
+    {
+      "id": "plugin.release.disabled",
+      "scope": "platform",
+      "operation": "set",
+      "path": "/plugins/release/enabled",
+      "value": false,
+      "owner": "catalog:default"
+    }
+  ],
+  "outputs": [
+    {
+      "scope": "platform",
+      "root": "platform",
+      "path": ".kb/kb.config.jsonc",
+      "format": "jsonc",
+      "overwrite": "replace"
+    },
+    {
+      "scope": "project",
+      "root": "project",
+      "path": ".kb/generated/kb-create.overlay.jsonc",
+      "format": "jsonc",
+      "overwrite": "replace"
+    },
+    {
+      "scope": "project",
+      "root": "project",
+      "path": ".kb/kb.config.jsonc",
+      "format": "jsonc",
+      "overwrite": "createOnly"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "platform.marketplace-lock",
+      "root": "platform",
+      "path": ".kb/marketplace.lock",
+      "format": "json",
+      "content": {},
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
+    },
+    {
+      "id": "platform.devservices",
+      "root": "platform",
+      "path": ".kb/devservices.yaml",
+      "format": "text",
+      "text": "services:\n",
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
+    }
+  ],
+  "effects": [
+    {
+      "id": "gateway.access.local",
+      "config": [
+        {
+          "id": "gateway.access.local.host",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/host",
+          "value": "127.0.0.1",
+          "owner": "catalog:effect/gateway.access.local"
+        },
+        {
+          "id": "gateway.access.local.auth",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/auth/enabled",
+          "value": false,
+          "owner": "catalog:effect/gateway.access.local"
+        }
+      ]
+    },
+    {
+      "id": "gateway.access.secured",
+      "config": [
+        {
+          "id": "gateway.access.secured.host",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/host",
+          "value": "0.0.0.0",
+          "owner": "catalog:effect/gateway.access.secured"
+        },
+        {
+          "id": "gateway.access.secured.auth",
+          "scope": "platform",
+          "operation": "set",
+          "path": "/gateway/auth/enabled",
+          "value": true,
+          "owner": "catalog:effect/gateway.access.secured"
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "id": "install-state.v1-to-v2",
+      "subject": "kb.install-state",
+      "from": "1",
+      "to": "2",
+      "operations": [
+        {
+          "kind": "setIfMissing",
+          "path": "/schema",
+          "value": "kb.install-state/2"
+        },
+        {
+          "kind": "setIfMissing",
+          "path": "/mode",
+          "value": "direct"
+        },
+        {
+          "kind": "setIfMissing",
+          "path": "/configSchemas",
+          "value": { "platform": 1, "project": 1 }
+        }
+      ]
+    }
+  ],
   "extensions": [
     {
       "id": "studio",

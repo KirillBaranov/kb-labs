@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	engineconfig "github.com/kb-labs/create/internal/engine/config"
+	"github.com/kb-labs/create/internal/engine/migrate"
 )
 
 type Requirement struct {
@@ -33,13 +34,23 @@ type Provider struct {
 	Config     []engineconfig.ConfigPatch `json:"config,omitempty"`
 }
 
+// Effect is a reusable product configuration contribution selected by a
+// scenario answer or direct install request.
+type Effect struct {
+	ID     string                     `json:"id"`
+	Config []engineconfig.ConfigPatch `json:"config,omitempty"`
+}
+
 type Catalog struct {
-	Core       []string                    `json:"core,omitempty"`
-	Digest     string                      `json:"digest"`
-	Defaults   []engineconfig.ConfigPatch  `json:"defaults,omitempty"`
-	Components []Component                 `json:"components"`
-	Providers  []Provider                  `json:"providers"`
-	Outputs    []engineconfig.ConfigOutput `json:"outputs,omitempty"`
+	Core       []string                     `json:"core,omitempty"`
+	Digest     string                       `json:"digest"`
+	Defaults   []engineconfig.ConfigPatch   `json:"defaults,omitempty"`
+	Components []Component                  `json:"components"`
+	Providers  []Provider                   `json:"providers"`
+	Effects    []Effect                     `json:"effects,omitempty"`
+	Migrations []migrate.Definition         `json:"migrations,omitempty"`
+	Outputs    []engineconfig.ConfigOutput  `json:"outputs,omitempty"`
+	Artifacts  []engineconfig.ArtifactWrite `json:"artifacts,omitempty"`
 }
 
 func (c Catalog) Component(id string) (Component, bool) {
@@ -58,6 +69,15 @@ func (c Catalog) Provider(id string) (Provider, bool) {
 		}
 	}
 	return Provider{}, false
+}
+
+func (c Catalog) Effect(id string) (Effect, bool) {
+	for _, item := range c.Effects {
+		if item.ID == id {
+			return item, true
+		}
+	}
+	return Effect{}, false
 }
 
 func (c Catalog) Validate() error {
@@ -85,6 +105,31 @@ func (c Catalog) Validate() error {
 			return fmt.Errorf("duplicate provider %q", provider.ID)
 		}
 		seenProviders[provider.ID] = struct{}{}
+	}
+	seenEffects := make(map[string]struct{}, len(c.Effects))
+	for _, effect := range c.Effects {
+		if effect.ID == "" {
+			return fmt.Errorf("effect requires id")
+		}
+		if _, ok := seenEffects[effect.ID]; ok {
+			return fmt.Errorf("duplicate effect %q", effect.ID)
+		}
+		seenEffects[effect.ID] = struct{}{}
+		for _, patch := range effect.Config {
+			if patch.ID == "" || patch.Owner == "" || patch.Path == "" {
+				return fmt.Errorf("effect %q contains an invalid config patch", effect.ID)
+			}
+		}
+	}
+	seenMigrations := make(map[string]struct{}, len(c.Migrations))
+	for _, migration := range c.Migrations {
+		if migration.ID == "" || migration.Subject == "" || migration.From == "" || migration.To == "" {
+			return fmt.Errorf("migration requires id, subject, from, and to")
+		}
+		if _, ok := seenMigrations[migration.ID]; ok {
+			return fmt.Errorf("duplicate migration %q", migration.ID)
+		}
+		seenMigrations[migration.ID] = struct{}{}
 	}
 	return nil
 }

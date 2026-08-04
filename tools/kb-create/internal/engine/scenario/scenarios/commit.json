@@ -1,5 +1,5 @@
 {
-  "schema": "kb.scenario/1",
+  "schema": "kb.scenario/2",
   "id": "commit",
   "title": "AI commits",
   "install": {

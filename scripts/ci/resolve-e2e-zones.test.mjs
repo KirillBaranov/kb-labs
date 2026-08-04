@@ -5,6 +5,7 @@ import { buildPlan, matchesGlob, parseNameStatus } from './resolve-e2e-zones.mjs
 
 const zones = [
   { zone: 'mind', watch: ['plugins/mind/**', 'e2e/mind/**'], suites: ['e2e-mind'] },
+  { zone: 'launcher', runner: 'launcher', watch: ['tools/kb-create/**'], suites: ['e2e-kb-create'] },
   { zone: 'auth', watch: ['services/gateway/auth/**'], suites: ['e2e-auth', 'e2e-oauth'] },
   {
     zone: '_global',
@@ -28,6 +29,13 @@ test('glob matching accepts zero or more directories for **', () => {
   assert.equal(matchesGlob('plugins/workflow/index.ts', 'plugins/mind/**'), false);
 });
 
+test('zone runner is carried into the shared E2E plan', () => {
+  const plan = buildPlan(parseNameStatus('M\ttools/kb-create/internal/manifest/manifest.json\n'), zones);
+  assert.deepEqual(plan.selected.map(({ zone, runner, suites }) => ({ zone, runner, suites })), [
+    { zone: 'launcher', runner: 'launcher', suites: ['e2e-kb-create'] },
+  ]);
+});
+
 test('a rename selects the old zone and warns when the new path loses ownership', () => {
   const changes = parseNameStatus('R100\tplugins/mind/src/search.ts\tplugins/search/src/search.ts\n');
   const plan = buildPlan(changes, zones);
@@ -37,7 +45,7 @@ test('a rename selects the old zone and warns when the new path loses ownership'
 
 test('global changes select every zone and docs are ignored', () => {
   const plan = buildPlan(parseNameStatus('M\tcore/types/src/index.ts\nM\tdocs/ci.md\n'), zones);
-  assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'auth']);
+  assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'launcher', 'auth']);
   assert.deepEqual(plan.warnings, []);
 });
 
@@ -49,6 +57,6 @@ test('shared install and packaging infrastructure is covered globally', () => {
     'M\tpackage.json',
     'M\tpnpm-workspace.yaml',
   ].join('\n')), zones);
-  assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'auth']);
+  assert.deepEqual(plan.selected.map((zone) => zone.zone), ['mind', 'launcher', 'auth']);
   assert.deepEqual(plan.warnings, []);
 });

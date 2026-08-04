@@ -20,7 +20,7 @@ func TestRunAgentProtocolInspectReadsStdin(t *testing.T) {
 	agentInput = ""
 	agentMode = false
 	command := &cobra.Command{}
-	command.SetIn(strings.NewReader(`{"scenario":{"schema":"kb.scenario/1","id":"x","pages":[{"id":"p","sections":[{"id":"s","fields":[{"id":"name","type":"text"}]}]}]}}`))
+	command.SetIn(strings.NewReader(`{"scenario":{"schema":"kb.scenario/2","id":"x","pages":[{"id":"p","sections":[{"id":"s","fields":[{"id":"name","type":"text"}]}]}]}}`))
 	var output bytes.Buffer
 	command.SetOut(&output)
 	// runAgentProtocol receives the request command from the command name.

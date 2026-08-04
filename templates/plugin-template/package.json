@@ -68,7 +68,7 @@
       "eslint --fix"
     ]
   },
-  "packageManager": "pnpm@9.11.0",
+  "packageManager": "pnpm@11.4.0",
   "repository": "kirill-baranov/kb-labs-plugin-template.git",
   "workspaces": [
     "apps/*",

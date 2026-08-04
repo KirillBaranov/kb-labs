@@ -1,8 +1,9 @@
 {
-  "schema": "kb.scenario/1",
+  "schema": "kb.scenario/2",
   "id": "explore",
   "title": "KB Labs platform",
   "install": {
+    "binaries": ["kb-dev"],
     "components": [
       {"id": "service:rest"},
       {"id": "service:workflow"},
@@ -21,7 +22,17 @@
     "sections": [{
       "id": "summary",
       "title": "Default platform",
-      "description": "Installs the default KB Labs platform components. Press Enter to continue."
+      "description": "Installs the default KB Labs platform components.",
+      "fields": [{
+        "id": "access.mode",
+        "type": "select",
+        "label": "Studio access",
+        "default": "secured",
+        "options": [
+          {"value": "local", "label": "Local (no login)", "effects": ["gateway.access.local"]},
+          {"value": "secured", "label": "Secured", "effects": ["gateway.access.secured"]}
+        ]
+      }]
     }]
   }]
 }

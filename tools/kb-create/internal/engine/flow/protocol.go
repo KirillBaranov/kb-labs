@@ -156,7 +156,7 @@ func Load(data []byte) (Scenario, error) {
 }
 
 func Validate(scenario Scenario) error {
-	if scenario.Schema != "kb.scenario/1" {
+	if scenario.Schema != "kb.scenario/2" {
 		return fmt.Errorf("unsupported scenario schema %q", scenario.Schema)
 	}
 	if scenario.ID == "" || len(scenario.Pages) == 0 {

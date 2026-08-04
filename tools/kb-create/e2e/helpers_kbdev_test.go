@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -47,9 +48,18 @@ func runKbDev(t *testing.T, platformDir string, args ...string) (string, string,
 	if err = cmd.Start(); err != nil {
 		return "", err.Error(), -1
 	}
-	stdout, _ = readAll(stdoutPipe)
-	stderr, _ = readAll(stderrPipe)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		stdout, _ = readAll(stdoutPipe)
+	}()
+	go func() {
+		defer wg.Done()
+		stderr, _ = readAll(stderrPipe)
+	}()
 	err = cmd.Wait()
+	wg.Wait()
 
 	code := 0
 	if err != nil {
@@ -82,9 +92,18 @@ func runKbDevIn(t *testing.T, kbDevPath, dir string, args ...string) (string, st
 	if err = cmd.Start(); err != nil {
 		return "", err.Error(), -1
 	}
-	stdout, _ = readAll(stdoutPipe)
-	stderr, _ = readAll(stderrPipe)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		stdout, _ = readAll(stdoutPipe)
+	}()
+	go func() {
+		defer wg.Done()
+		stderr, _ = readAll(stderrPipe)
+	}()
 	err = cmd.Wait()
+	wg.Wait()
 
 	code := 0
 	if err != nil {

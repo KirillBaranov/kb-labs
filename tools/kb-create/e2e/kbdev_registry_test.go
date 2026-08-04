@@ -60,7 +60,11 @@ func writePointerConfig(t *testing.T, projectDir, platformDir string) {
 		t.Fatalf("mkdir %s: %v", dir, err)
 	}
 	content := `{
-  "platform": { "dir": ` + strconv.Quote(platformDir) + ` }
+  "platform": { "dir": ` + strconv.Quote(platformDir) + ` },
+  "projects": {
+    // kb-dev:projects:start
+    // kb-dev:projects:end
+  }
 }
 `
 	if err := os.WriteFile(filepath.Join(dir, "kb.config.jsonc"), []byte(content), 0o644); err != nil { //nolint:gosec // test fixture
@@ -194,7 +198,7 @@ func TestKbDevRegistrySwitch_MultiProjectSharedPlatform(t *testing.T) {
 	mustGit(t, projA, "commit", "--allow-empty", "-m", "init")
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
 
-	if _, code := run(t, bin, projA, "--yes", "--local", "--platform", platformDir); code != 0 {
+	if _, code := runInDir(t, bin, projA, "--yes", "--local", "--platform", platformDir); code != 0 {
 		t.Fatalf("install failed")
 	}
 

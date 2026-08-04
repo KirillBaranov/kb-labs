@@ -127,7 +127,7 @@ func TestPrintCompletionBlockUsesOneSharedRail(t *testing.T) {
 			Operation: manifest.CommandOperationAnalyze,
 		}, "", "/project/.kb/plugins/hello-world", "hello-world", "/project/.kb/onboarding/agent-handoff.md", []string{
 			"Skills             +6 added",
-		}, false, false)
+		}, []manifest.IntentDoc{{Label: "First Plugin guide", URL: "https://example.test/first-plugin"}}, []string{"kb-dev start", "pnpm kb --help"}, false, false)
 	})
 	for _, want := range []string{
 		"KB Labs installed successfully",
@@ -138,9 +138,9 @@ func TestPrintCompletionBlockUsesOneSharedRail(t *testing.T) {
 		"│ Continue",
 		"│ Configuration",
 		"hello-world",
-		"https://docs.kblabs.ru/en/guides/first-plugin",
-		"Try it now:",
-		"kb review run",
+		"https://example.test/first-plugin",
+		"Next steps:",
+		"kb-dev start",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("completion block missing %q: %q", want, got)

@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Plugins  []string                   `json:"plugins,omitempty"`
 	Services []string                   `json:"services,omitempty"`
+	Effects  []string                   `json:"effects,omitempty"`
 	Adapters map[string]string          `json:"adapters,omitempty"`
 	Values   map[string]json.RawMessage `json:"values,omitempty"`
 }
@@ -21,13 +22,14 @@ type Config struct {
 type Input struct {
 	// A non-nil list means the corresponding flag was explicitly supplied,
 	// including an explicit empty list. This preserves flags > config > defaults.
-	Plugins       *[]string
-	Services      *[]string
-	Adapters      map[string]string
-	Config        []byte
-	ProjectRoot   string
-	PlatformRoot  string
-	CatalogDigest string
+	Plugins          *[]string
+	Services         *[]string
+	Adapters         map[string]string
+	Config           []byte
+	ProjectRoot      string
+	PlatformRoot     string
+	CatalogDigest    string
+	PackageOverrides map[string]string
 }
 
 func Build(input Input, source catalog.Catalog) (plan.InstallRequest, error) {
@@ -69,9 +71,22 @@ func Build(input Input, source catalog.Catalog) (plan.InstallRequest, error) {
 		ProjectRoot:         input.ProjectRoot,
 		PlatformRoot:        input.PlatformRoot,
 		Components:          components,
+		Effects:             append([]string(nil), file.Effects...),
 		ProviderPreferences: preferences,
+		PackageOverrides:    cloneStringMap(input.PackageOverrides),
 		Values:              file.Values,
 	}, nil
+}
+
+func cloneStringMap(input map[string]string) map[string]string {
+	if len(input) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(input))
+	for key, value := range input {
+		out[key] = value
+	}
+	return out
 }
 
 func choose(flag *[]string, config, fallback []string) []string {

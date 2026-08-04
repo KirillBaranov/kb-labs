@@ -48,6 +48,18 @@ func setup(t *testing.T) (platformDir, kbCreate string, env []string) {
 	//nolint:lll // fake pnpm script is intentionally terse
 	script := `#!/usr/bin/env bash
 set -e
+if [ "${1:-}" = "list" ]; then
+  printf '[{"dependencies":{'
+  first=1
+  for pkg in node_modules/@kb-labs/*; do
+    [ -d "$pkg" ] || continue
+    if [ "$first" = "0" ]; then printf ','; fi
+    first=0
+    printf '"@kb-labs/%s":{"version":"stub"}' "$(basename "$pkg")"
+  done
+  printf '}}]\n'
+  exit 0
+fi
 # We only need to emulate "add --dir <dir> <specs...>" with --registry/--platform flags ignored.
 dir=""
 declare -a specs=()

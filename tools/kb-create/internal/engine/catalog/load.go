@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+
+	engineconfig "github.com/kb-labs/create/internal/engine/config"
+	"github.com/kb-labs/create/internal/engine/migrate"
 )
 
 func Load(data []byte) (Catalog, error) {
@@ -29,6 +32,8 @@ func Load(data []byte) (Catalog, error) {
 func Normalize(source Catalog) Catalog {
 	source.Components = append([]Component(nil), source.Components...)
 	source.Providers = append([]Provider(nil), source.Providers...)
+	source.Effects = append([]Effect(nil), source.Effects...)
+	source.Migrations = append([]migrate.Definition(nil), source.Migrations...)
 	for i := range source.Components {
 		source.Components[i].Requires = append([]Requirement(nil), source.Components[i].Requires...)
 		source.Components[i].DependsOn = append([]string(nil), source.Components[i].DependsOn...)
@@ -41,8 +46,15 @@ func Normalize(source Catalog) Catalog {
 		source.Providers[i].Features = append([]string(nil), source.Providers[i].Features...)
 		sort.Strings(source.Providers[i].Features)
 	}
+	for i := range source.Effects {
+		source.Effects[i].Config = append([]engineconfig.ConfigPatch(nil), source.Effects[i].Config...)
+		sort.Slice(source.Effects[i].Config, func(a, b int) bool {
+			return source.Effects[i].Config[a].ID < source.Effects[i].Config[b].ID
+		})
+	}
 	sort.Slice(source.Components, func(i, j int) bool { return source.Components[i].ID < source.Components[j].ID })
 	sort.Slice(source.Providers, func(i, j int) bool { return source.Providers[i].ID < source.Providers[j].ID })
+	sort.Slice(source.Effects, func(i, j int) bool { return source.Effects[i].ID < source.Effects[j].ID })
 	source.Digest = ""
 	return source
 }

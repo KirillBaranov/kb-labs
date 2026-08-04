@@ -1,6 +1,9 @@
 package manifest
 
-import "os"
+import (
+	"encoding/json"
+	"os"
+)
 
 // packageTag returns an optional npm dist-tag used by release smoke tests.
 // Normal users keep the stable `latest` resolution; CI can set this to
@@ -32,16 +35,17 @@ func (p Package) PackageSpec() string {
 
 // Component is an optional service or plugin.
 type Component struct {
-	ID               string  `json:"id"`
-	Pkg              string  `json:"pkg"`
-	Description      string  `json:"description"`
-	Default          bool    `json:"default"`
-	LocalPath        string  `json:"localPath,omitempty"`        // absolute path for dev mode
-	Port             int     `json:"port,omitempty"`             // service port (services only)
-	GatewayPrefix    string  `json:"gatewayPrefix,omitempty"`    // gateway proxy prefix (services only)
-	GatewayRewrite   *string `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
-	GatewayWebSocket bool    `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
-	Plugin           string  `json:"plugin,omitempty"`           // companion CLI plugin pkg (services only)
+	ID               string        `json:"id"`
+	Pkg              string        `json:"pkg"`
+	Description      string        `json:"description"`
+	Default          bool          `json:"default"`
+	LocalPath        string        `json:"localPath,omitempty"`        // absolute path for dev mode
+	Port             int           `json:"port,omitempty"`             // service port (services only)
+	GatewayPrefix    string        `json:"gatewayPrefix,omitempty"`    // gateway proxy prefix (services only)
+	GatewayRewrite   *string       `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
+	GatewayWebSocket bool          `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
+	Plugin           string        `json:"plugin,omitempty"`           // companion CLI plugin pkg (services only)
+	Config           []ConfigPatch `json:"config,omitempty"`
 }
 
 // PackageSpec returns the install spec: "pkg@latest" in prod or "pkg@file:/abs/path" in dev.
@@ -83,6 +87,78 @@ type AdapterConfig struct {
 	Adapters map[string]string `json:"adapters,omitempty"`
 }
 
+// ConfigPatch is the manifest-level representation of a declarative runtime
+// config contribution. The engine catalog converts it to its typed patch
+// contract; keeping this leaf type here avoids coupling the product manifest
+// loader to the engine packages.
+type ConfigPatch struct {
+	ID        string          `json:"id"`
+	Scope     string          `json:"scope"`
+	Operation string          `json:"operation"`
+	Path      string          `json:"path"`
+	Value     json.RawMessage `json:"value,omitempty"`
+	SchemaRef string          `json:"schemaRef,omitempty"`
+	Owner     string          `json:"owner,omitempty"`
+}
+
+type ConfigOutput struct {
+	Scope     string `json:"scope"`
+	Root      string `json:"root"`
+	Path      string `json:"path"`
+	Format    string `json:"format"`
+	Overwrite string `json:"overwrite,omitempty"`
+}
+
+type ConfigArtifact struct {
+	ID        string          `json:"id"`
+	Root      string          `json:"root"`
+	Path      string          `json:"path"`
+	Format    string          `json:"format"`
+	Content   json.RawMessage `json:"content,omitempty"`
+	Text      string          `json:"text,omitempty"`
+	Owner     string          `json:"owner"`
+	Overwrite string          `json:"overwrite,omitempty"`
+}
+
+// ConfigEffect is a reusable product configuration contribution. Scenarios
+// select effect IDs; they do not duplicate the patch bodies in each option.
+type ConfigEffect struct {
+	ID     string        `json:"id"`
+	Config []ConfigPatch `json:"config,omitempty"`
+}
+
+// MigrationPredicate and MigrationOperation form the small declarative DSL
+// used to adopt known legacy documents without embedding product-specific
+// transformations in the launcher.
+type MigrationPredicate struct {
+	Path   string               `json:"path,omitempty"`
+	Exists *bool                `json:"exists,omitempty"`
+	Equals json.RawMessage      `json:"equals,omitempty"`
+	Type   string               `json:"typeIs,omitempty"`
+	AllOf  []MigrationPredicate `json:"allOf,omitempty"`
+	AnyOf  []MigrationPredicate `json:"anyOf,omitempty"`
+	Not    *MigrationPredicate  `json:"not,omitempty"`
+}
+
+type MigrationOperation struct {
+	Kind    string              `json:"kind"`
+	Path    string              `json:"path"`
+	From    string              `json:"from,omitempty"`
+	Value   json.RawMessage     `json:"value,omitempty"`
+	When    *MigrationPredicate `json:"when,omitempty"`
+	Mapping map[string]any      `json:"mapping,omitempty"`
+}
+
+type Migration struct {
+	ID          string               `json:"id"`
+	Subject     string               `json:"subject"`
+	From        string               `json:"from"`
+	To          string               `json:"to"`
+	Fingerprint string               `json:"fingerprint,omitempty"`
+	Detect      []MigrationPredicate `json:"detect,omitempty"`
+	Operations  []MigrationOperation `json:"operations"`
+}
+
 // Manifest describes all installable parts of the KB Labs platform.
 type Manifest struct {
 	Version     string            `json:"version"`
@@ -96,6 +172,19 @@ type Manifest struct {
 	// AdapterConfig specifies adapter bindings to include in the generated
 	// platform config. Optional — omit to use platform defaults.
 	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`
+	// Effects are reusable product-level config contributions. Guided scenarios
+	// select them by ID and the declarative engine carries their patches into
+	// the compiled install plan.
+	Effects []ConfigEffect `json:"effects,omitempty"`
+	// Defaults and Outputs define the config contract consumed by the generic
+	// compiler. They are deliberately data so adding a product default does not
+	// require a launcher release.
+	Defaults  []ConfigPatch    `json:"defaults,omitempty"`
+	Outputs   []ConfigOutput   `json:"outputs,omitempty"`
+	Artifacts []ConfigArtifact `json:"artifacts,omitempty"`
+	// Migrations are versioned, deterministic transformations for launcher-owned
+	// state/config subjects. They are data, not Go callbacks.
+	Migrations []Migration `json:"migrations,omitempty"`
 	// Intents are the named, guided scenarios offered by the interactive
 	// wizard (e.g. "automate releases", "add AI review") — each a bundle of
 	// services/plugins/adapters plus an ordered list of setup steps. Adding
