@@ -15,6 +15,7 @@ import (
 	"github.com/kb-labs/create/internal/config"
 	engineagent "github.com/kb-labs/create/internal/engine/agent"
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
+	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
@@ -120,6 +121,13 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("create declarative install log: %w", err)
 	}
+	packageActions := 0
+	for _, action := range compiled.Actions {
+		if action.Kind == engineplan.ActionInstallPackage {
+			packageActions++
+		}
+	}
+	log.Printf("Installing %d packages via declarative plan", packageActions)
 	_, finalizeErr := (&installer.Installer{PM: pm.Detect(), Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir: compiled.PlatformRoot,
 		ProjectCWD:  compiled.ProjectRoot,
