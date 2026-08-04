@@ -126,10 +126,10 @@ func TestAdapterSwitchJourney(t *testing.T) {
 		return out
 	}
 
-	install("@kb-labs/adapters-fs")
-	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/adapters-fs"`)
-	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "adapters-fs")); err != nil {
-		t.Fatalf("filesystem adapter artifact missing: %v", err)
+	install("@kb-labs/adapters-sqlite")
+	assertPlatformConfigContains(t, platformDir, `"storage": "@kb-labs/adapters-sqlite"`)
+	if _, err := os.Stat(filepath.Join(platformDir, "node_modules", "@kb-labs", "adapters-sqlite")); err != nil {
+		t.Fatalf("sqlite adapter artifact missing: %v", err)
 	}
 
 	install("@kb-labs/adapters-sqlite")

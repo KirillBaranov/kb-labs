@@ -855,12 +855,21 @@ func TestLocalModeWritesAuthOff(t *testing.T) {
 	}
 	cfg := readPlatformConfig(t, platformDir)
 	t.Logf("kb.config.jsonc:\n%s", cfg)
-	// Match the gateway auth toggle specifically (not any disabled plugin's
-	// "enabled": false).
-	if !strings.Contains(cfg, `"auth": { "enabled": false }`) {
+	var parsed struct {
+		Gateway struct {
+			Auth struct {
+				Enabled bool `json:"enabled"`
+			} `json:"auth"`
+			Host string `json:"host"`
+		} `json:"gateway"`
+	}
+	if err := json.Unmarshal(stripJSONCLineComments([]byte(cfg)), &parsed); err != nil {
+		t.Fatalf("generated platform config is not valid JSONC: %v\n%s", err, cfg)
+	}
+	if parsed.Gateway.Auth.Enabled {
 		t.Errorf("--local must disable gateway auth (see kb.config.jsonc above)")
 	}
-	if !strings.Contains(cfg, `"host": "127.0.0.1"`) {
+	if parsed.Gateway.Host != "127.0.0.1" {
 		t.Errorf("--local must bind the gateway to loopback (see kb.config.jsonc above)")
 	}
 }
@@ -1017,9 +1026,10 @@ func TestDemoReviewSkipsUntrackedOnly(t *testing.T) {
 		t.Errorf("live review ran despite only untracked files:\n%s", out)
 	}
 
-	// The "Try it now" instructions must appear (demo path for reviewable==0).
-	if !strings.Contains(out, "Try it now") {
-		t.Errorf("expected 'Try it now' hint for untracked-only repo:\n%s", out)
+	// The declarative completion contract must provide actionable next steps;
+	// the old imperative demo banner is no longer part of install output.
+	if !strings.Contains(out, "Next steps:") || !strings.Contains(out, "pnpm kb --help") {
+		t.Errorf("expected declarative next steps for untracked-only repo:\n%s", out)
 	}
 }
 

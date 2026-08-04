@@ -33,6 +33,7 @@ type InstallRequest struct {
 	Effects             []string                    `json:"effects,omitempty"`
 	RefreshPackages     bool                        `json:"refreshPackages,omitempty"`
 	ProviderPreferences map[string][]string         `json:"providerPreferences,omitempty"`
+	PackageOverrides    map[string]string           `json:"packageOverrides,omitempty"`
 	Values              map[string]json.RawMessage  `json:"values,omitempty"`
 	AssemblyOutputs     []engineconfig.ConfigOutput `json:"assemblyOutputs,omitempty"`
 }
@@ -123,6 +124,9 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		component, ok := source.Component(id)
 		if !ok {
 			return InstallPlan{}, fmt.Errorf("unknown component %q", id)
+		}
+		if override := request.PackageOverrides[id]; override != "" {
+			component.Package = override
 		}
 		selected[id] = component
 		assembly.Patches = append(assembly.Patches, component.Config...)

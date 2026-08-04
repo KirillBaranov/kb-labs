@@ -33,7 +33,7 @@ func TestSoloDeveloperJourney(t *testing.T) {
 
 	// Phase 1-3 (install & verify) are already covered by TestInstallYes and
 	// friends — bootstrap only, no re-assertion of the install banner here.
-	out, code := run(t, bin, projectDir, "--yes", "--platform", platformDir)
+	out, code := run(t, bin, projectDir, "--yes", "--local", "--platform", platformDir)
 	if code != 0 {
 		t.Fatalf("install exited %d:\n%s", code, out)
 	}

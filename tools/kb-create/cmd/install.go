@@ -14,6 +14,7 @@ import (
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/devservices"
 	"github.com/kb-labs/create/internal/engine/bootstrap"
+	enginecatalog "github.com/kb-labs/create/internal/engine/catalog"
 	"github.com/kb-labs/create/internal/engine/direct"
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
@@ -63,15 +64,9 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out := newOutput()
 	plugins, pluginVersions := splitVersionedIDs(flagInstallPlugins)
 	services, serviceVersions := splitVersionedIDs(flagInstallServices)
-	if len(pluginVersions) > 0 || len(serviceVersions) > 0 {
-		return fmt.Errorf("version-pinned components are not supported by the declarative manifest yet; update the manifest package spec instead")
-	}
 	adapters, err := parseAdapters(flagInstallAdapters)
 	if err != nil {
 		return fmt.Errorf("--adapters: %w", err)
-	}
-	if len(pluginVersions) != 0 || len(serviceVersions) != 0 {
-		return fmt.Errorf("version pins are not supported")
 	}
 	catalog, err := bootstrap.DefaultCatalog()
 	if err != nil {
@@ -129,13 +124,21 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		}
 		canonicalServices = append(canonicalServices, canonical)
 	}
+	packageOverrides := make(map[string]string, len(pluginVersions)+len(serviceVersions))
+	for id, version := range pluginVersions {
+		packageOverrides["plugin:"+id] = componentPackageSpec(catalog, "plugin:"+id, version)
+	}
+	for id, version := range serviceVersions {
+		packageOverrides["service:"+id] = componentPackageSpec(catalog, "service:"+id, version)
+	}
 	request, err := direct.Build(direct.Input{
-		Plugins:       &canonicalPlugins,
-		Services:      &canonicalServices,
-		Config:        configData,
-		ProjectRoot:   projectDir,
-		PlatformRoot:  platformDir,
-		CatalogDigest: catalog.Digest,
+		Plugins:          &canonicalPlugins,
+		Services:         &canonicalServices,
+		Config:           configData,
+		ProjectRoot:      projectDir,
+		PlatformRoot:     platformDir,
+		CatalogDigest:    catalog.Digest,
+		PackageOverrides: packageOverrides,
 	}, catalog)
 	if err != nil {
 		return fmt.Errorf("build declarative install request: %w", err)
@@ -183,6 +186,8 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		ProjectCWD:                       projectDir,
 		Plugins:                          selectedPlugins,
 		Services:                         selectedServices,
+		PluginVersions:                   pluginVersions,
+		ServiceVersions:                  serviceVersions,
 		Adapters:                         adapters,
 		AllowIncompatibleLegacyMigration: true,
 	}, declarativeManifest)
@@ -204,6 +209,14 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
 
+}
+
+func componentPackageSpec(source enginecatalog.Catalog, id, version string) string {
+	component, ok := source.Component(id)
+	if !ok {
+		return ""
+	}
+	return component.Package + "@" + version
 }
 
 func mergeIDs(existing, requested []string) []string {
