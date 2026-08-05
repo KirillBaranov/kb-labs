@@ -41,6 +41,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build process execution dependencies
         run: |
+          pnpm --filter @kb-labs/core-contracts build
           pnpm --filter @kb-labs/core-platform build
           pnpm --filter @kb-labs/core-retry build
           pnpm --filter @kb-labs/core-ipc build
