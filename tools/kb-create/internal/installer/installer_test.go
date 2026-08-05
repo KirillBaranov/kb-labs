@@ -2,6 +2,7 @@ package installer
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -512,6 +513,39 @@ func TestInstallInvokesOnStep(t *testing.T) {
 	}
 }
 
+func TestFinalizeDeclarativeWritesDiscoveredGatewayPlan(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	writeFakeService(t, platformDir, "rest", 5050)
+
+	m := manifest.Manifest{
+		Services: []manifest.Component{{
+			ID:            "rest",
+			Pkg:           "@kb-labs/rest-api",
+			GatewayPrefix: "/api/v1",
+		}},
+	}
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.FinalizeDeclarative(&Selection{
+		PlatformDir: platformDir,
+		ProjectCWD:  projectDir,
+		Services:    []string{"rest"},
+	}, &m); err != nil {
+		t.Fatalf("FinalizeDeclarative() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		t.Fatalf("read platform config: %v", err)
+	}
+	configText := string(data)
+	for _, want := range []string{"\"rest\"", "\"/api/v1\"", "\"http://127.0.0.1:5050\""} {
+		if !strings.Contains(configText, want) {
+			t.Errorf("platform config missing %s:\n%s", want, configText)
+		}
+	}
+}
+
 // ── provenance ────────────────────────────────────────────────────────────────
 
 // TestInstallWritesSourceProvenance verifies that Install persists the registry
@@ -873,6 +907,27 @@ func writeFakePlugin(t *testing.T, platformDir, id string) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(distDir, "manifest.js"), []byte(manifestJS), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeFakeService(t *testing.T, platformDir, id string, port int) {
+	t.Helper()
+	serviceDir := filepath.Join(platformDir, "node_modules", "@kb-labs", id+"-app")
+	if err := os.MkdirAll(filepath.Join(serviceDir, "dist"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{"name":"@kb-labs/` + id + `-app","version":"1.0.0","kb":{"manifest":"./dist/manifest.js"}}`
+	if err := os.WriteFile(filepath.Join(serviceDir, "package.json"), []byte(pkgJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifestJS := `module.exports.manifest = {
+		schema: "kb.service/1",
+		id: "` + id + `",
+		name: "Test service",
+		runtime: { entry: "dist/index.js", port: ` + fmt.Sprint(port) + `, healthCheck: "/health" }
+	};`
+	if err := os.WriteFile(filepath.Join(serviceDir, "dist", "manifest.js"), []byte(manifestJS), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
