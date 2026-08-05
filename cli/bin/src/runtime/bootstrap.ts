@@ -33,6 +33,7 @@ import { loadEnvFile } from "./env-loader";
 import { initializePlatform } from "./platform-init";
 import { resolveVersion } from "./helpers/version";
 import { shouldShowLimits } from "./helpers/flags";
+import { hasNestedCommands } from "./help-routing";
 import type { PlatformContainer, PlatformConfig } from "@kb-labs/core-runtime";
 import { createContextLogger } from "@kb-labs/core-platform";
 
@@ -413,7 +414,18 @@ export async function executeCli(
             },
           });
         } else {
-          presenter.write(renderManifestCommandHelp(manifestCmd));
+          const commandSegments = manifestCmd.manifest.segments;
+          const commandsUnderPath = registryStore.listCommandsUnder([
+            ...commandSegments,
+          ]);
+
+          if (hasNestedCommands(commandSegments, commandsUnderPath)) {
+            presenter.write(
+              renderProductHelp(commandSegments.join(" "), commandsUnderPath),
+            );
+          } else {
+            presenter.write(renderManifestCommandHelp(manifestCmd));
+          }
         }
         return 0;
       }
