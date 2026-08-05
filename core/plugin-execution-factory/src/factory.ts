@@ -15,7 +15,7 @@ import { BrokeredProcessExecutor, createDefaultProcessExecutor } from '@kb-labs/
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 
-function ensureHostProcessExecutor(platform: BackendOptions['platform']): void {
+export function ensureHostProcessExecutor(platform: BackendOptions['platform']): void {
   const host = platform as BackendOptions['platform'] & IPlatformAdapters & {
     hasResourceBroker?: boolean;
     resourceBroker?: IResourceBroker;

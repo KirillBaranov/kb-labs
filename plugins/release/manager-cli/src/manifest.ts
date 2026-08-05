@@ -54,7 +54,7 @@ const pluginPermissions = combinePermissions()
     // Note: deny patterns (*.key, *.secret, node_modules) are enforced by platform
   })
   .withShell({
-    allow: ['git', 'npm', 'pnpm'], // git: timeline/tagging/commits, npm: publish packages, pnpm: configurable build.script
+    allow: ['bash', 'git', 'npm', 'npx', 'pnpm'], // release gates/builds plus git, npm publishing, and configurable pnpm scripts
   })
   .withPlatform({
     cache: [RELEASE_CACHE_PREFIX], // Cache namespace prefix for plan/changelog caching
