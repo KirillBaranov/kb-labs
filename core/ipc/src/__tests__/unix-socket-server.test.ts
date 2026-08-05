@@ -187,7 +187,7 @@ describe('UnixSocketServer', () => {
       server = new UnixSocketServer(mockPlatform, { socketPath: testSocketPath });
       await server.start();
       const client = net.createConnection(testSocketPath);
-      await new Promise((resolve) => client.on('connect', resolve));
+      await new Promise<void>((resolve) => { client.on('connect', () => resolve()); });
       const call = {
         type: 'adapter:call', requestId: 'process-123', version: IPC_PROTOCOL_VERSION,
         adapter: 'processExecutor', method: 'execute',

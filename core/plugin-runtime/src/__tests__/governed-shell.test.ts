@@ -86,7 +86,7 @@ describe('governed ShellAPI', () => {
   it('terminates active processes on shutdown with a governed cancellation reason', async () => {
     const backend = createDefaultProcessExecutor();
     const running = backend.execute({ identity, command: process.execPath, args: ['-e', 'setTimeout(() => {}, 10000)'], cwd: process.cwd(), limits: { timeoutMs: 10000 } });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise<void>((resolve) => { setTimeout(resolve, 50); });
     await backend.shutdown();
     await expect(running).rejects.toMatchObject({ code: 'PROCESS_CANCELLED', details: { result: { terminationReason: 'shutdown' } } });
   });
