@@ -141,6 +141,11 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 	if err != nil {
 		return nil, fmt.Errorf("scan installed manifests: %w", err)
 	}
+	ins.Log.Printf("  found %d plugins, %d adapters, %d services",
+		len(scanResult.Plugins), len(scanResult.Adapters), len(scanResult.Services))
+	for _, e := range scanResult.Errors {
+		ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
+	}
 	if err := scan.WriteConfigs(sel.PlatformDir, scanResult, sel.ProjectCWD); err != nil {
 		return nil, fmt.Errorf("write discovered configs: %w", err)
 	}
