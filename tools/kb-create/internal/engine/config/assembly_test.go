@@ -82,6 +82,21 @@ func TestAssembleRejectsPathEscape(t *testing.T) {
 	}
 }
 
+func TestAssembleAllowsNestedArtifactBelowNotYetCreatedRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "new-project")
+	result, err := Assemble(ConfigAssembly{Artifacts: []ArtifactWrite{{
+		ID: "project.overlay", Root: RootProject, Path: ".kb/generated/kb-create.overlay.jsonc",
+		Format: FormatJSONC, Content: []byte(`{"runtime":{"enabled":true}}`), Owner: "runtime.config", Overwrite: OverwriteReplace,
+	}}}, Roots{RootProject: root}, nil)
+	if err != nil {
+		t.Fatalf("Assemble() error = %v", err)
+	}
+	want := filepath.Join(root, ".kb", "generated", "kb-create.overlay.jsonc")
+	if len(result.Artifacts) != 1 || result.Artifacts[0].Path != want {
+		t.Fatalf("artifacts = %#v, want path %q", result.Artifacts, want)
+	}
+}
+
 func TestAssembleRejectsAbsolutePathAndCollision(t *testing.T) {
 	root := t.TempDir()
 	_, err := Assemble(ConfigAssembly{Artifacts: []ArtifactWrite{{ID: "absolute", Root: RootProject, Path: filepath.Join(root, "file"), Format: FormatText, Text: "x", Owner: "test", Overwrite: OverwriteReplace}}}, Roots{RootProject: root}, nil)
