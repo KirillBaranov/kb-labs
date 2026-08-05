@@ -129,9 +129,13 @@ function verifyStagePackage(
   const verifyDir = mkdtempSync(join(tmpdir(), 'kb-stage-verify-'));
   try {
     const extractResult = spawnSync('tar', ['xzf', tarballPath, '-C', verifyDir], { stdio: 'pipe' });
-    if (extractResult.status !== 0) throw new Error(`could not extract staged tarball for ${pkg.name}@${pkg.currentVersion}`);
+    if (extractResult.status !== 0) {
+      throw new Error(`could not extract staged tarball for ${pkg.name}@${pkg.currentVersion}`);
+    }
     const issues = verifyExtractedTarball(join(verifyDir, 'package'));
-    if (issues.length > 0) throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
+    if (issues.length > 0) {
+      throw new Error(`staged artifact verification failed for ${pkg.name}@${pkg.currentVersion}: ${issues.join('; ')}`);
+    }
   } finally { rmSync(verifyDir, { recursive: true, force: true }); }
 
 }

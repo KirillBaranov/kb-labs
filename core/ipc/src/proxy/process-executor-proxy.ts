@@ -9,6 +9,16 @@ import type { ITransport } from '../transport/transport.js';
 import { RemoteAdapter } from './remote-adapter.js';
 
 /**
+ * The process backend owns the real deadline. IPC only needs to wait long
+ * enough for the backend to terminate the process and return its result.
+ * Keeping this separate from the generic adapter timeout prevents long shell
+ * commands from being truncated by the 30s adapter default.
+ */
+const PROCESS_RPC_GRACE_MS = 5_000;
+const CONTROL_RPC_TIMEOUT_MS = 5_000;
+const MAX_TIMER_MS = 2_147_483_647;
+
+/**
  * Worker-side process executor. The worker only serializes the request; the
  * parent execution host owns admission, OS spawning, limits, and accounting.
  */
@@ -32,17 +42,25 @@ export class ProcessExecutorProxy extends RemoteAdapter<IProcessExecutor> implem
     };
     signal?.addEventListener('abort', onAbort, { once: true });
     try {
-      return await this.callRemote('execute', [{ ...serializableRequest, processId }]) as ProcessResult;
+      const processTimeout = request.limits.timeoutMs + (request.limits.graceMs ?? 1_000);
+      const rpcTimeout = Math.min(MAX_TIMER_MS, processTimeout + PROCESS_RPC_GRACE_MS);
+      return await this.callRemote('execute', [{ ...serializableRequest, processId }], rpcTimeout) as ProcessResult;
+    } catch (error) {
+      // If the response channel fails, the host may still have an active
+      // process. Cancellation is best-effort; the host-side deadline remains
+      // authoritative and guarantees cleanup even if the channel is gone.
+      void this.cancel(processId, 'cancelled').catch(() => undefined);
+      throw error;
     } finally {
       if (!cancelled) { signal?.removeEventListener('abort', onAbort); }
     }
   }
 
   async cancel(processId: string, reason: 'cancelled' | 'shutdown' = 'cancelled'): Promise<void> {
-    await this.callRemote('cancel', [processId, reason]);
+    await this.callRemote('cancel', [processId, reason], CONTROL_RPC_TIMEOUT_MS);
   }
 
   async shutdown(): Promise<void> {
-    await this.callRemote('shutdown', []);
+    await this.callRemote('shutdown', [], CONTROL_RPC_TIMEOUT_MS);
   }
 }
