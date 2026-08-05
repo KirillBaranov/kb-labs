@@ -212,3 +212,15 @@ export type {
   INotifier,
   NotifierDeliveryEvent,
 } from "./notifier.js";
+
+export type {
+  IProcessExecutor,
+  GovernedProcessRequest,
+  ProcessBackendCapabilities,
+  ProcessExecutionIdentity,
+  ProcessLimits,
+  ProcessResult,
+  ProcessRetryPolicy,
+  ProcessTerminationReason,
+  ProcessUsage,
+} from "./process-executor.js";

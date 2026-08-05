@@ -10,10 +10,9 @@ export * from './tag';
 
 // Pipeline v2 — unified core
 export { runReleasePipeline } from './pipeline';
-export { buildPackages, runSafeBuild, isBuildCommand, spawnCommand } from './build';
+export { buildPackages, runSafeBuild, isBuildCommand } from './build';
 export { runReleaseChecks } from './checks';
 export { verifyPackage, verifyPackages, verifyExtractedTarball, findForbiddenDependencyProtocols } from './verifier';
 export { verifyAgainstRegistry } from './verdaccio-verify';
 export { verifyCleanInstall, type CleanInstallResult } from './clean-install-verify';
 export { resolveScopePath } from './scope';
-

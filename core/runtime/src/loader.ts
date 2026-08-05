@@ -1219,6 +1219,21 @@ export async function initPlatform(
       });
     }
 
+    // ExecutionBackend is created before the ResourceBroker so the backend can
+    // be selected during platform startup. Re-run the host executor admission
+    // wiring after the broker is ready; otherwise in-process CLI executions
+    // would expose ctx.api.shell without a broker-backed executor.
+    if (_assemblyBroker && !platform.processExecutor) {
+      try {
+        const { ensureHostProcessExecutor } = await import('@kb-labs/plugin-execution-factory');
+        ensureHostProcessExecutor(platform);
+      } catch (error) {
+        platform.logger.warn('Failed to initialize governed process executor', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     if (assemblyHook && _assemblyBroker) {
       // ── Hook path: delegate adapter assembly to the caller (e.g. cli/bin) ──────────
       // adapterLoader closes over loadModule() which is internal to initPlatform.

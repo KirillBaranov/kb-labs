@@ -97,7 +97,7 @@ async function _runPipeline(ctx: {
   const {
     repoRoot, scopeCwd, scope, flow, config, dryRun,
     skipChecks, skipBuild, skipVerify, skipPublish, noVerify,
-    checkConfigs, publisher, changelogGen, logger, startTime, progress,
+    checkConfigs, publisher, changelogGen, logger, startTime, progress, options,
   } = ctx;
 
   // 0b. Pre-flight: verify npm credentials before doing any real work.
@@ -197,6 +197,7 @@ async function _runPipeline(ctx: {
       packagePaths,
       scopePath: scopeCwd,
       logger,
+      shell: options.shell,
     });
 
     const failed = checkResults.filter(r => !r.ok && r.hint !== 'optional');
@@ -238,7 +239,7 @@ async function _runPipeline(ctx: {
   // 4. Build
   if (!skipBuild && !dryRun) {
     progress('versioning', `Building ${plan.packages.length} package(s)...`);
-    const buildResults = await buildPackages(plan.packages, { logger });
+    const buildResults = await buildPackages(plan.packages, { logger, shell: options.shell });
     const buildFailed = buildResults.filter(r => !r.success);
 
     if (buildFailed.length > 0) {

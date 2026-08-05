@@ -113,7 +113,8 @@ export type AdapterType =
   | 'invoke'
   | 'artifacts'
   | 'database.document'
-  | 'database.kv';
+  | 'database.kv'
+  | 'processExecutor';
 
 /**
  * Execution context for adapter calls.

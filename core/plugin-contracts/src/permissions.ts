@@ -286,6 +286,8 @@ export interface PermissionSpec {
   shell?: {
     /** Whitelist of allowed commands (empty = shell disabled) */
     allow?: string[];
+    /** Maximum concurrent shell processes owned by this plugin. */
+    maxConcurrent?: number;
   };
 
   /**
@@ -323,6 +325,10 @@ export interface PermissionSpec {
     memoryMb?: number;
     /** CPU time limit in ms */
     cpuMs?: number;
+    /** Maximum number of descendant processes a handler may own. */
+    maxProcesses?: number;
+    /** Maximum combined stdout/stderr bytes per shell invocation. */
+    maxOutputBytes?: number;
   };
 }
 

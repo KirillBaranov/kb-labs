@@ -146,6 +146,41 @@ describe('E2E Context Tests', () => {
     });
   });
 
+  it('should execute shell through the governed process path end-to-end', async () => {
+    const handlerPath = join(testDir, 'shell-check.js');
+    writeFileSync(handlerPath, `
+      export default {
+        async execute(ctx) {
+          const result = await ctx.api.shell.exec(process.execPath, ['-e', 'process.stdout.write("governed")'], { timeout: 2000 });
+          return { ok: result.ok, stdout: result.stdout, processId: result.processId, usage: result.usage };
+        }
+      };
+    `);
+
+    const descriptor: PluginContextDescriptor = {
+      hostType: 'cli',
+      pluginId: '@kb-labs/test-shell',
+      pluginVersion: '1.0.0',
+      requestId: 'e2e-shell-test',
+      permissions: { shell: { allow: ['node'] }, quotas: { timeoutMs: 5000, maxOutputBytes: 1024 } },
+      hostContext: { host: 'cli', argv: [], flags: {} },
+    };
+
+    const runResult = await runInProcess({
+      descriptor,
+      platform: mockPlatform,
+      ui: mockUI,
+      handlerPath,
+      input: {},
+      cwd: testDir,
+    });
+
+    expect(runResult.ok).toBe(true);
+    expect(runResult.data).toMatchObject({ ok: true, stdout: 'governed' });
+    expect((runResult.data as { processId?: string }).processId).toBeTypeOf('string');
+    expect((runResult.data as { usage?: { processCount: number } }).usage?.processCount).toBeGreaterThanOrEqual(1);
+  });
+
   it('should provide working trace API', async () => {
     const handlerPath = join(testDir, 'trace-check.js');
     const handlerCode = `

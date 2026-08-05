@@ -21,6 +21,8 @@ export interface PluginContextDescriptor {
   pluginVersion: string;
   handlerId?: string;
   requestId: string;
+  /** Trusted execution attempt identity, injected by the execution layer. */
+  executionId?: string;
   tenantId?: string;
   /** Config section from manifest (for useConfig auto-detection) */
   configSection?: string;

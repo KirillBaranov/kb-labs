@@ -207,6 +207,19 @@ export interface ExecResult {
    * Whether command succeeded (code === 0)
    */
   ok: boolean;
+
+  /** Governed process metadata. */
+  processId?: string;
+  terminationReason?: string;
+  usage?: {
+    wallTimeMs: number;
+    cpuMs: number;
+    peakMemoryMb: number;
+    processCount: number;
+    stdoutBytes: number;
+    stderrBytes: number;
+  };
+  attempts?: number;
 }
 
 /**
@@ -232,6 +245,21 @@ export interface ExecOptions {
    * Whether to throw on non-zero exit code
    */
   throwOnError?: boolean;
+
+  /** Abort the process and its descendants when execution is cancelled. */
+  signal?: AbortSignal;
+
+  /** Maximum captured bytes per stream. */
+  maxOutputBytes?: number;
+
+  /** Explicit retry policy. Disabled by default for shell commands. */
+  retry?: {
+    maxAttempts: number;
+    idempotent?: boolean;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    jitter?: number;
+  };
 }
 
 /**

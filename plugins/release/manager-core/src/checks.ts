@@ -4,14 +4,14 @@
  */
 
 import { join } from 'node:path';
-import type { CustomCheckConfig, CheckResult, CheckResultDetails, PluginLogger } from './types';
-import { spawnCommand } from './build';
+import type { CustomCheckConfig, CheckResult, CheckResultDetails, PluginLogger, ReleaseShell } from './types';
 
 export interface CheckRunnerOptions {
   repoRoot: string;
   packagePaths: string[];
   scopePath?: string;
   logger?: Pick<PluginLogger, 'info' | 'warn'>;
+  shell: ReleaseShell;
 }
 
 /**
@@ -60,24 +60,24 @@ async function runSingleCheck(
   const resolvedArgs = (check.args ?? []).map(arg =>
     arg.match(/\.(sh|js|ts|mjs|cjs)$/) ? join(options.repoRoot, arg) : arg
   );
-  const fullCommand = [check.command, ...resolvedArgs].join(' ');
   const timeoutMs = check.timeoutMs ?? 120_000;
 
   type PkgRunResult = { path: string; ok: boolean; details: CheckResultDetails; durationMs: number };
 
   async function runForPath(pkgPath: string): Promise<PkgRunResult> {
-    const result = await spawnCommand(fullCommand, pkgPath, timeoutMs);
-    const ok = evaluateParser(check, result.stdout, result.stderr, result.exitCode);
+    const startedAt = Date.now();
+    const result = await options.shell.exec(check.command, resolvedArgs, { cwd: pkgPath, timeout: timeoutMs });
+    const ok = evaluateParser(check, result.stdout, result.stderr, result.code);
     return {
       path: pkgPath,
       ok,
-      durationMs: result.durationMs,
+      durationMs: Date.now() - startedAt,
       details: {
         packagePath: pkgPath,
         stdout: result.stdout || undefined,
         stderr: result.stderr || undefined,
-        exitCode: result.exitCode,
-        error: result.error ?? (!ok ? `exit code ${result.exitCode}` : undefined),
+        exitCode: result.code,
+        error: !ok ? `exit code ${result.code}` : undefined,
       },
     };
   }

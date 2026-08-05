@@ -16,6 +16,8 @@ vi.mock('../verdaccio-verify', () => ({
 
 const { runReleasePipeline } = await import('../pipeline');
 
+const testShell = { async exec() { return { code: 0, stdout: '', stderr: '', ok: true }; } };
+
 function makeTmpMonorepo(packages: Array<{ name: string; version?: string }>): { root: string; remote: string } {
   const root = join(tmpdir(), `kb-pipeline-channel-test-${randomBytes(4).toString('hex')}`);
   const remote = join(tmpdir(), `kb-pipeline-channel-remote-${randomBytes(4).toString('hex')}.git`);
@@ -89,6 +91,7 @@ describe('runReleasePipeline — channel behavior', () => {
       cwd: root,
       repoRoot: root,
       scopeCwd: root,
+      shell: testShell,
       config: { bump: 'patch' },
       skipChecks: true,
       skipBuild: true,
@@ -116,6 +119,7 @@ describe('runReleasePipeline — channel behavior', () => {
       cwd: root,
       repoRoot: root,
       scopeCwd: root,
+      shell: testShell,
       config: { bump: 'patch', channel: 'canary' },
       skipChecks: true,
       skipBuild: true,
@@ -153,6 +157,7 @@ describe('runReleasePipeline — channel behavior', () => {
       cwd: root,
       repoRoot: root,
       scopeCwd: root,
+      shell: testShell,
       config: { bump: 'patch' },
       skipChecks: true,
       skipBuild: true,

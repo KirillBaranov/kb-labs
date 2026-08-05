@@ -67,6 +67,14 @@ export {
   type RunInSubprocessOptions,
 } from './sandbox/index.js';
 
+export {
+  createDefaultProcessExecutor,
+  DarwinProcessBackend,
+  LinuxProcessBackend,
+  GovernedProcessError,
+  BrokeredProcessExecutor,
+} from './process/index.js';
+
 // Platform governance
 export { createGovernedPlatformServices } from './platform/governed.js';
 export { resolveAdapterMiddlewares } from './platform/middleware-loader.js';

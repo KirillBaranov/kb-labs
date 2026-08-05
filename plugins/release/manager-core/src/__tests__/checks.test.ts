@@ -3,8 +3,27 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { runReleaseChecks } from '../checks';
+import { runReleaseChecks as runReleaseChecksCore } from '../checks';
 import type { CustomCheckConfig } from '../types';
+import { execa, execaCommand } from 'execa';
+
+const testShell = {
+  async exec(command: string, args: string[] = [], options: { cwd?: string; timeout?: number } = {}) {
+    try {
+      const result = args.length > 0
+        ? await execa(command, args, { cwd: options.cwd, timeout: options.timeout })
+        : await execaCommand(command, { cwd: options.cwd, timeout: options.timeout });
+      return { code: result.exitCode ?? 0, stdout: result.stdout, stderr: result.stderr, ok: true };
+    } catch (error) {
+      const result = error as { exitCode?: number; stdout?: string; stderr?: string };
+      return { code: result.exitCode ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '', ok: false };
+    }
+  },
+};
+
+async function runReleaseChecks(checks: CustomCheckConfig[], options: { repoRoot: string; packagePaths: string[]; scopePath?: string } = { repoRoot: '/tmp', packagePaths: [] }) {
+  return runReleaseChecksCore(checks, { ...options, shell: testShell });
+}
 
 // ─── helper scripts ───────────────────────────────────────────────────────────
 

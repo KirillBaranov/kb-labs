@@ -22,3 +22,4 @@ export * from './llm-proxy';
 export * from './embeddings-proxy';
 export * from './storage-proxy';
 export * from './document-database-proxy';
+export * from './process-executor-proxy';

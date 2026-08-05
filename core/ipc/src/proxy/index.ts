@@ -15,4 +15,5 @@ export { KVStoreProxy } from './kv-store-proxy.js';
 export { ConfigProxy } from './config-proxy.js';
 export { EventBusProxy } from './event-bus-proxy.js';
 export { LoggerProxy, createLoggerProxy } from './logger-proxy.js';
+export { ProcessExecutorProxy } from './process-executor-proxy.js';
 export { createProxyPlatform, type CreateProxyPlatformOptions } from './create-proxy-platform.js';

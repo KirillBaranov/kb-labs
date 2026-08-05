@@ -18,7 +18,7 @@
  */
 
 // Factory
-export { createExecutionBackend } from './factory.js';
+export { createExecutionBackend, ensureHostProcessExecutor } from './factory.js';
 export { PROTOCOL_VERSION } from './types.js';
 
 // Isolated execution (unified factory for all hosts)

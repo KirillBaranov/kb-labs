@@ -25,6 +25,7 @@ import type {
   SnapshotGarbageCollectInfo,
 } from '@kb-labs/plugin-contracts';
 import type { IWorkflowEngine } from '@kb-labs/core-platform';
+import type { IProcessExecutor, ProcessExecutionIdentity } from '@kb-labs/core-platform/adapters';
 
 import { createLifecycleAPI } from './lifecycle.js';
 import { createStateAPI } from './state.js';
@@ -64,6 +65,9 @@ export interface CreatePluginAPIOptions {
   cwd: string;
   outdir: string;
   permissions: PermissionSpec;
+  processExecutor?: IProcessExecutor;
+  processIdentity?: ProcessExecutionIdentity;
+  signal?: AbortSignal;
   cache: CacheAdapter;
   eventEmitter?: EventEmitterFn;
   pluginInvoker?: PluginInvokerFn;
@@ -125,6 +129,9 @@ export function createPluginAPI(options: CreatePluginAPIOptions): PluginAPI {
     cwd,
     outdir,
     permissions,
+    processExecutor,
+    processIdentity,
+    signal,
     cache,
     eventEmitter,
     pluginInvoker,
@@ -143,7 +150,7 @@ export function createPluginAPI(options: CreatePluginAPIOptions): PluginAPI {
     lifecycle: createLifecycleAPI(cleanupStack),
     state: createStateAPI({ pluginId, tenantId, cache }),
     artifacts: createArtifactsAPI({ outdir }),
-    shell: createShellAPI({ permissions, cwd }),
+    shell: createShellAPI({ permissions, cwd, processExecutor, processIdentity, signal }),
     events: eventEmitter
       ? createEventsAPI({ pluginId, emitter: eventEmitter })
       : createNoopEventsAPI(),
