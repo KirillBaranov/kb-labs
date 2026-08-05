@@ -56,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build process execution dependencies
-        run: ./tools/kb-devkit/kb-devkit run build --affected --diff-only
+        run: ./tools/kb-devkit/kb-devkit run build --affected
       - name: Run Linux process and IPC e2e
         run: |
           sudo -E env "PATH=$PATH" pnpm --filter @kb-labs/plugin-runtime exec vitest run \
