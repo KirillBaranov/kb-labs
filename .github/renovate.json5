@@ -1,0 +1,58 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+  enabledManagers: ["pnpm", "gomod", "github-actions", "dockerfile"],
+  dependencyDashboard: true,
+  prCreation: "immediate",
+  rebaseWhen: "conflicted",
+  rangeStrategy: "bump",
+  separateMajorMinor: true,
+  prConcurrentLimit: 10,
+  labels: ["dependencies"],
+  postUpdateOptions: ["pnpmDedupe"],
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ["security", "dependencies"],
+    prCreation: "immediate",
+    prPriority: 100,
+  },
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ["before 4am on monday"],
+  },
+  packageRules: [
+    {
+      description: "Automerge safe patch updates after CI",
+      matchManagers: ["pnpm", "gomod", "github-actions", "dockerfile"],
+      matchUpdateTypes: ["patch"],
+      automerge: true,
+      automergeType: "pr",
+      platformAutomerge: true,
+    },
+    {
+      description: "Group non-major updates for review",
+      matchUpdateTypes: ["minor"],
+      groupName: "non-major dependencies",
+      groupSlug: "non-major",
+    },
+    {
+      description: "Keep Go module updates together",
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["minor", "major"],
+      groupName: "Go dependencies",
+      groupSlug: "go-dependencies",
+    },
+    {
+      description: "Root pnpm overrides need explicit lockfile updates",
+      matchManagers: ["pnpm"],
+      matchFileNames: ["pnpm-workspace.yaml"],
+      rangeStrategy: "replace",
+    },
+    {
+      description: "Major updates require manual approval",
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+      automerge: false,
+    },
+  ],
+}
