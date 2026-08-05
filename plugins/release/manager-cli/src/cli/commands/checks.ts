@@ -93,6 +93,7 @@ export default defineCommand({
         packagePaths,
         scopePath,
         logger: ctx.platform?.logger,
+        shell: ctx.api.shell,
       });
 
       const ok = results.every(r => r.ok);

@@ -42,6 +42,7 @@ jobs:
       - name: Build process execution dependencies
         run: |
           pnpm --filter @kb-labs/core-platform build
+          pnpm --filter @kb-labs/core-retry build
           pnpm --filter @kb-labs/core-ipc build
           pnpm --filter @kb-labs/plugin-runtime build
       - name: Run Linux process and IPC e2e

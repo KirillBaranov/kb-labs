@@ -58,7 +58,7 @@ export default defineHandler({
       }
 
       // Build via core
-      const results = await buildPackages(plan.packages as unknown as PackageVersion[], { logger: ctx.platform?.logger });
+      const results = await buildPackages(plan.packages as unknown as PackageVersion[], { logger: ctx.platform?.logger, shell: ctx.api.shell });
 
       // Copy changelog if exists
       const changelogPath = join(repoRoot, '.kb/release/plans', scopeDir, 'current', 'changelog.md');

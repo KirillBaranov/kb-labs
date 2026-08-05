@@ -9,6 +9,16 @@ export interface PluginLogger {
   error?(message: string, error?: Error, meta?: Record<string, unknown>): void;
 }
 
+/** Governed process facade supplied by the plugin runtime. */
+export interface ReleaseShell {
+  exec(command: string, args?: string[], options?: { cwd?: string; timeout?: number; env?: Record<string, string> }): Promise<{
+    code: number;
+    stdout: string;
+    stderr: string;
+    ok: boolean;
+  }>;
+}
+
 export type ReleaseStage = 'planning' | 'checking' | 'versioning' | 'publishing' | 'verifying' | 'rollback';
 
 export type VersionBump = 'patch' | 'minor' | 'major' | 'auto';
@@ -377,6 +387,7 @@ export interface PipelineOptions {
   noVerify?: boolean;
 
   logger?: PluginLogger;
+  shell: ReleaseShell;
   onProgress?: (stage: ReleaseStage, message: string) => void;
 }
 

@@ -103,6 +103,7 @@ export default defineCommand({
           })()
         : await buildPackages(plan.packages, {
             logger: ctx.platform?.logger,
+            shell: ctx.api.shell,
             onProgress: (name, result) => {
               ctx.platform?.logger?.info?.(`Built ${name}`, { ok: result.success, ms: result.durationMs });
             },

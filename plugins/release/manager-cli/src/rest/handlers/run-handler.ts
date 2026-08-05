@@ -69,6 +69,7 @@ export default defineHandler({
            ?? config.checks ?? [],
       publisher,
       changelog,
+      shell: ctx.api.shell,
       logger: ctx.platform?.logger,
     });
 

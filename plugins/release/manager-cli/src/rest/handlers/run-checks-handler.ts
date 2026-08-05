@@ -43,6 +43,7 @@ export default defineHandler({
       packagePaths,
       scopePath: scopeCwd,
       logger: ctx.platform?.logger,
+      shell: ctx.api.shell,
     });
 
     const allPassed = results.every(r => r.ok || r.hint === 'optional');

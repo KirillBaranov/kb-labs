@@ -6,10 +6,9 @@
 import { rename, rm, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import type { BuildResult, PackageVersion, PluginLogger } from './types';
+import type { BuildResult, PackageVersion, PluginLogger, ReleaseShell } from './types';
 import { topoSortForBuild } from './dep-order';
 
 /**
@@ -23,8 +22,9 @@ import { topoSortForBuild } from './dep-order';
  */
 export async function buildPackages(
   packages: PackageVersion[],
-  options?: {
+  options: {
     logger?: PluginLogger;
+    shell: ReleaseShell;
     onProgress?: (pkg: string, result: BuildResult) => void;
   },
 ): Promise<BuildResult[]> {
@@ -33,7 +33,7 @@ export async function buildPackages(
 
   for (const pkg of ordered) {
     options?.logger?.info?.(`Building ${pkg.name}...`);
-    const result = await runSafeBuild(pkg.path, pkg.name);
+    const result = await runSafeBuild(pkg.path, pkg.name, options.shell);
     results.push({ ...result, name: pkg.name });
 
     options?.onProgress?.(pkg.name, { ...result, name: pkg.name });
@@ -53,15 +53,15 @@ export async function buildPackages(
  * Run build for a single package using safe temp-dir strategy when tsup is detected.
  * Falls back to regular `pnpm run build` for non-tsup packages.
  */
-export async function runSafeBuild(packagePath: string, packageName: string): Promise<BuildResult> {
+export async function runSafeBuild(packagePath: string, packageName: string, shell: ReleaseShell): Promise<BuildResult> {
   const usesTsup = existsSync(join(packagePath, 'tsup.config.ts'))
     || existsSync(join(packagePath, 'tsup.config.js'));
 
   if (usesTsup) {
-    return runTsupSafeBuild(packagePath, packageName);
+    return runTsupSafeBuild(packagePath, packageName, shell);
   }
 
-  return runDirectBuild(packagePath, packageName);
+  return runDirectBuild(packagePath, packageName, shell);
 }
 
 /**
@@ -72,7 +72,7 @@ export function isBuildCommand(command: string, args?: string[]): boolean {
   return /\b(pnpm|npm|yarn)\s+(run\s+)?build\b/.test(full);
 }
 
-async function runTsupSafeBuild(packagePath: string, packageName: string): Promise<BuildResult> {
+async function runTsupSafeBuild(packagePath: string, packageName: string, shell: ReleaseShell): Promise<BuildResult> {
   const startTime = Date.now();
   const buildId = randomBytes(6).toString('hex');
   const tempDir = join(tmpdir(), `kb-release-build-${buildId}`);
@@ -80,7 +80,7 @@ async function runTsupSafeBuild(packagePath: string, packageName: string): Promi
   const backupDir = join(packagePath, `dist.bak-${buildId}`);
 
   try {
-    const buildResult = await spawnCommand(`npx tsup -d ${tempDir}`, packagePath);
+    const buildResult = await executeCommand(shell, 'npx', ['tsup', '-d', tempDir], packagePath, 5 * 60 * 1000);
 
     if (!buildResult.success) {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -114,8 +114,8 @@ async function runTsupSafeBuild(packagePath: string, packageName: string): Promi
   }
 }
 
-async function runDirectBuild(packagePath: string, packageName: string): Promise<BuildResult> {
-  const result = await spawnCommand('pnpm run build', packagePath);
+async function runDirectBuild(packagePath: string, packageName: string, shell: ReleaseShell): Promise<BuildResult> {
+  const result = await executeCommand(shell, 'pnpm', ['run', 'build'], packagePath, 5 * 60 * 1000);
   return { ...result, name: packageName };
 }
 
@@ -129,54 +129,17 @@ export interface SpawnResult extends Omit<BuildResult, 'name'> {
  * Spawn a shell command and collect results.
  * Captures both stdout and stderr — build tools often write errors to stdout.
  */
-export function spawnCommand(command: string, cwd: string, timeoutMs = 5 * 60 * 1000): Promise<SpawnResult> {
+async function executeCommand(shell: ReleaseShell, command: string, args: string[], cwd: string, timeoutMs: number): Promise<SpawnResult> {
   const startTime = Date.now();
-
-  return new Promise((resolve) => {
-    const child = spawn(command, [], {
-      cwd,
-      stdio: 'pipe',
-      shell: true,
-      env: { ...process.env },
-    });
-
-    let stdout = '';
-    let stderr = '';
-    child.stdout?.on('data', (data) => { stdout += data.toString(); });
-    child.stderr?.on('data', (data) => { stderr += data.toString(); });
-
-    child.on('close', (code) => {
-      const exitCode = code ?? 1;
-      const durationMs = Date.now() - startTime;
-      if (exitCode === 0) {
-        resolve({ success: true, durationMs, stdout, stderr, exitCode });
-        return;
-      }
-
-      // Build error message from available output (last N lines to keep it readable)
-      const combined = (stderr || stdout).trim();
-      const tail = combined
-        .split('\n')
-        .slice(-30)
-        .join('\n');
-
-      resolve({
-        success: false,
-        error: tail || `Build failed with exit code ${exitCode}`,
-        durationMs,
-        stdout,
-        stderr,
-        exitCode,
-      });
-    });
-
-    child.on('error', (err) => {
-      resolve({ success: false, error: err.message, durationMs: Date.now() - startTime, stdout: '', stderr: '', exitCode: 1 });
-    });
-
-    setTimeout(() => {
-      child.kill();
-      resolve({ success: false, error: `Timed out after ${timeoutMs / 1000}s`, durationMs: Date.now() - startTime, stdout: '', stderr: '', exitCode: 1 });
-    }, timeoutMs);
-  });
+  const result = await shell.exec(command, args, { cwd, timeout: timeoutMs });
+  const exitCode = result.code;
+  const combined = (result.stderr || result.stdout).trim();
+  return {
+    success: result.ok,
+    error: result.ok ? undefined : combined.split('\n').slice(-30).join('\n') || `Build failed with exit code ${exitCode}`,
+    durationMs: Date.now() - startTime,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode,
+  };
 }

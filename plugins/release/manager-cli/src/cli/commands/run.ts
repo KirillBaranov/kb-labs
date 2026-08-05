@@ -421,6 +421,7 @@ export default defineCommand({
         checks: resolveChecks(flags, config),
         publisher,
         changelog,
+        shell: ctx.api.shell,
         logger: ctx.platform?.logger,
         onProgress: (_stage, message) => {
           const elapsed = ((Date.now() - pipelineStart) / 1000).toFixed(1);
