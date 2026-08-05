@@ -11,6 +11,25 @@ import { SubprocessBackend } from './backends/subprocess.js';
 import { WorkerPoolBackend } from './backends/worker-pool/backend.js';
 import { RemoteBackend } from './backends/remote.js';
 import { SubprocessRunnerAdapter } from './adapters/index.js';
+import { BrokeredProcessExecutor, createDefaultProcessExecutor } from '@kb-labs/plugin-runtime';
+import type { IPlatformAdapters } from '@kb-labs/core-platform';
+import type { IResourceBroker } from '@kb-labs/core-resource-broker';
+
+function ensureHostProcessExecutor(platform: BackendOptions['platform']): void {
+  const host = platform as BackendOptions['platform'] & IPlatformAdapters & {
+    hasResourceBroker?: boolean;
+    resourceBroker?: IResourceBroker;
+    setAdapter?: (key: string, value: unknown) => void;
+  };
+  if (host.processExecutor || !host.setAdapter || host.hasResourceBroker !== true || !host.resourceBroker) {
+    return;
+  }
+  host.setAdapter('processExecutor', new BrokeredProcessExecutor(
+    host.resourceBroker,
+    createDefaultProcessExecutor(host.logger),
+    host.logger,
+  ));
+}
 
 /**
  * Create execution backend based on options.
@@ -36,6 +55,10 @@ import { SubprocessRunnerAdapter } from './adapters/index.js';
  * ```
  */
 export function createExecutionBackend(options: BackendOptions): ExecutionBackend {
+  // Install the single host-owned executor before creating any backend. Worker
+  // and subprocess platforms already expose a proxy and therefore are left
+  // untouched; they forward execution to this host over IPC.
+  ensureHostProcessExecutor(options.platform);
   const mode = options.mode === 'auto' || !options.mode
     ? detectMode()
     : options.mode;

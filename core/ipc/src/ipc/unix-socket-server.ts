@@ -292,11 +292,16 @@ export class UnixSocketServer {
         return this.platform.analytics;
       case 'eventBus':
         return this.platform.eventBus;
+      case 'processExecutor':
+        if (!this.platform.processExecutor) {
+          throw new Error('Governed process executor is not configured on execution host');
+        }
+        return this.platform.processExecutor;
       case 'invoke':
         return this.platform.invoke;
       default:
         throw new Error(
-          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, config, llm, embeddings, storage, logger, analytics, eventBus, invoke`
+          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, config, llm, embeddings, storage, logger, analytics, eventBus, invoke, processExecutor`
         );
     }
   }

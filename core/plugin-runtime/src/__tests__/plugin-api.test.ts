@@ -18,11 +18,13 @@ import { PermissionError } from '@kb-labs/plugin-contracts';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { createDefaultProcessExecutor } from '../process/index.js';
 
 describe('Plugin API', () => {
   let testDir: string;
   let mockCache: CacheAdapter;
   let cleanupStack: Array<() => void | Promise<void>>;
+  let processExecutor: ReturnType<typeof createDefaultProcessExecutor>;
 
   beforeEach(async () => {
     // Create temporary test directory
@@ -52,6 +54,7 @@ describe('Plugin API', () => {
 
     // Fresh cleanup stack
     cleanupStack = [];
+    processExecutor = createDefaultProcessExecutor();
   });
 
   afterEach(async () => {
@@ -72,6 +75,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       const cleanup1 = vi.fn();
@@ -150,6 +154,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await api.state.set('user-setting', { theme: 'dark' });
@@ -168,6 +173,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await api.state.set('key', 'value');
@@ -185,6 +191,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       // Set
@@ -242,6 +249,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await api.state.setMany({ a: 1, b: 2, c: 3 });
@@ -262,6 +270,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       const filePath = await api.artifacts.write('result.json', JSON.stringify({ data: 'test' }));
@@ -282,6 +291,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       const filePath = await api.artifacts.write('subdir/nested/file.txt', 'nested content');
@@ -302,6 +312,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await api.artifacts.write('file1.txt', 'content1');
@@ -421,6 +432,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       const result = await api.shell.exec('echo', ['hello world']);
@@ -443,6 +455,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await expect(
@@ -463,6 +476,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       await expect(
@@ -483,6 +497,7 @@ describe('Plugin API', () => {
         permissions,
         cache: mockCache,
         cleanupStack,
+        processExecutor,
       });
 
       const result = await api.shell.exec('echo', ['test']);

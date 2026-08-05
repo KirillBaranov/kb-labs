@@ -25,7 +25,7 @@ import type {
   RawMiddlewareDecl,
 } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
-import type { IDocumentDatabase, IKVStore } from '@kb-labs/core-platform/adapters';
+import type { IDocumentDatabase, IKVStore, IProcessExecutor } from '@kb-labs/core-platform/adapters';
 
 import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import type { EnvironmentManager } from './environment-manager.js';
@@ -616,6 +616,11 @@ export class PlatformContainer {
    */
   get hasResourceBroker(): boolean {
     return this._resourceBroker !== undefined;
+  }
+
+  /** Platform-owned process executor. Never exposed through governed plugin adapters. */
+  get processExecutor(): IProcessExecutor | undefined {
+    return this.getAdapter<IProcessExecutor>('processExecutor');
   }
 
   /**

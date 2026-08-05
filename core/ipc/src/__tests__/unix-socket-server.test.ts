@@ -16,7 +16,7 @@ import { UnixSocketServer } from '../ipc/unix-socket-server';
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import * as net from 'net';
 import * as fs from 'fs';
-import { IPC_PROTOCOL_VERSION, deserialize } from '@kb-labs/core-platform/serializable';
+import { IPC_PROTOCOL_VERSION, deserialize, serialize } from '@kb-labs/core-platform/serializable';
 
 describe('UnixSocketServer', () => {
   let server: UnixSocketServer;
@@ -67,6 +67,12 @@ describe('UnixSocketServer', () => {
       documentDatabase: {} as any,
       kvStore: {} as any,
       logs: {} as any,
+      processExecutor: {
+        capabilities: vi.fn(() => ({ platform: 'darwin', processGroups: true, hardMemoryLimit: false, hardCpuLimit: false, processTreeAccounting: false, maxProcesses: false })),
+        execute: vi.fn().mockResolvedValue({ processId: 'socket-process', code: 0, stdout: 'socket-ok', stderr: '', ok: true, terminationReason: 'completed', attempts: 1, usage: { wallTimeMs: 1, cpuMs: 0, peakMemoryMb: 1, processCount: 1, stdoutBytes: 9, stderrBytes: 0 } }),
+        cancel: vi.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockResolvedValue(undefined),
+      } as any,
     };
   });
 
@@ -174,6 +180,31 @@ describe('UnixSocketServer', () => {
       expect(response.requestId).toBe('test-123');
       expect(deserialize(response.result)).toEqual({ foo: 'bar' });
 
+      client.end();
+    });
+
+    it('should dispatch process execution to the host executor over Unix socket', async () => {
+      server = new UnixSocketServer(mockPlatform, { socketPath: testSocketPath });
+      await server.start();
+      const client = net.createConnection(testSocketPath);
+      await new Promise((resolve) => client.on('connect', resolve));
+      const call = {
+        type: 'adapter:call', requestId: 'process-123', version: IPC_PROTOCOL_VERSION,
+        adapter: 'processExecutor', method: 'execute',
+        args: [serialize({ identity: { executionId: 'e1', requestId: 'r1', pluginId: 'p1' }, command: 'echo', args: ['ok'], cwd: process.cwd(), limits: { timeoutMs: 1000 } })],
+      };
+      const response = await new Promise<any>((resolve) => {
+        let buffer = '';
+        client.on('data', (data) => {
+          buffer += data.toString('utf8');
+          const newlineIndex = buffer.indexOf('\n');
+          if (newlineIndex !== -1) { resolve(JSON.parse(buffer.slice(0, newlineIndex))); }
+        });
+        client.write(JSON.stringify(call) + '\n', 'utf8');
+      });
+      expect(response.type).toBe('adapter:response');
+      expect(deserialize(response.result)).toMatchObject({ processId: 'socket-process', stdout: 'socket-ok' });
+      expect(mockPlatform.processExecutor?.execute).toHaveBeenCalledWith(expect.objectContaining({ command: 'echo', identity: { executionId: 'e1', requestId: 'r1', pluginId: 'p1' } }));
       client.end();
     });
 

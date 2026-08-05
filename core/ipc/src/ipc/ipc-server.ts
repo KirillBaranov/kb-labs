@@ -207,9 +207,14 @@ export class IPCServer {
         return this.platform.eventBus;
       case 'invoke':
         return this.platform.invoke;
+      case 'processExecutor':
+        if (!this.platform.processExecutor) {
+          throw new Error('Governed process executor is not configured on execution host');
+        }
+        return this.platform.processExecutor;
       default:
         throw new Error(
-          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, llm, embeddings, storage, logger, analytics, eventBus, invoke`
+          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, llm, embeddings, storage, logger, analytics, eventBus, invoke, processExecutor`
         );
     }
   }

@@ -218,6 +218,8 @@ export function createPluginContextV3<TConfig = unknown>(
   // PlatformServices (IPlatformAdapters), which only covers core adapter fields.
   // We narrow via a local intersection using the exact types expected by CreatePluginAPIOptions.
   const extendedPlatform = platform as PlatformServices & {
+    processExecutor?: CreatePluginAPIOptions["processExecutor"];
+    hasResourceBroker?: boolean;
     workflows?: CreatePluginAPIOptions["workflowEngine"];
     environmentManager?: CreatePluginAPIOptions["environmentManager"];
     workspaceManager?: CreatePluginAPIOptions["workspaceManager"];
@@ -231,6 +233,15 @@ export function createPluginContextV3<TConfig = unknown>(
     cwd,
     outdir: finalOutdir,
     permissions: descriptor.permissions,
+    processExecutor: extendedPlatform.processExecutor,
+    processIdentity: {
+      executionId: executionId ?? requestId,
+      requestId,
+      pluginId: descriptor.pluginId,
+      handlerId: descriptor.handlerId,
+      tenantId: descriptor.tenantId,
+    },
+    signal,
     cache: enrichedPlatform.cache, // Use governed cache, not raw
     eventEmitter,
     pluginInvoker,

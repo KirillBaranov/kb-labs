@@ -25,6 +25,7 @@ function makePlatformWithExtra() {
     // Simulate a future platform-only adapter (e.g. serviceTransport).
     // It is NOT registered in ADAPTER_REGISTRY so must never reach plugins.
     _platformOnlyField: { secret: 'internal' },
+    processExecutor: { capabilities: () => ({}) },
   });
 }
 
@@ -38,10 +39,12 @@ describe('applyPluginGovernance — platform boundary', () => {
   it('strips fields that are not in ADAPTER_REGISTRY from governed result', () => {
     const platform = makePlatformWithExtra();
     expect((platform as unknown as Record<string, unknown>)._platformOnlyField).toBeDefined();
+    expect((platform as unknown as Record<string, unknown>).processExecutor).toBeDefined();
 
     const governed = applyPluginGovernance(platform, emptyPermissions, 'test-plugin');
 
     expect((governed as unknown as Record<string, unknown>)._platformOnlyField).toBeUndefined();
+    expect((governed as unknown as Record<string, unknown>).processExecutor).toBeUndefined();
     expect('_platformOnlyField' in governed).toBe(false);
   });
 

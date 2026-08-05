@@ -19,6 +19,7 @@ import { StorageProxy } from './storage-proxy.js';
 import { DocumentDatabaseProxy } from './document-database-proxy.js';
 import { KVStoreProxy } from './kv-store-proxy.js';
 import type { ILogger, IEventBus, IAnalytics } from '@kb-labs/core-platform';
+import { ProcessExecutorProxy } from './process-executor-proxy.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -142,6 +143,7 @@ export async function createProxyPlatform(
   platform.setAdapter('kvStore', kvStore);
   platform.setAdapter('eventBus', eventBus as unknown as IEventBus);
   platform.setAdapter('analytics', analytics as unknown as IAnalytics);
+  platform.setAdapter('processExecutor', new ProcessExecutorProxy(transport));
 
   return platform;
 }

@@ -21,6 +21,7 @@ import { KVStoreProxy } from './kv-store-proxy.js';
 import { ConfigProxy } from './config-proxy.js';
 import { EventBusProxy } from './event-bus-proxy.js';
 import { LoggerProxy } from './logger-proxy.js';
+import { ProcessExecutorProxy } from './process-executor-proxy.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -51,6 +52,7 @@ export function createProxyPlatform(
 ): IPlatformAdapters {
   const { transport } = options;
   const logger = options.logger ?? new LoggerProxy(transport);
+  const processExecutor = new ProcessExecutorProxy(transport);
 
   // Proxy adapters — forward all calls via transport
   const cache = new CacheProxy(transport);
@@ -103,5 +105,6 @@ export function createProxyPlatform(
     documentDatabase,
     kvStore,
     logs,
+    processExecutor,
   } satisfies IPlatformAdapters;
 }
