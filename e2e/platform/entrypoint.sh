@@ -177,8 +177,8 @@ echo "==> Waiting for gateway process to start (/health)..."
 ATTEMPTS=0
 until curl -sf http://localhost:4000/health > /dev/null 2>&1; do
   ATTEMPTS=$((ATTEMPTS + 1))
-  if [ "$ATTEMPTS" -ge 90 ]; then
-    echo "ERROR: Gateway did not start after 180s"
+  if [ "$ATTEMPTS" -ge 300 ]; then
+    echo "ERROR: Gateway did not start after 600s"
     kb-dev status || true
     exit 1
   fi

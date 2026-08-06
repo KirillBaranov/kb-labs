@@ -90,7 +90,10 @@ services:
       - ../e2e:/workspace/e2e-host:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4000/ready"]
-      start_period: 180s
+      # A cold declarative install may compile native dependencies after the
+      # package plan is printed. Keep health aligned with the E2E startup
+      # budget instead of failing at the old three-minute ceiling.
+      start_period: 600s
       interval: 5s
       timeout: 5s
       retries: 40
