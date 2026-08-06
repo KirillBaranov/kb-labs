@@ -546,6 +546,56 @@ func TestFinalizeDeclarativeWritesDiscoveredGatewayPlan(t *testing.T) {
 	}
 }
 
+func TestFinalizeDeclarativeWritesCatalogPluginBlocks(t *testing.T) {
+	platformDir := t.TempDir()
+	m := manifest.Manifest{
+		Plugins: []manifest.Component{{
+			ID:  "release",
+			Pkg: "@kb-labs/release-manager-cli",
+		}},
+	}
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.FinalizeDeclarative(&Selection{
+		PlatformDir: platformDir,
+		Plugins:     []string{"release"},
+	}, &m); err != nil {
+		t.Fatalf("FinalizeDeclarative() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		t.Fatalf("read platform config: %v", err)
+	}
+	configText := string(data)
+	if !strings.Contains(configText, `"release": {`) || !strings.Contains(configText, `"enabled": true`) {
+		t.Fatalf("platform config missing enabled release plugin block:\n%s", configText)
+	}
+}
+
+func TestFinalizeDeclarativeLocalModeDisablesGatewayAuth(t *testing.T) {
+	platformDir := t.TempDir()
+	m := manifest.Manifest{}
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.FinalizeDeclarative(&Selection{
+		PlatformDir: platformDir,
+		LocalMode:   true,
+	}, &m); err != nil {
+		t.Fatalf("FinalizeDeclarative() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		t.Fatalf("read platform config: %v", err)
+	}
+	configText := string(data)
+	if !strings.Contains(configText, `"auth": { "enabled": false }`) {
+		t.Fatalf("local platform config must disable gateway auth:\n%s", configText)
+	}
+	if !strings.Contains(configText, `"host": "127.0.0.1"`) {
+		t.Fatalf("local platform config must bind gateway to loopback:\n%s", configText)
+	}
+}
+
 // ── provenance ────────────────────────────────────────────────────────────────
 
 // TestInstallWritesSourceProvenance verifies that Install persists the registry

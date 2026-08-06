@@ -147,13 +147,23 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 		ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
 	}
 	gatewayPlan := buildGatewayPlan(scanResult, m)
+	var gatewayAuthEnabled *bool
+	gatewayHost := ""
+	if sel.LocalMode {
+		authEnabled := false
+		gatewayAuthEnabled = &authEnabled
+		gatewayHost = "127.0.0.1"
+	}
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffold.Options{
-		PlatformDir: sel.PlatformDir,
-		Services:    sel.Services,
-		Plugins:     sel.Plugins,
-		Adapters:    sel.Adapters,
-		DemoMode:    sel.DemoMode,
-		Gateway:     gatewayPlan,
+		PlatformDir:        sel.PlatformDir,
+		Services:           sel.Services,
+		Plugins:            sel.Plugins,
+		Adapters:           sel.Adapters,
+		Catalog:            m,
+		DemoMode:           sel.DemoMode,
+		GatewayAuthEnabled: gatewayAuthEnabled,
+		GatewayHost:        gatewayHost,
+		Gateway:            gatewayPlan,
 	}); err != nil {
 		return nil, fmt.Errorf("write platform config: %w", err)
 	}
@@ -170,6 +180,8 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 			DemoMode:                         sel.DemoMode,
 			Adapters:                         sel.Adapters,
 			Catalog:                          m,
+			GatewayAuthEnabled:               gatewayAuthEnabled,
+			GatewayHost:                      gatewayHost,
 			Gateway:                          gatewayPlan,
 			AllowIncompatibleLegacyMigration: sel.AllowIncompatibleLegacyMigration,
 		}); err != nil {
