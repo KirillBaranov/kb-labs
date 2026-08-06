@@ -182,18 +182,23 @@ func runDeclarativeCreateFromManifest(cmd *cobra.Command, projectRoot, platformR
 	// Keep custom-manifest create on the same declarative compiler, journal,
 	// finalization, and install-state path as `kb-create install`.
 	previous := struct {
-		plugins, services, platform, registry, devManifest string
-	}{flagInstallPlugins, flagInstallServices, flagInstallPlatform, flagInstallRegistry, flagInstallDevManifest}
+		plugins, services, platform, projectRoot, registry, devManifest string
+	}{flagInstallPlugins, flagInstallServices, flagInstallPlatform, flagInstallProjectRoot, flagInstallRegistry, flagInstallDevManifest}
 	defer func() {
 		flagInstallPlugins = previous.plugins
 		flagInstallServices = previous.services
 		flagInstallPlatform = previous.platform
+		flagInstallProjectRoot = previous.projectRoot
 		flagInstallRegistry = previous.registry
 		flagInstallDevManifest = previous.devManifest
 	}()
 	flagInstallPlugins = strings.Join(selection.Plugins, ",")
 	flagInstallServices = strings.Join(selection.Services, ",")
 	flagInstallPlatform = platformRoot
+	// projectRoot was resolved above from the create command's positional
+	// argument (e.g. `kb-create kb-e2e`) — runDeclarativeInstall must install
+	// into that directory rather than silently falling back to os.Getwd().
+	flagInstallProjectRoot = projectRoot
 	// A custom dev manifest owns the package source used by the declarative
 	// create flow. Preserve it explicitly instead of relying on ambient npm
 	// configuration inside Docker or a remote worker.

@@ -1,11 +1,59 @@
 package cmd
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/internal/manifest"
 )
+
+// TestResolveProjectDir_ExplicitWinsOverPersistedAndCWD guards against a
+// regression introduced by the declarative launcher cutover: `kb-create
+// <name> --yes --dev-manifest ...` (used by e2e/platform/entrypoint.sh)
+// resolved a project directory from its positional argument but then
+// silently installed into os.Getwd() instead, because runDeclarativeInstall
+// ignored that resolved directory entirely. The project directory named on
+// the command line (bridged in via flagInstallProjectRoot) must always win,
+// even when a previous install recorded a different project (persistedCWD)
+// or the process happens to be sitting in some other cwd.
+func TestResolveProjectDir_ExplicitWinsOverPersistedAndCWD(t *testing.T) {
+	explicit := filepath.Join(t.TempDir(), "kb-e2e")
+	got, err := resolveProjectDir(explicit, "/persisted/project", "/some/cwd")
+	if err != nil {
+		t.Fatalf("resolveProjectDir() error = %v", err)
+	}
+	want, _ := filepath.Abs(explicit)
+	if got != want {
+		t.Errorf("resolveProjectDir(explicit=%q) = %q, want %q (explicit must win)", explicit, got, want)
+	}
+}
+
+func TestResolveProjectDir_FallsBackToPersistedWhenNoExplicit(t *testing.T) {
+	got, err := resolveProjectDir("", "/persisted/project", "/some/cwd")
+	if err != nil {
+		t.Fatalf("resolveProjectDir() error = %v", err)
+	}
+	if got != "/persisted/project" {
+		t.Errorf("resolveProjectDir() = %q, want persisted project dir", got)
+	}
+}
+
+func TestResolveProjectDir_FallsBackToCWDWhenNoExplicitOrPersisted(t *testing.T) {
+	got, err := resolveProjectDir("", "", "/some/cwd")
+	if err != nil {
+		t.Fatalf("resolveProjectDir() error = %v", err)
+	}
+	if got != "/some/cwd" {
+		t.Errorf("resolveProjectDir() = %q, want cwd", got)
+	}
+}
+
+func TestResolveProjectDir_ErrorsWhenNothingAvailable(t *testing.T) {
+	if _, err := resolveProjectDir("", "", ""); err == nil {
+		t.Fatal("resolveProjectDir() expected error when explicit, persisted, and cwd are all empty")
+	}
+}
 
 func TestValidateComponentIDs_Unknown(t *testing.T) {
 	known := []manifest.Component{{ID: "release"}, {ID: "commit"}}
