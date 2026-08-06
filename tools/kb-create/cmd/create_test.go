@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,31 @@ func TestDeclarativeRegistryUsesManifestSource(t *testing.T) {
 	}
 	if got := declarativeRegistry(&manifest.Manifest{}); got != "" {
 		t.Fatalf("declarativeRegistry() = %q, want empty registry", got)
+	}
+}
+
+func TestResolveDeclarativeProjectDirPreservesCreateRoot(t *testing.T) {
+	requested := filepath.Join(t.TempDir(), "kb-e2e")
+	got, provided, err := resolveDeclarativeProjectDir(requested, filepath.Join(t.TempDir(), "stale"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != requested || !provided {
+		t.Fatalf("resolveDeclarativeProjectDir() = (%q, %t), want (%q, true)", got, provided, requested)
+	}
+	if info, err := os.Stat(requested); err != nil || !info.IsDir() {
+		t.Fatalf("requested project root was not created: %v", err)
+	}
+}
+
+func TestResolveDeclarativeProjectDirUsesConfiguredRootForInstall(t *testing.T) {
+	configured := filepath.Join(t.TempDir(), "project")
+	got, provided, err := resolveDeclarativeProjectDir("", configured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != configured || provided {
+		t.Fatalf("resolveDeclarativeProjectDir() = (%q, %t), want (%q, false)", got, provided, configured)
 	}
 }
 

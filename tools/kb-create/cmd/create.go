@@ -199,7 +199,7 @@ func runDeclarativeCreateFromManifest(cmd *cobra.Command, projectRoot, platformR
 	// configuration inside Docker or a remote worker.
 	flagInstallRegistry = declarativeRegistry(manifestSource)
 	flagInstallDevManifest = flagDevManifest
-	return runDeclarativeInstall(cmd)
+	return runDeclarativeInstallAt(cmd, projectRoot)
 }
 
 func declarativeRegistry(source *manifest.Manifest) string {

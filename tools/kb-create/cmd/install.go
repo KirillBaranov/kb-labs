@@ -60,6 +60,14 @@ func runInstall(cmd *cobra.Command, args []string) error {
 }
 
 func runDeclarativeInstall(cmd *cobra.Command) error {
+	return runDeclarativeInstallAt(cmd, "")
+}
+
+// runDeclarativeInstallAt is the shared declarative install path with an
+// optional project root supplied by a caller such as `create`.  Plain
+// `install` keeps its historical cwd-based behavior, while callers that have
+// already resolved a project root do not silently fall back to the process cwd.
+func runDeclarativeInstallAt(cmd *cobra.Command, requestedProjectDir string) error {
 	out := newOutput()
 	plugins, pluginVersions := splitVersionedIDs(flagInstallPlugins)
 	services, serviceVersions := splitVersionedIDs(flagInstallServices)
@@ -88,7 +96,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("resolve platform directory: %w", err)
 	}
-	projectDir, err := os.Getwd()
+	projectDir, projectDirProvided, err := resolveDeclarativeProjectDir(requestedProjectDir, "")
 	if err != nil {
 		return err
 	}
@@ -103,8 +111,11 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		} else {
 			services = mergeIDs(current.SelectedServices, services)
 		}
-		if current.CWD != "" {
-			projectDir = current.CWD
+		if !projectDirProvided && current.CWD != "" {
+			projectDir, _, err = resolveDeclarativeProjectDir("", current.CWD)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	configData, err := json.Marshal(direct.Config{Adapters: adapters})
@@ -208,6 +219,31 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
 
+}
+
+func resolveDeclarativeProjectDir(requested, configured string) (string, bool, error) {
+	projectDir := requested
+	provided := requested != ""
+	if projectDir == "" {
+		projectDir = configured
+	}
+	if projectDir == "" {
+		var err error
+		projectDir, err = os.Getwd()
+		if err != nil {
+			return "", false, err
+		}
+	}
+	projectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return "", false, fmt.Errorf("resolve project directory: %w", err)
+	}
+	if provided {
+		if err := os.MkdirAll(projectDir, 0o755); err != nil {
+			return "", false, fmt.Errorf("create project directory: %w", err)
+		}
+	}
+	return projectDir, provided, nil
 }
 
 func componentPackageSpec(source enginecatalog.Catalog, id, version string) string {
