@@ -117,5 +117,11 @@ func togglePatch(kind, id string, enabled bool, owner string) engineconfig.Confi
 	if enabled {
 		value = "true"
 	}
-	return engineconfig.ConfigPatch{ID: kind + "." + id + ".enabled", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: "/" + kind + "s/" + id + "/enabled", Value: json.RawMessage(value), Owner: owner}
+	path := "/" + kind + "s/" + id + "/enabled"
+	if kind == "service" {
+		// Platform configs render service toggles as scalar booleans, while
+		// plugin entries are objects with an enabled field.
+		path = "/services/" + id
+	}
+	return engineconfig.ConfigPatch{ID: kind + "." + id + ".enabled", Scope: engineconfig.ScopePlatform, Operation: engineconfig.OperationSet, Path: path, Value: json.RawMessage(value), Owner: owner}
 }
