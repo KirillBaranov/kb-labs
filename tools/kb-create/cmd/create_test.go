@@ -5,7 +5,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kb-labs/create/internal/manifest"
 )
+
+func TestDeclarativeRegistryUsesManifestSource(t *testing.T) {
+	if got := declarativeRegistry(&manifest.Manifest{RegistryURL: "http://verdaccio:4873"}); got != "http://verdaccio:4873" {
+		t.Fatalf("declarativeRegistry() = %q, want manifest registry", got)
+	}
+	if got := declarativeRegistry(&manifest.Manifest{}); got != "" {
+		t.Fatalf("declarativeRegistry() = %q, want empty registry", got)
+	}
+}
 
 // TestEnvOrDefault_RespectsBootstrapEnvVars guards against a regression where
 // runCreate's non-local branch hardcoded BootstrapAdminEmail/BootstrapTenantID
