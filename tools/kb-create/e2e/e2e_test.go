@@ -58,6 +58,42 @@ func stripJSONCLineComments(data []byte) []byte {
 		}
 		out.WriteByte(c)
 	}
+	return stripJSONCTrailingCommas([]byte(out.String()))
+}
+
+func stripJSONCTrailingCommas(data []byte) []byte {
+	var out strings.Builder
+	inString := false
+	escaped := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if inString {
+			out.WriteByte(c)
+			if escaped {
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == '"' {
+			inString = true
+			out.WriteByte(c)
+			continue
+		}
+		if c == ',' {
+			j := i + 1
+			for j < len(data) && (data[j] == ' ' || data[j] == '\t' || data[j] == '\r' || data[j] == '\n') {
+				j++
+			}
+			if j < len(data) && (data[j] == '}' || data[j] == ']') {
+				continue
+			}
+		}
+		out.WriteByte(c)
+	}
 	return []byte(out.String())
 }
 
@@ -65,7 +101,7 @@ func TestStripJSONCLineCommentsPreservesURLs(t *testing.T) {
 	input := []byte(`{
   // comment
   "url": "http://127.0.0.1:4000/api//v1",
-  "escaped": "quote: \"//\""
+	  "escaped": "quote: \"//\"",
 }`)
 	var parsed map[string]string
 	if err := json.Unmarshal(stripJSONCLineComments(input), &parsed); err != nil {
