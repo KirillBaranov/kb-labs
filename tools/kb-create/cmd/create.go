@@ -194,9 +194,19 @@ func runDeclarativeCreateFromManifest(cmd *cobra.Command, projectRoot, platformR
 	flagInstallPlugins = strings.Join(selection.Plugins, ",")
 	flagInstallServices = strings.Join(selection.Services, ",")
 	flagInstallPlatform = platformRoot
-	flagInstallRegistry = ""
+	// A custom dev manifest owns the package source used by the declarative
+	// create flow. Preserve it explicitly instead of relying on ambient npm
+	// configuration inside Docker or a remote worker.
+	flagInstallRegistry = declarativeRegistry(manifestSource)
 	flagInstallDevManifest = flagDevManifest
 	return runDeclarativeInstall(cmd)
+}
+
+func declarativeRegistry(source *manifest.Manifest) string {
+	if source == nil {
+		return ""
+	}
+	return source.RegistryURL
 }
 
 func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, services []string) {
