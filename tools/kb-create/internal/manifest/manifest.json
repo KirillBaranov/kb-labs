@@ -177,7 +177,7 @@
       "id": "service.rest.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/rest/enabled",
+      "path": "/services/rest",
       "value": false,
       "owner": "catalog:default"
     },
@@ -185,7 +185,7 @@
       "id": "service.workflow.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/workflow/enabled",
+      "path": "/services/workflow",
       "value": false,
       "owner": "catalog:default"
     },
@@ -193,7 +193,7 @@
       "id": "service.gateway.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/gateway/enabled",
+      "path": "/services/gateway",
       "value": false,
       "owner": "catalog:default"
     },
@@ -201,7 +201,7 @@
       "id": "service.marketplace.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/marketplace/enabled",
+      "path": "/services/marketplace",
       "value": false,
       "owner": "catalog:default"
     },
@@ -209,7 +209,7 @@
       "id": "service.studio.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/studio/enabled",
+      "path": "/services/studio",
       "value": false,
       "owner": "catalog:default"
     },
@@ -217,7 +217,7 @@
       "id": "service.mcp.disabled",
       "scope": "platform",
       "operation": "set",
-      "path": "/services/mcp/enabled",
+      "path": "/services/mcp",
       "value": false,
       "owner": "catalog:default"
     },

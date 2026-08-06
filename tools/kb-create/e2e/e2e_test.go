@@ -19,18 +19,97 @@ import (
 )
 
 // stripJSONCLineComments removes "//" line comments from a JSONC document so
-// it can be parsed with encoding/json. Only handles whole-line and
-// end-of-line "//" comments (no "/* */" blocks, no "//" inside string
-// values) — sufficient for kb-create's own scaffolded kb.config.jsonc
-// template, which never emits either of those.
+// it can be parsed with encoding/json. Comment markers inside JSON strings
+// (for example http:// URLs) must be preserved.
 func stripJSONCLineComments(data []byte) []byte {
-	lines := strings.Split(string(data), "\n")
-	for i, line := range lines {
-		if idx := strings.Index(line, "//"); idx != -1 {
-			lines[i] = line[:idx]
+	var out strings.Builder
+	inString := false
+	escaped := false
+	inComment := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if inComment {
+			if c == '\n' {
+				inComment = false
+				out.WriteByte(c)
+			}
+			continue
 		}
+		if inString {
+			out.WriteByte(c)
+			if escaped {
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == '"' {
+			inString = true
+			out.WriteByte(c)
+			continue
+		}
+		if c == '/' && i+1 < len(data) && data[i+1] == '/' {
+			inComment = true
+			i++
+			continue
+		}
+		out.WriteByte(c)
 	}
-	return []byte(strings.Join(lines, "\n"))
+	return stripJSONCTrailingCommas([]byte(out.String()))
+}
+
+func stripJSONCTrailingCommas(data []byte) []byte {
+	var out strings.Builder
+	inString := false
+	escaped := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if inString {
+			out.WriteByte(c)
+			if escaped {
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == '"' {
+			inString = true
+			out.WriteByte(c)
+			continue
+		}
+		if c == ',' {
+			j := i + 1
+			for j < len(data) && (data[j] == ' ' || data[j] == '\t' || data[j] == '\r' || data[j] == '\n') {
+				j++
+			}
+			if j < len(data) && (data[j] == '}' || data[j] == ']') {
+				continue
+			}
+		}
+		out.WriteByte(c)
+	}
+	return []byte(out.String())
+}
+
+func TestStripJSONCLineCommentsPreservesURLs(t *testing.T) {
+	input := []byte(`{
+  // comment
+  "url": "http://127.0.0.1:4000/api//v1",
+	  "escaped": "quote: \"//\"",
+}`)
+	var parsed map[string]string
+	if err := json.Unmarshal(stripJSONCLineComments(input), &parsed); err != nil {
+		t.Fatalf("stripped JSONC is not valid JSON: %v\n%s", err, stripJSONCLineComments(input))
+	}
+	if parsed["url"] != "http://127.0.0.1:4000/api//v1" {
+		t.Fatalf("URL was changed while stripping comments: %q", parsed["url"])
+	}
 }
 
 // binary returns the path to the kb-create binary, building it if needed.

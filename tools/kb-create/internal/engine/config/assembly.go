@@ -234,7 +234,7 @@ func validateAssembly(assembly ConfigAssembly) error {
 
 func renderScope(patches []ConfigPatch, scope ConfigScope, base []byte) ([]byte, error) {
 	var document any
-	if err := json.Unmarshal(base, &document); err != nil {
+	if err := json.Unmarshal(stripJSONC(base), &document); err != nil {
 		return nil, fmt.Errorf("parse %s base config: %w", scope, err)
 	}
 	for _, patch := range patches {
@@ -250,6 +250,73 @@ func renderScope(patches []ConfigPatch, scope ConfigScope, base []byte) ([]byte,
 		return nil, fmt.Errorf("render %s config: %w", scope, err)
 	}
 	return append(data, '\n'), nil
+}
+
+// stripJSONC removes comments from scaffold-owned JSONC while preserving
+// comment markers inside string values such as URLs and glob patterns.
+func stripJSONC(src []byte) []byte {
+	var cleaned strings.Builder
+	cleaned.Grow(len(src))
+	inString := false
+	escaped := false
+	for i := 0; i < len(src); i++ {
+		ch := src[i]
+		if inString {
+			cleaned.WriteByte(ch)
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			cleaned.WriteByte(ch)
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '/' {
+			i += 2
+			for i < len(src) && src[i] != '\n' {
+				i++
+			}
+			if i < len(src) {
+				cleaned.WriteByte('\n')
+			}
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '*' {
+			i += 2
+			for i+1 < len(src) && !(src[i] == '*' && src[i+1] == '/') {
+				i++
+			}
+			if i+1 < len(src) {
+				i++
+			}
+			continue
+		}
+		cleaned.WriteByte(ch)
+	}
+	withoutComments := cleaned.String()
+	var result strings.Builder
+	result.Grow(len(withoutComments))
+	for i := 0; i < len(withoutComments); i++ {
+		if withoutComments[i] != ',' {
+			result.WriteByte(withoutComments[i])
+			continue
+		}
+		j := i + 1
+		for j < len(withoutComments) && (withoutComments[j] == ' ' || withoutComments[j] == '\n' || withoutComments[j] == '\r' || withoutComments[j] == '\t') {
+			j++
+		}
+		if j < len(withoutComments) && (withoutComments[j] == '}' || withoutComments[j] == ']') {
+			continue
+		}
+		result.WriteByte(',')
+	}
+	return []byte(result.String())
 }
 
 func resolvePath(roots Roots, root Root, relative string) (string, error) {
@@ -278,7 +345,32 @@ func resolvePath(roots Roots, root Root, relative string) (string, error) {
 		return "", fmt.Errorf("resolve root symlinks: %w", err)
 	}
 	if err != nil {
-		baseReal = cleanBase
+		// The root may be a new directory below a symlinked parent (for
+		// example /var -> /private/var on macOS). Canonicalize the nearest
+		// existing ancestor and append the not-yet-created tail so comparisons
+		// below use the same namespace as parentReal.
+		existing := cleanBase
+		for {
+			if _, statErr := os.Lstat(existing); statErr == nil {
+				break
+			} else if !os.IsNotExist(statErr) {
+				return "", statErr
+			}
+			next := filepath.Dir(existing)
+			if next == existing {
+				break
+			}
+			existing = next
+		}
+		existingReal, evalErr := filepath.EvalSymlinks(existing)
+		if evalErr != nil {
+			return "", fmt.Errorf("resolve root parent symlinks: %w", evalErr)
+		}
+		tail, relErr := filepath.Rel(existing, cleanBase)
+		if relErr != nil {
+			return "", fmt.Errorf("resolve root relative path: %w", relErr)
+		}
+		baseReal = filepath.Join(existingReal, tail)
 	}
 	parent := filepath.Dir(cleanPath)
 	for {
@@ -299,7 +391,15 @@ func resolvePath(roots Roots, root Root, relative string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve artifact parent: %w", err)
 	}
-	resolved := filepath.Join(parentReal, filepath.Base(cleanPath))
+	// Preserve the path components below the nearest existing parent. When the
+	// root and/or its child directories do not exist yet, using only the leaf
+	// basename would incorrectly move the candidate next to the existing
+	// parent and make a valid path look like it escaped the declared root.
+	parentRel, err := filepath.Rel(parent, cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve artifact relative path: %w", err)
+	}
+	resolved := filepath.Join(parentReal, parentRel)
 	realRel, err := filepath.Rel(baseReal, resolved)
 	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
 		return "", ErrInvalidPath

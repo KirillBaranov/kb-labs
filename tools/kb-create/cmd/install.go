@@ -13,7 +13,6 @@ import (
 
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/devservices"
-	"github.com/kb-labs/create/internal/engine/bootstrap"
 	enginecatalog "github.com/kb-labs/create/internal/engine/catalog"
 	"github.com/kb-labs/create/internal/engine/direct"
 	"github.com/kb-labs/create/internal/engine/executor"
@@ -68,9 +67,13 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("--adapters: %w", err)
 	}
-	catalog, err := bootstrap.DefaultCatalog()
+	manifestSource, err := manifest.Load(manifest.LoadOptions{LocalOverride: flagInstallDevManifest})
 	if err != nil {
-		return fmt.Errorf("load declarative catalog: %w", err)
+		return fmt.Errorf("load declarative manifest: %w", err)
+	}
+	catalog, err := enginecatalog.FromManifest(*manifestSource)
+	if err != nil {
+		return fmt.Errorf("compile declarative catalog: %w", err)
 	}
 	platformDir := flagInstallPlatform
 	if platformDir == "" {
@@ -162,10 +165,6 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("declarative installation failed: %w", err)
 	}
-	declarativeManifest, err := manifest.LoadDefault()
-	if err != nil {
-		return fmt.Errorf("load declarative manifest: %w", err)
-	}
 	log, err := logger.NewFileOnly(platformDir)
 	if err != nil {
 		return fmt.Errorf("create declarative install log: %w", err)
@@ -190,7 +189,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		ServiceVersions:                  serviceVersions,
 		Adapters:                         adapters,
 		AllowIncompatibleLegacyMigration: true,
-	}, declarativeManifest)
+	}, manifestSource)
 	_ = log.Close()
 	if finalizeErr != nil {
 		return fmt.Errorf("finalize declarative installation: %w", finalizeErr)

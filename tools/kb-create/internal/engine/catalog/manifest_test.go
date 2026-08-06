@@ -23,6 +23,14 @@ func TestFromManifestKeepsJSONManifestAsComponentSource(t *testing.T) {
 	if result.Providers[0].ID != "cache" || result.Providers[0].Package != "@kb-labs/adapters-redis" {
 		t.Fatalf("providers = %#v", result.Providers)
 	}
+	service, ok := result.Component("service:state")
+	if !ok || len(service.Config) != 1 || service.Config[0].Path != "/services/state" {
+		t.Fatalf("service toggle patch = %#v, want scalar service path", service.Config)
+	}
+	plugin, ok := result.Component("plugin:commit")
+	if !ok || len(plugin.Config) != 1 || plugin.Config[0].Path != "/plugins/commit/enabled" {
+		t.Fatalf("plugin toggle patch = %#v, want object enabled path", plugin.Config)
+	}
 }
 
 func TestFromManifestConvertsReusableEffects(t *testing.T) {

@@ -141,6 +141,32 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 	if err != nil {
 		return nil, fmt.Errorf("scan installed manifests: %w", err)
 	}
+	ins.Log.Printf("  found %d plugins, %d adapters, %d services",
+		len(scanResult.Plugins), len(scanResult.Adapters), len(scanResult.Services))
+	for _, e := range scanResult.Errors {
+		ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
+	}
+	gatewayPlan := buildGatewayPlan(scanResult, m)
+	var gatewayAuthEnabled *bool
+	gatewayHost := ""
+	if sel.LocalMode {
+		authEnabled := false
+		gatewayAuthEnabled = &authEnabled
+		gatewayHost = "127.0.0.1"
+	}
+	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffold.Options{
+		PlatformDir:        sel.PlatformDir,
+		Services:           sel.Services,
+		Plugins:            sel.Plugins,
+		Adapters:           sel.Adapters,
+		Catalog:            m,
+		DemoMode:           sel.DemoMode,
+		GatewayAuthEnabled: gatewayAuthEnabled,
+		GatewayHost:        gatewayHost,
+		Gateway:            gatewayPlan,
+	}); err != nil {
+		return nil, fmt.Errorf("write platform config: %w", err)
+	}
 	if err := scan.WriteConfigs(sel.PlatformDir, scanResult, sel.ProjectCWD); err != nil {
 		return nil, fmt.Errorf("write discovered configs: %w", err)
 	}
@@ -154,7 +180,9 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 			DemoMode:                         sel.DemoMode,
 			Adapters:                         sel.Adapters,
 			Catalog:                          m,
-			Gateway:                          buildGatewayPlan(scanResult, m),
+			GatewayAuthEnabled:               gatewayAuthEnabled,
+			GatewayHost:                      gatewayHost,
+			Gateway:                          gatewayPlan,
 			AllowIncompatibleLegacyMigration: sel.AllowIncompatibleLegacyMigration,
 		}); err != nil {
 			return nil, fmt.Errorf("write project config: %w", err)
@@ -163,7 +191,7 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 	if err := userstate.Write(&userstate.State{LastPlatformDir: sel.PlatformDir, LastProjectDir: sel.ProjectCWD}); err != nil {
 		ins.Log.Printf("  [WARN] write user state: %v", err)
 	}
-	return &Result{PlatformDir: sel.PlatformDir, ProjectCWD: sel.ProjectCWD, ConfigPath: config.ConfigPath(sel.PlatformDir), Duration: time.Since(start), InstalledBinaries: installedBinaries, HasServices: len(scanResult.Services) > 0, Gateway: buildGatewayPlan(scanResult, m), InstalledPlugins: scanResult.Plugins}, nil
+	return &Result{PlatformDir: sel.PlatformDir, ProjectCWD: sel.ProjectCWD, ConfigPath: config.ConfigPath(sel.PlatformDir), Duration: time.Since(start), InstalledBinaries: installedBinaries, HasServices: len(scanResult.Services) > 0, Gateway: gatewayPlan, InstalledPlugins: scanResult.Plugins}, nil
 }
 
 // UpdateDiff describes changes between the installed manifest and the current one.
