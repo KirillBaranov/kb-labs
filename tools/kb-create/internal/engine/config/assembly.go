@@ -234,7 +234,7 @@ func validateAssembly(assembly ConfigAssembly) error {
 
 func renderScope(patches []ConfigPatch, scope ConfigScope, base []byte) ([]byte, error) {
 	var document any
-	if err := json.Unmarshal(base, &document); err != nil {
+	if err := json.Unmarshal(stripJSONC(base), &document); err != nil {
 		return nil, fmt.Errorf("parse %s base config: %w", scope, err)
 	}
 	for _, patch := range patches {
@@ -250,6 +250,73 @@ func renderScope(patches []ConfigPatch, scope ConfigScope, base []byte) ([]byte,
 		return nil, fmt.Errorf("render %s config: %w", scope, err)
 	}
 	return append(data, '\n'), nil
+}
+
+// stripJSONC removes comments from scaffold-owned JSONC while preserving
+// comment markers inside string values such as URLs and glob patterns.
+func stripJSONC(src []byte) []byte {
+	var cleaned strings.Builder
+	cleaned.Grow(len(src))
+	inString := false
+	escaped := false
+	for i := 0; i < len(src); i++ {
+		ch := src[i]
+		if inString {
+			cleaned.WriteByte(ch)
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			cleaned.WriteByte(ch)
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '/' {
+			i += 2
+			for i < len(src) && src[i] != '\n' {
+				i++
+			}
+			if i < len(src) {
+				cleaned.WriteByte('\n')
+			}
+			continue
+		}
+		if ch == '/' && i+1 < len(src) && src[i+1] == '*' {
+			i += 2
+			for i+1 < len(src) && !(src[i] == '*' && src[i+1] == '/') {
+				i++
+			}
+			if i+1 < len(src) {
+				i++
+			}
+			continue
+		}
+		cleaned.WriteByte(ch)
+	}
+	withoutComments := cleaned.String()
+	var result strings.Builder
+	result.Grow(len(withoutComments))
+	for i := 0; i < len(withoutComments); i++ {
+		if withoutComments[i] != ',' {
+			result.WriteByte(withoutComments[i])
+			continue
+		}
+		j := i + 1
+		for j < len(withoutComments) && (withoutComments[j] == ' ' || withoutComments[j] == '\n' || withoutComments[j] == '\r' || withoutComments[j] == '\t') {
+			j++
+		}
+		if j < len(withoutComments) && (withoutComments[j] == '}' || withoutComments[j] == ']') {
+			continue
+		}
+		result.WriteByte(',')
+	}
+	return []byte(result.String())
 }
 
 func resolvePath(roots Roots, root Root, relative string) (string, error) {

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -94,6 +95,27 @@ func TestAssembleAllowsNestedArtifactBelowNotYetCreatedRoot(t *testing.T) {
 	want := filepath.Join(root, ".kb", "generated", "kb-create.overlay.jsonc")
 	if len(result.Artifacts) != 1 || result.Artifacts[0].Path != want {
 		t.Fatalf("artifacts = %#v, want path %q", result.Artifacts, want)
+	}
+}
+
+func TestAssembleAcceptsJSONCBaseConfig(t *testing.T) {
+	result, err := Assemble(ConfigAssembly{
+		Patches: []ConfigPatch{{
+			ID: "runtime.enabled", Scope: ScopePlatform, Operation: OperationSet,
+			Path: "/runtime/enabled", Value: json.RawMessage(`true`), Owner: "runtime",
+		}},
+	}, Roots{RootPlatform: t.TempDir()}, []byte(`{
+  // installer-owned JSONC comment
+  "gateway": { "url": "http://localhost:4000" },
+}`))
+	if err != nil {
+		t.Fatalf("Assemble() error = %v", err)
+	}
+	if !strings.Contains(string(result.Config), `"enabled": true`) {
+		t.Fatalf("rendered config does not contain patch: %s", result.Config)
+	}
+	if !strings.Contains(string(result.Config), "http://localhost:4000") {
+		t.Fatalf("rendered config lost URL: %s", result.Config)
 	}
 }
 
