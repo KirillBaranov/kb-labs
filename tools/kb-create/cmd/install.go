@@ -77,16 +77,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)
 	}
-	platformDir := flagInstallPlatform
-	if platformDir == "" {
-		if current, readErr := config.Read("."); readErr == nil {
-			platformDir = current.Platform
-		} else {
-			home, _ := os.UserHomeDir()
-			platformDir = filepath.Join(home, "kb-platform")
-		}
-	}
-	platformDir, err = filepath.Abs(platformDir)
+	platformDir, err := resolvePlatformRoot(flagInstallPlatform)
 	if err != nil {
 		return fmt.Errorf("resolve platform directory: %w", err)
 	}

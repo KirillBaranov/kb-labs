@@ -82,7 +82,7 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	platformRoot, err := absoluteOrCWD(flagPlatform)
+	platformRoot, err := resolvePlatformRoot(flagPlatform)
 	if err != nil {
 		return err
 	}
