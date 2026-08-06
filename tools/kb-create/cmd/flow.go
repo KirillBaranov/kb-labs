@@ -57,7 +57,7 @@ var flowRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		platformRoot, err := absoluteOrCWD(flowPlatformRoot)
+		platformRoot, err := resolvePlatformRoot(flowPlatformRoot)
 		if err != nil {
 			return err
 		}
@@ -217,6 +217,34 @@ func absoluteOrCWD(value string) (string, error) {
 		return os.Getwd()
 	}
 	return filepath.Abs(value)
+}
+
+// resolvePlatformRoot picks the platform installation directory: an explicit
+// --platform always wins; otherwise reuse the platform an existing project
+// in cwd is already bound to (its .kb/kb.config.jsonc pointer); finally fall
+// back to the documented default, ~/kb-platform (README.md: "~/kb-platform
+// is the default. The platform directory is independent from your project.
+// ... one platform installation shared across multiple projects").
+//
+// Unlike the project root (which legitimately defaults to cwd), the platform
+// root must never silently default to cwd — `kb-create <name> --yes` without
+// --platform historically installed the platform at ~/kb-platform, decoupled
+// from the newly created project directory. absoluteOrCWD(flagPlatform) once
+// did exactly that (collapsing platform into cwd whenever --platform was
+// omitted), which broke the shared-platform-across-projects model this
+// function restores.
+func resolvePlatformRoot(explicit string) (string, error) {
+	if explicit != "" {
+		return filepath.Abs(explicit)
+	}
+	if current, err := installconfig.Read("."); err == nil && current.Platform != "" {
+		return current.Platform, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve default platform directory: %w", err)
+	}
+	return filepath.Join(home, "kb-platform"), nil
 }
 
 func mustJSON(value any) json.RawMessage {
