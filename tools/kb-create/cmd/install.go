@@ -32,6 +32,7 @@ var (
 	flagInstallServices    string
 	flagInstallAdapters    string
 	flagInstallPlatform    string
+	flagInstallProjectRoot string
 	flagInstallRegistry    string
 	flagInstallDevManifest string
 )
@@ -50,6 +51,7 @@ func init() {
 	installCmd.Flags().StringVar(&flagInstallServices, "services", "", "comma-separated service IDs to install, each optionally pinned to a version (e.g. workflow,gateway@1.3.0)")
 	installCmd.Flags().StringVar(&flagInstallAdapters, "adapters", "", `comma-separated "role=pkg[@version]" overrides (e.g. "cache=@kb-labs/adapters-redis@0.2.0")`)
 	installCmd.Flags().StringVar(&flagInstallPlatform, "platform", "", "platform installation directory")
+	installCmd.Flags().StringVar(&flagInstallProjectRoot, "project-root", "", "project directory to install into (defaults to the project used by the last install for this platform, or the current directory)")
 	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	installCmd.Flags().StringVar(&flagInstallDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.AddCommand(installCmd)
@@ -88,10 +90,11 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("resolve platform directory: %w", err)
 	}
-	projectDir, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
+	persistedCWD := ""
 	if current, readErr := config.Read(platformDir); readErr == nil {
 		if flagInstallPlugins == "" {
 			plugins = append([]string(nil), current.SelectedPlugins...)
@@ -103,9 +106,11 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		} else {
 			services = mergeIDs(current.SelectedServices, services)
 		}
-		if current.CWD != "" {
-			projectDir = current.CWD
-		}
+		persistedCWD = current.CWD
+	}
+	projectDir, err := resolveProjectDir(flagInstallProjectRoot, persistedCWD, cwd)
+	if err != nil {
+		return fmt.Errorf("resolve project directory: %w", err)
 	}
 	configData, err := json.Marshal(direct.Config{Adapters: adapters})
 	if err != nil {
@@ -216,6 +221,29 @@ func componentPackageSpec(source enginecatalog.Catalog, id, version string) stri
 		return ""
 	}
 	return component.Package + "@" + version
+}
+
+// resolveProjectDir picks the project directory a declarative install
+// targets. Precedence: an explicit --project-root (or the create command's
+// positional project-name argument, bridged in via flagInstallProjectRoot)
+// always wins; otherwise fall back to the project directory recorded by a
+// previous install against this platform; finally fall back to cwd.
+//
+// This must never silently default to cwd when a caller passed an explicit
+// project directory — `kb-create <name> --yes --dev-manifest ...` (used by
+// e2e/platform/entrypoint.sh) relies on installing into `<cwd>/<name>`, not
+// cwd itself, so that its own `cd <name>` afterward succeeds.
+func resolveProjectDir(explicit, persistedCWD, cwd string) (string, error) {
+	if explicit != "" {
+		return filepath.Abs(explicit)
+	}
+	if persistedCWD != "" {
+		return persistedCWD, nil
+	}
+	if cwd == "" {
+		return "", fmt.Errorf("no project directory available (no --project-root, no prior install, empty cwd)")
+	}
+	return cwd, nil
 }
 
 func mergeIDs(existing, requested []string) []string {
