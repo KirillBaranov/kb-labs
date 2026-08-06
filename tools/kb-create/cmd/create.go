@@ -23,6 +23,7 @@ import (
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/telemetry"
+	"github.com/kb-labs/create/internal/wizard"
 )
 
 var (
@@ -84,6 +85,9 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	platformRoot, err := absoluteOrCWD(flagPlatform)
 	if err != nil {
 		return err
+	}
+	if flagDevManifest != "" {
+		return runDeclarativeCreateFromManifest(cmd, projectRoot, platformRoot)
 	}
 	intent := flagIntent
 	if intent == "" {
@@ -157,6 +161,42 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		ProjectCWD:  compiled.ProjectRoot,
 	}, declarativeIntent.FirstCommand, "", "", "", "", nil, declarativeIntent.Docs, declarativeIntent.NextSteps, false, false)
 	return nil
+}
+
+func runDeclarativeCreateFromManifest(cmd *cobra.Command, projectRoot, platformRoot string) error {
+	manifestSource, err := manifest.Load(manifest.LoadOptions{LocalOverride: flagDevManifest})
+	if err != nil {
+		return fmt.Errorf("load dev manifest: %w", err)
+	}
+	selection, err := wizard.Run(manifestSource, wizard.WizardOptions{
+		DefaultProjectCWD:  projectRoot,
+		DefaultPlatformDir: platformRoot,
+		Yes:                true,
+		Intent:             flagIntent,
+		DemoMode:           flagDemo,
+	})
+	if err != nil {
+		return fmt.Errorf("select dev manifest defaults: %w", err)
+	}
+
+	// Keep custom-manifest create on the same declarative compiler, journal,
+	// finalization, and install-state path as `kb-create install`.
+	previous := struct {
+		plugins, services, platform, registry, devManifest string
+	}{flagInstallPlugins, flagInstallServices, flagInstallPlatform, flagInstallRegistry, flagInstallDevManifest}
+	defer func() {
+		flagInstallPlugins = previous.plugins
+		flagInstallServices = previous.services
+		flagInstallPlatform = previous.platform
+		flagInstallRegistry = previous.registry
+		flagInstallDevManifest = previous.devManifest
+	}()
+	flagInstallPlugins = strings.Join(selection.Plugins, ",")
+	flagInstallServices = strings.Join(selection.Services, ",")
+	flagInstallPlatform = platformRoot
+	flagInstallRegistry = ""
+	flagInstallDevManifest = flagDevManifest
+	return runDeclarativeInstall(cmd)
 }
 
 func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, services []string) {
