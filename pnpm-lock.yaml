@@ -28,7 +28,7 @@ overrides:
   qs: '>=6.15.2'
   sharp: '>=0.35.0'
   find-my-way: '>=9.7.0'
-  js-yaml: '>=4.3.1'
+  js-yaml: ^4.3.1
   brace-expansion@^5.0.5: 5.0.9
   brace-expansion@^2.0.2: 2.1.4
   brace-expansion@^1.1.7: 1.1.18
@@ -76,8 +76,8 @@ importers:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.6.1)
       js-yaml:
-        specifier: '>=4.3.1'
-        version: 5.2.3
+        specifier: ^4.3.1
+        version: 4.3.1
       knip:
         specifier: ^6.4.0
         version: 6.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
@@ -3111,8 +3111,8 @@ importers:
         specifier: workspace:*
         version: link:../../../sdk/sdk
       js-yaml:
-        specifier: '>=4.3.1'
-        version: 5.2.3
+        specifier: ^4.3.1
+        version: 4.3.1
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -4295,8 +4295,8 @@ importers:
         specifier: workspace:*
         version: link:../../../sdk/sdk
       js-yaml:
-        specifier: '>=4.3.1'
-        version: 5.2.3
+        specifier: ^4.3.1
+        version: 4.3.1
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -13039,8 +13039,8 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@5.2.3:
-    resolution: {integrity: sha512-n+mUVyUX5bVv7G/G2zyIHOhdxfuU1dY2NOFzTQUWiMUbFss8b57NFlgCCaggU78wSw5KVS9cllzeLyzyR+n5nw==}
+  js-yaml@4.3.1:
+    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
     hasBin: true
 
   jsdom@27.4.0:
@@ -16933,7 +16933,7 @@ snapshots:
       globals: 14.0.0
       ignore: 5.3.2
       import-fresh: 3.3.1
-      js-yaml: 5.2.3
+      js-yaml: 4.3.1
       minimatch: 3.1.5
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -20400,7 +20400,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.1
-      js-yaml: 5.2.3
+      js-yaml: 4.3.1
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 5.9.3
@@ -21644,7 +21644,7 @@ snapshots:
 
   gray-matter@4.0.3:
     dependencies:
-      js-yaml: 5.2.3
+      js-yaml: 4.3.1
       kind-of: 6.0.3
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
@@ -22180,7 +22180,7 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@5.2.3:
+  js-yaml@4.3.1:
     dependencies:
       argparse: 2.0.1
 
