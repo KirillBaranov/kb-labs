@@ -16,6 +16,9 @@
     prCreation: "immediate",
     prPriority: 100,
   },
+  // GitHub Dependabot alerts can lag behind the OSV database; scan OSV directly
+  // so Renovate opens fix PRs without waiting for a Dependabot alert to appear.
+  osvVulnerabilityAlerts: true,
   lockFileMaintenance: {
     enabled: true,
     schedule: ["before 4am on monday"],
