@@ -31,7 +31,7 @@ interface PermissionSpec {
   env?: { read?: string[] };
   network?: { fetch?: string[] };
   platform?: PlatformPermissions;
-  shell?: { allow?: string[] };
+  shell?: { allow?: string[]; maxConcurrent?: number };
   quotas?: {
     timeoutMs?: number;
     memoryMb?: number;
@@ -55,7 +55,7 @@ interface PermissionSpec {
   env?: { read?: string[] };
   network?: { fetch?: string[] };
   platform?: { /* see below */ };
-  shell?: { allow?: string[] };
+  shell?: { allow?: string[]; maxConcurrent?: number };
   invoke?: { allow?: string[] };
   state?: {
     namespaces?: string[];
@@ -135,7 +135,7 @@ const pluginPermissions = combinePermissions()
     cache: ['mine:'],
     analytics: true,
   })
-  .withShell({ allow: ['git status', 'git diff'] })
+  .withShell({ allow: ['git status', 'git diff'], maxConcurrent: 4 })
   .withQuotas({ timeoutMs: 600_000, memoryMb: 512 })
   .build();
 ```
@@ -153,7 +153,7 @@ Every method returns the builder for chaining. All are optional.
 | `.withPlatform(platform)` | Add a `PlatformPermissions` block. |
 | `.withStorage(storage)` | Shortcut for `.withPlatform({ storage })`. |
 | `.withDatabase(database)` | Shortcut for `.withPlatform({ database })`. |
-| `.withShell(shell)` | Add `{ allow: [...] }` command whitelist. |
+| `.withShell(shell)` | Add `{ allow: [...], maxConcurrent? }` — command whitelist plus an optional cap on concurrent shell processes for this plugin. |
 | `.withQuotas(quotas)` | Set `timeoutMs` / `memoryMb` / `cpuMs`. |
 | `.build()` | Run `toRuntimeFormat()` and return the runtime-format spec. |
 
@@ -162,7 +162,7 @@ Every method returns the builder for chaining. All are optional.
 Each `.with*` call feeds `mergeSpecs()`:
 
 - **String arrays** (env reads, fs allow, network fetch, shell allow, cache namespaces, storage paths) are **merged as sets** — duplicates are dropped, nothing is ever removed.
-- **Scalars** (quotas, boolean platform flags) — the later call wins.
+- **Scalars** (quotas, boolean platform flags, `shell.maxConcurrent`) — the later call wins.
 - **`fs.mode`** — later call wins; note that because `readWrite` contains `read`, there is effectively a one-way upgrade path. Once any merged block sets `mode: 'readWrite'`, you won't be able to downgrade it.
 - **`platform.*`** — merged per-service. Arrays union, objects shallow-merge, booleans replace.
 
