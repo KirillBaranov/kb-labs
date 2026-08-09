@@ -11,6 +11,7 @@ import {
   type VersionBump,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
+import { resolvePlan } from '../../shared/resolve-plan';
 
 interface VersionFlags {
   scope?: string;
@@ -100,13 +101,21 @@ export default defineCommand({
 
       const planLoader = useLoader('Planning version bumps...');
       planLoader.start();
-      const plan = await planRelease({
-        cwd: repoRoot,
+      // `flow` is mandatory here: without it planRelease() falls back to the
+      // global package set, and a lockstep strategy then levels EVERY package
+      // in the repo — including other flows' — onto this flow's version.
+      const { plan, source, reason } = await resolvePlan({
+        repoRoot,
         config,
         scope: flags.scope,
+        flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        stage: 'pre-bump',
       });
-      planLoader.succeed(`Planned ${plan.packages.length} package(s)`);
+      ctx.platform?.logger?.debug?.('Release plan resolved', { source, reason });
+      planLoader.succeed(
+        `${source === 'artifact' ? 'Loaded' : 'Planned'} ${plan.packages.length} package(s)`,
+      );
 
       if (plan.packages.length === 0) {
         const msg = `No packages found${flags.scope ? ` matching scope: ${flags.scope}` : ''}`;

@@ -12,6 +12,7 @@ import {
   type VersionBump,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
+import { resolvePlan } from '../../shared/resolve-plan';
 
 interface GitFlags {
   scope?: string;
@@ -93,14 +94,22 @@ export default defineCommand({
 
       const planLoader = useLoader('Loading release plan...');
       planLoader.start();
-      const plan = await planRelease({
-        cwd: repoRoot,
+      // Must be the same plan `release:version` acted on — re-deriving it here
+      // sees the versions that step just wrote as the new baseline and bumps a
+      // second time, so the tag/commit message land one version ahead of the
+      // package.json files being committed.
+      const { plan, source, reason } = await resolvePlan({
+        repoRoot,
         config,
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        stage: 'post-bump',
       });
-      planLoader.succeed(`Loaded plan: ${plan.packages.length} package(s)`);
+      ctx.platform?.logger?.debug?.('Release plan resolved', { source, reason });
+      planLoader.succeed(
+        `${source === 'artifact' ? 'Loaded plan' : 'Recomputed plan'}: ${plan.packages.length} package(s)`,
+      );
 
       if (plan.packages.length === 0) {
         const msg = `No packages found${flags.scope ? ` matching scope: ${flags.scope}` : ''}`;
@@ -120,6 +129,11 @@ export default defineCommand({
         plan,
         dryRun: false,
         noVerify,
+        // Without repoRoot the consolidated root changelog is never staged
+        // (see the `root === repoRoot` branch in publisher.ts) — it stays
+        // dirty in the working tree after every release.
+        repoRoot,
+        changelogOutputPath: config.changelog?.outputPath,
         flowName: flags.flow,
         tagPattern: flags.flow ? config.flows?.[flags.flow]?.tagPattern : undefined,
       });

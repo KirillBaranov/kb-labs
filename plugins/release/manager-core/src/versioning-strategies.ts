@@ -47,19 +47,35 @@ function applyLockstep(packages: PackageVersion[]): PackageVersion[] {
   if (packages.length === 0) {return packages;}
 
   // Idempotent retry: the planner's per-package guard (planner.ts) already
-  // resolved nextVersion back to currentVersion — without a fresh bump —
-  // for any package whose disk version is already published to npm (publish
-  // succeeded in a prior run, only git commit/tag remains). That decision
-  // must survive lockstep resolution unchanged: re-deriving nextVersion from
-  // currentVersion here would bump a SECOND time on top of a version that's
-  // already live, producing a git tag/commit one version ahead of what's
-  // actually in package.json and on the registry.
-  const alreadyPublished = packages.filter(p => p.isPublished);
-  if (alreadyPublished.length > 0) {
-    const sharedVersion = alreadyPublished.reduce(
-      (max, p) => (semver.gt(p.nextVersion, max) ? p.nextVersion : max),
-      alreadyPublished[0]!.nextVersion,
-    );
+  // resolved nextVersion back to currentVersion — without a fresh bump — for
+  // any package whose bump is already applied on disk. That decision must
+  // survive lockstep resolution unchanged: re-deriving nextVersion from
+  // currentVersion here would bump a SECOND time on top of an already-applied
+  // bump, producing a git tag/commit one version ahead of what's actually in
+  // package.json.
+  //
+  // Both signals matter, and `isPublished` alone is NOT sufficient:
+  //   - isPublished   — bump applied AND live on npm (publish succeeded, only
+  //                     git commit/tag remains).
+  //   - versionPinned — bump applied on disk, not yet published. This is the
+  //                     ordinary `release:version` → `release:git` handoff,
+  //                     where nothing is on npm yet. Gating on isPublished
+  //                     alone let this case fall through to a second bump.
+  const pinned = packages.filter(p => p.isPublished || p.versionPinned);
+  if (pinned.length > 0) {
+    // In lockstep every package shares one version, so the already-resolved
+    // ones must agree. If they don't, the plan is incoherent — fail here with
+    // the actual versions rather than silently collapsing to the max and
+    // tripping assertTagVersionsMatchDisk() later, after the commit is made.
+    const resolved = [...new Set(pinned.map(p => p.nextVersion))];
+    if (resolved.length > 1) {
+      const detail = pinned.map(p => `${p.name}@${p.nextVersion}`).join(', ');
+      throw new Error(
+        `Lockstep release has conflicting already-resolved versions: ${resolved.join(', ')} (${detail}). ` +
+        'Reconcile package.json versions before releasing.',
+      );
+    }
+    const sharedVersion = resolved[0]!;
     return packages.map(pkg => ({ ...pkg, nextVersion: sharedVersion }));
   }
 

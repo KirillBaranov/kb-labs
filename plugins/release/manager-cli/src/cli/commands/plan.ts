@@ -115,9 +115,13 @@ export default defineCommand({
       const planPath = ctx.runtime.fs.join(planDir, 'plan.json');
       const artifacts: ArtifactInfo[] = [];
 
+      // Always persist: later steps (`release:version`, `release:git`) consume
+      // this artifact as the single source of truth for the run, so it must
+      // exist regardless of how this invocation chose to render itself.
+      await ctx.runtime.fs.mkdir(planDir, { recursive: true });
+      await ctx.runtime.fs.writeFile(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
+
       if (!flags.json) {
-        await ctx.runtime.fs.mkdir(planDir, { recursive: true });
-        await ctx.runtime.fs.writeFile(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
         const stats = await ctx.runtime.fs.stat(planPath);
         artifacts.push({
           name: 'Release Plan',

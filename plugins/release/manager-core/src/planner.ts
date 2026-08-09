@@ -239,6 +239,11 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
         nextVersion: pkg.currentVersion,
         bump: detectBumpType(headVersion, pkg.currentVersion),
         isPublished: alreadyPublished,
+        // Mark the version as final so lockstep/adaptive resolution below
+        // doesn't re-derive (and thus re-bump) it. `isPublished` alone is not
+        // enough to signal this: the bump can legitimately be on disk but not
+        // yet published — exactly the `release:version` → `release:git` case.
+        versionPinned: true,
       });
       continue;
     }
@@ -286,6 +291,8 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     registry: config.registry || 'https://registry.npmjs.org',
     rollbackEnabled: config.rollback?.enabled ?? true,
     channel,
+    flow: options.flow,
+    scope,
   };
 }
 

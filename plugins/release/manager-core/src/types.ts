@@ -52,6 +52,14 @@ export interface PackageVersion {
   bump: VersionBump;
   isPublished: boolean;
   dependencies?: string[];
+  /**
+   * `nextVersion` was adopted as-is from a bump that already exists on disk
+   * (see the trust-disk branch in planner.ts) rather than derived by bumping
+   * `currentVersion`. Downstream version resolution — notably lockstep — must
+   * treat it as final: re-deriving it would bump a second time on top of an
+   * already-applied bump.
+   */
+  versionPinned?: boolean;
 }
 
 export interface ReleasePlan {
@@ -60,6 +68,14 @@ export interface ReleasePlan {
   registry: string;
   rollbackEnabled: boolean;
   channel: ReleaseChannel;
+  /**
+   * The flow/scope this plan was computed for. Persisted with the plan
+   * artifact so a later pipeline step can tell whether the plan on disk is
+   * the one it is supposed to consume, instead of silently reusing another
+   * flow's plan (all flows share one scope-derived artifact path).
+   */
+  flow?: string;
+  scope?: string;
 }
 
 export interface CheckResultDetails {

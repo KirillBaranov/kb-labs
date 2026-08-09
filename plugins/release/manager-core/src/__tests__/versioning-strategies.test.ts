@@ -87,4 +87,56 @@ describe('applyVersionStrategy lockstep — idempotent retry', () => {
 
     expect(result.map(p => p.nextVersion)).toEqual(['2.114.0', '2.114.0']);
   });
+
+  // The `release:version` → `release:git` handoff: version bumped
+  // package.json on disk, nothing is published yet, and `release:git`
+  // re-planned. The planner's trust-disk guard pins nextVersion to the
+  // on-disk version, but with isPublished still false. Gating the lockstep
+  // guard on isPublished alone let this fall through to a second bump —
+  // 2.116.14 → 2.117.0 on disk, tag/commit claiming 2.118.0.
+  it('does not re-bump packages pinned to an on-disk bump that is not published yet', () => {
+    const packages = [
+      pkg({
+        name: '@kb-labs/a',
+        currentVersion: '2.117.0',
+        nextVersion: '2.117.0',
+        bump: 'minor',
+        isPublished: false,
+        versionPinned: true,
+      }),
+      pkg({
+        name: '@kb-labs/b',
+        currentVersion: '2.117.0',
+        nextVersion: '2.117.0',
+        bump: 'minor',
+        isPublished: false,
+        versionPinned: true,
+      }),
+    ];
+
+    const result = applyVersionStrategy(packages, { strategy: 'lockstep' });
+
+    expect(result.map(p => p.nextVersion)).toEqual(['2.117.0', '2.117.0']);
+  });
+
+  it('pins unresolved packages to the shared resolved version rather than bumping them', () => {
+    const packages = [
+      pkg({ name: '@kb-labs/a', currentVersion: '2.117.0', nextVersion: '2.117.0', versionPinned: true }),
+      pkg({ name: '@kb-labs/b', currentVersion: '2.116.14', nextVersion: '2.117.0', bump: 'minor' }),
+    ];
+
+    const result = applyVersionStrategy(packages, { strategy: 'lockstep' });
+
+    expect(result.map(p => p.nextVersion)).toEqual(['2.117.0', '2.117.0']);
+  });
+
+  it('fails loudly when already-resolved versions disagree instead of collapsing to the max', () => {
+    const packages = [
+      pkg({ name: '@kb-labs/a', currentVersion: '2.117.0', nextVersion: '2.117.0', versionPinned: true }),
+      pkg({ name: '@kb-labs/b', currentVersion: '2.118.0', nextVersion: '2.118.0', versionPinned: true }),
+    ];
+
+    expect(() => applyVersionStrategy(packages, { strategy: 'lockstep' }))
+      .toThrow(/conflicting already-resolved versions/);
+  });
 });
