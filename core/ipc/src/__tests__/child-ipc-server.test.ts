@@ -149,6 +149,19 @@ describe('ChildIPCServer', () => {
       });
     });
 
+    it('should dispatch document and KV database endpoints through their wire aliases', async () => {
+      const documentCall = createAdapterCall('database.document', 'find', ['jobs', { state: 'queued' }]);
+      const kvCall = createAdapterCall('database.kv', 'get', ['lease:worker-1']);
+
+      mockChild.emit('message', documentCall);
+      mockChild.emit('message', kvCall);
+
+      await vi.waitFor(() => {
+        expect(mockPlatform.documentDatabase.find).toHaveBeenCalledWith('jobs', { state: 'queued' });
+        expect(mockPlatform.kvStore.get).toHaveBeenCalledWith('lease:worker-1');
+      });
+    });
+
     it('should handle adapter method errors', async () => {
       (mockPlatform.cache.get as any).mockRejectedValue(new Error('Redis down'));
 

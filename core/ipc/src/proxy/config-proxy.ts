@@ -26,6 +26,7 @@
 import type { IConfig } from '@kb-labs/core-platform';
 import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
+import type { ConfigIPCOperation } from '../ipc/adapter-contract.js';
 
 /**
  * IPC proxy for IConfig adapter.
@@ -37,7 +38,7 @@ import { RemoteAdapter } from './remote-adapter';
  * From the caller's perspective, this behaves identically to a
  * local config adapter - the IPC layer is completely transparent.
  */
-export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
+export class ConfigProxy extends RemoteAdapter<IConfig, ConfigIPCOperation> implements IConfig {
   /**
    * Create a config proxy.
    *
@@ -84,4 +85,8 @@ export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
   async getRawConfig(): Promise<any> {
     return this.callRemote('getRawConfig', []);
   }
+}
+
+export function createConfigProxy(transport: ITransport): ConfigProxy {
+  return new ConfigProxy(transport);
 }

@@ -27,6 +27,7 @@
 import type { ICache } from '@kb-labs/core-platform';
 import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
+import type { CacheIPCOperation } from '../ipc/adapter-contract.js';
 
 /**
  * IPC proxy for ICache adapter.
@@ -38,7 +39,7 @@ import { RemoteAdapter } from './remote-adapter';
  * From the caller's perspective, this behaves identically to a
  * local cache - the IPC layer is completely transparent.
  */
-export class CacheProxy extends RemoteAdapter<ICache> implements ICache {
+export class CacheProxy extends RemoteAdapter<ICache, CacheIPCOperation> implements ICache {
   /**
    * Create a cache proxy.
    *
