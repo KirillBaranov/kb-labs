@@ -304,6 +304,10 @@ export class WorkflowHostService {
         payload: userInputs,
       },
       inputs: resolvedInputs,
+      metadata: {
+        workflowId: id,
+        workflowAncestors: [id],
+      },
     });
 
     return {
@@ -350,6 +354,10 @@ export class WorkflowHostService {
         payload: resolvedInputs,
       },
       inputs: resolvedInputs,
+      metadata: {
+        workflowId,
+        workflowAncestors: [workflowId],
+      },
     });
 
     return {

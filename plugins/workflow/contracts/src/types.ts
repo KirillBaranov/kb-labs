@@ -26,9 +26,11 @@ import {
   StepProgressSchema,
   StepArtifactSchema,
   ApprovalReviewItemSchema,
+  WorkflowOutputFieldSchema,
 } from './schemas'
 
 export type WorkflowSpec = z.infer<typeof WorkflowSpecSchema>
+export type WorkflowOutputField = z.infer<typeof WorkflowOutputFieldSchema>
 export type JobSpec = z.infer<typeof JobSpecSchema>
 export type StepSpec = z.infer<typeof StepSpecSchema>
 export type Phase = z.infer<typeof PhaseSchema>

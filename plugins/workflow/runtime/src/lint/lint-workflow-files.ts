@@ -9,7 +9,7 @@
  */
 
 import { readFile } from 'node:fs/promises'
-import { statSync } from 'node:fs'
+import { statSync, readFileSync } from 'node:fs'
 import { relative, resolve, dirname, basename } from 'node:path'
 
 import fg from 'fast-glob'
@@ -59,7 +59,84 @@ export async function lintWorkflowFiles(opts: LintOptions = {}): Promise<FileLin
     ignore: ['node_modules/**', 'dist/**', '.git/**'],
   })
 
-  return Promise.all(files.map((file) => lintOne(file, target)))
+  const results = await Promise.all(files.map((file) => lintOne(file, target)))
+  appendInvocationGraphDiagnostics(results)
+  return results
+}
+
+/**
+ * Verify `workflow:workspace:<file-stem>` references as one graph. Schema
+ * validation can only inspect one document; this catches a missing reusable
+ * component and indirect cycles before any run reaches a worker.
+ */
+function appendInvocationGraphDiagnostics(results: FileLintResult[]): void {
+  const valid = results.filter((result) => result.ok)
+  const byId = new Map(valid.map((result) => [basename(result.file).replace(/\.(ya?ml|json)$/i, ''), result]))
+  const edges = new Map<string, string[]>()
+
+  for (const result of valid) {
+    const id = basename(result.file).replace(/\.(ya?ml|json)$/i, '')
+    const parsed = parseDocument(result.file)
+    const refs = parsed ? collectWorkspaceWorkflowRefs(parsed) : []
+    edges.set(id, refs)
+    for (const ref of refs) {
+      if (!byId.has(ref)) {
+        result.ok = false
+        result.errors.push(`jobs: referenced workspace workflow "${ref}" was not found`)
+      }
+    }
+  }
+
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+  const visit = (id: string, path: string[]): void => {
+    if (visiting.has(id)) {
+      const cycle = [...path.slice(path.indexOf(id)), id].join(' -> ')
+      const source = byId.get(path[path.length - 1] ?? id)
+      if (source && !source.errors.some((error) => error.includes(`workflow invocation cycle: ${cycle}`))) {
+        source.ok = false
+        source.errors.push(`jobs: workflow invocation cycle: ${cycle}`)
+      }
+      return
+    }
+    if (visited.has(id)) {return}
+    visiting.add(id)
+    for (const next of edges.get(id) ?? []) {
+      if (byId.has(next)) {visit(next, [...path, next])}
+    }
+    visiting.delete(id)
+    visited.add(id)
+  }
+  for (const id of byId.keys()) {visit(id, [id])}
+}
+
+function parseDocument(file: string): Record<string, unknown> | null {
+  try {
+    // lintOne has already verified parseability; sync parsing here keeps graph
+    // analysis local and avoids changing the public lint result shape.
+    const raw = readFileSync(file, 'utf-8')
+    return (file.endsWith('.json') ? JSON.parse(raw) : parseYaml(raw)) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function collectWorkspaceWorkflowRefs(document: Record<string, unknown>): string[] {
+  const jobs = document['jobs']
+  if (!jobs || typeof jobs !== 'object') {return []}
+  const refs: string[] = []
+  for (const job of Object.values(jobs as Record<string, unknown>)) {
+    if (!job || typeof job !== 'object') {continue}
+    const steps = (job as Record<string, unknown>)['steps']
+    if (!Array.isArray(steps)) {continue}
+    for (const step of steps) {
+      const uses = step && typeof step === 'object' ? (step as Record<string, unknown>)['uses'] : undefined
+      if (typeof uses === 'string' && uses.startsWith('workflow:workspace:')) {
+        refs.push(uses.slice('workflow:workspace:'.length))
+      }
+    }
+  }
+  return refs
 }
 
 async function lintOne(file: string, base: string): Promise<FileLintResult> {

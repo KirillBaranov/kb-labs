@@ -157,8 +157,9 @@ export async function createWorkflowWorker(
 
     const workflowId = input.workflowRef.slice('workspace:'.length);
     const parentWorkflowId = (input.parentRun.metadata?.['workflowId'] as string | undefined) ?? input.parentRun.name;
-    if (parentWorkflowId === workflowId) {
-      throw new Error(`Child workflow cycle detected: ${parentWorkflowId} -> ${workflowId}`);
+    const ancestors = (input.parentRun.metadata?.workflowAncestors as string[] | undefined) ?? [parentWorkflowId];
+    if (ancestors.includes(workflowId)) {
+      throw new Error(`Child workflow cycle detected: ${[...ancestors, workflowId].join(' -> ')}`);
     }
     const parentDepth = input.parentRun.metadata?.workflowDepth ?? 0;
     if (parentDepth >= engine.maxWorkflowDepth) {
@@ -189,52 +190,16 @@ export async function createWorkflowWorker(
         parentJobId: input.parentJob.id,
         parentStepId: input.parentStep.id,
         workflowDepth: parentDepth + 1,
+        rootRunId: (input.parentRun.metadata?.rootRunId as string | undefined) ?? input.parentRun.id,
+        workflowAncestors: [...ancestors, workflowId],
       },
     });
 
     await engine.markStepWaitingChild(input.parentRun.id, input.parentJob.id, input.parentStep.id, child.id);
-
-    void (async () => {
-      while (!stopRequested) {
-        const [parent, childRun] = await Promise.all([
-          engine.getRun(input.parentRun.id),
-          engine.getRun(child.id),
-        ]);
-        if (!parent || parent.status === 'cancelled') {
-          if (childRun && !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
-            await engine.cancelRun(child.id);
-          }
-          return;
-        }
-        if (!childRun || !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
-          await sleep(500);
-          continue;
-        }
-        if (childRun.status === 'success') {
-          await engine.markStepCompleted(input.parentRun.id, input.parentJob.id, input.parentStep.id, {
-            runId: child.id,
-            status: childRun.status,
-          });
-          await engine.resumeJob(input.parentRun.id, input.parentJob.id);
-        } else {
-          const error = new Error(`Child workflow ${workflowId} ${childRun.status} (run ${child.id})`);
-          await engine.markStepFailed(
-            input.parentRun.id,
-            input.parentJob.id,
-            input.parentStep.id,
-            error,
-            { runId: child.id, status: childRun.status },
-          );
-          await engine.markJobFailed(input.parentRun.id, input.parentJob.id, error, undefined, false);
-        }
-        return;
-      }
-    })().catch((error: unknown) => {
-      logger.error('Child workflow monitor failed', error instanceof Error ? error : undefined, {
-        parentRunId: input.parentRun.id,
-        childRunId: child.id,
-      });
-    });
+    // Covers the race where a very small child completes before its parent
+    // transition is persisted. Subsequent terminal events and daemon startup
+    // use the same idempotent reconciliation path.
+    await engine.reconcileChildInvocation(child.id);
   }
 
   /**
@@ -416,6 +381,11 @@ export async function createWorkflowWorker(
         for (const step of job.steps) {
           if (step.status === "success") {
             continue; // Skip already completed steps
+          }
+          if (step.status === "waiting_child") {
+            // The engine owns durable child reconciliation. A queued duplicate
+            // must never create a second child run for the same parent step.
+            return;
           }
 
           // --- Build ExpressionContext from fresh run state ---

@@ -130,6 +130,12 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
       bootstrapLogger.info("Resuming interrupted jobs");
       await engine.resumeInterruptedJobs();
 
+      bootstrapLogger.info("Reconciling persisted child workflow invocations");
+      const reconciledChildren = await engine.reconcileChildInvocations();
+      if (reconciledChildren > 0) {
+        bootstrapLogger.info("Reconciled child workflow invocations", { count: reconciledChildren });
+      }
+
       bootstrapLogger.info("Creating JobBroker");
       const jobBroker = new JobBroker(
         engine,
