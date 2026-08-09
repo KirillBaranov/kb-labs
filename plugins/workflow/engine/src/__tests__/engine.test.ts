@@ -313,6 +313,42 @@ describe('WorkflowEngine', () => {
         jobs: [expect.objectContaining({ status: 'failed' })],
       });
     });
+
+    it('recovers parked parents after an engine restart and reconciles concurrent children', async () => {
+      const pairs = await Promise.all(Array.from({ length: 4 }, async () => {
+        const parent = await engine.createRun({ spec, trigger: { type: 'manual' } });
+        const parentJob = parent.jobs[0]!;
+        const parentStep = parentJob.steps[0]!;
+        const child = await engine.createRun({
+          spec,
+          trigger: { type: 'workflow', parentRunId: parent.id },
+          metadata: { parentRunId: parent.id },
+        });
+        await engine.markJobStarted(parent.id, parentJob.id);
+        await engine.markStepWaitingChild(parent.id, parentJob.id, parentStep.id, child.id);
+        await engine.markStepCompleted(child.id, child.jobs[0]!.id, child.jobs[0]!.steps[0]!.id, { ok: true });
+        // Model a daemon dying after child state is persisted but before its
+        // terminal event is delivered to the parent coordinator.
+        await engine.getStateStore().updateJob(child.id, child.jobs[0]!.id, (job) => {
+          job.status = 'success';
+          job.finishedAt = new Date().toISOString();
+        });
+        await engine.getStateStore().updateRun(child.id, (run) => {
+          run.status = 'success';
+          run.finishedAt = new Date().toISOString();
+        });
+        return { parent, parentJob };
+      }));
+
+      const restarted = new WorkflowEngine({ cache, events, logger, maxWorkflowDepth: 2 });
+      await expect(restarted.reconcileChildInvocations()).resolves.toBe(4);
+
+      await Promise.all(pairs.map(async ({ parent, parentJob }) => {
+        await expect(restarted.getRun(parent.id)).resolves.toMatchObject({
+          jobs: [expect.objectContaining({ id: parentJob.id, status: 'queued' })],
+        });
+      }));
+    });
   });
 
   describe('Job Failure and Retries', () => {

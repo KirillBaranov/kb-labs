@@ -296,7 +296,10 @@ export class WorkflowEngine {
 
   private async listStoredRuns(): Promise<WorkflowRun[]> {
     const runIds = await this.stateStore.getAllRunIds()
-    const runs = await Promise.all(runIds.map((id) => this.getRun(id)))
+    // Cache sorted-set adapters are permitted to retain duplicate members on
+    // repeated saveRun calls. Reconciliation must be exactly-once per durable
+    // run record even when event/index delivery is at-least-once.
+    const runs = await Promise.all([...new Set(runIds)].map((id) => this.getRun(id)))
     return runs.filter((run): run is WorkflowRun => run !== null)
   }
 
