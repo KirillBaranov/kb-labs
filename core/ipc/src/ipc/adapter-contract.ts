@@ -9,10 +9,21 @@
 
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { AdapterType } from '@kb-labs/core-platform/serializable';
-import type { IDocumentDatabase, IKVStore } from '@kb-labs/core-platform/adapters';
+import type {
+  ICache,
+  IConfig,
+  IDocumentDatabase,
+  IInvoke,
+  IKVStore,
+  IVectorStore,
+} from '@kb-labs/core-platform/adapters';
 import type { ITransport } from '../transport/transport.js';
 import { createDocumentDatabaseProxy } from '../proxy/document-database-proxy.js';
 import { createKVStoreProxy } from '../proxy/kv-store-proxy.js';
+import { createCacheProxy } from '../proxy/cache-proxy.js';
+import { createConfigProxy } from '../proxy/config-proxy.js';
+import { createVectorStoreProxy } from '../proxy/vector-store-proxy.js';
+import { createInvokeProxy } from '../proxy/invoke-proxy.js';
 
 export type IPCOperationMode = 'unary' | 'stream' | 'interactive' | 'local';
 
@@ -73,17 +84,55 @@ export const kvStoreIPCOperations = defineIPCOperations<IKVStore>()({
 
 export type KVStoreIPCOperation = keyof typeof kvStoreIPCOperations;
 
+/** Complete wire inventory for `ICache`. */
+export const cacheIPCOperations = defineIPCOperations<ICache>()({
+  get: 'unary',
+  set: 'unary',
+  delete: 'unary',
+  clear: 'unary',
+  zadd: 'unary',
+  zrangebyscore: 'unary',
+  zrem: 'unary',
+  setIfNotExists: 'unary',
+});
+
+export type CacheIPCOperation = keyof typeof cacheIPCOperations;
+
+/** Complete wire inventory for `IConfig`. */
+export const configIPCOperations = defineIPCOperations<IConfig>()({
+  getConfig: 'unary',
+  getRawConfig: 'unary',
+});
+
+export type ConfigIPCOperation = keyof typeof configIPCOperations;
+
+/** Complete wire inventory for `IVectorStore`. */
+export const vectorStoreIPCOperations = defineIPCOperations<IVectorStore>()({
+  search: 'unary',
+  upsert: 'unary',
+  delete: 'unary',
+  count: 'unary',
+  get: 'unary',
+  query: 'unary',
+});
+
+export type VectorStoreIPCOperation = keyof typeof vectorStoreIPCOperations;
+
+/** Complete wire inventory for `IInvoke`. */
+export const invokeIPCOperations = defineIPCOperations<IInvoke>()({
+  call: 'unary',
+  isAvailable: 'unary',
+});
+
+export type InvokeIPCOperation = keyof typeof invokeIPCOperations;
+
 type LegacyAdapterSlot =
   | 'logger'
   | 'analytics'
-  | 'vectorStore'
   | 'llm'
   | 'embeddings'
-  | 'cache'
-  | 'config'
   | 'storage'
   | 'eventBus'
-  | 'invoke'
   | 'artifacts'
   | 'processExecutor';
 
@@ -131,12 +180,13 @@ export const platformAdapterTransportPolicy = {
   analytics: {
     mode: 'migration',
     adapter: 'analytics',
-    reason: 'Proxy platform currently supplies a noop analytics implementation.',
+    reason: 'Optional read and source-management operations need a capability-aware IPC design.',
   },
   vectorStore: {
-    mode: 'migration',
+    mode: 'ipc',
     adapter: 'vectorStore',
-    reason: 'Proxy contains non-contract operations that must be removed before parity enforcement.',
+    operations: vectorStoreIPCOperations,
+    proxy: createVectorStoreProxy,
   },
   llm: {
     mode: 'migration',
@@ -149,14 +199,16 @@ export const platformAdapterTransportPolicy = {
     reason: 'The dimensions property requires out-of-band initialization in the proxy.',
   },
   cache: {
-    mode: 'migration',
+    mode: 'ipc',
     adapter: 'cache',
-    reason: 'Existing proxy must be moved to a checked operation inventory.',
+    operations: cacheIPCOperations,
+    proxy: createCacheProxy,
   },
   config: {
-    mode: 'migration',
+    mode: 'ipc',
     adapter: 'config',
-    reason: 'Existing proxy must be moved to a checked operation inventory.',
+    operations: configIPCOperations,
+    proxy: createConfigProxy,
   },
   storage: {
     mode: 'migration',
@@ -169,9 +221,10 @@ export const platformAdapterTransportPolicy = {
     reason: 'Subscriptions use a dedicated push-message protocol.',
   },
   invoke: {
-    mode: 'migration',
+    mode: 'ipc',
     adapter: 'invoke',
-    reason: 'Proxy platform currently supplies a noop invocation implementation.',
+    operations: invokeIPCOperations,
+    proxy: createInvokeProxy,
   },
   documentDatabase: {
     mode: 'ipc',

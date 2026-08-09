@@ -11,12 +11,9 @@
 import type { ITransport } from '../transport/transport.js';
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { ILogger } from '@kb-labs/core-platform/adapters';
-import { CacheProxy } from './cache-proxy.js';
 import { LLMProxy } from './llm-proxy.js';
 import { EmbeddingsProxy } from './embeddings-proxy.js';
-import { VectorStoreProxy } from './vector-store-proxy.js';
 import { StorageProxy } from './storage-proxy.js';
-import { ConfigProxy } from './config-proxy.js';
 import { EventBusProxy } from './event-bus-proxy.js';
 import { LoggerProxy } from './logger-proxy.js';
 import { ProcessExecutorProxy } from './process-executor-proxy.js';
@@ -54,30 +51,24 @@ export function createProxyPlatform(
   const processExecutor = new ProcessExecutorProxy(transport);
 
   // Proxy adapters — forward all calls via transport
-  const cache = new CacheProxy(transport);
+  const cache = platformAdapterTransportPolicy.cache.proxy(transport);
   const llm = new LLMProxy(transport);
   const embeddings = new EmbeddingsProxy(transport);
-  const vectorStore = new VectorStoreProxy(transport);
+  const vectorStore = platformAdapterTransportPolicy.vectorStore.proxy(transport);
   const storage = new StorageProxy(transport);
   const documentDatabase = platformAdapterTransportPolicy.documentDatabase.proxy(transport);
   const kvStore = platformAdapterTransportPolicy.kvStore.proxy(transport);
-  const config = new ConfigProxy(transport);
+  const config = platformAdapterTransportPolicy.config.proxy(transport);
 
   // EventBus: bidirectional proxy — subscribe/publish across process boundary
   const eventBus = new EventBusProxy(transport);
 
-  // Analytics: noop (low priority for proxying)
   const analytics = {
     track: async () => {},
     identify: async () => {},
     flush: async () => {},
   };
-
-  // Invoke: noop (cross-plugin invocation not yet proxied)
-  const invoke = {
-    call: async () => ({ success: false, error: 'Invoke not available in proxy context' }),
-    isAvailable: async () => false,
-  };
+  const invoke = platformAdapterTransportPolicy.invoke.proxy(transport);
 
   // Logs: noop (read-only, low priority for proxying)
   const logs = {

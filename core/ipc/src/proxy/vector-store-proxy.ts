@@ -33,6 +33,7 @@ import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
 import { BulkTransferHelper } from '../transport/bulk-transfer';
 import { tmpdir } from 'os';
+import type { VectorStoreIPCOperation } from '../ipc/adapter-contract.js';
 
 /**
  * IPC proxy for IVectorStore adapter.
@@ -44,7 +45,7 @@ import { tmpdir } from 'os';
  * From the caller's perspective, this behaves identically to a
  * local vector store - the IPC layer is completely transparent.
  */
-export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVectorStore {
+export class VectorStoreProxy extends RemoteAdapter<IVectorStore, VectorStoreIPCOperation> implements IVectorStore {
   // Timeout for bulk operations that may trigger IPC backpressure
   private static readonly BULK_OPERATION_TIMEOUT = 120_000; // 2 minutes
 
@@ -103,17 +104,6 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
   }
 
   /**
-   * Upsert vectors with chunk metadata (used by Mind RAG).
-   * Uses extended timeout for bulk operations.
-   *
-   * @param scope - Scope ID
-   * @param vectors - Vector records to upsert
-   */
-  async upsertChunks(scope: string, vectors: VectorRecord[]): Promise<void> {
-    await this.callRemote('upsertChunks', [scope, vectors], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
-  }
-
-  /**
    * Count total vectors in collection.
    *
    * @returns Promise resolving to vector count
@@ -160,28 +150,6 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
     return resultTransfer as VectorRecord[];
   }
 
-  /**
-   * Clear all vectors from collection.
-   * Uses extended timeout for bulk deletion.
-   */
-  async clear(): Promise<void> {
-    await this.callRemote('clear', [], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
-  }
-
-  /**
-   * Initialize the vector store.
-   * Called during platform initialization.
-   */
-  async initialize(): Promise<void> {
-    await this.callRemote('initialize', []);
-  }
-
-  /**
-   * Close connections and cleanup resources.
-   */
-  async close(): Promise<void> {
-    await this.callRemote('close', []);
-  }
 }
 
 /**
