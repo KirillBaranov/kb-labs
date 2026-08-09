@@ -192,6 +192,13 @@ export async function createWorkflowWorker(
         workflowDepth: parentDepth + 1,
         rootRunId: (input.parentRun.metadata?.rootRunId as string | undefined) ?? input.parentRun.id,
         workflowAncestors: [...ancestors, workflowId],
+        // A composed quality workflow must inspect and repair the exact change
+        // prepared by its parent, not a fresh worktree at main. The owner keeps
+        // lifecycle responsibility; children only borrow this binding.
+        executionWorkspace: input.parentRun.metadata?.['executionWorkspace'],
+        workspaceOwnerRunId:
+          (input.parentRun.metadata?.['workspaceOwnerRunId'] as string | undefined)
+          ?? input.parentRun.id,
       },
     });
 
@@ -309,8 +316,27 @@ export async function createWorkflowWorker(
       ? workspaceRoot
       : (process.env["KB_PROJECT_ROOT"] ?? workspaceRoot);
     let provisionedWorkspaceId: string | undefined;
+    const workspaceMetadata = run.metadata?.['executionWorkspace'] as
+      | { workspaceId?: unknown; rootPath?: unknown }
+      | undefined;
+    const inheritedWorkspace = typeof run.metadata?.['workspaceOwnerRunId'] === 'string'
+      && run.metadata?.['workspaceOwnerRunId'] !== run.id;
 
-    if (wsProvider) {
+    if (
+      workspaceMetadata
+      && typeof workspaceMetadata.rootPath === 'string'
+      && typeof workspaceMetadata.workspaceId === 'string'
+    ) {
+      runWorkspace = workspaceMetadata.rootPath;
+      // The owner releases once its terminal job completes. A child must never
+      // release a borrowed worktree.
+      provisionedWorkspaceId = inheritedWorkspace ? undefined : workspaceMetadata.workspaceId;
+      jobLogger.info("Workspace binding restored", {
+        workspaceId: workspaceMetadata.workspaceId,
+        ownerRunId: run.metadata?.['workspaceOwnerRunId'] ?? run.id,
+        inherited: inheritedWorkspace,
+      });
+    } else if (wsProvider) {
       const wsId = `wt_${run.id.slice(0, 8)}`;
       try {
         // Deterministic workspaceId per run — retries reuse the same worktree
@@ -326,8 +352,16 @@ export async function createWorkflowWorker(
           },
         });
         if (ws.rootPath) {
-          runWorkspace = ws.rootPath;
+          const rootPath = ws.rootPath;
+          runWorkspace = rootPath;
           provisionedWorkspaceId = ws.workspaceId;
+          await engine.getStateStore().updateRun(run.id, (draft) => {
+            draft.metadata = {
+              ...(draft.metadata ?? {}),
+              executionWorkspace: { workspaceId: ws.workspaceId, rootPath },
+              workspaceOwnerRunId: run.id,
+            };
+          });
           jobLogger.info("Workspace provisioned", {
             workspaceId: ws.workspaceId,
             provider: ws.provider,

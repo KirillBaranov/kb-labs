@@ -355,6 +355,12 @@ export const RunMetadataSchema = z.object({
   rootRunId: z.string().optional(),
   workflowAncestors: z.array(z.string().min(1)).optional(),
   outputDeclarations: z.record(z.string(), WorkflowOutputFieldSchema).optional(),
+  /** Persisted binding owned by the root invocation and borrowed by children. */
+  executionWorkspace: z.object({
+    workspaceId: z.string().min(1),
+    rootPath: z.string().min(1),
+  }).optional(),
+  workspaceOwnerRunId: z.string().optional(),
 })
 
 export const ResultErrorSchema = z.object({

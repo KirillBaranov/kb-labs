@@ -1,0 +1,98 @@
+name: quality-assurance
+version: 1.0.0
+description: Reusable independent review, adversarial QA, functional verification and static gates for a prepared change.
+
+on:
+  manual: true
+
+inputs:
+  owner: { type: string, required: true }
+  repo: { type: string, required: true }
+  issueNumber: { type: number, required: true }
+  issueTitle: { type: string, required: true }
+  issueBody: { type: string, required: false }
+  prNumber: { type: number, required: true }
+  implSessionId: { type: string, required: false }
+  baseBranch: { type: string, default: main }
+
+outputs:
+  reviewPassed: { source: '${{ steps.review.outputs.passed }}' }
+  architectureVerdict: { source: '${{ steps.architect.outputs.verdict }}' }
+  qaVerdict: { source: '${{ steps.qa_adversarial.outputs.verdict }}' }
+  verificationVerdict: { source: '${{ steps.functional_verify.outputs.verdict }}' }
+
+jobs:
+  assurance:
+    runsOn: local
+    steps:
+      - name: AI Review
+        id: review
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+        run: node .kb/workflows/scripts/ai-review.mjs
+
+      - name: Agent Fixes Review
+        id: review_fix
+        timeoutMs: 7200000
+        if: ${{ steps.review.outputs.passed == 'false' }}
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+          REVIEW_ISSUES: '${{ steps.review.outputs.issues }}'
+          IMPL_SESSION_ID: '${{ inputs.implSessionId }}'
+        run: node .kb/workflows/scripts/agent-fixes-review.mjs
+
+      - name: Architect Review
+        id: architect
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+        run: node .kb/workflows/scripts/architect-review.mjs
+
+      - name: Agent Fixes Architect
+        id: architect_fix
+        timeoutMs: 7200000
+        if: ${{ steps.architect.outputs.verdict == 'NEEDS_FIXES' }}
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+          ARCHITECT_REVIEW: '${{ steps.architect.outputs.review }}'
+          IMPL_SESSION_ID: '${{ inputs.implSessionId }}'
+        run: node .kb/workflows/scripts/agent-fixes-architect.mjs
+
+      - name: Adversarial QA
+        id: qa_adversarial
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+        run: node .kb/workflows/scripts/adversarial-qa.mjs
+
+      - name: Agent Fixes QA
+        id: qa_fix
+        timeoutMs: 7200000
+        if: ${{ steps.qa_adversarial.outputs.verdict == 'BUGS_FOUND' }}
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+          QA_REPORT: '${{ steps.qa_adversarial.outputs.report }}'
+          IMPL_SESSION_ID: '${{ inputs.implSessionId }}'
+        run: node .kb/workflows/scripts/agent-fixes-qa.mjs
+
+      - name: Functional Verification
+        id: functional_verify
+        timeoutMs: 3600000
+        env:
+          ISSUE_NUMBER: '${{ inputs.issueNumber }}'
+          ISSUE_TITLE: '${{ inputs.issueTitle }}'
+          ISSUE_BODY: '${{ inputs.issueBody }}'
+        run: node .kb/workflows/scripts/functional-verification.mjs
+
+      - name: Static Quality Gates
+        id: static_gates
+        uses: workflow:workspace:quality-gates
+        with:
+          baseBranch: '${{ inputs.baseBranch }}'

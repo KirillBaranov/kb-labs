@@ -178,6 +178,33 @@ jobs:
           IMPL_SUMMARY: '${{ steps.impl.outputs.summary }}'
         run: node .kb/workflows/scripts/post-impl-summary.mjs
 
+      # Reusable quality boundary. The child inherits this run's worktree, so
+      # independent reviewers and fix agents inspect the same uncommitted diff.
+      - name: Quality Assurance
+        id: quality_assurance
+        uses: workflow:workspace:quality-assurance
+        with:
+          owner: '${{ inputs.owner }}'
+          repo: '${{ inputs.repo }}'
+          issueNumber: '${{ steps.prepare.outputs.issueNumber }}'
+          issueTitle: '${{ steps.issue.outputs.title }}'
+          issueBody: '${{ steps.issue.outputs.body }}'
+          prNumber: '${{ steps.pr.outputs.prNumber }}'
+          implSessionId: '${{ steps.impl.outputs.sessionId }}'
+          baseBranch: '${{ inputs.baseBranch }}'
+
+      # Legacy inline quality phases are retained for audit history during the
+      # migration, but are no longer executable: quality-assurance owns this
+      # contract and hands off directly to delivery.
+      - name: Continue to Delivery
+        uses: builtin:gate
+        with:
+          decision: 'true'
+          routes:
+            'true':
+              skipTo: commit
+          default: fail
+
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 3 — CODE REVIEW LOOP
       # Independent auditor. Agent self-verifies fixes before handing back.
