@@ -40,7 +40,7 @@ import { BulkTransferHelper } from '../transport/bulk-transfer';
  *
  * Type parameter T should be the adapter interface (e.g., IVectorStore).
  */
-export abstract class RemoteAdapter<T> {
+export abstract class RemoteAdapter<T, TOperation extends string = string> {
   private context?: AdapterCallContext;
 
   /**
@@ -109,7 +109,7 @@ export abstract class RemoteAdapter<T> {
    * return this.callRemote('upsert', [vectors], 120000); // 2 min timeout
    * ```
    */
-  protected async callRemote(method: string, args: unknown[], timeout?: number): Promise<unknown> {
+  protected async callRemote(method: TOperation, args: unknown[], timeout?: number): Promise<unknown> {
     // Generate unique request ID
     const requestId = randomUUID();
 

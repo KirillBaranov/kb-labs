@@ -33,9 +33,10 @@ import type {
 } from '@kb-labs/core-platform/adapters';
 import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
+import type { DocumentDatabaseIPCOperation } from '../ipc/adapter-contract';
 
 export class DocumentDatabaseProxy
-  extends RemoteAdapter<IDocumentDatabase>
+  extends RemoteAdapter<IDocumentDatabase, DocumentDatabaseIPCOperation>
   implements IDocumentDatabase
 {
   constructor(transport: ITransport) {

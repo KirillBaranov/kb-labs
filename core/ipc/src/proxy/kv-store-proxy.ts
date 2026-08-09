@@ -15,8 +15,9 @@ import type {
 } from '@kb-labs/core-platform/adapters';
 import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
+import type { KVStoreIPCOperation } from '../ipc/adapter-contract';
 
-export class KVStoreProxy extends RemoteAdapter<IKVStore> implements IKVStore {
+export class KVStoreProxy extends RemoteAdapter<IKVStore, KVStoreIPCOperation> implements IKVStore {
   constructor(transport: ITransport) {
     super('database.kv', transport);
   }

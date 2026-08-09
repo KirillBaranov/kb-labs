@@ -21,6 +21,7 @@ import {
   serialize,
   deserialize,
 } from '@kb-labs/core-platform/serializable';
+import { resolveIPCAdapter } from './adapter-route.js';
 
 /**
  * Serialize an Error (or any value) to SerializableError for IPC response.
@@ -126,7 +127,7 @@ export class ChildIPCServer {
     }
 
     try {
-      const adapter = this.getAdapter(msg.adapter);
+      const adapter = resolveIPCAdapter(this.platform, msg.adapter);
       const method = (adapter as Record<string, unknown>)[msg.method];
 
       if (typeof method !== 'function') {
@@ -186,24 +187,6 @@ export class ChildIPCServer {
     if (this.child.connected) {
       this.child.send(response);
     }
-  }
-
-  /**
-   * Get adapter from platform by name.
-   * Dynamic dispatch — no hardcoded switch; new adapters in IPlatformAdapters
-   * are automatically available without touching this file.
-   * The dotted names ('database.document', 'database.kv') are mapped explicitly.
-   */
-  private getAdapter(name: string): unknown {
-    // Handle dotted names that don't match property names directly
-    if (name === 'database.document') { return this.platform.documentDatabase; }
-    if (name === 'database.kv') { return this.platform.kvStore; }
-
-    const adapter = (this.platform as unknown as Record<string, unknown>)[name];
-    if (adapter === undefined) {
-      throw new Error(`Unknown adapter: '${name}'`);
-    }
-    return adapter;
   }
 
   isStarted(): boolean {

@@ -29,6 +29,7 @@ import type { AdapterCall, AdapterResponse, SerializableError } from '@kb-labs/c
 import { serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
 import { BulkTransferHelper } from '../transport/bulk-transfer';
 import { DEFAULT_SOCKET_PATH } from '../socket-path';
+import { resolveIPCAdapter } from './adapter-route.js';
 
 export interface UnixSocketServerConfig {
   /** Path to Unix socket file (default: /tmp/kb-ipc.sock) */
@@ -187,7 +188,7 @@ export class UnixSocketServer {
 
     try {
       // Get the adapter from platform
-      const adapter = this.getAdapter(call.adapter);
+      const adapter = resolveIPCAdapter(this.platform, call.adapter);
 
       // Get the method on the adapter
       if (adapter === null || (typeof adapter !== 'object' && typeof adapter !== 'function')) {
@@ -262,47 +263,6 @@ export class UnixSocketServer {
         error instanceof Error ? error : new Error(String(error)),
         { adapter: call.adapter, method: call.method },
       );
-    }
-  }
-
-  /**
-   * Get adapter instance from platform container.
-   *
-   * @param name - Adapter name (e.g., 'vectorStore', 'cache')
-   * @returns Adapter instance
-   * @throws Error if adapter not found
-   */
-  private getAdapter(name: string): unknown {
-    switch (name) {
-      case 'vectorStore':
-        return this.platform.vectorStore;
-      case 'cache':
-        return this.platform.cache;
-      case 'config':
-        return this.platform.config;
-      case 'llm':
-        return this.platform.llm;
-      case 'embeddings':
-        return this.platform.embeddings;
-      case 'storage':
-        return this.platform.storage;
-      case 'logger':
-        return this.platform.logger;
-      case 'analytics':
-        return this.platform.analytics;
-      case 'eventBus':
-        return this.platform.eventBus;
-      case 'processExecutor':
-        if (!this.platform.processExecutor) {
-          throw new Error('Governed process executor is not configured on execution host');
-        }
-        return this.platform.processExecutor;
-      case 'invoke':
-        return this.platform.invoke;
-      default:
-        throw new Error(
-          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, config, llm, embeddings, storage, logger, analytics, eventBus, invoke, processExecutor`
-        );
     }
   }
 

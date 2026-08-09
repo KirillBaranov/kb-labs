@@ -27,6 +27,7 @@
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { AdapterResponse, SerializableError } from '@kb-labs/core-platform/serializable';
 import { isAdapterCall, serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
+import { resolveIPCAdapter } from './ipc/adapter-route.js';
 
 /**
  * IPC server for handling adapter calls from child processes.
@@ -131,7 +132,7 @@ export class IPCServer {
 
     try {
       // Get the adapter from platform
-      const adapter = this.getAdapter(msg.adapter);
+      const adapter = resolveIPCAdapter(this.platform, msg.adapter);
 
       // Get the method on the adapter
       const method = (adapter as Record<string, unknown>)[msg.method];
@@ -177,40 +178,6 @@ export class IPCServer {
         error instanceof Error ? error : new Error(String(error)),
         { adapter: msg.adapter, method: msg.method },
       );
-    }
-  }
-
-  /**
-   * Get adapter instance from platform container.
-   *
-   * @param name - Adapter name (e.g., 'vectorStore', 'cache')
-   * @returns Adapter instance
-   * @throws Error if adapter not found
-   */
-  private getAdapter(name: string): unknown {
-    switch (name) {
-      case 'vectorStore':
-        return this.platform.vectorStore;
-      case 'cache':
-        return this.platform.cache;
-      case 'llm':
-        return this.platform.llm;
-      case 'embeddings':
-        return this.platform.embeddings;
-      case 'storage':
-        return this.platform.storage;
-      case 'logger':
-        return this.platform.logger;
-      case 'analytics':
-        return this.platform.analytics;
-      case 'eventBus':
-        return this.platform.eventBus;
-      case 'invoke':
-        return this.platform.invoke;
-      default:
-        throw new Error(
-          `Unknown adapter: '${name}'. Valid adapters: vectorStore, cache, llm, embeddings, storage, logger, analytics, eventBus, invoke`
-        );
     }
   }
 
