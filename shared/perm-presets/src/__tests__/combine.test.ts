@@ -107,6 +107,39 @@ describe('combine()', () => {
     });
   });
 
+  describe('withShell()', () => {
+    it('should merge allow lists across presets', () => {
+      const result = combine()
+        .withShell({ allow: ['git'] })
+        .withShell({ allow: ['pnpm'] })
+        .build();
+
+      expect(result.shell?.allow).toContain('git');
+      expect(result.shell?.allow).toContain('pnpm');
+    });
+
+    it('should preserve maxConcurrent through merges (regression: mergeSpecs used to drop it, ' +
+      'silently defaulting the process broker to maxConcurrentRequests=1 and stalling perPackage checks)', () => {
+      const result = combine()
+        .with(minimal)
+        .withShell({ allow: ['bash'] })
+        .withShell({ allow: ['git'], maxConcurrent: 8 })
+        .build();
+
+      expect(result.shell?.allow).toEqual(expect.arrayContaining(['bash', 'git']));
+      expect(result.shell?.maxConcurrent).toBe(8);
+    });
+
+    it('should let the later maxConcurrent win when both sides set it', () => {
+      const result = combine()
+        .withShell({ maxConcurrent: 2 })
+        .withShell({ maxConcurrent: 8 })
+        .build();
+
+      expect(result.shell?.maxConcurrent).toBe(8);
+    });
+  });
+
   describe('withQuotas()', () => {
     it('should add quotas', () => {
       const result = combine()

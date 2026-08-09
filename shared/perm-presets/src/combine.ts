@@ -106,12 +106,14 @@ function mergeSpecs(base: PermissionSpec, next: PermissionSpec): PermissionSpec 
     if (Object.keys(result.network).length === 0) {delete result.network;}
   }
 
-  // Merge shell
+  // Merge shell (allow lists are merged, maxConcurrent: second value wins)
   if (base.shell || next.shell) {
     result.shell = {
       allow: mergeArrays(base.shell?.allow, next.shell?.allow),
+      maxConcurrent: next.shell?.maxConcurrent ?? base.shell?.maxConcurrent,
     };
     if (result.shell.allow === undefined) {delete result.shell.allow;}
+    if (result.shell.maxConcurrent === undefined) {delete result.shell.maxConcurrent;}
     if (Object.keys(result.shell).length === 0) {delete result.shell;}
   }
 
