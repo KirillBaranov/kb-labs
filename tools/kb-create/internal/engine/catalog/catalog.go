@@ -17,13 +17,14 @@ type Requirement struct {
 }
 
 type Component struct {
-	ID        string                     `json:"id"`
-	Kind      string                     `json:"kind"`
-	Package   string                     `json:"package"`
-	Default   bool                       `json:"default,omitempty"`
-	Requires  []Requirement              `json:"requires,omitempty"`
-	DependsOn []string                   `json:"dependsOn,omitempty"`
-	Config    []engineconfig.ConfigPatch `json:"config,omitempty"`
+	ID                string                     `json:"id"`
+	Kind              string                     `json:"kind"`
+	Package           string                     `json:"package"`
+	CompanionPackages []string                   `json:"companionPackages,omitempty"`
+	Default           bool                       `json:"default,omitempty"`
+	Requires          []Requirement              `json:"requires,omitempty"`
+	DependsOn         []string                   `json:"dependsOn,omitempty"`
+	Config            []engineconfig.ConfigPatch `json:"config,omitempty"`
 }
 
 type Provider struct {

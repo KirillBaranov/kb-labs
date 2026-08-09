@@ -48,6 +48,24 @@ func TestCompileRejectsFeatureMismatch(t *testing.T) {
 	}
 }
 
+func TestCompileInstallsServiceCompanionPackages(t *testing.T) {
+	cat := catalog.Catalog{Components: []catalog.Component{{
+		ID: "workflow", Kind: "service", Package: "@kb-labs/workflow-daemon",
+		CompanionPackages: []string{"@kb-labs/workflow-entry"},
+	}}}
+	result, err := Compile(InstallRequest{Components: []string{"workflow"}}, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Actions) != 3 {
+		t.Fatalf("actions = %#v", result.Actions)
+	}
+	companion := result.Actions[1]
+	if companion.ID != "install:workflow:companion:0" || companion.Inputs["package"] != "@kb-labs/workflow-entry" {
+		t.Fatalf("companion action = %#v", companion)
+	}
+}
+
 func TestCompileUsesPreferredCompatibleProvider(t *testing.T) {
 	cat := catalog.Catalog{Components: []catalog.Component{{ID: "commit", Kind: "plugin", Package: "@kb-labs/commit", Requires: []catalog.Requirement{{Capability: "cache"}}}}, Providers: []catalog.Provider{{ID: "redis", Capability: "cache", Package: "redis"}, {ID: "state-broker", Capability: "cache", Package: "state"}}}
 	result, err := Compile(InstallRequest{Components: []string{"commit"}, ProviderPreferences: map[string][]string{"cache": {"state-broker"}}}, cat)

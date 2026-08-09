@@ -55,6 +55,23 @@ func TestResolveProjectDir_ErrorsWhenNothingAvailable(t *testing.T) {
 	}
 }
 
+func TestDefaultBinaryIDs(t *testing.T) {
+	got := defaultBinaryIDs(&manifest.Manifest{Binaries: []manifest.Binary{
+		{ID: "kb-devkit", Default: false},
+		{ID: "kb-dev", Default: true},
+		{ID: "kb-create", Default: true},
+	}})
+	want := []string{"kb-create", "kb-dev"}
+	if len(got) != len(want) {
+		t.Fatalf("defaultBinaryIDs() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("defaultBinaryIDs() = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestValidateComponentIDs_Unknown(t *testing.T) {
 	known := []manifest.Component{{ID: "release"}, {ID: "commit"}}
 	err := validateComponentIDs("plugin", []string{"release", "nonexistent"}, known)
