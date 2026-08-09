@@ -63,6 +63,14 @@ function renderRun(run: WorkflowRunDetail, stepLogs?: Record<string, StepLogEntr
   if (run.inputs && Object.keys(run.inputs).length > 0) {
     summary.push(`Inputs:   ${JSON.stringify(run.inputs)}`);
   }
+  const parentRunId = run.trigger?.parentRunId ?? run.metadata?.['parentRunId'];
+  if (typeof parentRunId === 'string') {
+    summary.push(`Parent:   ${parentRunId}`);
+  }
+  const ancestors = run.metadata?.['workflowAncestors'];
+  if (Array.isArray(ancestors) && ancestors.length > 0) {
+    summary.push(`Lineage:  ${ancestors.join(' → ')}`);
+  }
   if (run.result?.outputs && Object.keys(run.result.outputs).length > 0) {
     summary.push(`Outputs:  ${JSON.stringify(run.result.outputs)}`);
   }

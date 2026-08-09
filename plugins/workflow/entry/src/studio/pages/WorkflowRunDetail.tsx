@@ -668,6 +668,19 @@ export default function WorkflowRunDetail() {
             <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
               by {run.trigger?.actor ?? 'unknown'}
             </span>
+            {run.trigger?.parentRunId && (
+              <Link
+                to={`/p/workflows/runs/${encodeURIComponent(run.trigger.parentRunId)}`}
+                style={{ color: 'var(--link)', fontSize: 13 }}
+              >
+                Parent run
+              </Link>
+            )}
+            {run.metadata?.workflowAncestors && (
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
+                Lineage: {run.metadata.workflowAncestors.join(' → ')}
+              </span>
+            )}
             {run.startedAt && (
               <span style={{ color: 'var(--text-tertiary)', fontSize: 13, marginLeft: 'auto' }}>
                 {new Date(run.startedAt).toLocaleString()}
