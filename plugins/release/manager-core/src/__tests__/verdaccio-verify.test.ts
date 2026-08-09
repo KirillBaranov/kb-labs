@@ -86,6 +86,59 @@ describe('verifyAgainstRegistry', () => {
     expect(results[0]!.issues[0]).toContain('Could not pull');
   });
 
+  // Regression: metadata visibility (`npm view`, via isVersionPublished) and
+  // tarball fetchability (`npm pack`) are backed by different layers of
+  // npm's infrastructure with independent propagation lag — a package can be
+  // isVersionPublished()-true while `npm pack` still 404s for a few more
+  // seconds. `retries` used to only cover the isVersionPublished poll; a
+  // single failed `npm pack` failed verification immediately regardless of
+  // the configured retry budget.
+  it('retries npm pack (not just the published-visibility check) before giving up', async () => {
+    mockIsVersionPublished.mockResolvedValue(true);
+    let packAttempts = 0;
+    mockSpawnSync.mockImplementation((cmd: string) => {
+      if (cmd === 'npm') {
+        packAttempts++;
+        if (packAttempts < 3) {
+          return { status: 1, stdout: Buffer.from(''), stderr: Buffer.from('npm error notarget'), pid: 1, output: [], signal: null };
+        }
+        return { status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null };
+      }
+      return { status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null };
+    });
+
+    const resultsPromise = verifyAgainstRegistry(
+      [{ name: '@kb-labs/fixture', version: '1.0.0', path: '/pkg' }],
+      { registry: 'http://localhost:4873', retries: 5, retryDelaysMs: [0, 0, 0, 0, 0] },
+    );
+
+    const results = await resultsPromise;
+
+    expect(packAttempts).toBe(3);
+    expect(results[0]!.success).toBe(true);
+  });
+
+  it('reports failure after exhausting the npm pack retry budget', async () => {
+    mockIsVersionPublished.mockResolvedValue(true);
+    let packAttempts = 0;
+    mockSpawnSync.mockImplementation((cmd: string) => {
+      if (cmd === 'npm') {
+        packAttempts++;
+        return { status: 1, stdout: Buffer.from(''), stderr: Buffer.from('npm error notarget'), pid: 1, output: [], signal: null };
+      }
+      return { status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null };
+    });
+
+    const results = await verifyAgainstRegistry(
+      [{ name: '@kb-labs/fixture', version: '1.0.0', path: '/pkg' }],
+      { registry: 'http://localhost:4873', retries: 2, retryDelaysMs: [0, 0] },
+    );
+
+    expect(packAttempts).toBe(3); // initial attempt + 2 retries
+    expect(results[0]!.success).toBe(false);
+    expect(results[0]!.issues[0]).toContain('Could not pull');
+  });
+
   it('re-runs the static tarball checks after pulling the artifact back from the registry', async () => {
     mockIsVersionPublished.mockResolvedValue(true);
     // Simulate a package.json missing its declared `main` entry after extraction.

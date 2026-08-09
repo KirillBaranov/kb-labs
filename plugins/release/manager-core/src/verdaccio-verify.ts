@@ -109,12 +109,33 @@ async function verifyOneAgainstRegistry(
   try {
     mkdirSync(tmpDir, { recursive: true });
 
+    // Metadata visibility (waitUntilPublished, via `npm view`) and tarball
+    // fetchability (`npm pack`, below) are backed by different layers of
+    // npm's infrastructure — the manifest API and the tarball CDN — with
+    // independent propagation lag. A package can be `npm view`-visible
+    // (waitUntilPublished already succeeded above) while `npm pack` still
+    // 404s for a few more seconds. Reuse the same retry budget here instead
+    // of treating the first ETARGET as final.
     const spec = `${pkg.name}@${pkg.version}`;
-    const packResult = spawnSync(
+    let packResult = spawnSync(
       'npm',
       ['pack', spec, '--registry', registry, '--pack-destination', tmpDir],
       { stdio: 'pipe', timeout },
     );
+
+    for (let attempt = 0; packResult.status !== 0 && attempt < retries; attempt++) {
+      const delay = retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)]!;
+      logger?.warn?.(
+        `${spec} is visible on ${registry} but \`npm pack\` still can't fetch it (attempt ${attempt + 1}/${retries + 1}), ` +
+        `retrying in ${(delay / 1000).toFixed(0)}s — likely tarball CDN propagation lag`,
+      );
+      await new Promise<void>(r => { setTimeout(r, delay); });
+      packResult = spawnSync(
+        'npm',
+        ['pack', spec, '--registry', registry, '--pack-destination', tmpDir],
+        { stdio: 'pipe', timeout },
+      );
+    }
 
     if (packResult.status !== 0) {
       const stderr = packResult.stderr?.toString().trim();
