@@ -28,6 +28,19 @@ const BLOCKED_COMMANDS = [
   'fdisk',
 ];
 
+/** Cap on how much of a failed command's output gets attached to its log entry. */
+const FAILURE_OUTPUT_TAIL_CHARS = 4000;
+
+/**
+ * Last N characters of `text`, prefixed with a marker when it was truncated.
+ * Tail (not head) because the actionable error is almost always at the end —
+ * a stack trace, an assertion failure, the final "Error:" line.
+ */
+export function tail(text: string, maxChars: number): string {
+  if (text.length <= maxChars) {return text;}
+  return `…(truncated, showing last ${maxChars} of ${text.length} chars)\n${text.slice(-maxChars)}`;
+}
+
 /**
  * Split string into chunks of specified size
  */
@@ -310,6 +323,16 @@ async function shellHandler(
     if (stderrBuf) {emitLine('stderr', stderrBuf);}
 
     if (timedOut) {
+      // Whatever the command printed before the kill is the only clue to
+      // whether it was hung or just slow — without it the run log shows a
+      // multi-hour gap between "Executing shell command" and this error and
+      // nothing in between (see kb-labs incident: 20min Build-step timeout
+      // debugged blind because of exactly this).
+      ctx.platform.logger.warn('Shell command timed out', {
+        timeoutMs: timeout,
+        stderrTail: tail(stderrFull, FAILURE_OUTPUT_TAIL_CHARS),
+        stdoutTail: tail(stdoutFull, FAILURE_OUTPUT_TAIL_CHARS),
+      });
       throw new Error(`Shell command timed out after ${timeout}ms`);
     }
 
@@ -328,9 +351,15 @@ async function shellHandler(
         stdoutLines: output.stdout.split('\n').length,
       });
     } else {
+      // Attach the actual output, not just its shape — this is the log entry
+      // that shows up in `kb workflow runs logs`, and it used to carry only
+      // exitCode + a line count. Debugging a failed step meant re-running the
+      // command outside the workflow just to see why it failed.
       ctx.platform.logger.warn('Shell command failed', {
         exitCode: output.exitCode,
         stderrLines: output.stderr.split('\n').length,
+        stderrTail: tail(output.stderr, FAILURE_OUTPUT_TAIL_CHARS),
+        stdoutTail: tail(output.stdout, FAILURE_OUTPUT_TAIL_CHARS),
       });
 
       if (throwOnError) {

@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, expectTypeOf, vi } from 'vitest'
 import type { ShellInput, ShellOutput } from '../shell.js'
-import { mergeJsonOutputs, parseOutputMarkerLine } from '../shell.js'
+import { mergeJsonOutputs, parseOutputMarkerLine, tail } from '../shell.js'
 import shellModule from '../shell.js'
 
 // ---------------------------------------------------------------------------
@@ -423,5 +423,55 @@ describe('shellHandler — timeout regression (BUG: timedOut + reject:false = si
       lineNo: 1,
       level: 'warn',
     })
+  })
+
+  // Regression: `kb workflow runs logs` showed only exitCode + a line count
+  // for a failed step, never the actual command output — debugging meant
+  // re-running the command by hand outside the workflow. `Shell command
+  // failed`/`Shell command timed out` must carry the real output.
+  it('includes the actual stderr in the failure log entry, not just its shape', async () => {
+    const ctx = makeMockCtx()
+    await shellModule.execute(ctx, {
+      command: `node -e "process.stderr.write('boom: assertion failed\\n'); process.exit(1)"`,
+    })
+
+    expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
+      'Shell command failed',
+      expect.objectContaining({ stderrTail: expect.stringContaining('boom: assertion failed') }),
+    )
+  })
+
+  it('includes whatever the command printed before being killed in the timeout log entry', async () => {
+    const ctx = makeMockCtx()
+    await expect(
+      shellModule.execute(ctx, {
+        command: `node -e "console.log('working...'); setTimeout(() => {}, 10000)"`,
+        timeout: 200,
+      }),
+    ).rejects.toThrow(/timed out/i)
+
+    expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
+      'Shell command timed out',
+      expect.objectContaining({ stdoutTail: expect.stringContaining('working...') }),
+    )
+  })
+})
+
+describe('tail', () => {
+  it('returns the text unchanged when under the limit', () => {
+    expect(tail('short', 100)).toBe('short')
+  })
+
+  it('keeps the END of the text, not the start — the actionable error is usually last', () => {
+    const text = 'first line\n'.repeat(100) + 'Error: this is the actual failure'
+    const result = tail(text, 50)
+    expect(result).toContain('Error: this is the actual failure')
+    expect(result).not.toContain('first line\nfirst line\nfirst line') // start of the repeated block, not the tail-adjacent copies
+  })
+
+  it('marks truncated output so it is not mistaken for the full log', () => {
+    const result = tail('x'.repeat(200), 50)
+    expect(result).toMatch(/^…\(truncated, showing last 50 of 200 chars\)\n/)
+    expect(result.endsWith('x'.repeat(50))).toBe(true)
   })
 })
