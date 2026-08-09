@@ -40,6 +40,8 @@ export interface UnixSocketConfig extends TransportConfig {
   autoReconnect?: boolean;
   /** Max reconnect attempts (default: 3) */
   maxReconnectAttempts?: number;
+  /** Optional token required by an authenticated UnixSocketServer. */
+  authToken?: string;
 }
 
 /**
@@ -136,6 +138,12 @@ export class UnixSocketTransport implements ITransport {
 
     // Smart timeout selection based on operation type
     const timeout = selectTimeout(call, this.config.timeout);
+    const outboundCall: AdapterCall = this.config.authToken
+      ? {
+        ...call,
+        context: { ...call.context, authToken: this.config.authToken },
+      }
+      : call;
 
     return new Promise((resolve, reject) => {
       // Create timeout timer
@@ -145,17 +153,17 @@ export class UnixSocketTransport implements ITransport {
       }, timeout);
 
       // Store pending request
-      this.pending.set(call.requestId, { resolve, reject, timer });
+      this.pending.set(outboundCall.requestId, { resolve, reject, timer });
 
       // Send via Unix socket (newline-delimited JSON)
-      const message = JSON.stringify(call) + '\n';
+      const message = JSON.stringify(outboundCall) + '\n';
 
       const written = this.socket!.write(message, 'utf8', (error) => {
         if (error) {
-          const pending = this.pending.get(call.requestId);
+          const pending = this.pending.get(outboundCall.requestId);
           if (pending) {
             clearTimeout(pending.timer);
-            this.pending.delete(call.requestId);
+            this.pending.delete(outboundCall.requestId);
             reject(new TransportError(`Failed to write to socket: ${error.message}`, error));
           }
         }

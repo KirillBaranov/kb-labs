@@ -534,13 +534,15 @@ export async function initPlatform(
     platform.logger.debug('initPlatform child process detected - creating proxy adapters');
 
     // Use Unix Socket transport by default (100-1000x faster than IPC for large messages)
-    const { UnixSocketTransport } = await import('./transport/unix-socket-transport.js');
-    const { VectorStoreProxy } = await import('./proxy/vector-store-proxy.js');
-    const { CacheProxy } = await import('./proxy/cache-proxy.js');
-    const { ConfigProxy } = await import('./proxy/config-proxy.js');
-    const { LLMProxy } = await import('./proxy/llm-proxy.js');
-    const { EmbeddingsProxy } = await import('./proxy/embeddings-proxy.js');
-    const { StorageProxy } = await import('./proxy/storage-proxy.js');
+    const {
+      UnixSocketTransport,
+      VectorStoreProxy,
+      CacheProxy,
+      ConfigProxy,
+      LLMProxy,
+      EmbeddingsProxy,
+      StorageProxy,
+    } = await import('@kb-labs/core-ipc');
 
     // Create single transport for all adapters
     const transport = new UnixSocketTransport();
