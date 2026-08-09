@@ -2,6 +2,18 @@ import type { JobRun, StepRun, WorkflowRun } from '@kb-labs/workflow-contracts'
 import type { ICache } from '@kb-labs/core-platform'
 import type { EngineLogger } from './types'
 
+/**
+ * Run records must outlive individual workflow steps. Some steps (e.g. release
+ * checks packing + clean-installing every package) run for tens of minutes
+ * with no intermediate persistence call. Cache backends default `set()` TTL
+ * to a few minutes (e.g. InMemoryStateBroker: 300_000ms) for ordinary ephemeral
+ * caching — without an explicit override here, a long-running step's record
+ * silently expires mid-flight, `getRun`/`updateRun` start returning null, and
+ * the step's real result is never persisted (surfaces as a bogus "Daemon
+ * restarted — run was abandoned" once something else touches the run).
+ */
+const RUN_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+
 export class StateStore {
   private readonly cache: ICache
 
@@ -17,7 +29,7 @@ export class StateStore {
     this.logger.debug('Persisting workflow run', { runId: run.id, key })
 
     // Save run data
-    await this.cache.set(key, JSON.stringify(run))
+    await this.cache.set(key, JSON.stringify(run), RUN_TTL_MS)
 
     // Add to sorted set index (score = createdAt timestamp for time-based ordering)
     const timestamp = new Date(run.createdAt).getTime()

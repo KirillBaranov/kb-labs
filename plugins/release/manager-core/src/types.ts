@@ -78,6 +78,8 @@ export interface CheckResultDetails {
 export interface CheckResult {
   id: CheckId;
   ok: boolean;
+  /** Mirrors CustomCheckConfig.optional — a failed optional check must not fail the overall run. */
+  optional?: boolean;
   /** Structured failure details — present when ok=false. */
   details?: CheckResultDetails;
   hint?: string;

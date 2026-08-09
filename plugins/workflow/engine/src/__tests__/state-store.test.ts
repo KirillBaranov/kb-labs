@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StateStore } from '../state-store.js';
 import type { WorkflowRun, JobRun } from '@kb-labs/workflow-contracts';
 import type { ICache } from '@kb-labs/core-platform';
@@ -7,7 +7,7 @@ import { mockLogger } from '@kb-labs/shared-testing';
 class MockCache implements ICache {
   private store = new Map<string, any>();
   async get<T>(key: string): Promise<T | null> { return this.store.get(key) ?? null; }
-  async set<T>(key: string, value: T): Promise<void> { this.store.set(key, value); }
+  async set<T>(key: string, value: T, _ttl?: number): Promise<void> { this.store.set(key, value); }
   async delete(key: string): Promise<void> { this.store.delete(key); }
   async clear(): Promise<void> { this.store.clear(); }
   async has(key: string): Promise<boolean> { return this.store.has(key); }
@@ -88,6 +88,23 @@ describe('StateStore', () => {
   it('returns null for non-existent run', async () => {
     const result = await store.getRun('nonexistent');
     expect(result).toBeNull();
+  });
+
+  it('regression: saveRun always passes an explicit, long TTL to cache.set — ' +
+    'omitting it (as the code used to) falls back to the cache backend\'s own ' +
+    'ephemeral-cache default (e.g. InMemoryStateBroker: 300_000ms / 5min), so a ' +
+    'run in the middle of a long-running step (release checks can run 20-35min) ' +
+    'silently expires mid-flight and its real result never gets persisted', async () => {
+    const setSpy = vi.spyOn(cache, 'set');
+    await store.saveRun(makeRun());
+
+    expect(setSpy).toHaveBeenCalledOnce();
+    const ttl = setSpy.mock.calls[0]?.[2];
+    expect(ttl).toBeDefined();
+    // Must comfortably outlive the slowest known workflow step (~35min for
+    // release checks); assert it's at least an hour so this doesn't become
+    // a brittle exact-value check.
+    expect(ttl as number).toBeGreaterThanOrEqual(60 * 60 * 1000);
   });
 
   // ── deleteRun ────────────────────────────────────────────────────────

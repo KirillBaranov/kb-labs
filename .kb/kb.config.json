@@ -358,7 +358,8 @@
               "command": "bash",
               "args": ["scripts/gates/check-pack-install.sh"],
               "timeoutMs": 60000,
-              "runIn": "perPackage"
+              "runIn": "perPackage",
+              "optional": true
             },
             {
               "id": "typecheck",

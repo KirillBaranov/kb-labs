@@ -103,6 +103,8 @@ export interface PermissionSpec {
   /** Shell execution permissions */
   shell?: {
     allow?: string[];
+    /** Maximum concurrent shell processes owned by this plugin. */
+    maxConcurrent?: number;
   };
   /** Resource quotas */
   quotas?: {

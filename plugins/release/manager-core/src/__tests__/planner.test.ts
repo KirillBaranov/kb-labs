@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -263,5 +263,44 @@ describe('planRelease — flow tag detection', () => {
     // be in range, incorrectly producing a minor bump (1.1.0) instead of patch.
     expect(alpha!.bump).toBe('patch');
     expect(alpha!.nextVersion).toBe('1.0.1');
+  });
+});
+
+// ─── idempotent re-plan after an out-of-band bump ─────────────────────────────
+//
+// Regression for a real incident: `release:version` bumps package.json on
+// disk (1.0.0 -> 1.1.0) without committing, then a later, separate CLI
+// invocation (`release:git`) calls planRelease() fresh. Before the fix,
+// planRelease saw currentVersion=1.1.0 (already ahead of HEAD's 1.0.0) and
+// computed ANOTHER bump on top of it (-> 1.2.0), so the git tag/commit
+// message ended up one version ahead of what was actually committed.
+
+describe('planRelease — idempotent re-plan after external bump', () => {
+  it('reuses the on-disk version instead of bumping again when package.json is already ahead of HEAD', async () => {
+    // realpathSync: on macOS, os.tmpdir() returns an unresolved /var/... path
+    // while `git rev-parse --show-toplevel` resolves the /var -> /private/var
+    // symlink. planner.ts diffs pkg.path against the resolved gitRoot via
+    // path.relative(), so a mismatched prefix here breaks that comparison
+    // (produces a bogus path git can't find at HEAD) — resolve up front so
+    // this test exercises the real HEAD-vs-disk diff, not a path artifact.
+    const root = realpathSync(makeTmpMonorepo([{ name: '@scope/alpha', version: '1.0.0' }]));
+    try {
+      // Commit the package at 1.0.0 so HEAD has a real version to diff against.
+      execSync('git add -A && git commit -q -m "init pkg"', { cwd: root });
+
+      // Simulate an earlier pipeline step (`release:version`) bumping the
+      // package on disk without committing — package.json is now ahead of HEAD.
+      const pkgPath = join(root, 'packages', 'alpha', 'package.json');
+      writeFileSync(pkgPath, JSON.stringify({ name: '@scope/alpha', version: '1.1.0' }));
+
+      const plan = await planRelease({ cwd: root, config: {}, bumpOverride: 'minor' });
+
+      const pkg = plan.packages.find(p => p.name === '@scope/alpha');
+      expect(pkg).toBeDefined();
+      // Must reuse 1.1.0 as-is — NOT compute another minor bump to 1.2.0.
+      expect(pkg!.nextVersion).toBe('1.1.0');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

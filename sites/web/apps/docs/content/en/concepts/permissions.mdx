@@ -39,6 +39,7 @@ interface PermissionSpec {
   platform?: PlatformPermissions;
   shell?: {
     allow?: string[];
+    maxConcurrent?: number;
   };
   quotas?: {
     timeoutMs?: number;
@@ -54,7 +55,7 @@ Five categories plus resource quotas:
 - **`env`** — environment variables. Exact names or prefix patterns (`KB_*`, `GIT_*`).
 - **`network`** — HTTP fetch. Host patterns (`api.openai.com`, `*.qdrant.io`).
 - **`platform`** — platform services. Booleans or scoped access (`cache: ['commit:']`, `llm: { models: ['gpt-4o-mini'] }`).
-- **`shell`** — shell commands. Whitelist of specific commands.
+- **`shell`** — shell commands. Whitelist of specific commands, plus an optional `maxConcurrent` cap on how many shell processes the process broker will run for this plugin at once (unset means the broker's own default). perPackage-style checks that batch shell calls should keep their internal batch size at or below this value — batching above it just queues extra work behind the broker instead of running it, and can blow the check's own timeout.
 - **`quotas`** — timeouts, memory, CPU limits.
 
 Every unset field is forbidden by default. Declaring nothing means: read from cwd, no env vars, no network, no platform services, no shell, no quotas. The plugin can load and run its own code but can't do anything meaningful.
