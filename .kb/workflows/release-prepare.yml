@@ -87,7 +87,9 @@ jobs:
       - name: Build
         id: build
         phase: build
-        timeoutMs: 1200000
+        # Full platform flow (~140 packages) can exceed 20min; matches the
+        # Checks step's 1h budget below.
+        timeoutMs: 3600000
         run: pnpm kb release build --flow ${{ inputs.flow }} --json
 
       - name: Prepare release review
