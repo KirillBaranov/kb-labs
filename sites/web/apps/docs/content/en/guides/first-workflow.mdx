@@ -1,7 +1,7 @@
 ---
 title: "Your First Workflow"
 description: "Write a two-job workflow, run it via the CLI, inspect results in Studio."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-09"
 order: 2
 ---
 
@@ -276,6 +276,28 @@ Step outputs from earlier steps are available via `${{ steps.<id>.outputs.<key> 
 ```
 
 The `::kb-output::` marker extracts structured data from shell stdout into step outputs. The second step uses it in both an `if` condition and a string interpolation.
+
+## Step 8 — Reuse a quality workflow
+
+Use `workflow:workspace:<id>` when a workflow should call another workflow as a step. The parent waits without occupying a worker slot; the child inherits the parent's workspace binding and returns declared outputs plus artifacts when it succeeds.
+
+```yaml
+- name: Quality assurance
+  id: quality
+  uses: workflow:workspace:quality-assurance
+  with:
+    baseBranch: main
+```
+
+Declare only the child results that its caller needs at workflow level:
+
+```yaml
+outputs:
+  verificationVerdict:
+    source: '${{ steps.functional_verify.outputs.verdict }}'
+```
+
+The parent receives the envelope at `steps.quality.outputs`; Studio and `kb workflow runs view` show the child run and lineage. `kb workflow lint --path .kb/workflows --strict` catches missing workspace workflow IDs and static cycles before a run starts.
 
 ## What's next
 
