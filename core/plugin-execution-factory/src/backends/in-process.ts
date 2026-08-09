@@ -219,8 +219,17 @@ export class InProcessBackend implements ExecutionBackend {
       // This makes ctx.logger.* write to SQLite with workflow context instead of generic platform context.
       // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
       const loggerOverride = requestToExecute.context?.loggerOverride as ILogger | undefined;
+      // PlatformServices fields (processExecutor, cache, llm, storage, ...) are class
+      // getters on PlatformContainer.prototype, not own properties of the instance —
+      // `{ ...this.platform, logger: loggerOverride }` (plain object spread) only copies
+      // own enumerable properties, so it silently drops every getter-backed field except
+      // the one being overridden. Object.create() keeps this.platform in the prototype
+      // chain so untouched getters (including processExecutor) keep resolving through it;
+      // only `logger` is shadowed as an own property.
       const effectivePlatform = loggerOverride
-        ? { ...this.platform, logger: loggerOverride }
+        ? Object.create(this.platform, {
+            logger: { value: loggerOverride, enumerable: true, configurable: true },
+          }) as PlatformServices
         : this.platform;
 
       const adapterMiddlewares = await this.getMiddlewares();
