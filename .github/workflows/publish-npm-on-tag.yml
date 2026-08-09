@@ -235,7 +235,12 @@ jobs:
     name: kb-create post-publish smoke
     runs-on: ubuntu-latest
     needs: deliver-candidate
-    timeout-minutes: 20
+    # 20min wasn't a hang — with --live streaming (see the `run` step below)
+    # the log showed ~20 sequential Go e2e tests genuinely passing at ~2min
+    # each (TestInstallYes alone: 272s), just needing more wall-clock than
+    # the job had. 40min budget rather than trying to parallelize/speed up
+    # tests that install and exercise a real kb-create binary end to end.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
