@@ -157,8 +157,9 @@ export async function createWorkflowWorker(
 
     const workflowId = input.workflowRef.slice('workspace:'.length);
     const parentWorkflowId = (input.parentRun.metadata?.['workflowId'] as string | undefined) ?? input.parentRun.name;
-    if (parentWorkflowId === workflowId) {
-      throw new Error(`Child workflow cycle detected: ${parentWorkflowId} -> ${workflowId}`);
+    const ancestors = (input.parentRun.metadata?.workflowAncestors as string[] | undefined) ?? [parentWorkflowId];
+    if (ancestors.includes(workflowId)) {
+      throw new Error(`Child workflow cycle detected: ${[...ancestors, workflowId].join(' -> ')}`);
     }
     const parentDepth = input.parentRun.metadata?.workflowDepth ?? 0;
     if (parentDepth >= engine.maxWorkflowDepth) {
@@ -189,52 +190,23 @@ export async function createWorkflowWorker(
         parentJobId: input.parentJob.id,
         parentStepId: input.parentStep.id,
         workflowDepth: parentDepth + 1,
+        rootRunId: (input.parentRun.metadata?.rootRunId as string | undefined) ?? input.parentRun.id,
+        workflowAncestors: [...ancestors, workflowId],
+        // A composed quality workflow must inspect and repair the exact change
+        // prepared by its parent, not a fresh worktree at main. The owner keeps
+        // lifecycle responsibility; children only borrow this binding.
+        executionWorkspace: input.parentRun.metadata?.['executionWorkspace'],
+        workspaceOwnerRunId:
+          (input.parentRun.metadata?.['workspaceOwnerRunId'] as string | undefined)
+          ?? input.parentRun.id,
       },
     });
 
     await engine.markStepWaitingChild(input.parentRun.id, input.parentJob.id, input.parentStep.id, child.id);
-
-    void (async () => {
-      while (!stopRequested) {
-        const [parent, childRun] = await Promise.all([
-          engine.getRun(input.parentRun.id),
-          engine.getRun(child.id),
-        ]);
-        if (!parent || parent.status === 'cancelled') {
-          if (childRun && !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
-            await engine.cancelRun(child.id);
-          }
-          return;
-        }
-        if (!childRun || !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
-          await sleep(500);
-          continue;
-        }
-        if (childRun.status === 'success') {
-          await engine.markStepCompleted(input.parentRun.id, input.parentJob.id, input.parentStep.id, {
-            runId: child.id,
-            status: childRun.status,
-          });
-          await engine.resumeJob(input.parentRun.id, input.parentJob.id);
-        } else {
-          const error = new Error(`Child workflow ${workflowId} ${childRun.status} (run ${child.id})`);
-          await engine.markStepFailed(
-            input.parentRun.id,
-            input.parentJob.id,
-            input.parentStep.id,
-            error,
-            { runId: child.id, status: childRun.status },
-          );
-          await engine.markJobFailed(input.parentRun.id, input.parentJob.id, error, undefined, false);
-        }
-        return;
-      }
-    })().catch((error: unknown) => {
-      logger.error('Child workflow monitor failed', error instanceof Error ? error : undefined, {
-        parentRunId: input.parentRun.id,
-        childRunId: child.id,
-      });
-    });
+    // Covers the race where a very small child completes before its parent
+    // transition is persisted. Subsequent terminal events and daemon startup
+    // use the same idempotent reconciliation path.
+    await engine.reconcileChildInvocation(child.id);
   }
 
   /**
@@ -344,8 +316,27 @@ export async function createWorkflowWorker(
       ? workspaceRoot
       : (process.env["KB_PROJECT_ROOT"] ?? workspaceRoot);
     let provisionedWorkspaceId: string | undefined;
+    const workspaceMetadata = run.metadata?.['executionWorkspace'] as
+      | { workspaceId?: unknown; rootPath?: unknown }
+      | undefined;
+    const inheritedWorkspace = typeof run.metadata?.['workspaceOwnerRunId'] === 'string'
+      && run.metadata?.['workspaceOwnerRunId'] !== run.id;
 
-    if (wsProvider) {
+    if (
+      workspaceMetadata
+      && typeof workspaceMetadata.rootPath === 'string'
+      && typeof workspaceMetadata.workspaceId === 'string'
+    ) {
+      runWorkspace = workspaceMetadata.rootPath;
+      // The owner releases once its terminal job completes. A child must never
+      // release a borrowed worktree.
+      provisionedWorkspaceId = inheritedWorkspace ? undefined : workspaceMetadata.workspaceId;
+      jobLogger.info("Workspace binding restored", {
+        workspaceId: workspaceMetadata.workspaceId,
+        ownerRunId: run.metadata?.['workspaceOwnerRunId'] ?? run.id,
+        inherited: inheritedWorkspace,
+      });
+    } else if (wsProvider) {
       const wsId = `wt_${run.id.slice(0, 8)}`;
       try {
         // Deterministic workspaceId per run — retries reuse the same worktree
@@ -361,8 +352,16 @@ export async function createWorkflowWorker(
           },
         });
         if (ws.rootPath) {
-          runWorkspace = ws.rootPath;
+          const rootPath = ws.rootPath;
+          runWorkspace = rootPath;
           provisionedWorkspaceId = ws.workspaceId;
+          await engine.getStateStore().updateRun(run.id, (draft) => {
+            draft.metadata = {
+              ...(draft.metadata ?? {}),
+              executionWorkspace: { workspaceId: ws.workspaceId, rootPath },
+              workspaceOwnerRunId: run.id,
+            };
+          });
           jobLogger.info("Workspace provisioned", {
             workspaceId: ws.workspaceId,
             provider: ws.provider,
@@ -416,6 +415,11 @@ export async function createWorkflowWorker(
         for (const step of job.steps) {
           if (step.status === "success") {
             continue; // Skip already completed steps
+          }
+          if (step.status === "waiting_child") {
+            // The engine owns durable child reconciliation. A queued duplicate
+            // must never create a second child run for the same parent step.
+            return;
           }
 
           // --- Build ExpressionContext from fresh run state ---

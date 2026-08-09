@@ -158,7 +158,7 @@ export class RunCoordinator {
       createdAt: timestamp,
       queuedAt: timestamp,
       trigger: input.trigger,
-      env: input.spec.env,
+      env: input.env ?? input.spec.env,
       inputs: input.inputs,
       secrets: input.spec.secrets,
       jobs,
@@ -167,6 +167,8 @@ export class RunCoordinator {
         concurrencyGroup: input.concurrencyGroup,
         target: input.spec.target,
         isolation: input.spec.isolation,
+        outputDeclarations: input.spec.outputs,
+        ...input.metadata,
       },
       artifacts: [],
     }
@@ -222,4 +224,3 @@ export class RunCoordinator {
     })
   }
 }
-

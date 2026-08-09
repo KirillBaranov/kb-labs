@@ -1,7 +1,7 @@
 ---
 title: "Overview"
 description: "Workflows, jobs, and steps — the declarative orchestration layer."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-09"
 order: 1
 ---
 
@@ -30,6 +30,22 @@ Workflow  ─── declarative spec (trigger, jobs, inputs, env)
 - **A step** is one unit of execution. Steps run sequentially inside a job, can be conditional (`if`), and invoke either a built-in handler (`builtin:shell`, `builtin:approval`, `builtin:gate`) or a plugin-provided handler.
 
 When you trigger a workflow, the engine creates a **run** — the live instance. Runs have IDs, timestamps, status, and are persisted in the run store. Jobs within a run become **job runs**; steps within a job become **step runs**. Everything has its own status independently.
+
+## Reusable workflow components
+
+A workflow can invoke another workspace workflow as a step:
+
+```yaml
+- name: Static quality gates
+  id: quality
+  uses: workflow:workspace:quality-gates
+  with:
+    baseBranch: main
+```
+
+Invocation is wait-only: the parent step moves to `waiting_child`, the child runs independently, then the parent resumes with `{ runId, status, outputs, artifacts }`. The engine persists invocation links and reconciles them after restart, propagates cancellation to descendants, and rejects cycles from the complete ancestry chain. The child uses the root run's workspace binding, making this suitable for review-and-fix workflows that must inspect the parent change.
+
+For production pipelines, `.kb/workflows/quality-assurance.yaml` is a reusable boundary for independent review, architecture review, adversarial QA, functional verification, and static gates. `task-to-pr` invokes it before delivery.
 
 ## Workflow vs. plugin command
 
@@ -165,7 +181,7 @@ Three built-in step types live in the engine:
 - **`builtin:approval`** — pauses the run until a human approves via Studio or the REST API.
 - **`builtin:gate`** — a decision router that reads a value from previous step outputs and routes the pipeline (continue, fail, or restart from an earlier step).
 
-Custom step types come from plugins: `plugin:<plugin-id>:<handler-id>` resolves to a workflow handler declared in the plugin's manifest. There's also `workflow:<workflow-id>` for invoking another workflow as a step (with `mode: 'wait' | 'fire-and-forget'`).
+Custom step types come from plugins: `plugin:<plugin-id>:<handler-id>` resolves to a workflow handler declared in the plugin's manifest. `workflow:workspace:<workflow-id>` invokes a discoverable workspace workflow as a wait-only child step.
 
 Steps can also have:
 

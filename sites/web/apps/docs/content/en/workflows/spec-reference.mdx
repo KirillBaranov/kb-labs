@@ -1,7 +1,7 @@
 ---
 title: "Spec Reference"
 description: "Every field in WorkflowSpec, JobSpec, StepSpec with Zod validation rules."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-09"
 order: 2
 ---
 
@@ -22,12 +22,26 @@ interface WorkflowSpec {
   isolation?: IsolationProfile;
   on: WorkflowTrigger;          // required
   inputs?: Record<string, WorkflowInputField>;
+  outputs?: Record<string, WorkflowOutputField>;
   env?: Record<string, string>;
   secrets?: string[];
   jobs: Record<string, JobSpec>; // required, at least one job
   phases?: Record<string, Phase>; // presentation
 }
 ```
+
+### `outputs`
+
+Optional workflow-level outputs exported when this workflow is invoked by another workflow. Each output has a source expression evaluated from completed step outputs:
+
+```yaml
+outputs:
+  report:
+    source: '${{ steps.verify.outputs.report }}'
+    description: Human-readable verification report
+```
+
+The parent receives declared values in `steps.<child-step>.outputs.outputs`, alongside the child `runId`, terminal `status`, and `artifacts`. When no outputs are declared, the envelope falls back to successful addressable step outputs for diagnostics.
 
 ### Validation rules
 
@@ -299,7 +313,7 @@ Three forms, enforced by Zod `union`:
 - **`'builtin:approval'`** — pauses the run until a human approves.
 - **`'builtin:gate'`** — evaluates a condition and halts if false.
 - **`'plugin:<plugin-id>:<handler-id>'`** — calls a workflow handler defined in a plugin's `workflows.handlers[]` section.
-- **`'workflow:<workflow-id>'`** — invokes another workflow as a sub-step. Via `parseWorkflowUses()`, this resolves to a `WorkflowInvocationSpec` with `mode: 'wait'` by default.
+- **`'workflow:workspace:<workflow-id>'`** — invokes a discoverable workspace workflow as a wait-only child step. The engine persists parent linkage and workflow ancestry, rejects indirect cycles, and resumes the parked parent after a terminal child result.
 - **Any string matching** `/^(plugin:|workflow:)?[a-zA-Z0-9@/_:+#.-]+$/`.
 
 `uses` is **optional**: a step with no `uses` is a placeholder or approval marker depending on context.
@@ -402,10 +416,10 @@ Each has its own lifecycle state, timestamps, attempt counter, outputs, and erro
 ```ts
 type RunState  = 'queued' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped' | 'dlq';
 type JobState  = 'queued' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped' | 'interrupted';
-type StepState =  RunState | 'waiting_approval';
+type StepState =  RunState | 'waiting_approval' | 'waiting_child';
 ```
 
-`'dlq'` (dead letter queue) is run-only — a run exhausts its retries and gets parked for manual inspection. `'interrupted'` is job-only — the job was mid-execution when the engine restarted. `'waiting_approval'` is step-only — the step is paused on `builtin:approval`.
+`'dlq'` (dead letter queue) is run-only — a run exhausts its retries and gets parked for manual inspection. `'interrupted'` is job-only — the job was mid-execution when the engine restarted. `'waiting_approval'` is step-only — the step is paused on `builtin:approval`; `'waiting_child'` means it is parked while a persisted child workflow runs.
 
 ### `RetryPolicy`, `ExecutionResult`, `RunMetadata`
 

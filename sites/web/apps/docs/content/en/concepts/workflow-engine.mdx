@@ -1,7 +1,7 @@
 ---
 title: "Workflow Engine"
 description: "Jobs, steps, triggers, and artifacts."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-09"
 order: 5
 ---
 
@@ -82,9 +82,15 @@ Each **step** within a job runs sequentially. A step can be:
 
 - **Plugin handler** — `uses: "@package/group:command"` with optional `with:` inputs.
 - **Shell step** — `run: |` with a multiline shell script (requires `shell` permission).
-- **Workflow call** — `uses: "workflow://other-workflow-id"` to compose workflows.
+- **Workflow call** — `uses: "workflow:workspace:<workflow-id>"` to compose workflows.
 
 Steps can reference outputs from previous steps via `${{ steps.<id>.outputs.<key> }}` expressions. The engine evaluates expressions at runtime after the referenced step completes.
+
+## Composing workflows safely
+
+A child workflow is a durable invocation, not a shell-out. The parent step enters `waiting_child`, releases its worker slot, and resumes only after the child reaches a terminal state. The link is stored with parent run/job/step IDs, so startup reconciliation completes or fails parked parents after a daemon restart.
+
+The engine records the full workflow ancestry and rejects cycles such as `release → quality → release`; it also enforces `maxWorkflowDepth`. Cancelling a parent cascades to active descendants. A child borrows its root run's workspace binding, so a reusable quality workflow reviews the same uncommitted change rather than a fresh checkout.
 
 ## Triggers
 

@@ -23,6 +23,9 @@ export interface WorkflowRunSummary {
     type: string;
     actor?: string;
     payload?: unknown;
+    parentRunId?: string;
+    parentJobId?: string;
+    parentStepId?: string;
   };
   createdAt?: string;
   startedAt?: string;

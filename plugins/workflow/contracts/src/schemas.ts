@@ -230,6 +230,12 @@ export const WorkflowInputFieldSchema = z.object({
 
 export type WorkflowInputField = z.infer<typeof WorkflowInputFieldSchema>
 
+/** A stable workflow-level output exported to a parent invocation. */
+export const WorkflowOutputFieldSchema = z.object({
+  source: z.string().min(1),
+  description: z.string().optional(),
+})
+
 export const WorkflowSpecSchema = z
   .object({
     name: z.string().min(1),
@@ -239,6 +245,7 @@ export const WorkflowSpecSchema = z
     isolation: IsolationProfileSchema.optional(),
     on: WorkflowTriggerSchema,
     inputs: z.record(z.string(), WorkflowInputFieldSchema).optional(),
+    outputs: z.record(z.string().min(1), WorkflowOutputFieldSchema).optional(),
     env: z.record(z.string(), z.string()).optional(),
     secrets: z.array(z.string().min(1)).optional(),
     jobs: z.record(z.string().min(1), JobSpecSchema),
@@ -343,6 +350,17 @@ export const RunMetadataSchema = z.object({
   parentRunId: z.string().optional(),
   parentJobId: z.string().optional(),
   parentStepId: z.string().optional(),
+  /** Root run and complete workflow ancestry make nested invocation auditable
+   * and allow the engine to reject indirect cycles (A → B → A). */
+  rootRunId: z.string().optional(),
+  workflowAncestors: z.array(z.string().min(1)).optional(),
+  outputDeclarations: z.record(z.string(), WorkflowOutputFieldSchema).optional(),
+  /** Persisted binding owned by the root invocation and borrowed by children. */
+  executionWorkspace: z.object({
+    workspaceId: z.string().min(1),
+    rootPath: z.string().min(1),
+  }).optional(),
+  workspaceOwnerRunId: z.string().optional(),
 })
 
 export const ResultErrorSchema = z.object({
@@ -395,4 +413,3 @@ export const RunSchema = z.object({
   metadata: RunMetadataSchema.optional(),
   result: ExecutionResultSchema.optional(),
 })
-

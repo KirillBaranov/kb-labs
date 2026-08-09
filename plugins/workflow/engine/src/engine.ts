@@ -5,7 +5,7 @@ import type {
   JobRun,
   ExpressionContext,
 } from '@kb-labs/workflow-contracts'
-import { evaluateExpression } from '@kb-labs/workflow-contracts'
+import { evaluateExpression, resolveExpression } from '@kb-labs/workflow-contracts'
 import {
   EVENT_NAMES,
   WORKFLOW_REDIS_CHANNEL,
@@ -164,6 +164,10 @@ export class WorkflowEngine {
   async cancelRun(runId: string): Promise<void> {
     const run = await this.getRun(runId)
 
+    if (!run || ['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(run.status)) {
+      return
+    }
+
     await this.stateStore.updateRun(runId, (draft) => {
       draft.status = 'cancelled'
       draft.finishedAt = new Date().toISOString()
@@ -182,6 +186,127 @@ export class WorkflowEngine {
       runId,
       payload: { reason: 'cancelled by parent workflow' },
     })
+
+    // Invocation links are persisted on child trigger metadata, so cancellation
+    // survives worker/daemon restarts and naturally cascades through descendants.
+    const descendants = await this.findChildRuns(runId)
+    await Promise.all(descendants.map((child) => this.cancelRun(child.id)))
+    await this.reconcileChildInvocation(runId)
+  }
+
+  /**
+   * Reconcile all persisted parent/child links. This is deliberately engine-side
+   * instead of a worker-local polling task: it is safe to call after a daemon
+   * restart and is idempotent when several reconciliations race.
+   */
+  async reconcileChildInvocations(): Promise<number> {
+    const runs = await this.listStoredRuns()
+    let reconciled = 0
+
+    for (const parent of runs) {
+      for (const job of parent.jobs) {
+        for (const step of job.steps) {
+          if (step.status !== 'waiting_child') {continue}
+          const childRunId = step.metadata?.['childRunId']
+          if (typeof childRunId !== 'string') {continue}
+
+          const child = await this.getRun(childRunId)
+          if (parent.status === 'cancelled') {
+            if (child) {await this.cancelRun(child.id)}
+            continue
+          }
+          if (!child) {
+            await this.failChildInvocation(parent.id, job.id, step.id, childRunId, 'not found')
+            reconciled++
+            continue
+          }
+          if (!['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(child.status)) {
+            continue
+          }
+          if (child.status === 'success') {
+            const outputs = this.childResultEnvelope(child)
+            await this.markStepCompleted(parent.id, job.id, step.id, outputs)
+            await this.resumeJob(parent.id, job.id)
+          } else {
+            await this.failChildInvocation(parent.id, job.id, step.id, child.id, child.status)
+          }
+          reconciled++
+        }
+      }
+    }
+    return reconciled
+  }
+
+  /** Run reconciliation on terminal-child events; startup calls it once too. */
+  async reconcileChildInvocation(childRunId: string): Promise<number> {
+    const parents = (await this.listStoredRuns()).filter((run) =>
+      run.jobs.some((job) => job.steps.some((step) =>
+        step.status === 'waiting_child' && step.metadata?.['childRunId'] === childRunId,
+      )),
+    )
+    if (parents.length === 0) {return 0}
+    return this.reconcileChildInvocations()
+  }
+
+  private childResultEnvelope(child: WorkflowRun): Record<string, unknown> {
+    const stepOutputs: Record<string, Record<string, unknown>> = {}
+    for (const job of child.jobs) {
+      for (const step of job.steps) {
+        if (step.status === 'success' && step.spec.id && step.outputs) {
+          stepOutputs[step.spec.id] = step.outputs
+        }
+      }
+    }
+    return {
+      runId: child.id,
+      status: child.status,
+      outputs: Object.keys(child.result?.outputs ?? {}).length > 0
+        ? child.result?.outputs
+        : stepOutputs,
+      artifacts: child.artifacts ?? [],
+    }
+  }
+
+  private resolveDeclaredOutputs(run: WorkflowRun): Record<string, unknown> {
+    const declarations = run.metadata?.outputDeclarations
+    if (!declarations) {return {}}
+    const context = this.buildExpressionContext(run)
+    return Object.fromEntries(Object.entries(declarations).map(([name, declaration]) => {
+      const source = declaration && typeof declaration === 'object'
+        ? (declaration as { source?: unknown }).source
+        : undefined
+      return [name, typeof source === 'string' ? resolveExpression(source, context) : undefined]
+    }))
+  }
+
+  private async failChildInvocation(
+    parentRunId: string,
+    parentJobId: string,
+    parentStepId: string,
+    childRunId: string,
+    childStatus: string,
+  ): Promise<void> {
+    const error = new Error(`Child workflow ${childStatus} (run ${childRunId})`)
+    await this.markStepFailed(parentRunId, parentJobId, parentStepId, error, {
+      runId: childRunId,
+      status: childStatus,
+    })
+    await this.markJobFailed(parentRunId, parentJobId, error, undefined, false)
+  }
+
+  private async listStoredRuns(): Promise<WorkflowRun[]> {
+    const runIds = await this.stateStore.getAllRunIds()
+    // Cache sorted-set adapters are permitted to retain duplicate members on
+    // repeated saveRun calls. Reconciliation must be exactly-once per durable
+    // run record even when event/index delivery is at-least-once.
+    const runs = await Promise.all([...new Set(runIds)].map((id) => this.getRun(id)))
+    return runs.filter((run): run is WorkflowRun => run !== null)
+  }
+
+  private async findChildRuns(parentRunId: string): Promise<WorkflowRun[]> {
+    return (await this.listStoredRuns()).filter((run) =>
+      run.trigger.parentRunId === parentRunId || run.metadata?.parentRunId === parentRunId,
+    )
   }
 
   /**
@@ -515,6 +640,11 @@ export class WorkflowEngine {
       const updated = await this.stateStore.updateRun(runId, (draft) => {
         draft.status = 'success'
         draft.finishedAt = new Date().toISOString()
+        draft.result = {
+          ...(draft.result ?? { status: 'success' }),
+          status: 'success',
+          outputs: this.resolveDeclaredOutputs(draft),
+        }
         return draft
       })
       this.logger.info('Workflow run completed successfully', { runId })
@@ -536,6 +666,7 @@ export class WorkflowEngine {
       if (updated) {
         await this.snapshotTerminalRun(updated)
       }
+      await this.reconcileChildInvocation(runId)
     } else if (anyFailed) {
       // Surface the failing job's error at the run level so consumers (REST
       // /runs/:id, Studio, e2e) can show *why* the run failed without digging
@@ -575,6 +706,7 @@ export class WorkflowEngine {
       if (updated) {
         await this.snapshotTerminalRun(updated)
       }
+      await this.reconcileChildInvocation(runId)
     }
   }
 
@@ -789,12 +921,46 @@ export class WorkflowEngine {
     const runIds = await this.stateStore.getAllRunIds()
     const now = new Date().toISOString()
     let count = 0
+    const runs = await this.listStoredRuns()
+    const protectedChildRunIds = new Set(
+      runs.flatMap((run) => run.jobs.flatMap((job) => job.steps
+        .filter((step) => step.status === 'waiting_child')
+        .map((step) => step.metadata?.['childRunId'])
+        .filter((id): id is string => typeof id === 'string'))),
+    )
 
     await Promise.all(
       runIds.map(async (runId) => {
         const run = await this.stateStore.getRun(runId)
         if (!run) { return }
         if (run.status !== 'running' && run.status !== 'queued') { return }
+        // A parked parent and its child are durable orchestration state, not a
+        // lost executor. Keep queued children intact; running children are
+        // turned into resumable interruptions below.
+        if (run.jobs.some((job) => job.steps.some((step) => step.status === 'waiting_child'))) {
+          return
+        }
+        if (protectedChildRunIds.has(run.id)) {
+          const hasRunningJob = run.jobs.some((job) => job.status === 'running')
+          if (hasRunningJob) {
+            await this.stateStore.updateRun(runId, (draft) => {
+              for (const job of draft.jobs) {
+                if (job.status === 'running') {
+                  job.status = 'interrupted'
+                  job.finishedAt = now
+                  for (const step of job.steps) {
+                    if (step.status === 'running') {
+                      step.status = 'queued'
+                      step.startedAt = undefined
+                      step.finishedAt = undefined
+                    }
+                  }
+                }
+              }
+            })
+          }
+          return
+        }
 
         await this.stateStore.updateRun(runId, (draft) => {
           draft.status = 'failed'

@@ -1,7 +1,7 @@
 ---
 title: "Workflows"
 description: "Triggering workflow runs from a product via the generic platform.call() escape hatch."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-09"
 order: 4
 ---
 
@@ -109,7 +109,17 @@ See [Workflows → Spec Reference → Metadata](/workflows/spec-reference#runtim
 await platform.call<void>('workflows', 'cancel', runId);
 ```
 
-Cancellation is cooperative — the engine marks the run as `'cancelled'` and stops scheduling new jobs. In-flight jobs finish or abort based on their handler's response to `ctx.signal`.
+Cancellation is cooperative — the engine marks the run as `'cancelled'` and stops scheduling new jobs. In-flight jobs finish or abort based on their handler's response to `ctx.signal`. If this run invoked child workflows, cancellation cascades through that persisted invocation tree; a daemon restart does not lose the links.
+
+## Composed workflow runs
+
+Runs started by `workflow:workspace:<id>` steps have `trigger.parentRunId`, `parentJobId`, and `parentStepId`. Their `metadata.workflowAncestors` records the complete workflow lineage, which lets clients link a child back to its parent and lets the engine reject indirect cycles. A successful child exports a stable parent-step envelope:
+
+```ts
+{ runId: 'child-run-id', status: 'success', outputs: {}, artifacts: [] }
+```
+
+Use `get` on either run ID for full detail; Studio and `kb workflow runs view` show the parent and lineage directly.
 
 ## Listing runs
 

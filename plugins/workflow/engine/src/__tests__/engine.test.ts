@@ -237,6 +237,118 @@ describe('WorkflowEngine', () => {
       expect(cancelled?.status).toBe('cancelled');
       expect(cancelled?.finishedAt).toBeDefined();
     });
+
+    it('cascades cancellation to all persisted child workflow descendants', async () => {
+      const spec: WorkflowSpec = {
+        name: 'Nested', version: '1.0.0', on: { manual: true },
+        jobs: { main: { runsOn: 'local', steps: [{ name: 'noop', uses: 'builtin:shell' }] } },
+      };
+      const parent = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const child = await engine.createRun({
+        spec,
+        trigger: { type: 'workflow', parentRunId: parent.id },
+        metadata: { parentRunId: parent.id },
+      });
+      const grandchild = await engine.createRun({
+        spec,
+        trigger: { type: 'workflow', parentRunId: child.id },
+        metadata: { parentRunId: child.id },
+      });
+
+      await engine.cancelRun(parent.id);
+
+      await expect(engine.getRun(child.id)).resolves.toMatchObject({ status: 'cancelled' });
+      await expect(engine.getRun(grandchild.id)).resolves.toMatchObject({ status: 'cancelled' });
+    });
+  });
+
+  describe('Child workflow reconciliation', () => {
+    const spec: WorkflowSpec = {
+      name: 'Nested', version: '1.0.0', on: { manual: true },
+      jobs: { main: { runsOn: 'local', steps: [{ id: 'result', name: 'result', uses: 'builtin:shell' }] } },
+    };
+
+    it('resumes a parked parent with a durable child result envelope', async () => {
+      const parent = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const parentJob = parent.jobs[0]!;
+      const parentStep = parentJob.steps[0]!;
+      const child = await engine.createRun({
+        spec,
+        trigger: { type: 'workflow', parentRunId: parent.id, parentJobId: parentJob.id, parentStepId: parentStep.id },
+        metadata: { parentRunId: parent.id, parentJobId: parentJob.id, parentStepId: parentStep.id },
+      });
+      const childJob = child.jobs[0]!;
+
+      await engine.markJobStarted(parent.id, parentJob.id);
+      await engine.markStepWaitingChild(parent.id, parentJob.id, parentStep.id, child.id);
+      await engine.markStepCompleted(child.id, childJob.id, childJob.steps[0]!.id, { report: 'green' });
+      await engine.markJobCompleted(child.id, childJob.id);
+
+      const updated = await engine.getRun(parent.id);
+      expect(updated?.jobs[0]?.status).toBe('queued');
+      expect(updated?.jobs[0]?.steps[0]?.status).toBe('success');
+      expect(updated?.jobs[0]?.steps[0]?.outputs).toMatchObject({
+        runId: child.id,
+        status: 'success',
+        outputs: { result: { report: 'green' } },
+      });
+    });
+
+    it('fails a parked parent deterministically when its child was cancelled', async () => {
+      const parent = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const parentJob = parent.jobs[0]!;
+      const parentStep = parentJob.steps[0]!;
+      const child = await engine.createRun({
+        spec,
+        trigger: { type: 'workflow', parentRunId: parent.id },
+        metadata: { parentRunId: parent.id },
+      });
+      await engine.markJobStarted(parent.id, parentJob.id);
+      await engine.markStepWaitingChild(parent.id, parentJob.id, parentStep.id, child.id);
+
+      await engine.cancelRun(child.id);
+
+      await expect(engine.getRun(parent.id)).resolves.toMatchObject({ status: 'failed' });
+      await expect(engine.getRun(parent.id)).resolves.toMatchObject({
+        jobs: [expect.objectContaining({ status: 'failed' })],
+      });
+    });
+
+    it('recovers parked parents after an engine restart and reconciles concurrent children', async () => {
+      const pairs = await Promise.all(Array.from({ length: 4 }, async () => {
+        const parent = await engine.createRun({ spec, trigger: { type: 'manual' } });
+        const parentJob = parent.jobs[0]!;
+        const parentStep = parentJob.steps[0]!;
+        const child = await engine.createRun({
+          spec,
+          trigger: { type: 'workflow', parentRunId: parent.id },
+          metadata: { parentRunId: parent.id },
+        });
+        await engine.markJobStarted(parent.id, parentJob.id);
+        await engine.markStepWaitingChild(parent.id, parentJob.id, parentStep.id, child.id);
+        await engine.markStepCompleted(child.id, child.jobs[0]!.id, child.jobs[0]!.steps[0]!.id, { ok: true });
+        // Model a daemon dying after child state is persisted but before its
+        // terminal event is delivered to the parent coordinator.
+        await engine.getStateStore().updateJob(child.id, child.jobs[0]!.id, (job) => {
+          job.status = 'success';
+          job.finishedAt = new Date().toISOString();
+        });
+        await engine.getStateStore().updateRun(child.id, (run) => {
+          run.status = 'success';
+          run.finishedAt = new Date().toISOString();
+        });
+        return { parent, parentJob };
+      }));
+
+      const restarted = new WorkflowEngine({ cache, events, logger, maxWorkflowDepth: 2 });
+      await expect(restarted.reconcileChildInvocations()).resolves.toBe(4);
+
+      await Promise.all(pairs.map(async ({ parent, parentJob }) => {
+        await expect(restarted.getRun(parent.id)).resolves.toMatchObject({
+          jobs: [expect.objectContaining({ id: parentJob.id, status: 'queued' })],
+        });
+      }));
+    });
   });
 
   describe('Job Failure and Retries', () => {
