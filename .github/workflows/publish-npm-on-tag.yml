@@ -255,7 +255,12 @@ jobs:
         run: make build
         working-directory: tools/kb-devkit
       - name: Run kb-create e2e against just-published packages
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        # --live: single-package run, so the concurrency=1 it forces costs
+        # nothing — but without it kb-devkit buffers all output in memory
+        # until the command exits (see executor.go runCommand). If this step
+        # ever hits the job timeout, the buffered output dies with the killed
+        # process and the log shows nothing between start and cancellation.
+        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache --live
         env:
           # The candidate is published under the canary dist-tag. Without
           # this override kb-create resolves `latest` and tests the previous
