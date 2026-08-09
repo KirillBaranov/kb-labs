@@ -679,6 +679,42 @@ export class WorkflowEngine {
   }
 
   /**
+   * Park a step while its child workflow runs. The worker returns after this
+   * transition, so parent workflows never consume the pool needed by children.
+   */
+  async markStepWaitingChild(
+    runId: string,
+    jobId: string,
+    stepId: string,
+    childRunId: string,
+  ): Promise<void> {
+    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
+      draft.status = 'waiting_child'
+      draft.startedAt ??= new Date().toISOString()
+      draft.metadata = { ...(draft.metadata ?? {}), childRunId }
+    })
+
+    await this.events.publish({
+      type: EVENT_NAMES.step.waitingChild,
+      runId,
+      jobId,
+      stepId,
+      payload: { childRunId },
+    })
+  }
+
+  /** Re-queue a parked parent job after its child workflow reaches a terminal state. */
+  async resumeJob(runId: string, jobId: string): Promise<void> {
+    const job = await this.stateStore.updateJob(runId, jobId, (draft) => {
+      draft.status = 'queued'
+      draft.finishedAt = undefined
+    })
+    if (job) {
+      await this.scheduler.enqueueJob(runId, job, job.priority ?? 'normal')
+    }
+  }
+
+  /**
    * Resolve a pending approval — approve or reject.
    * On approve: marks step as success with approval outputs.
    * On reject: marks step as failed with rejection error.

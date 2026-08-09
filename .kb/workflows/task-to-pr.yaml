@@ -455,20 +455,11 @@ jobs:
       # PHASE 7 — STATIC GATES
       # ═══════════════════════════════════════════════════════════════════════
 
-      - name: Type Check
-        id: type_check
-        env:
-          BASE_BRANCH: '${{ inputs.baseBranch }}'
-        run: node .kb/workflows/scripts/type-check.mjs
-
-      - name: Run Tests
-        id: run_tests
-        env:
-          BASE_BRANCH: '${{ inputs.baseBranch }}'
-          OWNER: '${{ inputs.owner }}'
-          REPO: '${{ inputs.repo }}'
-          PR_NUMBER: '${{ steps.pr.outputs.prNumber }}'
-        run: node .kb/workflows/scripts/run-tests.mjs
+      - name: Static Quality Gates
+        id: quality_gates
+        uses: workflow:workspace:quality-gates
+        with:
+          baseBranch: '${{ inputs.baseBranch }}'
 
       # ═══════════════════════════════════════════════════════════════════════
       # PHASE 8 — COMMIT & CI

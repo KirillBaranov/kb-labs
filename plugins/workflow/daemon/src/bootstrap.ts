@@ -201,6 +201,7 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
       bootstrapLogger.info("Creating WorkflowWorker");
       const worker = await createWorkflowWorker({
         engine,
+        workflowService,
         cliApi,
         logger: createWorkflowLogger("worker", "workflow.worker"),
         analytics: platform.analytics,

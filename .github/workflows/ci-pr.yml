@@ -214,6 +214,10 @@ jobs:
           name: dist
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
+      - name: Validate workflow definitions and local step scripts
+        run: |
+          node .kb/workflows/scripts/check-local-script-references.mjs
+          pnpm kb workflow lint --path .kb/workflows --strict
       - name: Devkit workspace checks (structure, dependencies, boundaries)
         run: ./tools/kb-devkit/kb-devkit check
 

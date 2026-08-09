@@ -1,6 +1,6 @@
 const RUN_STATES = ['queued', 'running', 'success', 'failed', 'cancelled', 'skipped', 'dlq'] as const
 const JOB_STATES = ['queued', 'running', 'success', 'failed', 'cancelled', 'skipped', 'interrupted'] as const
-const STEP_STATES = [...RUN_STATES, 'waiting_approval'] as const
+const STEP_STATES = [...RUN_STATES, 'waiting_approval', 'waiting_child'] as const
 const JOB_PRIORITIES = ['high', 'normal', 'low'] as const
 
 export { RUN_STATES, JOB_STATES, STEP_STATES, JOB_PRIORITIES }
@@ -37,6 +37,7 @@ export const EVENT_NAMES = {
     cancelled: 'step.cancelled',
     skipped: 'step.skipped',
     waitingApproval: 'step.waitingApproval',
+    waitingChild: 'step.waitingChild',
   },
   log: {
     appended: 'log.appended',
@@ -112,6 +113,5 @@ export const REDIS_MODE_ENV = 'KB_REDIS_MODE'
 export const REDIS_NAMESPACE_ENV = 'KB_REDIS_NAMESPACE'
 
 export type RedisMode = 'standalone' | 'cluster' | 'sentinel'
-
 
 

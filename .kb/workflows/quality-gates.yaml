@@ -1,0 +1,28 @@
+name: quality-gates
+version: 1.0.0
+description: Reusable static quality gates for an implementation change.
+
+on:
+  manual: true
+
+inputs:
+  baseBranch:
+    type: string
+    description: Base branch used to calculate the affected package closure.
+    default: main
+
+jobs:
+  quality:
+    runsOn: local
+    steps:
+      - name: Type Check
+        id: type_check
+        env:
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: node .kb/workflows/scripts/type-check.mjs
+
+      - name: Run Tests
+        id: run_tests
+        env:
+          BASE_BRANCH: '${{ inputs.baseBranch }}'
+        run: node .kb/workflows/scripts/run-tests.mjs

@@ -8,6 +8,7 @@
  */
 
 import type { WorkflowEngine } from "@kb-labs/workflow-engine";
+import type { WorkflowService } from "@kb-labs/workflow-engine";
 import type { IEntityRegistry } from "@kb-labs/core-registry";
 import { logDiagnosticEvent } from "@kb-labs/core-platform";
 import type {
@@ -53,6 +54,8 @@ interface Platform {
 
 export interface CreateWorkflowWorkerOptions {
   engine: WorkflowEngine;
+  /** Resolves workspace child workflows for `uses: workflow:workspace:<id>`. */
+  workflowService?: WorkflowService;
   cliApi: IEntityRegistry;
   logger: ILogger;
   platform: Platform;
@@ -91,6 +94,7 @@ export async function createWorkflowWorker(
 ): Promise<WorkflowWorker> {
   const {
     engine,
+    workflowService,
     cliApi,
     logger,
     platform,
@@ -136,6 +140,102 @@ export async function createWorkflowWorker(
     workspaceRoot,
     defaultTimeout,
   });
+
+  async function invokeChildWorkflow(input: {
+    parentRun: WorkflowRun;
+    parentJob: JobRun;
+    parentStep: StepRun;
+    workflowRef: string;
+    inputs: Record<string, unknown>;
+  }): Promise<void> {
+    if (!workflowService) {
+      throw new Error('Workflow invocation is unavailable: WorkflowService was not configured');
+    }
+    if (!input.workflowRef.startsWith('workspace:')) {
+      throw new Error(`Unsupported child workflow reference: workflow:${input.workflowRef}`);
+    }
+
+    const workflowId = input.workflowRef.slice('workspace:'.length);
+    const parentWorkflowId = (input.parentRun.metadata?.['workflowId'] as string | undefined) ?? input.parentRun.name;
+    if (parentWorkflowId === workflowId) {
+      throw new Error(`Child workflow cycle detected: ${parentWorkflowId} -> ${workflowId}`);
+    }
+    const parentDepth = input.parentRun.metadata?.workflowDepth ?? 0;
+    if (parentDepth >= engine.maxWorkflowDepth) {
+      throw new Error(`Child workflow depth exceeds maxWorkflowDepth=${engine.maxWorkflowDepth}`);
+    }
+
+    const workflow = await workflowService.get(workflowId);
+    const spec = workflow?.input as import('@kb-labs/workflow-contracts').WorkflowSpec | undefined;
+    if (!workflow || !spec?.jobs) {
+      throw new Error(`Child workflow not found or is not executable: ${workflowId}`);
+    }
+
+    const child = await engine.runFromSpec(spec, {
+      trigger: {
+        type: 'workflow',
+        actor: input.parentRun.trigger.actor,
+        payload: input.inputs,
+        parentRunId: input.parentRun.id,
+        parentJobId: input.parentJob.id,
+        parentStepId: input.parentStep.id,
+        invokedByWorkflowId: parentWorkflowId,
+      },
+      inputs: input.inputs,
+      env: input.parentRun.env,
+      metadata: {
+        workflowId,
+        parentRunId: input.parentRun.id,
+        parentJobId: input.parentJob.id,
+        parentStepId: input.parentStep.id,
+        workflowDepth: parentDepth + 1,
+      },
+    });
+
+    await engine.markStepWaitingChild(input.parentRun.id, input.parentJob.id, input.parentStep.id, child.id);
+
+    void (async () => {
+      while (!stopRequested) {
+        const [parent, childRun] = await Promise.all([
+          engine.getRun(input.parentRun.id),
+          engine.getRun(child.id),
+        ]);
+        if (!parent || parent.status === 'cancelled') {
+          if (childRun && !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
+            await engine.cancelRun(child.id);
+          }
+          return;
+        }
+        if (!childRun || !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(childRun.status)) {
+          await sleep(500);
+          continue;
+        }
+        if (childRun.status === 'success') {
+          await engine.markStepCompleted(input.parentRun.id, input.parentJob.id, input.parentStep.id, {
+            runId: child.id,
+            status: childRun.status,
+          });
+          await engine.resumeJob(input.parentRun.id, input.parentJob.id);
+        } else {
+          const error = new Error(`Child workflow ${workflowId} ${childRun.status} (run ${child.id})`);
+          await engine.markStepFailed(
+            input.parentRun.id,
+            input.parentJob.id,
+            input.parentStep.id,
+            error,
+            { runId: child.id, status: childRun.status },
+          );
+          await engine.markJobFailed(input.parentRun.id, input.parentJob.id, error, undefined, false);
+        }
+        return;
+      }
+    })().catch((error: unknown) => {
+      logger.error('Child workflow monitor failed', error instanceof Error ? error : undefined, {
+        parentRunId: input.parentRun.id,
+        childRunId: child.id,
+      });
+    });
+  }
 
   /**
    * Process a single job from the queue.
@@ -532,6 +632,21 @@ export async function createWorkflowWorker(
               return;
             }
             continue; // Outputs already set by resolveApproval
+          }
+
+          // --- Handle nested workflow invocation ---
+          // This parks the parent step and returns from the worker job. The
+          // child monitor re-enqueues the parent only after the child is terminal,
+          // avoiding a worker-pool deadlock when many parents invoke children.
+          if (step.spec.uses?.startsWith("workflow:")) {
+            await invokeChildWorkflow({
+              parentRun: run,
+              parentJob: job,
+              parentStep: step,
+              workflowRef: step.spec.uses.slice("workflow:".length),
+              inputs: (interpolatedWith ?? {}) as Record<string, unknown>,
+            });
+            return;
           }
 
           // --- Handle builtin:gate ---
