@@ -115,7 +115,13 @@ async function runTsupSafeBuild(packagePath: string, packageName: string, shell:
 }
 
 async function runDirectBuild(packagePath: string, packageName: string, shell: ReleaseShell): Promise<BuildResult> {
-  const result = await executeCommand(shell, 'pnpm', ['run', 'build'], packagePath, 5 * 60 * 1000);
+  // NODE_ENV=production disables Module Federation dts type generation in
+  // Studio rspack configs (createStudioRemoteConfig, studio/plugin-tools) —
+  // a dev-only convenience of no value here, and a reproducible source of
+  // indefinite native-threadpool hangs under concurrent rspack builds. See
+  // the same fix in manager-cli/src/cli/commands/build.ts for the
+  // `build.script`-configured path.
+  const result = await executeCommand(shell, 'pnpm', ['run', 'build'], packagePath, 5 * 60 * 1000, { NODE_ENV: 'production' });
   return { ...result, name: packageName };
 }
 
@@ -129,9 +135,9 @@ export interface SpawnResult extends Omit<BuildResult, 'name'> {
  * Spawn a shell command and collect results.
  * Captures both stdout and stderr — build tools often write errors to stdout.
  */
-async function executeCommand(shell: ReleaseShell, command: string, args: string[], cwd: string, timeoutMs: number): Promise<SpawnResult> {
+async function executeCommand(shell: ReleaseShell, command: string, args: string[], cwd: string, timeoutMs: number, env?: Record<string, string>): Promise<SpawnResult> {
   const startTime = Date.now();
-  const result = await shell.exec(command, args, { cwd, timeout: timeoutMs });
+  const result = await shell.exec(command, args, { cwd, timeout: timeoutMs, ...(env ? { env } : {}) });
   const exitCode = result.code;
   const combined = (result.stderr || result.stdout).trim();
   return {

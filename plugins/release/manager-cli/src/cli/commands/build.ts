@@ -93,6 +93,18 @@ export default defineCommand({
             const execResult = await ctx.api.shell.exec('pnpm', ['run', buildScript], {
               cwd: repoRoot,
               timeout: 60 * 60 * 1000,
+              // Studio (Module Federation) rspack configs gate dts type
+              // generation on NODE_ENV !== 'production' (see
+              // createStudioRemoteConfig in studio/plugin-tools) — a dev-only
+              // convenience so the Studio host can hot-pick-up types, of no
+              // value to a release build that only needs compiled JS. Its
+              // background TS worker is a reproducible source of indefinite
+              // native-threadpool hangs under concurrent rspack invocations
+              // (observed: multiple `rspack build --config
+              // rspack.studio.config.mjs` processes stuck in __psynch_cvwait
+              // for hours). Release builds never need dts — skip the whole
+              // risky code path instead of chasing the underlying race.
+              env: { NODE_ENV: 'production' },
             });
             return [{
               name: `pnpm run ${buildScript}`,

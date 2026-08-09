@@ -11,10 +11,10 @@ describe('release build governed execution', () => {
     await mkdir(packagePath, { recursive: true });
     await writeFile(join(packagePath, 'package.json'), JSON.stringify({ name: 'fixture', scripts: { build: 'echo ok' } }));
 
-    const calls: Array<{ command: string; args: string[]; cwd?: string; timeout?: number }> = [];
+    const calls: Array<{ command: string; args: string[]; cwd?: string; timeout?: number; env?: Record<string, string> }> = [];
     const shell = {
-      async exec(command: string, args: string[] = [], options: { cwd?: string; timeout?: number } = {}) {
-        calls.push({ command, args, cwd: options.cwd, timeout: options.timeout });
+      async exec(command: string, args: string[] = [], options: { cwd?: string; timeout?: number; env?: Record<string, string> } = {}) {
+        calls.push({ command, args, cwd: options.cwd, timeout: options.timeout, env: options.env });
         return { code: 0, stdout: 'governed-build', stderr: '', ok: true };
       },
     };
@@ -22,6 +22,15 @@ describe('release build governed execution', () => {
     const result = await runSafeBuild(packagePath, 'fixture', shell);
 
     expect(result.success).toBe(true);
-    expect(calls).toEqual([{ command: 'pnpm', args: ['run', 'build'], cwd: packagePath, timeout: 300_000 }]);
+    expect(calls).toEqual([{
+      command: 'pnpm',
+      args: ['run', 'build'],
+      cwd: packagePath,
+      timeout: 300_000,
+      // NODE_ENV=production disables Module Federation dts generation in
+      // Studio rspack configs — a reproducible source of indefinite
+      // native-threadpool hangs under concurrent builds (see build.ts).
+      env: { NODE_ENV: 'production' },
+    }]);
   });
 });
