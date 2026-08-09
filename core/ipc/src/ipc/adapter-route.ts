@@ -9,23 +9,25 @@
 
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { AdapterType } from '@kb-labs/core-platform/serializable';
+import { platformAdapterTransportPolicy } from './adapter-contract.js';
 
-export const IPC_ADAPTER_ROUTES = {
-  vectorStore: 'vectorStore',
-  cache: 'cache',
-  config: 'config',
-  llm: 'llm',
-  embeddings: 'embeddings',
-  storage: 'storage',
-  logger: 'logger',
-  analytics: 'analytics',
-  eventBus: 'eventBus',
-  invoke: 'invoke',
-  artifacts: 'artifacts',
-  'database.document': 'documentDatabase',
-  'database.kv': 'kvStore',
-  processExecutor: 'processExecutor',
-} as const satisfies Record<AdapterType, keyof IPlatformAdapters>;
+function createIPCAdapterRoutes(): Partial<Record<AdapterType, keyof IPlatformAdapters>> {
+  const routes: Partial<Record<AdapterType, keyof IPlatformAdapters>> = {};
+
+  for (const slot of Object.keys(platformAdapterTransportPolicy) as Array<keyof IPlatformAdapters>) {
+    const policy = platformAdapterTransportPolicy[slot];
+    if (!('adapter' in policy)) { continue; }
+
+    if (routes[policy.adapter] !== undefined) {
+      throw new Error(`Duplicate IPC adapter route '${policy.adapter}'`);
+    }
+    routes[policy.adapter] = slot;
+  }
+
+  return Object.freeze(routes);
+}
+
+export const IPC_ADAPTER_ROUTES = createIPCAdapterRoutes();
 
 /** Resolve a wire adapter identifier to its configured platform adapter. */
 export function resolveIPCAdapter(
@@ -33,6 +35,9 @@ export function resolveIPCAdapter(
   adapterType: AdapterType,
 ): unknown {
   const slot = IPC_ADAPTER_ROUTES[adapterType];
+  if (!slot) {
+    throw new Error(`Adapter '${adapterType}' is not exposed over IPC`);
+  }
   const adapter = platform[slot];
 
   if (adapter === undefined) {

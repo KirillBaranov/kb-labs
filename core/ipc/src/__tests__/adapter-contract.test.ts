@@ -4,10 +4,12 @@ import type { AdapterType } from '@kb-labs/core-platform/serializable';
 import {
   documentDatabaseIPCOperations,
   kvStoreIPCOperations,
+  platformAdapterTransportPolicy,
 } from '../ipc/adapter-contract.js';
 import { IPC_ADAPTER_ROUTES, resolveIPCAdapter } from '../ipc/adapter-route.js';
 import { DocumentDatabaseProxy } from '../proxy/document-database-proxy.js';
 import { KVStoreProxy } from '../proxy/kv-store-proxy.js';
+import { createProxyPlatform } from '../proxy/create-proxy-platform.js';
 import type { ITransport } from '../transport/transport.js';
 
 const transport: ITransport = {
@@ -27,6 +29,28 @@ const proxyMethods = (proxy: object): string[] => {
 };
 
 describe('IPC adapter contract inventory', () => {
+  it('keeps every inventory-enforced adapter proxy aligned with its operation map', () => {
+    for (const policy of Object.values(platformAdapterTransportPolicy)) {
+      if (policy.mode !== 'ipc') { continue; }
+
+      expect(proxyMethods(policy.proxy(transport))).toEqual(
+        Object.keys(policy.operations).sort(),
+      );
+    }
+  });
+
+  it('installs every inventory-enforced proxy into the worker platform', () => {
+    const platform = createProxyPlatform({ transport });
+
+    for (const [slot, policy] of Object.entries(platformAdapterTransportPolicy)) {
+      if (policy.mode !== 'ipc') { continue; }
+
+      const adapter = platform[slot as keyof IPlatformAdapters];
+      expect(adapter).toBeDefined();
+      expect(proxyMethods(adapter as object)).toEqual(Object.keys(policy.operations).sort());
+    }
+  });
+
   it('keeps every document-database operation present on the proxy', () => {
     expect(proxyMethods(new DocumentDatabaseProxy(transport))).toEqual(
       Object.keys(documentDatabaseIPCOperations).sort(),

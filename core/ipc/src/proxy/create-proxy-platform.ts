@@ -16,12 +16,11 @@ import { LLMProxy } from './llm-proxy.js';
 import { EmbeddingsProxy } from './embeddings-proxy.js';
 import { VectorStoreProxy } from './vector-store-proxy.js';
 import { StorageProxy } from './storage-proxy.js';
-import { DocumentDatabaseProxy } from './document-database-proxy.js';
-import { KVStoreProxy } from './kv-store-proxy.js';
 import { ConfigProxy } from './config-proxy.js';
 import { EventBusProxy } from './event-bus-proxy.js';
 import { LoggerProxy } from './logger-proxy.js';
 import { ProcessExecutorProxy } from './process-executor-proxy.js';
+import { platformAdapterTransportPolicy } from '../ipc/adapter-contract.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -60,8 +59,8 @@ export function createProxyPlatform(
   const embeddings = new EmbeddingsProxy(transport);
   const vectorStore = new VectorStoreProxy(transport);
   const storage = new StorageProxy(transport);
-  const documentDatabase = new DocumentDatabaseProxy(transport);
-  const kvStore = new KVStoreProxy(transport);
+  const documentDatabase = platformAdapterTransportPolicy.documentDatabase.proxy(transport);
+  const kvStore = platformAdapterTransportPolicy.kvStore.proxy(transport);
   const config = new ConfigProxy(transport);
 
   // EventBus: bidirectional proxy — subscribe/publish across process boundary

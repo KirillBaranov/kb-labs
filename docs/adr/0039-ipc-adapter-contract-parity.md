@@ -23,10 +23,18 @@ operation must have the same documented semantics for direct and IPC callers.
 Platform code does not receive hidden adapter methods or a broader variant of
 the same adapter.
 
-Every IPC-exposed adapter will have:
+Every new platform adapter slot must have a transport policy. It either has:
 
 - one canonical wire identifier to platform-slot route;
-- an exhaustive operation inventory, checked against its TypeScript contract;
+- IPC exposure with an exhaustive operation inventory, checked against its
+  TypeScript contract; or
+- a documented `local-only` decision.
+
+Existing IPC slots that predate this decision are explicitly listed as
+`migration` entries. That state is not available to future slots, so it cannot
+be used to bypass the decision for new adapter work.
+
+Every fully migrated IPC adapter has:
 - a declared wire mode for every operation: `unary`, `stream`, or
   `interactive`;
 - a proxy surface test that must exactly match the operation inventory;
@@ -67,10 +75,12 @@ portable primitive.
 
 ## Implementation
 
-The first increment centralizes all wire-to-slot routes and introduces checked
-operation inventories for `IDocumentDatabase` and `IKVStore`. Follow-up work
-will add wire codecs and behavioural direct-versus-IPC contract suites,
-starting with the declared `stream` and `interactive` operations.
+The first increment centralizes all wire-to-slot routes, makes a transport
+decision mandatory for every platform slot, and introduces checked operation
+inventories for `IDocumentDatabase` and `IKVStore`. Follow-up work will migrate
+the explicit legacy entries, then add wire codecs and behavioural
+direct-versus-IPC contract suites, starting with the declared `stream` and
+`interactive` operations.
 
 Adapter-specific fields and capabilities are intentionally outside this ADR;
 they are formalized only after this transport parity layer is stable.
