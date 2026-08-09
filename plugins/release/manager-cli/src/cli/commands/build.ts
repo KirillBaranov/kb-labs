@@ -92,7 +92,7 @@ export default defineCommand({
             const startedAt = Date.now();
             const execResult = await ctx.api.shell.exec('pnpm', ['run', buildScript], {
               cwd: repoRoot,
-              timeout: 20 * 60 * 1000,
+              timeout: 60 * 60 * 1000,
             });
             return [{
               name: `pnpm run ${buildScript}`,
