@@ -15,6 +15,20 @@ export interface CheckRunnerOptions {
 }
 
 /**
+ * Max parallel shell.exec calls for perPackage checks.
+ * Must match the plugin manifest's `shell.maxConcurrent` permission
+ * (plugins/release/manager-cli/src/manifest.ts) — the platform's process
+ * broker admits at most that many concurrent shells for this plugin, so
+ * batching above it just queues and can blow the per-check timeout.
+ *
+ * Kept low (not e.g. 8) because pack-install is not a cheap script: it packs
+ * the tarball and runs a real `npm install` of it into a throwaway consumer
+ * per package. At higher concurrency those installs contend for CPU/disk/npm
+ * registry and start blowing their own per-check timeout under load.
+ */
+export const CHECKS_CONCURRENCY = 2;
+
+/**
  * Run all configured checks against packages.
  * Handles: parser evaluation, script path resolution, perPackage/scopePath/repoRoot routing.
  */
@@ -54,9 +68,8 @@ async function runSingleCheck(
     pathsToRun = options.packagePaths.length > 0 ? options.packagePaths : [options.repoRoot];
   }
 
-  // Run perPackage checks in parallel (concurrency=8); single-path checks run sequentially.
-  const CONCURRENCY = 8;
-
+  // Run perPackage checks in parallel, bounded by the plugin's granted shell concurrency;
+  // single-path checks run sequentially.
   const resolvedArgs = (check.args ?? []).map(arg =>
     arg.match(/\.(sh|js|ts|mjs|cjs)$/) ? join(options.repoRoot, arg) : arg
   );
@@ -87,8 +100,8 @@ async function runSingleCheck(
   if (runIn === 'perPackage' && pathsToRun.length > 1) {
     // Parallel with concurrency limit
     pkgResults = [];
-    for (let i = 0; i < pathsToRun.length; i += CONCURRENCY) {
-      const batch = pathsToRun.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < pathsToRun.length; i += CHECKS_CONCURRENCY) {
+      const batch = pathsToRun.slice(i, i + CHECKS_CONCURRENCY);
       pkgResults.push(...await Promise.all(batch.map(runForPath)));
     }
   } else {
@@ -106,6 +119,7 @@ async function runSingleCheck(
   return {
     id: check.id,
     ok: allOk,
+    optional: check.optional,
     details: firstFailure,
     hint: check.optional ? 'optional' : undefined,
     timingMs: totalDurationMs,

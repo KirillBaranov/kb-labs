@@ -7,6 +7,13 @@
 # release commands — no release logic is reimplemented here.
 #
 # Run: kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform"}'
+#
+# Emergency escape hatch: add "skipChecks":true to the input to skip the
+# Checks step entirely (e.g. when Checks itself is broken or the pre-release
+# gate is what's blocking, not the release content). Packages still get
+# built and reviewed — just not gate-checked. Re-run `pnpm kb release checks
+# --flow <flow>` by hand afterward and don't treat the release as verified
+# until that's green.
 
 name: release-prepare
 version: 1.0.0
@@ -19,6 +26,11 @@ inputs:
     type: string
     description: Release flow to prepare — must match a key under release.flows in .kb/kb.config.json (e.g. "platform", "sdk")
     required: true
+  skipChecks:
+    type: boolean
+    description: Skip the pre-release Checks step (dist-exports/pack-install/typecheck/lint/tests). Escape hatch for shipping when Checks itself is broken/too slow — the packages still get built and reviewed, just not gate-checked. Re-run checks manually before trusting the release.
+    required: false
+    default: false
 
 phases:
   preview:
@@ -64,7 +76,12 @@ jobs:
       - name: Checks
         id: checks
         phase: checks
-        timeoutMs: 1200000
+        # pack-install runs a real `npm pack` + clean-consumer `npm install` per package
+        # (~140 packages). At the process-broker's safe concurrency (CHECKS_CONCURRENCY=2,
+        # see plugins/release/manager-core/src/checks.ts) a full run takes ~35min; 1200000ms
+        # (20min) was sized for the old, higher (and broker-deadlocking) concurrency.
+        timeoutMs: 3600000
+        if: ${{ !inputs.skipChecks }}
         run: pnpm kb release checks --flow ${{ inputs.flow }} --json
 
       - name: Build
@@ -116,7 +133,7 @@ jobs:
         uses: builtin:approval
         with:
           title: "Release ${{ inputs.flow }} — proceed?"
-          instructions: Review the release plan, generated changelog, package links, comparison link, and check/build results above. Approve only if this exact release should be versioned, tagged, and pushed. Nothing is published to npm here — that happens in CI, triggered by the tag pushed at the end.
+          instructions: "Review the release plan, generated changelog, package links, comparison link, and check/build results above. Approve only if this exact release should be versioned, tagged, and pushed. Nothing is published to npm here — that happens in CI, triggered by the tag pushed at the end. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
 
       - name: Bump versions
         id: version

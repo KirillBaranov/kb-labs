@@ -24,6 +24,7 @@ import {
   RELEASE_ROUTES,
   RELEASE_CACHE_PREFIX,
 } from '@kb-labs/release-manager-contracts';
+import { CHECKS_CONCURRENCY } from '@kb-labs/release-manager-core';
 
 /**
  * Build permissions using presets:
@@ -55,6 +56,11 @@ const pluginPermissions = combinePermissions()
   })
   .withShell({
     allow: ['bash', 'git', 'npm', 'npx', 'pnpm'], // release gates/builds plus git, npm publishing, and configurable pnpm scripts
+    // Must match CHECKS_CONCURRENCY (manager-core/src/checks.ts): the process
+    // broker grants at most this many concurrent shells per plugin, so a lower
+    // value here throttles perPackage check batches to 1-at-a-time and can
+    // blow their timeout; a higher value defeats the plugin's own batching.
+    maxConcurrent: CHECKS_CONCURRENCY,
   })
   .withPlatform({
     cache: [RELEASE_CACHE_PREFIX], // Cache namespace prefix for plan/changelog caching

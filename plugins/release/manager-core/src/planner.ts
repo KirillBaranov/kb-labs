@@ -216,25 +216,31 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
       gitRoot = await git.revparse(['--show-toplevel']).catch(() => pkg.path);
     }
 
-    // Idempotent check: if package.json was bumped in a previous run but git wasn't committed,
-    // currentVersion > HEAD version. If that version is already on npm, reuse it (don't double-bump).
+    // Idempotent check: if package.json was bumped beyond HEAD — by a previous
+    // partial run, or by an earlier step in this same pipeline (e.g.
+    // `release:version` ran before `release:git` re-plans) — trust that
+    // version instead of computing another bump on top of it. Without this,
+    // a fresh plan computed after an out-of-band bump silently drifts one
+    // version past what's actually on disk: the tag/commit-message end up
+    // one version ahead of what gets committed. assertTagVersionsMatchDisk()
+    // in publisher.ts is the last-resort guard for this, but it only fires
+    // right before tagging — after the (wrongly labeled) commit already
+    // happened. isVersionPublished() is still checked, but only to populate
+    // the informational `isPublished` field — not to gate the reuse.
     const pkgRelPath = relative(gitRoot, join(pkg.path, 'package.json'));
     const headPkgRaw = await git.raw(['show', `HEAD:${pkgRelPath}`]).catch(() => null);
     const headVersion: string | null = headPkgRaw ? (() => { try { return (JSON.parse(headPkgRaw) as { version?: string }).version ?? null; } catch { return null; } })() : null;
 
     if (headVersion && headVersion !== pkg.currentVersion) {
-      // package.json was bumped beyond HEAD — check if that version is already on npm
       const alreadyPublished = await isVersionPublished(pkg.name, pkg.currentVersion, registry);
-      if (alreadyPublished) {
-        planPackages.push({
-          ...pkg,
-          gitRoot,
-          nextVersion: pkg.currentVersion,
-          bump: detectBumpType(headVersion, pkg.currentVersion),
-          isPublished: true,
-        });
-        continue;
-      }
+      planPackages.push({
+        ...pkg,
+        gitRoot,
+        nextVersion: pkg.currentVersion,
+        bump: detectBumpType(headVersion, pkg.currentVersion),
+        isPublished: alreadyPublished,
+      });
+      continue;
     }
 
     const nextVersion = await computeNextVersion(

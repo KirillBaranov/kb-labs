@@ -96,7 +96,8 @@ export default defineCommand({
         shell: ctx.api.shell,
       });
 
-      const ok = results.every(r => r.ok);
+      // A failed optional check is reported (still listed in `failed`) but must not fail the run.
+      const ok = results.every(r => r.ok || r.optional);
       const failed = results.filter(r => !r.ok).map(r => r.id);
 
       if (ok) {
