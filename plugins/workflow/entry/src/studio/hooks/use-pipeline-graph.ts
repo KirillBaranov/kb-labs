@@ -112,6 +112,12 @@ function getMaxIterations(step: StepRun): number {
   return typeof max === 'number' ? max : 3
 }
 
+function getIterationCount(step: StepRun): number {
+  const meta = step.metadata as Record<string, unknown> | undefined
+  const value = meta?.iterations
+  return typeof value === 'number' ? value : 1
+}
+
 // ─── Main hook ────────────────────────────────────────────────────────────────
 
 export function usePipelineModel(run: WorkflowRun | null | undefined): PipelineModel {
@@ -139,7 +145,7 @@ export function usePipelineModel(run: WorkflowRun | null | undefined): PipelineM
       const gateStep = steps[reworkLoop.gateIndex]
       if (gateStep && reworkLoop.isActive) {
         const max = getMaxIterations(gateStep.stepRun)
-        gateStep.iteration = { current: 1, max }
+        gateStep.iteration = { current: getIterationCount(gateStep.stepRun), max }
       }
     }
 

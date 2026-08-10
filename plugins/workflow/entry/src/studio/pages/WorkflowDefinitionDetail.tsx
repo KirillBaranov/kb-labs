@@ -14,7 +14,6 @@ import {
   UITable,
   UIButton,
   UIIcon,
-  UIDescriptions,
   UIEmptyState,
   useUIMessage,
 } from '@kb-labs/sdk/studio';
@@ -205,59 +204,40 @@ export default function WorkflowDefinitionDetail() {
         }
       />
 
-      <UICard style={{ marginBottom: 'var(--spacing-section)' }}>
-        <UIDescriptions
-          column={3}
-          items={[
-            {
-              key: 'id',
-              label: 'ID',
-              children: (
-                <UITypographyText code className="typo-caption">{workflowDef.id}</UITypographyText>
-              ),
-            },
-            {
-              key: 'source',
-              label: 'Source',
-              children: (
-                <UITag color={workflowDef.source === 'manifest' ? 'blue' : 'green'}>
-                  {workflowDef.source === 'manifest' ? 'Plugin' : 'Standalone'}
-                </UITag>
-              ),
-            },
-            {
-              key: 'status',
-              label: 'Status',
-              children: workflowDef.status ? (
-                <UITag color={workflowDef.status === 'active' ? 'success' : 'default'}>
-                  {workflowDef.status.toUpperCase()}
-                </UITag>
-              ) : '-',
-            },
-            {
-              key: 'plugin',
-              label: 'Plugin',
-              children: (
-                <UITypographyText className="typo-caption">
-                  {workflowDef.pluginId ?? '-'}
-                </UITypographyText>
-              ),
-            },
-            {
-              key: 'tags',
-              label: 'Tags',
-              span: 2,
-              children: workflowDef.tags && workflowDef.tags.length > 0 ? (
-                <UISpace className="gap-tight">
-                  {workflowDef.tags.map((tag) => (
-                    <UITag key={tag}>{tag}</UITag>
-                  ))}
-                </UISpace>
-              ) : '-',
-            },
-          ]}
-        />
-      </UICard>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '8px 16px',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: 8,
+        flexWrap: 'wrap',
+        marginBottom: 'var(--spacing-section)',
+      }}>
+        {workflowDef.status && (
+          <UITag color={workflowDef.status === 'active' ? 'success' : 'default'}>
+            {workflowDef.status.toUpperCase()}
+          </UITag>
+        )}
+        <UITypographyText code className="typo-caption">{workflowDef.id}</UITypographyText>
+        <UITag color={workflowDef.source === 'manifest' ? 'blue' : 'green'}>
+          {workflowDef.source === 'manifest' ? 'Plugin' : 'Standalone'}
+        </UITag>
+        {workflowDef.pluginId && (
+          <UITypographyText className="typo-caption text-tertiary">{workflowDef.pluginId}</UITypographyText>
+        )}
+        {workflowDef.tags && workflowDef.tags.length > 0 && (
+          <>
+            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />
+            <UISpace className="gap-tight">
+              {workflowDef.tags.map((tag) => (
+                <UITag key={tag}>{tag}</UITag>
+              ))}
+            </UISpace>
+          </>
+        )}
+      </div>
 
       <UICard
         title={

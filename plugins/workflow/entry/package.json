@@ -37,7 +37,8 @@
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*",
-    "@kb-labs/workflow-runtime": "workspace:*"
+    "@kb-labs/workflow-runtime": "workspace:*",
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

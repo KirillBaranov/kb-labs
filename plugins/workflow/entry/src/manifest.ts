@@ -528,14 +528,6 @@ export const manifest = {
     remoteName: 'workflowPlugin',
     pages: [
       {
-        id: 'workflow.dashboard',
-        title: 'Dashboard',
-        icon: 'DashboardOutlined',
-        route: '/p/workflows',
-        entry: './Dashboard',
-        order: 1,
-      },
-      {
         id: 'workflow.runs',
         title: 'Runs',
         icon: 'PlayCircleOutlined',
@@ -589,7 +581,7 @@ export const manifest = {
         id: 'workflows',
         label: 'Workflows',
         icon: 'ThunderboltOutlined',
-        target: 'workflow.dashboard',
+        target: 'workflow.runs',
         order: 10,
       },
       {
