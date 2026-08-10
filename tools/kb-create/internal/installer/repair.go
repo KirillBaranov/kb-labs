@@ -1,11 +1,11 @@
 package installer
 
 import (
-	"context"
 	"fmt"
-	"os/exec"
+	"strings"
 
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/platform"
 )
 
@@ -30,16 +30,28 @@ func (ins *Installer) RepairBinaries(platformDir string) ([]string, error) {
 }
 
 // RepairNodeModules runs the detected package manager's install in platformDir,
-// restoring node_modules from the existing package.json / lockfile.
+// restoring node_modules from the existing package.json / lockfile. It goes
+// through pm.PackageManager.Restore so pnpm gets the same ERR_PNPM_IGNORED_BUILDS
+// recovery (headless `pnpm approve-builds --all` + retry) as a fresh install —
+// otherwise `doctor --fix` can hit the exact same non-interactive prompt it was
+// meant to repair.
 func (ins *Installer) RepairNodeModules(platformDir string) error {
 	pmName := ins.PM.Name()
 	ins.Log.Printf("  running %s install in %s", pmName, platformDir)
-	// #nosec G204 -- pmName is from pm.Detect(), a fixed set of known values
-	cmd := exec.CommandContext(context.Background(), pmName, "install")
-	cmd.Dir = platformDir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%s install failed: %w\n%s", pmName, err, out)
+	progress := make(chan pm.Progress, 32)
+	done := make(chan error, 1)
+	go func() {
+		done <- ins.PM.Restore(platformDir, progress)
+		close(progress)
+	}()
+	var lines []string
+	for p := range progress {
+		if p.Line != "" {
+			lines = append(lines, p.Line)
+		}
+	}
+	if err := <-done; err != nil {
+		return fmt.Errorf("%s install failed: %w\n%s", pmName, err, strings.Join(lines, "\n"))
 	}
 	return nil
 }

@@ -978,6 +978,31 @@ func TestEnsureGitignore_ExcludesClaudeDir(t *testing.T) {
 	}
 }
 
+// TestEnsureGitignore_ExcludesScaffoldedPluginBuildOutput verifies .gitignore
+// excludes .kb/plugins/*/node_modules and dist. Without this, the documented
+// `kb scaffold run plugin demo` → pnpm install → pnpm build → git add -A flow
+// stages the entire scaffolded plugin's node_modules (tens of thousands of
+// files), which can also make the no-LLM commit planner assign one of those
+// files to two different commit groups and self-abort.
+func TestEnsureGitignore_ExcludesScaffoldedPluginBuildOutput(t *testing.T) {
+	projectDir := t.TempDir()
+
+	if err := ensureGitignore(projectDir); err != nil {
+		t.Fatalf("ensureGitignore: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(projectDir, ".gitignore"))
+	if err != nil {
+		t.Fatalf("read .gitignore: %v", err)
+	}
+	content := string(data)
+	for _, want := range []string{".kb/plugins/*/node_modules/", ".kb/plugins/*/dist/"} {
+		if !strings.Contains(content, want) {
+			t.Errorf(".gitignore should exclude scaffolded plugin build output %q, got:\n%s", want, content)
+		}
+	}
+}
+
 func TestEnsureGitignore_UpdatesExistingKBBlockIdempotently(t *testing.T) {
 	projectDir := t.TempDir()
 	path := filepath.Join(projectDir, ".gitignore")

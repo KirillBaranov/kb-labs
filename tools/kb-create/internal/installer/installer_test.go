@@ -45,6 +45,11 @@ func (f *fakePM) Update(dir string, pkgs []string, ch chan<- pm.Progress) error 
 	return nil
 }
 
+func (f *fakePM) Restore(dir string, ch chan<- pm.Progress) error {
+	f.calls = append(f.calls, "restore")
+	return f.failErr
+}
+
 func (f *fakePM) ListInstalled(dir string) ([]pm.InstalledPackage, error) {
 	return nil, nil
 }

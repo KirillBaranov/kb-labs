@@ -600,8 +600,13 @@ export class WorkflowHostService {
       (workflowName && run.name === workflowName)
     );
 
+    // Filter against the REST-facing status vocabulary (mapRunStatusToJobStatus),
+    // not the engine's internal 'success'/'skipped'/'dlq' states — filters.status
+    // comes from a query param validated against 'completed' etc. (see
+    // workflow-runs-handler.ts), so comparing it to the raw engine status would
+    // never match.
     if (filters?.status) {
-      runs = runs.filter((run) => run.status === filters.status);
+      runs = runs.filter((run) => mapRunStatusToJobStatus(run.status) === filters.status);
     }
 
     // Sort newest first
@@ -616,7 +621,7 @@ export class WorkflowHostService {
       runs: page.map((run) => ({
         id: run.id,
         workflowId,
-        status: run.status as 'pending' | 'running' | 'completed' | 'failed' | 'cancelled',
+        status: mapRunStatusToJobStatus(run.status) as 'pending' | 'running' | 'completed' | 'failed' | 'cancelled',
         trigger: {
           type: (run.trigger?.type as 'manual' | 'api' | 'cron') ?? 'manual',
           user: run.trigger?.actor,
@@ -658,7 +663,12 @@ export class WorkflowHostService {
   async getRun(runId: string): Promise<WorkflowRun | null> {
     const resolved = await this.resolveRunId(runId);
     if (!resolved) { return null; }
-    return (await this.options.engine.getRun(resolved)) as WorkflowRun | null;
+    const run = (await this.options.engine.getRun(resolved)) as WorkflowRun | null;
+    if (!run) { return null; }
+    // Same REST-facing status mapping as getJob/listJobs/listActiveExecutions
+    // below — `kb workflow runs status` and e2e/install-flow/test.sh both poll
+    // for a terminal 'completed', not the engine's internal 'success'.
+    return { ...run, status: mapRunStatusToJobStatus(run.status) as WorkflowRun['status'] };
   }
 
   async listRuns(filters?: {

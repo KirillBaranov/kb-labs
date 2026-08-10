@@ -37,7 +37,7 @@ func init() {
 func runUninstall(cmd *cobra.Command, args []string) error {
 	out := newOutput()
 
-	platformDir, err := resolvePlatformDir(cmd)
+	platformDir, err := resolvePlatformDirForUninstall(cmd)
 	if err != nil {
 		return err
 	}
@@ -126,6 +126,32 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	out.OK("Uninstall complete")
 	return nil
+}
+
+// resolvePlatformDirForUninstall resolves the target platform directory for a
+// destructive uninstall. Unlike resolvePlatformDir (used by status/doctor/etc.,
+// where falling back to the global "last known platform" in userstate is a
+// convenience), uninstall must never guess: userstate is process-wide and
+// directory-independent, so running `kb-create uninstall` from a project whose
+// own .kb/kb.config.jsonc can't be read (missing, stale, or simply a directory
+// kb-create never touched) would otherwise silently target whatever platform
+// install happened to run last — reported as deleting a completely different
+// project's platform than the one the CLI's own status line implied.
+func resolvePlatformDirForUninstall(cmd *cobra.Command) (string, error) {
+	if p, _ := cmd.Flags().GetString("platform"); p != "" {
+		return p, nil
+	}
+	if p, _ := cmd.Root().PersistentFlags().GetString("platform"); p != "" {
+		return p, nil
+	}
+	cwd, _ := os.Getwd()
+	if cfg, err := config.Read(cwd); err == nil {
+		return cfg.Platform, nil
+	}
+	return "", fmt.Errorf(
+		"could not determine the platform to uninstall from the current directory (%s) — "+
+			"run this from the project directory, or pass --platform <dir> explicitly", cwd,
+	)
 }
 
 func removeGeneratedProjectPointer(path, platformDir string) bool {
