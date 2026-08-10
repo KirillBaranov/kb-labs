@@ -211,6 +211,18 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 			inputs["mode"] = "update"
 		}
 		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: inputs})
+		for index, packageSpec := range catalog.SortedIDs(component.CompanionPackages) {
+			companionInputs := map[string]string{"component": id + ":companion", "package": packageSpec}
+			if request.RefreshPackages {
+				companionInputs["mode"] = "update"
+			}
+			actions = append(actions, PlanAction{
+				ID:        fmt.Sprintf("install:%s:companion:%d", id, index),
+				Kind:      ActionInstallPackage,
+				DependsOn: append([]string(nil), dependencies...),
+				Inputs:    companionInputs,
+			})
+		}
 	}
 	capabilities := make([]string, 0, len(providers))
 	for capability := range providers {

@@ -137,6 +137,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		ProjectRoot:      projectDir,
 		PlatformRoot:     platformDir,
 		CatalogDigest:    catalog.Digest,
+		Binaries:         defaultBinaryIDs(manifestSource),
 		PackageOverrides: packageOverrides,
 	}, catalog)
 	if err != nil {
@@ -204,6 +205,20 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
 
+}
+
+func defaultBinaryIDs(source *manifest.Manifest) []string {
+	if source == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(source.Binaries))
+	for _, binary := range source.Binaries {
+		if binary.Default {
+			ids = append(ids, binary.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 func componentPackageSpec(source enginecatalog.Catalog, id, version string) string {
