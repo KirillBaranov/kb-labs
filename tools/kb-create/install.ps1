@@ -41,12 +41,13 @@ $ResolvedVersion = $null
 
 if ($Version -eq "latest") {
     try {
-        $releases = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=100"
-        $binaryRelease = $releases | Where-Object { $_.tag_name -like "*-binaries" } | Select-Object -First 1
-        if (-not $binaryRelease) {
+        # `binaries-stable` is maintained by release-binaries.yml. This is a
+        # direct GitHub Release asset, not a GitHub REST API lookup.
+        $channel = Invoke-RestMethod "https://github.com/$Repo/releases/download/binaries-stable/channel.json"
+        if (-not $channel.tag -or $channel.tag -notlike "*-binaries") {
             throw "No binary release was found for $Repo."
         }
-        $ResolvedVersion = $binaryRelease.tag_name
+        $ResolvedVersion = $channel.tag
         $BaseUrl = "https://github.com/$Repo/releases/download/$ResolvedVersion"
         Write-Info "Channel: latest (resolved to $ResolvedVersion)"
     } catch {

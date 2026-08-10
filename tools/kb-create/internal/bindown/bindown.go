@@ -55,6 +55,17 @@ func Download(repo, name, destDir string, progress chan<- Progress) (*Result, er
 		return nil, fmt.Errorf("resolve latest release for %s: %w", repo, err)
 	}
 
+	return downloadVersion(repo, name, version, osName, archName, destDir, progress)
+}
+
+// DownloadVersion downloads a known binaries release directly. This is the
+// installer path for published manifests and does not call api.github.com.
+func DownloadVersion(repo, name, version, destDir string, progress chan<- Progress) (*Result, error) {
+	progress <- Progress{Binary: name, Status: "resolving"}
+	return downloadVersion(repo, name, version, runtime.GOOS, runtime.GOARCH, destDir, progress)
+}
+
+func downloadVersion(repo, name, version, osName, archName, destDir string, progress chan<- Progress) (*Result, error) {
 	binaryFile := fmt.Sprintf("%s-%s-%s", name, osName, archName)
 	baseURL := fmt.Sprintf("https://github.com/%s/releases/download/%s", repo, version)
 	binaryURL := baseURL + "/" + binaryFile
@@ -114,56 +125,70 @@ func Symlink(target, linkDir, name string) error {
 
 // ── internal ────────────────────────────────────────────────────────────────
 
-// latestBinariesTag resolves the newest dedicated binary release tag.
-//
-// The repository also publishes npm/platform releases. They may become the
-// GitHub "latest" release and do not contain Go binary assets, so this lookup
-// must select the separate *-binaries release stream explicitly.
+// latestBinariesTag reads the release-maintained stable pointer. It is used
+// only by the embedded compatibility manifest. Until the first
+// `binaries-stable` asset is published, retain the previous API resolver so an
+// upgrade from an older installation does not become impossible.
 func latestBinariesTag(repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
+	url := fmt.Sprintf("https://github.com/%s/releases/download/binaries-stable/channel.json", repo)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
 	resp, err := client.Do(req) // #nosec G704 -- URL is constructed from trusted GitHub API constant
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode == http.StatusOK {
+			body, readErr := io.ReadAll(resp.Body)
+			if readErr == nil {
+				if tag, parseErr := latestBinariesTagFromJSON(body, repo); parseErr == nil {
+					return tag, nil
+				}
+			}
+		}
+	}
+	return latestBinariesTagFromAPI(repo)
+}
+
+func latestBinariesTagFromAPI(repo string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Get(url) // #nosec G704 -- trusted GitHub API fallback
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			return "", fmt.Errorf("GitHub API %s returned 403; set GITHUB_TOKEN or pin a binary release version", url)
-		}
 		return "", fmt.Errorf("GitHub API %s returned %d", url, resp.StatusCode)
 	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-
-	return latestBinariesTagFromJSON(body, repo)
-}
-
-func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
 	var releases []struct {
 		TagName string `json:"tag_name"`
 	}
 	if err := json.Unmarshal(body, &releases); err != nil {
-		return "", fmt.Errorf("parse GitHub releases for %s: %w", repo, err)
+		return "", err
 	}
 	for _, release := range releases {
 		if strings.HasSuffix(release.TagName, binariesReleaseSuffix) {
 			return release.TagName, nil
 		}
+	}
+	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
+}
+
+func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
+	var channel struct {
+		Tag string `json:"tag"`
+	}
+	if err := json.Unmarshal(body, &channel); err != nil {
+		return "", fmt.Errorf("parse stable binaries channel for %s: %w", repo, err)
+	}
+	if strings.HasSuffix(channel.Tag, binariesReleaseSuffix) {
+		return channel.Tag, nil
 	}
 	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
 }

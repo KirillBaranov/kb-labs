@@ -8,19 +8,13 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # ── Step 1: Install KB Labs ────────────────────────────────────────────────
 echo "==> [1/3] Installing KB Labs..."
-# Skip remote download when binaries are already present (pre-built Docker image).
-# Falls back to kblabs.ru install for bare-metal / manual runs.
-if command -v kb-create > /dev/null 2>&1 && command -v kb-dev > /dev/null 2>&1; then
-  echo "    Binaries already installed — skipping remote download"
-else
-  curl -fsSL https://kblabs.ru/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-fi
-
-if ! command -v kb-create > /dev/null 2>&1; then
-  echo "ERROR: kb-create not found after install"
+# E2E must be hermetic. The image is required to provide every bootstrap
+# binary; falling back to kblabs.ru made results depend on public infrastructure.
+if ! command -v kb-create > /dev/null 2>&1 || ! command -v kb-dev > /dev/null 2>&1 || ! command -v kb-devkit > /dev/null 2>&1; then
+  echo "ERROR: hermetic E2E image is missing kb-create, kb-dev, or kb-devkit"
   exit 1
 fi
+echo "    Using binaries baked into the E2E image"
 echo "    kb-create $(kb-create --version 2>&1 | head -1)"
 
 # ── Step 2: Bootstrap project ──────────────────────────────────────────────
