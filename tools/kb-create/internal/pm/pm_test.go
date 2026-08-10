@@ -359,11 +359,13 @@ func TestPnpmInstallRecoversFromIgnoredBuilds(t *testing.T) {
 	p := &PnpmManager{}
 	progress := make(chan Progress, 256)
 	done := make(chan error, 1)
+	var lines []string
 	go func() {
 		done <- p.Install(dir, []string{"file:" + fixtureDir}, progress)
 		close(progress)
 	}()
-	for range progress {
+	for msg := range progress {
+		lines = append(lines, msg.Line)
 	}
 	if err := <-done; err != nil {
 		t.Fatalf("Install() with a build script outside the allowlist should recover via approve-builds, got error: %v", err)
@@ -371,5 +373,19 @@ func TestPnpmInstallRecoversFromIgnoredBuilds(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "node_modules", "kb-fixture-pkg", "built.txt")); err != nil {
 		t.Errorf("postinstall build script did not run after auto-approve-builds retry: %v", err)
+	}
+
+	// The approve-builds fallback auto-approves every pending build script
+	// (not just the curated allowlist), so its output must be surfaced as an
+	// audit trail instead of silently swallowed.
+	found := false
+	for _, l := range lines {
+		if strings.Contains(l, "[approve-builds]") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected [approve-builds] audit-log lines in progress output, found none")
 	}
 }

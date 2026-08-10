@@ -111,7 +111,7 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 		// dependency tree — pnpm still stops non-interactively asking for
 		// `pnpm approve-builds`. Run that headlessly and retry once instead of
 		// leaving the user stuck with no TTY to answer the prompt.
-		if approveErr := p.approveBuilds(dir); approveErr != nil {
+		if approveErr := p.approveBuilds(dir, progress); approveErr != nil {
 			return fmt.Errorf("%w (auto-approve-builds also failed: %v)", err, approveErr)
 		}
 		return p.runOnce(dir, args, progress, new(bool))
@@ -171,12 +171,27 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 // all pending dependency build scripts without an interactive prompt. Used as
 // a fallback when the pre-written pnpm-workspace.yaml allowlist wasn't
 // honored for the resolved dependency tree.
-func (p *PnpmManager) approveBuilds(dir string) error {
+//
+// --all approves every pending build script, not just the names ensureNpmrc
+// pre-approved — so unlike that curated allowlist, this path isn't itself a
+// vetting step. What it does provide is an audit trail: every approved
+// package name (pnpm's own output names each one, e.g. "esbuild@0.28.2
+// postinstall$ ...") is surfaced through the same progress stream as the
+// rest of the install, and the resulting pnpm-workspace.yaml allowBuilds
+// list — which pnpm persists after approval — stays on disk for later review,
+// instead of the approval happening silently.
+func (p *PnpmManager) approveBuilds(dir string, progress chan<- Progress) error {
 	// #nosec G204 -- command name and flags are fixed; dir is passed as an argument.
 	cmd := exec.CommandContext(context.Background(), "pnpm", "approve-builds", "--all", "--dir", dir)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "NPM_CONFIG_USERCONFIG="+filepath.Join(dir, ".npmrc"))
 	out, err := cmd.CombinedOutput()
+	progress <- Progress{Line: "[approve-builds] auto-approving pending build scripts (ERR_PNPM_IGNORED_BUILDS recovery):"}
+	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		if strings.TrimSpace(line) != "" {
+			progress <- Progress{Line: "[approve-builds] " + line}
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("pnpm approve-builds --all: %w\n%s", err, out)
 	}
