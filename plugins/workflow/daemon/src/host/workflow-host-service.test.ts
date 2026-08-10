@@ -84,6 +84,32 @@ describe('WorkflowHostService', () => {
     expect(result.type).toBe('job-mind:rag-query');
   });
 
+  // BUG-04: `kb workflow runs status --run-id ...` (backed by getRun()) returned
+  // the engine's internal 'success' status verbatim, while e2e/install-flow/test.sh
+  // and the docs poll for a terminal 'completed' — the same status this same
+  // service already returns from getJob/listJobs for the very same run. The
+  // polling loop never exited early and burned all 30 retries.
+  it('getRun maps the engine status to the REST-facing "completed" vocabulary', async () => {
+    const run: WorkflowRun = {
+      id: 'run-1',
+      name: 'demo',
+      version: '1.0.0',
+      status: 'success',
+      createdAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      jobs: [],
+      trigger: { type: 'manual' },
+      env: {},
+    } as WorkflowRun;
+
+    const service = createService({
+      engine: { getRun: vi.fn(async () => run) },
+    });
+
+    const result = await service.getRun('run-1');
+    expect(result?.status).toBe('completed');
+  });
+
   it('getRunLogs delegates to jobBroker.getRunLogs with stepId filter', async () => {
     const mockLog = { timestamp: '2026-01-01T00:00:00.000Z', level: 'info', message: 'Executing step', context: { runId: 'r1', stepId: 's1' } };
     const getRunLogs = vi.fn(async () => [mockLog]);

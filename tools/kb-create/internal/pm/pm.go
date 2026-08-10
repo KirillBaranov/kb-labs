@@ -33,6 +33,9 @@ type PackageManager interface {
 	Install(dir string, pkgs []string, progress chan<- Progress) error
 	// Update updates already-installed packages to their latest versions.
 	Update(dir string, pkgs []string, progress chan<- Progress) error
+	// Restore reinstalls node_modules from the existing package.json/lockfile
+	// in dir, without changing declared dependency versions.
+	Restore(dir string, progress chan<- Progress) error
 	// ListInstalled returns packages installed in dir.
 	ListInstalled(dir string) ([]InstalledPackage, error)
 }

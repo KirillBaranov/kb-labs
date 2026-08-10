@@ -109,7 +109,12 @@ export async function generateCommitPlan(options: GenerateOptions): Promise<Comm
 
   const logger = useLogger();
   const analytics = useAnalytics();
-  const llm = useLLM();
+  // Gated on options.llmComplete (undefined when the caller's config has LLM
+  // disabled — see run.ts's resolveContext), not just on useLLM() truthiness.
+  // The platform's LLM adapter is registered independently of this plugin's
+  // llm.enabled setting, so useLLM() alone stays truthy even when the commit
+  // plugin should never call the gateway.
+  const llm = options.llmComplete ? useLLM() : undefined;
   const startTime = Date.now();
 
   // 1. Get git status — cwd is already the resolved scope directory

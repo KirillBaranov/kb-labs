@@ -21,6 +21,7 @@ func (f *fakePM) Install(_ string, packages []string, progress chan<- pm.Progres
 	return nil
 }
 func (*fakePM) Update(string, []string, chan<- pm.Progress) error     { return nil }
+func (*fakePM) Restore(string, chan<- pm.Progress) error              { return nil }
 func (f *fakePM) ListInstalled(string) ([]pm.InstalledPackage, error) { return f.installed, nil }
 
 func TestPMAdapterBridgesInstallAndInstalled(t *testing.T) {

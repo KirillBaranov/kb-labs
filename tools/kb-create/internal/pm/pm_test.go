@@ -3,6 +3,7 @@ package pm
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -333,5 +334,58 @@ func TestEnsureNpmrcHonorsCustomRegistry(t *testing.T) {
 	const want = "registry=http://localhost:4873/"
 	if !strings.Contains(string(data), want) {
 		t.Errorf(".npmrc missing custom registry: got %q, want it to contain %q", string(data), want)
+	}
+}
+
+// TestPnpmInstallRecoversFromIgnoredBuilds reproduces BUG-01: a package whose
+// build script isn't covered by the pre-written pnpm-workspace.yaml allowlist
+// makes pnpm stop with ERR_PNPM_IGNORED_BUILDS and no TTY to answer the
+// interactive "pnpm approve-builds" prompt — the exact failure real users hit
+// on `kb-create <project> --yes`. Before the fix, Install returns that error
+// verbatim. After the fix, it auto-runs `pnpm approve-builds --all` and
+// retries once, succeeding without any interactive prompt.
+func TestPnpmInstallRecoversFromIgnoredBuilds(t *testing.T) {
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		t.Skip("pnpm not found in PATH")
+	}
+
+	fixtureDir := t.TempDir()
+	fixturePkg := `{"name":"kb-fixture-pkg","version":"1.0.0","scripts":{"postinstall":"node -e \"require('fs').writeFileSync('built.txt','ok')\""}}` + "\n"
+	if err := os.WriteFile(filepath.Join(fixtureDir, "package.json"), []byte(fixturePkg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	p := &PnpmManager{}
+	progress := make(chan Progress, 256)
+	done := make(chan error, 1)
+	var lines []string
+	go func() {
+		done <- p.Install(dir, []string{"file:" + fixtureDir}, progress)
+		close(progress)
+	}()
+	for msg := range progress {
+		lines = append(lines, msg.Line)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("Install() with a build script outside the allowlist should recover via approve-builds, got error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "node_modules", "kb-fixture-pkg", "built.txt")); err != nil {
+		t.Errorf("postinstall build script did not run after auto-approve-builds retry: %v", err)
+	}
+
+	// The approve-builds fallback auto-approves every pending build script
+	// (not just the curated allowlist), so its output must be surfaced as an
+	// audit trail instead of silently swallowed.
+	found := false
+	for _, l := range lines {
+		if strings.Contains(l, "[approve-builds]") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected [approve-builds] audit-log lines in progress output, found none")
 	}
 }

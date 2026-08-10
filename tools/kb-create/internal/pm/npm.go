@@ -35,6 +35,14 @@ func (n *NpmManager) Update(dir string, pkgs []string, progress chan<- Progress)
 	return n.run(dir, args, progress)
 }
 
+func (n *NpmManager) Restore(dir string, progress chan<- Progress) error {
+	args := []string{"install", "--prefix", dir}
+	if n.Registry != "" {
+		args = append(args, "--registry", n.Registry)
+	}
+	return n.run(dir, args, progress)
+}
+
 func (n *NpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
 	nmDir := filepath.Join(dir, "node_modules")
 	if _, err := os.Stat(nmDir); os.IsNotExist(err) {
