@@ -214,6 +214,14 @@ jobs:
           name: dist
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
+      - name: Build cli/bin (not always in the affected-diff closure)
+        # The dist/ artifact from "Build TS (affected)" only contains packages
+        # actually affected by this PR's diff. cli/bin is loaded dynamically
+        # by plugin manifest, not statically imported, so it's frequently NOT
+        # part of that closure — yet `pnpm kb workflow lint` below always
+        # needs cli/bin/dist/bin.js to exist. Build it explicitly so this job
+        # doesn't depend on the diff happening to touch cli/bin's graph.
+        run: ./tools/kb-devkit/kb-devkit run build --packages @kb-labs/cli-bin
       - name: Validate workflow definitions and local step scripts
         run: |
           node .kb/workflows/scripts/check-local-script-references.mjs
