@@ -398,3 +398,56 @@ jobs:
           if [ -d e2e/.verdaccio-storage ]; then
             sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
           fi
+
+      # ── Per-step timings (Phase 0 of ADR-0017) ───────────────────────────
+
+      - name: Emit timings
+        if: always()
+        continue-on-error: true   # non-critical telemetry — gh api may return empty JSON mid-run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/e2e-timings
+          OUT_JSON=/tmp/e2e-timings/timings.json
+          gh api "/repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '{
+              run_id: '"$RUN_ID"',
+              repo: "'"$REPO"'",
+              jobs: [.jobs[] | {
+                name: .name,
+                conclusion: .conclusion,
+                started_at: .started_at,
+                completed_at: .completed_at,
+                steps: [.steps[] | select(.completed_at != null) | {
+                  name: .name,
+                  number: .number,
+                  conclusion: .conclusion,
+                  started_at: .started_at,
+                  completed_at: .completed_at,
+                  duration_s: (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)))
+                }]
+              }]
+            }' > "$OUT_JSON"
+          {
+            echo "## E2E timings — ${{ inputs.suite }}"
+            echo ""
+            echo "Run: \`${RUN_ID}\` · ${REPO}"
+            echo ""
+            echo "| # | step | duration | conclusion |"
+            echo "|---|---|---:|---|"
+            jq -r '.jobs[0].steps[] | "| \(.number) | \(.name) | \(.duration_s | floor)s | \(.conclusion) |"' "$OUT_JSON"
+            echo ""
+            TOTAL=$(jq -r '[.jobs[0].steps[].duration_s] | add | floor' "$OUT_JSON")
+            echo "**Total measured:** ${TOTAL}s"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}e2e-timings-${{ github.run_id }}-${{ inputs.suite }}
+          path: /tmp/e2e-timings/
+          retention-days: 90
