@@ -2,7 +2,6 @@ import * as React from 'react';
 import {
   UIRadio,
   UIRadioGroup,
-  UISwitch,
   UISpace,
   UICard,
   UITypographyText,
@@ -32,15 +31,6 @@ export function AppearanceSettings() {
     });
   };
 
-  const handleCompactModeChange = (checked: boolean) => {
-    updateSettings({
-      appearance: {
-        ...settings.appearance,
-        compactMode: checked,
-      },
-    });
-  };
-
   const handleFontSizeChange = (e: any) => {
     updateSettings({
       appearance: {
@@ -54,7 +44,7 @@ export function AppearanceSettings() {
     <UISpace direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Theme Selection */}
       <div>
-        <UITypographyText strong style={{ fontSize: 16, display: 'block', marginBottom: 12 }}>
+        <UITypographyText strong className="typo-label" style={{ display: 'block', marginBottom: 12 }}>
           Theme
         </UITypographyText>
         <UITypographyParagraph type="secondary" style={{ marginBottom: 16 }}>
@@ -148,27 +138,9 @@ export function AppearanceSettings() {
         </UISpace>
       </div>
 
-      {/* Compact Mode */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div>
-            <UITypographyText strong style={{ fontSize: 16, display: 'block' }}>
-              Compact Mode
-            </UITypographyText>
-            <UITypographyParagraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
-              Reduce spacing and padding for a denser layout
-            </UITypographyParagraph>
-          </div>
-          <UISwitch
-            checked={settings.appearance.compactMode}
-            onChange={handleCompactModeChange}
-          />
-        </div>
-      </div>
-
       {/* Font Size */}
       <div>
-        <UITypographyText strong style={{ fontSize: 16, display: 'block', marginBottom: 12 }}>
+        <UITypographyText strong className="typo-label" style={{ display: 'block', marginBottom: 12 }}>
           Font Size
         </UITypographyText>
         <UITypographyParagraph type="secondary" style={{ marginBottom: 16 }}>

@@ -96,7 +96,7 @@ export function NavigationSettings() {
   return (
     <UISpace direction="vertical" size="large" style={{ width: '100%' }}>
       <div>
-        <UITypographyText strong style={{ fontSize: 16, display: 'block', marginBottom: 12 }}>
+        <UITypographyText strong className="typo-label" style={{ display: 'block', marginBottom: 12 }}>
           Sidebar Categories
         </UITypographyText>
         <UITypographyParagraph type="secondary" style={{ marginBottom: 16 }}>
