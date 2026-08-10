@@ -217,11 +217,12 @@ jobs:
           chmod +x tools-bin/*
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
           cp tools-bin/kb-dev tools/kb-dev/kb-dev
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-      - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
+      # `test` resolves workspace packages through their built exports. The
+      # build artifact above contains only affected packages, which is enough
+      # for fast checks but not for this deliberately full unit-test gate.
+      - name: Build complete workspace for unit resolution
+        run: ./tools/kb-devkit/kb-devkit run build --no-cache
       - name: Run all unit tests
         run: ./tools/kb-devkit/kb-devkit run test --no-cache
 
