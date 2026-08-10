@@ -125,8 +125,10 @@ func Symlink(target, linkDir, name string) error {
 
 // ── internal ────────────────────────────────────────────────────────────────
 
-// latestBinariesTag reads the release-maintained stable pointer. This remains
-// for embedded-manifest compatibility, but never lists GitHub releases via API.
+// latestBinariesTag reads the release-maintained stable pointer. It is used
+// only by the embedded compatibility manifest. Until the first
+// `binaries-stable` asset is published, retain the previous API resolver so an
+// upgrade from an older installation does not become impossible.
 func latestBinariesTag(repo string) (string, error) {
 	url := fmt.Sprintf("https://github.com/%s/releases/download/binaries-stable/channel.json", repo)
 
@@ -136,21 +138,46 @@ func latestBinariesTag(repo string) (string, error) {
 		return "", err
 	}
 	resp, err := client.Do(req) // #nosec G704 -- URL is constructed from trusted GitHub API constant
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode == http.StatusOK {
+			body, readErr := io.ReadAll(resp.Body)
+			if readErr == nil {
+				if tag, parseErr := latestBinariesTagFromJSON(body, repo); parseErr == nil {
+					return tag, nil
+				}
+			}
+		}
+	}
+	return latestBinariesTagFromAPI(repo)
+}
+
+func latestBinariesTagFromAPI(repo string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Get(url) // #nosec G704 -- trusted GitHub API fallback
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("stable binaries channel %s returned %d", url, resp.StatusCode)
+		return "", fmt.Errorf("GitHub API %s returned %d", url, resp.StatusCode)
 	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-
-	return latestBinariesTagFromJSON(body, repo)
+	var releases []struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.Unmarshal(body, &releases); err != nil {
+		return "", err
+	}
+	for _, release := range releases {
+		if strings.HasSuffix(release.TagName, binariesReleaseSuffix) {
+			return release.TagName, nil
+		}
+	}
+	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
 }
 
 func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
