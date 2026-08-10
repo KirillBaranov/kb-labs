@@ -16,8 +16,8 @@ export interface UserSettings {
     pageTransition: 'none' | 'fade' | 'slide';
   };
   experimental: {
-    /** User-enabled feature flags */
-    enabledFeatures: FeatureId[];
+    /** Explicit per-feature overrides of the flag's defaultEnabled value */
+    featurePreferences: Partial<Record<FeatureId, boolean>>;
   };
   navigation: {
     categories: NavigationCategory[];
@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS: UserSettings = {
     pageTransition: 'none',
   },
   experimental: {
-    enabledFeatures: [],
+    featurePreferences: {},
   },
   navigation: {
     categories: [],
