@@ -104,14 +104,14 @@ case "$OS" in
 esac
 
 if [ "$VERSION" = "latest" ]; then
-  # The repository has separate npm/platform releases and binary releases.
-  # GitHub's "latest" can point at a release without installer assets, so
-  # resolve only the dedicated binary release stream.
-  RELEASES_JSON="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=100" 2>/dev/null)" || {
-    err "Unable to resolve the latest binary release from GitHub."
+  # `binaries-stable` is a tiny mutable GitHub Release asset maintained by
+  # release-binaries.yml. Using the direct asset URL avoids GitHub REST API
+  # lookup and cannot accidentally select a platform/npm release.
+  CHANNEL_JSON="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-stable/channel.json" 2>/dev/null)" || {
+    err "Unable to resolve the stable binaries channel from GitHub Releases."
     exit 1
   }
-  RESOLVED_VERSION="$(printf '%s\n' "$RELEASES_JSON" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
+  RESOLVED_VERSION="$(printf '%s\n' "$CHANNEL_JSON" | sed -n 's/.*"tag":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
   if [ -z "$RESOLVED_VERSION" ]; then
     err "No binary release was found for ${REPO}."
     exit 1

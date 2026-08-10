@@ -4,16 +4,29 @@ import (
 	_ "embed"
 
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
 //go:embed manifest.json
 var embeddedManifest []byte
+
+const defaultChannelURL = "https://github.com/kb-labs-team/kb-labs/releases/download/installer-stable/channel.json"
+
+type channelPointer struct {
+	Schema      int    `json:"schema"`
+	Channel     string `json:"channel"`
+	ReleaseTag  string `json:"releaseTag"`
+	ManifestURL string `json:"manifestUrl"`
+	SHA256      string `json:"sha256"`
+}
 
 // LoadOptions controls where the manifest is loaded from.
 // Zero value loads from embedded JSON only.
@@ -54,12 +67,108 @@ func Load(opts LoadOptions) (*Manifest, error) {
 	return loadBytes(embeddedManifest)
 }
 
-// LoadDefault loads the embedded manifest with no remote/local overrides.
+// LoadDefault obtains the stable release manifest through a small GitHub
+// Release asset. It intentionally uses the download endpoint, not GitHub's
+// REST API. A verified cached copy keeps already-installed users working when
+// the network is unavailable; the embedded manifest is the final bootstrap
+// fallback for older distributions.
 func LoadDefault() (*Manifest, error) {
-	return Load(LoadOptions{})
+	if os.Getenv("KB_CREATE_OFFLINE") == "1" {
+		if m, err := loadCachedReleaseManifest(); err == nil {
+			return m, nil
+		}
+		return loadBytes(embeddedManifest)
+	}
+	if override := os.Getenv("KB_CREATE_MANIFEST_URL"); override != "" {
+		return Load(LoadOptions{RemoteURL: override})
+	}
+	if m, err := loadChannel(defaultChannelURL); err == nil {
+		return m, nil
+	}
+	if m, err := loadCachedReleaseManifest(); err == nil {
+		return m, nil
+	}
+	return loadBytes(embeddedManifest)
+}
+
+func loadChannel(url string) (*Manifest, error) {
+	data, err := fetch(url, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	var pointer channelPointer
+	if err := json.Unmarshal(data, &pointer); err != nil {
+		return nil, fmt.Errorf("parse channel pointer: %w", err)
+	}
+	if pointer.Schema != 1 || pointer.Channel != "stable" || pointer.ManifestURL == "" || len(pointer.SHA256) != 64 {
+		return nil, fmt.Errorf("invalid installer channel pointer")
+	}
+	manifestData, err := fetch(pointer.ManifestURL, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	actual := fmt.Sprintf("%x", sha256.Sum256(manifestData))
+	if !strings.EqualFold(actual, pointer.SHA256) {
+		return nil, fmt.Errorf("installer manifest checksum mismatch")
+	}
+	m, err := loadBytes(manifestData)
+	if err != nil {
+		return nil, err
+	}
+	if m.Release == nil || m.Release.Tag != pointer.ReleaseTag {
+		return nil, fmt.Errorf("installer manifest release tag does not match channel pointer")
+	}
+	_ = cacheReleaseManifest(manifestData)
+	return m, nil
+}
+
+func releaseManifestCachePath() (string, error) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "kb-labs", "kb-create", "installer-manifest.json"), nil
+}
+
+func cacheReleaseManifest(data []byte) error {
+	path, err := releaseManifestCachePath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func loadCachedReleaseManifest() (*Manifest, error) {
+	path, err := releaseManifestCachePath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	m, err := loadBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	if m.Release == nil || m.Release.Channel != "stable" {
+		return nil, fmt.Errorf("cached manifest is not a stable release manifest")
+	}
+	return m, nil
 }
 
 func loadRemote(url string, timeout time.Duration) (*Manifest, error) {
+	data, err := fetch(url, timeout)
+	if err != nil {
+		return nil, err
+	}
+	return loadBytes(data)
+}
+
+func fetch(url string, timeout time.Duration) ([]byte, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
@@ -83,7 +192,7 @@ func loadRemote(url string, timeout time.Duration) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return loadBytes(data)
+	return data, nil
 }
 
 func loadBytes(data []byte) (*Manifest, error) {

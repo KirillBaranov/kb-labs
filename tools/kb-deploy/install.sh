@@ -124,19 +124,9 @@ esac
 # ── Version resolution ────────────────────────────────────────────────────────
 
 if [ "$VERSION" = "latest" ]; then
-  # Prefer API-resolved tag; fall back to GitHub's built-in latest/download
-  # if the API is unavailable or rate-limited.
-  RESOLVED_VERSION="$(
-    curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=1" 2>/dev/null \
-    | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*$/\1/p' \
-    | head -n 1
-  )"
-  if [ -n "$RESOLVED_VERSION" ]; then
-    BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"
-  else
-    warn "GitHub API unavailable; falling back to releases/latest/download."
-    BASE_URL="https://github.com/${REPO}/releases/latest/download"
-  fi
+  RESOLVED_VERSION="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-stable/channel.json" | sed -n 's/.*"tag":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
+  [ -n "$RESOLVED_VERSION" ] || { err "Unable to resolve stable binaries channel."; exit 1; }
+  BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"
 else
   RESOLVED_VERSION="$VERSION"
   BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"

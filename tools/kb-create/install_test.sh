@@ -48,7 +48,7 @@ esac
 BINARY_FILE="kb-create-${HOST_OS}-${HOST_ARCH}"
 
 # write_fake_curl installs a curl shim into $1 that answers install.sh's three
-# request shapes (GitHub API tag resolution, checksums.txt, the binary itself)
+# request shapes (stable channel pointer, checksums.txt, the binary itself)
 # using the env vars it reads at call time: FAKE_TAG, FAKE_CHECKSUM_LINE,
 # FAKE_BIN_CONTENT. Single-quoted heredoc — no expansion at generation time,
 # every value is resolved from the environment when the shim actually runs.
@@ -68,11 +68,8 @@ for ((i = 0; i < n; i++)); do
   esac
 done
 case "$url" in
-  *api.github.com*)
-    out='[
-  { "tag_name": "platform-v9.9.9" },
-  { "tag_name": "'"${FAKE_TAG:-v9.9.9-binaries}"'" }
-]'
+  *binaries-stable/channel.json*)
+    out='{ "schema": 1, "channel": "stable", "tag": "'"${FAKE_TAG:-v9.9.9-binaries}"'" }'
     ;;
   *checksums.txt)
     out="$FAKE_CHECKSUM_LINE"

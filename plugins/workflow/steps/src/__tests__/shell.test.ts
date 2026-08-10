@@ -445,8 +445,12 @@ describe('shellHandler — timeout regression (BUG: timedOut + reject:false = si
     const ctx = makeMockCtx()
     await expect(
       shellModule.execute(ctx, {
-        command: `node -e "console.log('working...'); setTimeout(() => {}, 10000)"`,
-        timeout: 200,
+        // A shell builtin emits before the long-running child starts. Starting
+        // a second Node process within 200ms is scheduling-dependent on a
+        // loaded CI worker, which made this assertion flaky rather than testing
+        // the timeout log contract.
+        command: "printf 'working...\\n'; sleep 10",
+        timeout: 500,
       }),
     ).rejects.toThrow(/timed out/i)
 

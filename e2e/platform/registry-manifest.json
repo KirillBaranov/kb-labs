@@ -144,7 +144,8 @@
       "repo": "kb-labs-team/kb-labs",
       "name": "kb-devkit",
       "description": "Workspace orchestrator",
-      "default": false
+      "default": false,
+      "localPath": "/usr/local/bin/kb-devkit"
     },
     {
       "id": "kb-deploy",

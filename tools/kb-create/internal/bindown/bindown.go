@@ -55,6 +55,17 @@ func Download(repo, name, destDir string, progress chan<- Progress) (*Result, er
 		return nil, fmt.Errorf("resolve latest release for %s: %w", repo, err)
 	}
 
+	return downloadVersion(repo, name, version, osName, archName, destDir, progress)
+}
+
+// DownloadVersion downloads a known binaries release directly. This is the
+// installer path for published manifests and does not call api.github.com.
+func DownloadVersion(repo, name, version, destDir string, progress chan<- Progress) (*Result, error) {
+	progress <- Progress{Binary: name, Status: "resolving"}
+	return downloadVersion(repo, name, version, runtime.GOOS, runtime.GOARCH, destDir, progress)
+}
+
+func downloadVersion(repo, name, version, osName, archName, destDir string, progress chan<- Progress) (*Result, error) {
 	binaryFile := fmt.Sprintf("%s-%s-%s", name, osName, archName)
 	baseURL := fmt.Sprintf("https://github.com/%s/releases/download/%s", repo, version)
 	binaryURL := baseURL + "/" + binaryFile
@@ -114,24 +125,16 @@ func Symlink(target, linkDir, name string) error {
 
 // ── internal ────────────────────────────────────────────────────────────────
 
-// latestBinariesTag resolves the newest dedicated binary release tag.
-//
-// The repository also publishes npm/platform releases. They may become the
-// GitHub "latest" release and do not contain Go binary assets, so this lookup
-// must select the separate *-binaries release stream explicitly.
+// latestBinariesTag reads the release-maintained stable pointer. This remains
+// for embedded-manifest compatibility, but never lists GitHub releases via API.
 func latestBinariesTag(repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
+	url := fmt.Sprintf("https://github.com/%s/releases/download/binaries-stable/channel.json", repo)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
 	resp, err := client.Do(req) // #nosec G704 -- URL is constructed from trusted GitHub API constant
 	if err != nil {
 		return "", err
@@ -139,10 +142,7 @@ func latestBinariesTag(repo string) (string, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			return "", fmt.Errorf("GitHub API %s returned 403; set GITHUB_TOKEN or pin a binary release version", url)
-		}
-		return "", fmt.Errorf("GitHub API %s returned %d", url, resp.StatusCode)
+		return "", fmt.Errorf("stable binaries channel %s returned %d", url, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -154,16 +154,14 @@ func latestBinariesTag(repo string) (string, error) {
 }
 
 func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
-	var releases []struct {
-		TagName string `json:"tag_name"`
+	var channel struct {
+		Tag string `json:"tag"`
 	}
-	if err := json.Unmarshal(body, &releases); err != nil {
-		return "", fmt.Errorf("parse GitHub releases for %s: %w", repo, err)
+	if err := json.Unmarshal(body, &channel); err != nil {
+		return "", fmt.Errorf("parse stable binaries channel for %s: %w", repo, err)
 	}
-	for _, release := range releases {
-		if strings.HasSuffix(release.TagName, binariesReleaseSuffix) {
-			return release.TagName, nil
-		}
+	if strings.HasSuffix(channel.Tag, binariesReleaseSuffix) {
+		return channel.Tag, nil
 	}
 	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
 }
