@@ -1,7 +1,9 @@
 package manifest
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +11,20 @@ import (
 	"testing"
 	"time"
 )
+
+func TestMain(m *testing.M) {
+	// Unit tests must never depend on a published GitHub Release.
+	_ = os.Setenv("KB_CREATE_OFFLINE", "1")
+	cache, err := os.MkdirTemp("", "kb-create-manifest-test-")
+	if err != nil {
+		panic(err)
+	}
+	_ = os.Setenv("XDG_CACHE_HOME", cache)
+	_ = os.Setenv("HOME", cache)
+	result := m.Run()
+	_ = os.RemoveAll(cache)
+	os.Exit(result)
+}
 
 // TestLoadDefault verifies that the embedded manifest parses successfully
 // and contains the expected top-level fields.
@@ -117,6 +133,50 @@ func TestLoadRemoteOK(t *testing.T) {
 	}
 	if m.Version != "remote-1.0" {
 		t.Errorf("Version = %q, want %q", m.Version, "remote-1.0")
+	}
+}
+
+func TestLoadChannelVerifiesChecksumAndCachesManifest(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	manifestData, err := json.Marshal(Manifest{
+		Version: "remote-1.0",
+		Release: &Release{Tag: "platform-v1.0.0", Channel: "stable"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checksum := fmt.Sprintf("%x", sha256.Sum256(manifestData))
+	var serverURL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/channel.json":
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"schema":1,"channel":"stable","releaseTag":"platform-v1.0.0","manifestUrl":"%s/manifest.json","sha256":"%s"}`, serverURL, checksum)))
+		case "/manifest.json":
+			_, _ = w.Write(manifestData)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	serverURL = srv.URL
+
+	m, err := loadChannel(srv.URL + "/channel.json")
+	if err != nil {
+		t.Fatalf("loadChannel() error = %v", err)
+	}
+	if m.Release == nil || m.Release.Tag != "platform-v1.0.0" {
+		t.Fatalf("unexpected release: %#v", m.Release)
+	}
+	cached, err := loadCachedReleaseManifest()
+	if err != nil || cached.Version != "remote-1.0" {
+		t.Fatalf("cached manifest = %#v, %v", cached, err)
+	}
+	path, err := releaseManifestCachePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
 	}
 }
 

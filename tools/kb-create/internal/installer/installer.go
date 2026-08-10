@@ -665,7 +665,15 @@ func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary
 			}
 		}()
 
-		result, dlErr := bindown.Download(b.Repo, b.Name, binDir, ch)
+		var result *bindown.Result
+		var dlErr error
+		if b.Version != "" {
+			result, dlErr = bindown.DownloadVersion(b.Repo, b.Name, b.Version, binDir, ch)
+		} else {
+			// Compatibility fallback for the embedded manifest only. Published
+			// manifests pin Version and therefore never query GitHub API.
+			result, dlErr = bindown.Download(b.Repo, b.Name, binDir, ch)
+		}
 		close(ch)
 		<-done
 
