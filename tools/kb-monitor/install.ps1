@@ -40,13 +40,14 @@ $ResolvedVersion = $null
 
 if ($Version -eq "latest") {
     try {
-        $releases = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=1"
-        $ResolvedVersion = $releases[0].tag_name
+        $channel = Invoke-RestMethod "https://github.com/$Repo/releases/download/binaries-stable/channel.json"
+        if (-not $channel.tag -or $channel.tag -notlike "*-binaries") { throw "Invalid stable binaries channel." }
+        $ResolvedVersion = $channel.tag
         $BaseUrl = "https://github.com/$Repo/releases/download/$ResolvedVersion"
         Write-Info "Channel: latest (resolved to $ResolvedVersion)"
     } catch {
-        Write-Warn "GitHub API unavailable; falling back to releases/latest/download."
-        $BaseUrl = "https://github.com/$Repo/releases/latest/download"
+        Write-Err "Unable to resolve stable binaries channel: $($_.Exception.Message)"
+        exit 1
     }
 } else {
     $ResolvedVersion = $Version

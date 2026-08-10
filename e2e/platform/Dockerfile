@@ -26,9 +26,11 @@ WORKDIR /src
 COPY tools/clikit    /src/clikit
 COPY tools/kb-create /src/kb-create
 COPY tools/kb-dev    /src/kb-dev
+COPY tools/kb-devkit /src/kb-devkit
 
 RUN cd /src/kb-create && go build -o /out/kb-create .
 RUN cd /src/kb-dev    && go build -o /out/kb-dev .
+RUN cd /src/kb-devkit && go build -o /out/kb-devkit .
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────
 FROM node:24-bookworm
@@ -44,6 +46,7 @@ RUN git config --global user.email "e2e@kblabs.test" && \
 # Pre-install binaries — entrypoint.sh skips kblabs.ru download when these exist
 COPY --from=go-builder /out/kb-create /usr/local/bin/kb-create
 COPY --from=go-builder /out/kb-dev    /usr/local/bin/kb-dev
+COPY --from=go-builder /out/kb-devkit /usr/local/bin/kb-devkit
 
 # Manifest that points kb-create at the local Verdaccio registry
 COPY e2e/platform/registry-manifest.json /e2e-registry-manifest.json

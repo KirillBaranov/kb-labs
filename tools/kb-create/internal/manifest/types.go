@@ -22,6 +22,7 @@ func npmSpec(name string) string {
 // Package is a core npm package required by the platform.
 type Package struct {
 	Name      string `json:"name"`
+	Version   string `json:"version,omitempty"`
 	LocalPath string `json:"localPath,omitempty"` // absolute path for dev mode
 }
 
@@ -30,6 +31,9 @@ func (p Package) PackageSpec() string {
 	if p.LocalPath != "" {
 		return p.Name + "@file:" + p.LocalPath
 	}
+	if p.Version != "" {
+		return p.Name + "@" + p.Version
+	}
 	return npmSpec(p.Name)
 }
 
@@ -37,6 +41,7 @@ func (p Package) PackageSpec() string {
 type Component struct {
 	ID               string        `json:"id"`
 	Pkg              string        `json:"pkg"`
+	Version          string        `json:"version,omitempty"`
 	Description      string        `json:"description"`
 	Default          bool          `json:"default"`
 	LocalPath        string        `json:"localPath,omitempty"`        // absolute path for dev mode
@@ -53,14 +58,18 @@ func (c Component) PackageSpec() string {
 	if c.LocalPath != "" {
 		return c.Pkg + "@file:" + c.LocalPath
 	}
+	if c.Version != "" {
+		return c.Pkg + "@" + c.Version
+	}
 	return npmSpec(c.Pkg)
 }
 
 // Binary describes a Go binary distributed via GitHub Releases.
 type Binary struct {
 	ID          string `json:"id"`
-	Repo        string `json:"repo,omitempty"` // GitHub "owner/repo"
-	Name        string `json:"name"`           // binary name (e.g. "kb-dev")
+	Repo        string `json:"repo,omitempty"`    // GitHub "owner/repo"
+	Name        string `json:"name"`              // binary name (e.g. "kb-dev")
+	Version     string `json:"version,omitempty"` // immutable *-binaries tag
 	Description string `json:"description"`
 	Default     bool   `json:"default"`             // pre-selected in wizard
 	LocalPath   string `json:"localPath,omitempty"` // absolute path to local binary for dev mode
@@ -162,6 +171,7 @@ type Migration struct {
 // Manifest describes all installable parts of the KB Labs platform.
 type Manifest struct {
 	Version     string            `json:"version"`
+	Release     *Release          `json:"release,omitempty"`
 	RegistryURL string            `json:"registryUrl"`
 	Env         map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
 	Core        []Package         `json:"core"`
@@ -194,6 +204,13 @@ type Manifest struct {
 	// They keep the CLI-only path small while making larger local tooling an
 	// explicit choice.
 	Extensions []Extension `json:"extensions,omitempty"`
+}
+
+// Release identifies the immutable release that produced a remote manifest.
+type Release struct {
+	Tag       string `json:"tag"`
+	Channel   string `json:"channel"`
+	CreatedAt string `json:"createdAt"`
 }
 
 // Extension is an optional, product-facing capability. Its bundle is merged

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,11 +23,10 @@ type Result struct {
 	Path            string
 }
 
-// LatestBinariesTag returns the most recent GitHub release tag that ends with
-// "-binaries" for the given repo. Uses /releases?per_page=10 to include
-// pre-releases (same behaviour as install.sh).
+// LatestBinariesTag reads the stable binaries pointer published as a GitHub
+// Release asset. It deliberately avoids listing releases through GitHub API.
 func LatestBinariesTag(repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=10", repo)
+	url := fmt.Sprintf("https://github.com/%s/releases/download/binaries-stable/channel.json", repo)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -35,11 +35,6 @@ func LatestBinariesTag(repo string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
 	client := &http.Client{}
 	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
@@ -48,7 +43,7 @@ func LatestBinariesTag(repo string) (string, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		return "", fmt.Errorf("stable binaries channel returned %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -56,30 +51,16 @@ func LatestBinariesTag(repo string) (string, error) {
 		return "", err
 	}
 
-	// Minimal parse: find the first tag_name containing "-binaries".
-	s := string(body)
-	const key = `"tag_name"`
-	for {
-		idx := strings.Index(s, key)
-		if idx < 0 {
-			break
-		}
-		s = s[idx+len(key):]
-		q1 := strings.Index(s, `"`)
-		if q1 < 0 {
-			break
-		}
-		s = s[q1+1:]
-		q2 := strings.Index(s, `"`)
-		if q2 < 0 {
-			break
-		}
-		tag := s[:q2]
-		if strings.HasSuffix(tag, "-binaries") {
-			return tag, nil
-		}
+	var channel struct {
+		Tag string `json:"tag"`
 	}
-	return "", fmt.Errorf("no *-binaries release found in %s", repo)
+	if err := json.Unmarshal(body, &channel); err != nil {
+		return "", fmt.Errorf("parse stable binaries channel: %w", err)
+	}
+	if !strings.HasSuffix(channel.Tag, "-binaries") {
+		return "", fmt.Errorf("no *-binaries release found in %s", repo)
+	}
+	return channel.Tag, nil
 }
 
 // NeedsUpdate returns true when latestTag is different from the running
