@@ -5,9 +5,9 @@
  * Combines the best of V2 (declarative) with V3 architecture (sandboxed, type-safe).
  */
 
-import type { PermissionSpec } from './permissions.js';
-import type { HostType } from './host-context.js';
-import type { PluginServices } from './platform.js';
+import type { PermissionSpec } from "./permissions.js";
+import type { HostType } from "./host-context.js";
+import type { PluginServices } from "./platform.js";
 // ─── Studio V2 (Module Federation Pages) ───────────────────────────
 
 /**
@@ -134,7 +134,7 @@ export interface CliFlagDecl {
   /** Flag name (e.g., 'verbose') */
   name: string;
   /** Flag type */
-  type: 'string' | 'boolean' | 'number' | 'array';
+  type: "string" | "boolean" | "number" | "array";
   /** Short alias (e.g., 'v' for '--verbose') */
   alias?: string;
   /** Default value */
@@ -182,7 +182,7 @@ export interface CliCommandDecl {
    *   execute → --output, --wait, --watch, --timeout, --yes
    *   analyze → --output, --format, --stream
    */
-  operationType?: 'read' | 'mutate' | 'execute' | 'analyze';
+  operationType?: "read" | "mutate" | "execute" | "analyze";
 }
 
 /**
@@ -220,7 +220,7 @@ export interface ErrorSpec {
  */
 export interface RestRouteDecl {
   /** HTTP method */
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Route path (relative to basePath, e.g., '/search') */
   path: string;
   /** Human-readable description for OpenAPI docs */
@@ -236,8 +236,18 @@ export interface RestRouteDecl {
   /** Handler file path relative to plugin root (e.g., './dist/rest/search.js') */
   handler: string;
   /** Security requirements */
-  security?: ('none' | 'user' | 'token' | 'oauth')[];
+  security?: ("none" | "user" | "token" | "oauth")[];
   /** Route-specific permissions (overrides plugin defaults) */
+  permissions?: PermissionSpec;
+}
+
+/** Declarative server-sent event stream implemented by a plugin. */
+export interface EventStreamDecl {
+  path: string;
+  description?: string;
+  /** Handler file path relative to the plugin root. */
+  handler: string;
+  timeoutMs?: number;
   permissions?: PermissionSpec;
 }
 
@@ -253,7 +263,9 @@ export interface RestConfig {
     timeoutMs?: number;
   };
   /** Route declarations */
-  routes: RestRouteDecl[];
+  routes?: RestRouteDecl[];
+  /** Long-lived server-sent event streams, mounted by the REST host. */
+  streams?: EventStreamDecl[];
 }
 
 /**
@@ -288,7 +300,7 @@ export interface WebSocketChannelDecl {
   maxMessageSize?: number;
 
   /** Authentication requirement */
-  auth?: 'none' | 'token' | 'session';
+  auth?: "none" | "token" | "session";
 
   /** Idle timeout (auto-disconnect after this many ms of inactivity) */
   idleTimeoutMs?: number;
@@ -308,7 +320,7 @@ export interface WebSocketConfig {
     /** Default max message size (bytes) */
     maxMessageSize?: number;
     /** Default auth requirement */
-    auth?: 'none' | 'token' | 'session';
+    auth?: "none" | "token" | "session";
     /** Default idle timeout (milliseconds) */
     idleTimeoutMs?: number;
   };
@@ -357,7 +369,7 @@ export interface WorkflowTemplateDecl {
  * Uses constant-time comparison to prevent timing attacks.
  */
 export interface WebhookAuthSecret {
-  type: 'secret';
+  type: "secret";
   /** Header name carrying the secret (e.g. 'X-Webhook-Secret') */
   header: string;
 }
@@ -367,7 +379,7 @@ export interface WebhookAuthSecret {
  * Gateway computes HMAC over the raw request body and compares to the header.
  */
 export interface WebhookAuthHmac {
-  type: 'hmac';
+  type: "hmac";
   /** Header name carrying the signature (e.g. 'X-Hub-Signature-256') */
   header: string;
   /** Optional prefix to strip before comparing (e.g. 'sha256=') */
@@ -380,13 +392,16 @@ export interface WebhookAuthHmac {
  * Plugin code never runs in-process — always isolated through backend.execute.
  */
 export interface WebhookAuthCustom {
-  type: 'custom';
+  type: "custom";
   /** Handler path: './dist/webhooks/stripe-validate.js#default' */
   validator: string;
 }
 
 /** Discriminated union of all supported webhook auth strategies. */
-export type WebhookAuthConfig = WebhookAuthSecret | WebhookAuthHmac | WebhookAuthCustom;
+export type WebhookAuthConfig =
+  | WebhookAuthSecret
+  | WebhookAuthHmac
+  | WebhookAuthCustom;
 
 /**
  * Challenge/handshake protocol config (e.g. Slack URL verification).
@@ -506,7 +521,7 @@ export interface JobHandlerDecl {
   maxRetries?: number;
 
   /** Retry backoff strategy */
-  retryBackoff?: 'exp' | 'lin';
+  retryBackoff?: "exp" | "lin";
 
   /** Handler-specific permissions (can access what?) */
   permissions?: PermissionSpec;
@@ -526,7 +541,7 @@ export interface JobsConfig {
     /** Default max retries */
     maxRetries?: number;
     /** Default backoff strategy */
-    retryBackoff?: 'exp' | 'lin';
+    retryBackoff?: "exp" | "lin";
   };
 }
 
@@ -642,7 +657,7 @@ export interface SetupSpec {
  */
 export interface ManifestV3 {
   /** Schema version */
-  schema: 'kb.plugin/3';
+  schema: "kb.plugin/3";
 
   /** Plugin identifier (@scope/name) */
   id: string;
@@ -740,7 +755,7 @@ export interface ManifestV3 {
       /** Collection name (no namespace prefix). Must match an entry in `permissions.platform.database.document.owns`. */
       name: string;
       /** Operations exposed to other plugins. Default: `['read']`. */
-      ops?: Array<'read' | 'write'>;
+      ops?: Array<"read" | "write">;
     }>;
   };
 }
@@ -750,10 +765,10 @@ export interface ManifestV3 {
  */
 export function isManifestV3(manifest: unknown): manifest is ManifestV3 {
   return (
-    typeof manifest === 'object' &&
+    typeof manifest === "object" &&
     manifest !== null &&
-    'schema' in manifest &&
-    manifest.schema === 'kb.plugin/3'
+    "schema" in manifest &&
+    manifest.schema === "kb.plugin/3"
   );
 }
 
@@ -763,20 +778,20 @@ export function isManifestV3(manifest: unknown): manifest is ManifestV3 {
 export function getHandlerPath(
   manifest: ManifestV3,
   host: HostType,
-  id: string
+  id: string,
 ): string | undefined {
   switch (host) {
-    case 'cli':
+    case "cli":
       return manifest.cli?.commands.find((cmd) => cmd.path === id)?.handler;
-    case 'rest':
-      return manifest.rest?.routes.find(
-        (route) => `${route.method} ${route.path}` === id
+    case "rest":
+      return manifest.rest?.routes?.find(
+        (route) => `${route.method} ${route.path}` === id,
       )?.handler;
-    case 'ws':
+    case "ws":
       return manifest.ws?.channels.find((ch) => ch.path === id)?.handler;
-    case 'workflow':
+    case "workflow":
       return manifest.workflows?.handlers.find((h) => h.id === id)?.handler;
-    case 'webhook':
+    case "webhook":
       return manifest.webhooks?.handlers.find((h) => h.event === id)?.handler;
     default:
       return undefined;
@@ -789,32 +804,36 @@ export function getHandlerPath(
 export function getHandlerPermissions(
   manifest: ManifestV3,
   host: HostType,
-  id: string
+  id: string,
 ): PermissionSpec {
   // Get handler-specific permissions
   let handlerPerms: PermissionSpec | undefined;
 
   switch (host) {
-    case 'cli':
-      handlerPerms = manifest.cli?.commands.find((cmd) => cmd.path === id)
-        ?.permissions;
-      break;
-    case 'rest':
-      handlerPerms = manifest.rest?.routes.find(
-        (route) => `${route.method} ${route.path}` === id
+    case "cli":
+      handlerPerms = manifest.cli?.commands.find(
+        (cmd) => cmd.path === id,
       )?.permissions;
       break;
-    case 'ws':
-      handlerPerms = manifest.ws?.channels.find((ch) => ch.path === id)
-        ?.permissions;
+    case "rest":
+      handlerPerms = manifest.rest?.routes?.find(
+        (route) => `${route.method} ${route.path}` === id,
+      )?.permissions;
       break;
-    case 'workflow':
-      handlerPerms = manifest.workflows?.handlers.find((h) => h.id === id)
-        ?.permissions;
+    case "ws":
+      handlerPerms = manifest.ws?.channels.find(
+        (ch) => ch.path === id,
+      )?.permissions;
       break;
-    case 'webhook':
-      handlerPerms = manifest.webhooks?.handlers.find((h) => h.event === id)
-        ?.permissions;
+    case "workflow":
+      handlerPerms = manifest.workflows?.handlers.find(
+        (h) => h.id === id,
+      )?.permissions;
+      break;
+    case "webhook":
+      handlerPerms = manifest.webhooks?.handlers.find(
+        (h) => h.event === id,
+      )?.permissions;
       break;
   }
 
@@ -856,7 +875,7 @@ export function getHandlerPermissions(
  */
 export interface ServiceManifest {
   /** Schema version identifier */
-  schema: 'kb.service/1';
+  schema: "kb.service/1";
 
   /** Unique service identifier (used as key in devservices.yaml) */
   id: string;
@@ -895,7 +914,7 @@ export interface ServiceRuntime {
   healthCheck: string;
 
   /** Protocol: "http" (default) or "ws" */
-  protocol?: 'http' | 'ws';
+  protocol?: "http" | "ws";
 
   /**
    * Unix domain socket path declared by this service.
@@ -918,11 +937,13 @@ export interface ServiceEnvVar {
 /**
  * Type guard to check if manifest is a ServiceManifest.
  */
-export function isServiceManifest(manifest: unknown): manifest is ServiceManifest {
+export function isServiceManifest(
+  manifest: unknown,
+): manifest is ServiceManifest {
   return (
-    typeof manifest === 'object' &&
+    typeof manifest === "object" &&
     manifest !== null &&
-    'schema' in manifest &&
-    manifest.schema === 'kb.service/1'
+    "schema" in manifest &&
+    manifest.schema === "kb.service/1"
   );
 }

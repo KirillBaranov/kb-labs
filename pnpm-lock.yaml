@@ -1528,12 +1528,18 @@ importers:
       '@kb-labs/core-contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../platform
       '@kb-labs/plugin-contracts':
         specifier: workspace:*
         version: link:../plugin-contracts
       '@kb-labs/plugin-execution-factory':
         specifier: workspace:*
         version: link:../plugin-execution-factory
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../shared/http
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*

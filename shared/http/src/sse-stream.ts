@@ -22,6 +22,8 @@ export interface SseStream {
   send(event: string, data: unknown, id?: string): boolean;
   comment(comment: string): boolean;
   onCleanup(cleanup: () => void): void;
+  /** Called when the underlying HTTP response reports a transport error. */
+  onError(listener: (error: Error) => void): void;
   close(reason?: string): void;
 }
 
@@ -48,11 +50,14 @@ export function createSseStream(
   });
   const startedAt = Date.now();
   const cleanups = new Set<() => void>();
+  const errorListeners = new Set<(error: Error) => void>();
   let eventsSent = 0;
   let bytesSent = 0;
   let closed = false;
   let resolveClosed!: () => void;
-  const closedPromise = new Promise<void>((resolve) => { resolveClosed = resolve; });
+  const closedPromise = new Promise<void>((resolve) => {
+    resolveClosed = resolve;
+  });
 
   reply.hijack();
   const raw = reply.raw;
@@ -65,11 +70,19 @@ export function createSseStream(
   raw.flushHeaders?.();
 
   const close = (reason = "closed") => {
-    if (closed) { return; }
+    if (closed) {
+      return;
+    }
     closed = true;
-    if (keepAlive) { clearInterval(keepAlive); }
+    if (keepAlive) {
+      clearInterval(keepAlive);
+    }
     for (const cleanup of cleanups) {
-      try { cleanup(); } catch { /* cleanup must never destabilise a transport */ }
+      try {
+        cleanup();
+      } catch {
+        /* cleanup must never destabilise a transport */
+      }
     }
     cleanups.clear();
     logger.info("SSE connection closed", {
@@ -79,34 +92,59 @@ export function createSseStream(
       eventsSent,
       bytesSent,
     });
-    if (!raw.writableEnded && !raw.destroyed) { raw.end(); }
+    if (!raw.writableEnded && !raw.destroyed) {
+      raw.end();
+    }
     resolveClosed();
   };
 
+  const notifyError = (error: Error) => {
+    for (const listener of errorListeners) {
+      try {
+        listener(error);
+      } catch {
+        /* transport error observers are isolated */
+      }
+    }
+  };
+
   const write = (payload: string): boolean => {
-    if (closed || raw.writableEnded || raw.destroyed) { return false; }
+    if (closed || raw.writableEnded || raw.destroyed) {
+      return false;
+    }
     try {
       const accepted = raw.write(payload);
       bytesSent += Buffer.byteLength(payload);
       if (!accepted) {
-        logger.warn("SSE write backpressure", { event: "sse.write.backpressure" });
+        logger.warn("SSE write backpressure", {
+          event: "sse.write.backpressure",
+        });
       }
       return accepted;
     } catch (error) {
-      logger.error("SSE write failed", error instanceof Error ? error : new Error(String(error)), {
+      const normalizedError =
+        error instanceof Error ? error : new Error(String(error));
+      logger.error("SSE write failed", normalizedError, {
         event: "sse.connection.failed",
       });
+      notifyError(normalizedError);
       close("write_error");
       return false;
     }
   };
 
-  const keepAlive = options.keepAliveMs && options.keepAliveMs > 0
-    ? setInterval(() => { write(": keep-alive\n\n"); }, options.keepAliveMs)
-    : undefined;
+  const keepAlive =
+    options.keepAliveMs && options.keepAliveMs > 0
+      ? setInterval(() => {
+          write(": keep-alive\n\n");
+        }, options.keepAliveMs)
+      : undefined;
 
   raw.on("close", () => close("client_closed"));
-  raw.on("error", () => close("transport_error"));
+  raw.on("error", (error: Error) => {
+    notifyError(error);
+    close("transport_error");
+  });
   logger.info("SSE connection opened", { event: "sse.connection.opened" });
   write(": connected\n\n");
 
@@ -119,13 +157,23 @@ export function createSseStream(
       if (accepted) {
         eventsSent += 1;
         if (options.logEvents) {
-          logger.debug("SSE event sent", { event: "sse.event.sent", "sse.event_type": event });
+          logger.debug("SSE event sent", {
+            event: "sse.event.sent",
+            "sse.event_type": event,
+          });
         }
       }
       return accepted;
     },
-    comment(comment) { return write(`: ${comment}\n\n`); },
-    onCleanup(cleanup) { cleanups.add(cleanup); },
+    comment(comment) {
+      return write(`: ${comment}\n\n`);
+    },
+    onCleanup(cleanup) {
+      cleanups.add(cleanup);
+    },
+    onError(listener) {
+      errorListeners.add(listener);
+    },
     close,
   };
 }
