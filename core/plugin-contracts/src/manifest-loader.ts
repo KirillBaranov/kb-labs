@@ -77,10 +77,20 @@ export function validateManifest(manifest: ManifestV3): {
     }
   }
 
-  if (manifest.rest?.streams) {
-    for (const stream of manifest.rest.streams) {
+  if (manifest.sse?.streams) {
+    const restGetPaths = new Set(
+      (manifest.rest?.routes ?? [])
+        .filter((route) => route.method === "GET")
+        .map((route) => route.path),
+    );
+    for (const stream of manifest.sse.streams) {
       if (!stream.handler) {
         errors.push(`Event stream "${stream.path}" missing handler path`);
+      }
+      if (restGetPaths.has(stream.path)) {
+        errors.push(
+          `Event stream "${stream.path}" conflicts with REST GET route`,
+        );
       }
     }
   }

@@ -242,12 +242,15 @@ export interface RestRouteDecl {
 }
 
 /** Declarative server-sent event stream implemented by a plugin. */
-export interface EventStreamDecl {
+export interface SseStreamDecl {
   path: string;
   description?: string;
   /** Handler file path relative to the plugin root. */
   handler: string;
   timeoutMs?: number;
+  keepAliveMs?: number;
+  /** Security requirements, matching ordinary REST route declarations. */
+  security?: ("none" | "user" | "token" | "oauth")[];
   permissions?: PermissionSpec;
 }
 
@@ -264,8 +267,24 @@ export interface RestConfig {
   };
   /** Route declarations */
   routes?: RestRouteDecl[];
-  /** Long-lived server-sent event streams, mounted by the REST host. */
-  streams?: EventStreamDecl[];
+}
+
+/**
+ * Server-sent event transport configuration.
+ *
+ * SSE is delivered over HTTP, but it is a long-lived realtime transport with
+ * lifecycle handlers. It therefore follows the same manifest shape as `ws`.
+ */
+export interface SseConfig {
+  /** Base path for all streams (e.g. '/v1/plugins/mind'). */
+  basePath?: `/v1/plugins/${string}`;
+  /** Defaults inherited by every stream. */
+  defaults?: {
+    timeoutMs?: number;
+    keepAliveMs?: number;
+  };
+  /** Stream declarations. */
+  streams: SseStreamDecl[];
 }
 
 /**
@@ -703,6 +722,9 @@ export interface ManifestV3 {
   /** WebSocket channels (real-time bidirectional communication) */
   ws?: WebSocketConfig;
 
+  /** Server-sent event streams (real-time server-to-client communication). */
+  sse?: SseConfig;
+
   /** Workflow handlers (multi-step orchestration) */
   workflows?: {
     handlers: WorkflowHandlerDecl[];
@@ -784,9 +806,12 @@ export function getHandlerPath(
     case "cli":
       return manifest.cli?.commands.find((cmd) => cmd.path === id)?.handler;
     case "rest":
-      return manifest.rest?.routes?.find(
-        (route) => `${route.method} ${route.path}` === id,
-      )?.handler;
+      return (
+        manifest.rest?.routes?.find(
+          (route) => `${route.method} ${route.path}` === id,
+        )?.handler ??
+        manifest.sse?.streams.find((stream) => stream.path === id)?.handler
+      );
     case "ws":
       return manifest.ws?.channels.find((ch) => ch.path === id)?.handler;
     case "workflow":
@@ -816,9 +841,11 @@ export function getHandlerPermissions(
       )?.permissions;
       break;
     case "rest":
-      handlerPerms = manifest.rest?.routes?.find(
-        (route) => `${route.method} ${route.path}` === id,
-      )?.permissions;
+      handlerPerms =
+        manifest.rest?.routes?.find(
+          (route) => `${route.method} ${route.path}` === id,
+        )?.permissions ??
+        manifest.sse?.streams.find((stream) => stream.path === id)?.permissions;
       break;
     case "ws":
       handlerPerms = manifest.ws?.channels.find(

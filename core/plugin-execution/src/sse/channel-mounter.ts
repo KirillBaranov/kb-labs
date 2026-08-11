@@ -19,6 +19,7 @@ export interface MountEventStreamsOptions {
   workspaceRoot: string;
   basePath?: string;
   defaultTimeoutMs?: number;
+  defaultKeepAliveMs?: number;
 }
 
 /** Mount manifest-declared plugin SSE streams with a host-owned connection. */
@@ -27,7 +28,7 @@ export async function mountEventStreams(
   manifest: ManifestV3,
   options: MountEventStreamsOptions,
 ): Promise<{ mounted: number; errors: string[] }> {
-  const streams = manifest.rest?.streams ?? [];
+  const streams = manifest.sse?.streams ?? [];
   const errors: string[] = [];
   let mounted = 0;
   for (const declaration of streams) {
@@ -48,7 +49,8 @@ export async function mountEventStreams(
           requestId,
           traceId,
           route: path,
-          keepAliveMs: 30_000,
+          keepAliveMs:
+            declaration.keepAliveMs ?? options.defaultKeepAliveMs ?? 30_000,
         });
         const hostContext: RestHostContext = {
           host: "rest",

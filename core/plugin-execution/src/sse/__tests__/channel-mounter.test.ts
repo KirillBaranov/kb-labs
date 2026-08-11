@@ -12,7 +12,7 @@ describe("mountEventStreams", () => {
       schema: "kb.plugin/3",
       id: "@test/realtime",
       version: "1.0.0",
-      rest: {
+      sse: {
         streams: [{ path: "/events", handler: "./rest/events.js#default" }],
       },
     };

@@ -163,13 +163,13 @@ export async function registerPluginRoutes(
     // crashes with "Cannot read properties of undefined (reading 'bind')".
     const wsBackend = new InProcessBackend({ platform });
 
-    // Filter plugins that have routes, SSE streams or channels to mount
+    // Filter plugins that have routes, realtime streams or channels to mount
     const mountableManifests = manifests.filter(
       (entry) =>
         (entry.manifest.rest?.routes &&
           entry.manifest.rest.routes.length > 0) ||
-        (entry.manifest.rest?.streams &&
-          entry.manifest.rest.streams.length > 0) ||
+        (entry.manifest.sse?.streams &&
+          entry.manifest.sse.streams.length > 0) ||
         (entry.manifest.ws?.channels && entry.manifest.ws.channels.length > 0),
     );
 
@@ -201,8 +201,8 @@ export async function registerPluginRoutes(
           }
         }
       }
-      if (entry.manifest.rest?.streams) {
-        for (const stream of entry.manifest.rest.streams) {
+      if (entry.manifest.sse?.streams) {
+        for (const stream of entry.manifest.sse.streams) {
           const handlerFile = stream.handler.split("#")[0];
           if (handlerFile) {
             const pluginDistRoot = path.join(entry.pluginRoot, "dist");
@@ -278,8 +278,8 @@ export async function registerPluginRoutes(
           }
         }
       }
-      if (manifest.rest?.streams) {
-        for (const stream of manifest.rest.streams) {
+      if (manifest.sse?.streams) {
+        for (const stream of manifest.sse.streams) {
           const handlerFile = stream.handler.split("#")[0];
           if (!handlerFile) {
             restValidationErrors.push(
@@ -349,7 +349,7 @@ export async function registerPluginRoutes(
             .map((error) => error.match(/Event stream\s+([^\s:]+)/)?.[1])
             .filter((value): value is string => Boolean(value)),
         );
-        const validStreams = (manifest.rest?.streams ?? []).filter(
+        const validStreams = (manifest.sse?.streams ?? []).filter(
           (stream) => !streamErrorPaths.has(stream.path),
         );
 
@@ -382,13 +382,18 @@ export async function registerPluginRoutes(
           continue;
         }
 
-        manifest.rest!.routes = validRoutes;
-        manifest.rest!.streams = validStreams;
+        if (manifest.rest) {
+          manifest.rest.routes = validRoutes;
+        }
+        if (manifest.sse) {
+          manifest.sse.streams = validStreams;
+        }
         platform.logger.info("Filtered routes, mounting valid ones", {
           plugin: `${manifest.id}@${manifest.version}`,
           totalRoutes:
-            manifest.rest!.routes.length + restValidationErrors.length,
+            validRoutes.length + restValidationErrors.length,
           validRoutes: validRoutes.length,
+          validStreams: validStreams.length,
           skippedRoutes: restValidationErrors.length,
         });
       }
@@ -412,14 +417,29 @@ export async function registerPluginRoutes(
           pluginBasePath = `${config.basePath}/plugins/${manifest.id}`;
         }
 
+        let sseBasePath = pluginBasePath;
+        if (manifest.sse?.basePath) {
+          if (manifest.sse.basePath.startsWith("/api/")) {
+            sseBasePath = manifest.sse.basePath;
+          } else if (manifest.sse.basePath.startsWith("/v1/")) {
+            sseBasePath = manifest.sse.basePath.replace(
+              /^\/v1/,
+              config.basePath,
+            );
+          } else {
+            sseBasePath = `${config.basePath}${manifest.sse.basePath}`;
+          }
+        }
+
         platform.logger.info("Mounting plugin routes", {
           plugin: `${manifest.id}@${manifest.version}`,
           configBasePath: config.basePath,
           manifestBasePath: manifest.rest?.basePath,
           pluginBasePath,
+          sseBasePath,
           pluginRoot,
           routes: manifest.rest?.routes?.length ?? 0,
-          streams: manifest.rest?.streams?.length ?? 0,
+          streams: manifest.sse?.streams?.length ?? 0,
         });
 
         await mountRoutes(server, manifest, {
@@ -431,15 +451,17 @@ export async function registerPluginRoutes(
         });
 
         let streamsCount = 0;
-        if (manifest.rest?.streams && manifest.rest.streams.length > 0) {
+        if (manifest.sse?.streams && manifest.sse.streams.length > 0) {
           const streamsResult = await mountEventStreams(server, manifest, {
             backend: wsBackend,
             logger: platform.logger,
             serviceId: "rest",
             pluginRoot: pluginDistRoot,
             workspaceRoot,
-            basePath: pluginBasePath,
-            defaultTimeoutMs: gatewayTimeoutMs,
+            basePath: sseBasePath,
+            defaultTimeoutMs:
+              manifest.sse.defaults?.timeoutMs ?? gatewayTimeoutMs,
+            defaultKeepAliveMs: manifest.sse.defaults?.keepAliveMs,
           });
           streamsCount = streamsResult.mounted;
           if (streamsResult.errors.length > 0) {
