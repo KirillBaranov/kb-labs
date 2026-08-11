@@ -64,7 +64,13 @@ export default defineCommand({
 
       const fileConfig = await useConfig<ReleaseConfig>();
       const config: ReleaseConfig = fileConfig ?? {};
-      const checks = config.checks ?? [];
+      // A flow owns its release checks. Falling back to the global checks is
+      // important for callers without --flow, but using the global list when
+      // a flow was explicitly requested runs unrelated checks (for example
+      // the platform flow would also run the root typecheck/test suite).
+      const checks = flags.flow
+        ? (config.flows?.[flags.flow]?.checks ?? config.checks ?? [])
+        : (config.checks ?? []);
 
       if (checks.length === 0) {
         const msg = 'No checks configured in release config';
