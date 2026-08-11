@@ -10,14 +10,12 @@ export function CLICommandsTable({ commands }: CLICommandsTableProps) {
   const columns: UITableColumn<any>[] = [
     {
       title: 'Command',
-      dataIndex: 'id',
-      key: 'id',
-      render: (id, record) => (
-        <div>
-          <UIText weight="semibold" style={{ fontFamily: token.fontFamilyCode }}>
-            {record.group ? `${record.group}:${id}` : id}
-          </UIText>
-        </div>
+      dataIndex: 'path',
+      key: 'path',
+      render: (path: string) => (
+        <UIText weight="semibold" style={{ fontFamily: token.fontFamilyCode }}>
+          {path}
+        </UIText>
       ),
     },
     {
@@ -62,7 +60,7 @@ export function CLICommandsTable({ commands }: CLICommandsTableProps) {
       <UITable
         columns={columns}
         dataSource={commands}
-        rowKey="id"
+        rowKey="path"
         pagination={false}
         expandable={{
           expandedRowRender: (record) =>

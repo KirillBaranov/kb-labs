@@ -1,0 +1,78 @@
+.plugin-status-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.plugin-status-strip__pulse {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.plugin-status-strip__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plugin-status-strip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--success);
+}
+
+.plugin-status-strip__dot--error {
+  background: var(--error);
+}
+
+.plugin-status-strip__status-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plugin-status-strip__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-primary);
+}
+
+.plugin-status-strip__metric {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.plugin-status-strip__value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.plugin-status-strip__label {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.plugin-status-strip__metric--warning .plugin-status-strip__value {
+  color: var(--warning);
+}
+
+.plugin-status-strip__links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.plugin-status-strip__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
