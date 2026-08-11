@@ -1,11 +1,13 @@
 ---
 title: "REST Routes"
 description: "Expose HTTP endpoints from your plugin: manifest, handlers, Zod schemas, errors."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-11"
 order: 4
 ---
 
 Plugins can expose HTTP endpoints that mount on the REST API service. A plugin declares routes in its manifest, implements handlers with `defineRoute` or `defineHandler`, and the REST API service takes care of everything else — Fastify registration, schema validation, auth, OpenAPI generation.
+
+For one-way, long-lived responses, use the sibling `sse` manifest section with `defineEventStream` instead of modelling the connection as a normal `rest.routes` handler.
 
 This page covers the authoring side. For the service that mounts these routes, see [Services → REST API](/services/rest-api).
 
@@ -90,6 +92,58 @@ interface RestRouteDecl {
 ```
 
 See [Manifest Reference → rest](/plugins/manifest-reference#rest) for the full schema.
+
+## Server-Sent Events (SSE)
+
+Use SSE when the server needs to push progress, logs or state changes to a client but the client does not need to send messages over the same connection. It is distinct from a normal REST route: the connection is long-lived, is automatically correlated in logs, and has a host-owned sender.
+
+### Manifest declaration
+
+`sse` is a top-level transport section, parallel to `ws`. It keeps long-lived connection policy out of ordinary request-response `rest.routes` declarations.
+
+```ts
+sse: {
+  basePath: '/v1/plugins/agents',
+  defaults: {
+    timeoutMs: 30_000,
+    keepAliveMs: 30_000,
+  },
+  streams: [{
+    path: '/events',
+    handler: './sse/events.js#default',
+    description: 'Agent progress events',
+    security: ['token'],
+  }],
+}
+```
+
+`path` is relative to `sse.basePath`; when `sse.basePath` is omitted, the REST host uses the plugin's REST base path. `timeoutMs`, `keepAliveMs`, `security`, and `permissions` can be overridden for an individual stream. A stream cannot reuse the path of a `GET` route in the same plugin.
+
+### Handler lifecycle
+
+```ts
+import { defineEventStream } from '@kb-labs/sdk';
+
+export default defineEventStream({
+  path: '/events',
+  handler: {
+    onConnect(_ctx, stream) {
+      stream.send('connected', { ok: true });
+      const unsubscribe = eventBus.subscribe('agent.progress', (event) => {
+        stream.send('agent.progress', event);
+      });
+      stream.onCleanup(unsubscribe);
+    },
+    onDisconnect() {},
+    onError(_ctx, error) {
+      // Optional plugin-specific error handling.
+      console.error(error);
+    },
+  },
+});
+```
+
+The REST host invokes `onConnect`, then keeps the connection alive. `onError` receives transport errors, and `onDisconnect` runs during cleanup. The host logs connection open/close, duration, bytes and event counts; plugins should not write to `reply.raw` or manage SSE framing themselves.
 
 ## 2 — Zod schema references
 

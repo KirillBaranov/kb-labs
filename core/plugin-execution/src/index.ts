@@ -63,15 +63,15 @@ export type {
   WorkerPoolOptions,
   WarmupPolicy,
   RemoteOptions,
-} from './types.js';
+} from "./types.js";
 
-export { PROTOCOL_VERSION } from './types.js';
+export { PROTOCOL_VERSION } from "./types.js";
 
 // Factory - re-exported from @kb-labs/plugin-execution-factory
-export { createExecutionBackend } from '@kb-labs/plugin-execution-factory';
+export { createExecutionBackend } from "@kb-labs/plugin-execution-factory";
 
 // Adapters - re-exported from @kb-labs/plugin-execution-factory
-export { SubprocessRunnerAdapter } from '@kb-labs/plugin-execution-factory';
+export { SubprocessRunnerAdapter } from "@kb-labs/plugin-execution-factory";
 
 // Backends - re-exported from @kb-labs/plugin-execution-factory
 export {
@@ -79,7 +79,7 @@ export {
   type InProcessBackendOptions,
   WorkerPoolBackend,
   type WorkerPoolBackendOptions,
-} from '@kb-labs/plugin-execution-factory';
+} from "@kb-labs/plugin-execution-factory";
 
 // Workspace
 export {
@@ -88,7 +88,7 @@ export {
   type WorkspaceLease,
   LocalWorkspaceManager,
   localWorkspaceManager,
-} from '@kb-labs/plugin-execution-factory';
+} from "@kb-labs/plugin-execution-factory";
 
 // Error classes (note: ExecutionLayerError, not ExecutionError - to avoid collision with interface)
 export {
@@ -109,7 +109,7 @@ export {
   // Type guards
   isExecutionLayerError,
   isKnownErrorCode,
-} from './errors.js';
+} from "./errors.js";
 
 // Utils
 export {
@@ -117,7 +117,7 @@ export {
   normalizeError,
   normalizeHeaders,
   createTimeoutPromise,
-} from './utils.js';
+} from "./utils.js";
 
 // WebSocket mounting
 export {
@@ -127,4 +127,8 @@ export {
   ConnectionRegistry,
   type ConnectionInfo,
   createWSSender,
-} from './ws/index.js';
+} from "./ws/index.js";
+export {
+  mountEventStreams,
+  type MountEventStreamsOptions,
+} from "./sse/index.js";

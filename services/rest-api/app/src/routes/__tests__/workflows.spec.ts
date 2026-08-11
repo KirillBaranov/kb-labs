@@ -19,8 +19,17 @@ const BASE_CONFIG: RestApiConfig = {
 type EventHandler = (event: unknown) => Promise<void>
 let capturedHandlers: EventHandler[] = []
 
-const { mockUnsubscribe, mockSubscribe } = vi.hoisted(() => {
+const { mockLogger, mockUnsubscribe, mockSubscribe } = vi.hoisted(() => {
   const mockUnsubscribe = vi.fn()
+  const mockLogger = {
+    trace: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    child: () => mockLogger,
+  }
   const mockSubscribe = vi.fn((_channel: string, handler: EventHandler) => {
     capturedHandlers.push(handler)
     // Immediately emit a terminal event to close the SSE stream,
@@ -30,11 +39,12 @@ const { mockUnsubscribe, mockSubscribe } = vi.hoisted(() => {
     }, 10)
     return mockUnsubscribe
   })
-  return { mockUnsubscribe, mockSubscribe }
+  return { mockLogger, mockUnsubscribe, mockSubscribe }
 })
 
 vi.mock('@kb-labs/core-runtime', () => ({
   platform: {
+    logger: mockLogger,
     eventBus: {
       subscribe: mockSubscribe,
     },

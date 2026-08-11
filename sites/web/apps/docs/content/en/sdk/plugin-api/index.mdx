@@ -1,11 +1,13 @@
 ---
 title: "Quickstart"
 description: "A minimal KB Labs plugin built with the SDK, in under five minutes."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-11"
 order: 2
 ---
 
 The goal of this page is to get a plugin running end-to-end. Nothing fancy — one CLI command that greets the user and optionally uses the LLM if available. You'll learn the package layout, the manifest shape, the handler signature, and how to link and run.
+
+For realtime endpoints, the same SDK exposes `defineWebSocket` for bidirectional channels and `defineEventStream` for server-to-client SSE. Both are declared in the plugin manifest; see [REST Routes → Server-Sent Events](/plugins/rest-routes#server-sent-events-sse).
 
 If you want to go deeper after this, read [Plugins → Overview](/plugins) and [SDK → Commands](/sdk/commands).
 

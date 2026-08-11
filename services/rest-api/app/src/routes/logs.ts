@@ -7,6 +7,7 @@ import type { FastifyInstance } from "fastify";
 import type { RestApiConfig } from "@kb-labs/rest-api-core";
 import { platform } from "@kb-labs/core-runtime";
 import type { LogQuery, LogRecord, LogLevel } from "@kb-labs/core-platform";
+import { createSseStream } from "@kb-labs/shared-http";
 import type { EventHub } from "../events/hub";
 
 /** Frontend-shaped log record returned by toFrontendLogRecord */
@@ -555,74 +556,28 @@ export async function registerLogRoutes(
         });
       }
 
-      // Tell Fastify we're manually managing the response
-      reply.hijack();
-
-      // Track if stream is closed to prevent double-end
-      let streamClosed = false;
-
       // Explicit CORS headers for EventSource
       const origin = request.headers.origin;
-      if (
-        origin === "http://localhost:3000" ||
-        origin === "http://localhost:5173"
-      ) {
-        reply.raw.setHeader("Access-Control-Allow-Origin", origin);
-        reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
-      } else {
-        reply.raw.setHeader("Access-Control-Allow-Origin", "*");
-      }
-
-      // Setup SSE headers
-      reply.raw.setHeader("Content-Type", "text/event-stream");
-      reply.raw.setHeader("Cache-Control", "no-cache, no-transform");
-      reply.raw.setHeader("Connection", "keep-alive");
-
-      try {
-        reply.raw.flushHeaders?.();
-        reply.raw.write(": connected\n\n");
-      } catch (err) {
-        // Headers already sent or connection closed
-        streamClosed = true;
-        return;
-      }
+      const stream = createSseStream(request, reply, {
+        logger: request.kbLogger ?? platform.logger,
+        serviceId: "rest",
+        route: "/api/v1/logs/stream",
+        // This stream carries logs, so event-level telemetry would feed it
+        // back into itself. Lifecycle + close summary remain enabled.
+        logEvents: false,
+        headers: origin === "http://localhost:3000" || origin === "http://localhost:5173"
+          ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true" }
+          : { "Access-Control-Allow-Origin": "*" },
+      });
 
       // Subscribe to log stream using unified service
       const unsubscribe = platform.logs.subscribe((log) => {
-        // Check if connection is still alive before writing
-        if (!streamClosed && !reply.raw.writableEnded && !reply.raw.destroyed) {
-          try {
-            // Frontend expects event name 'log'
-            const frontendLog = toFrontendLogRecord(log);
-            reply.raw.write(`event: log\n`);
-            reply.raw.write(`data: ${JSON.stringify(frontendLog)}\n\n`);
-          } catch (err) {
-            // Connection closed while writing - ignore
-            streamClosed = true;
-          }
-        }
+        // Frontend expects event name 'log'. Do not emit per-event telemetry:
+        // otherwise this log stream would subscribe to its own telemetry.
+        stream.send("log", toFrontendLogRecord(log));
       });
-
-      // Cleanup on disconnect
-      const cleanup = () => {
-        if (!streamClosed) {
-          streamClosed = true;
-          unsubscribe();
-          try {
-            if (!reply.raw.writableEnded && !reply.raw.destroyed) {
-              reply.raw.end();
-            }
-          } catch (err) {
-            // Already closed - ignore
-          }
-        }
-      };
-
-      request.raw.on("close", cleanup);
-      request.raw.on("error", cleanup);
-
-      // Keep connection alive indefinitely
-      await new Promise<void>(() => {});
+      stream.onCleanup(unsubscribe);
+      await stream.closed;
     },
   );
 

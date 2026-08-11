@@ -8,7 +8,7 @@
  */
 
 // Context
-export type { PluginContextV3, ExtractConfig } from './context.js';
+export type { PluginContextV3, ExtractConfig } from "./context.js";
 
 // Host Context
 export type {
@@ -20,7 +20,7 @@ export type {
   WebhookHostContext,
   CronHostContext,
   WebSocketHostContext,
-} from './host-context.js';
+} from "./host-context.js";
 
 // WebSocket types
 export type {
@@ -28,21 +28,26 @@ export type {
   WSSender,
   WSLifecycleEvent,
   WSInput,
-} from './ws-types.js';
+} from "./ws-types.js";
+export type {
+  EventStreamSender,
+  EventStreamLifecycleEvent,
+  EventStreamInput,
+} from "./sse-types.js";
 
 // Logger Metadata
-export { getLoggerMetadataFromHost } from './logger-metadata.js';
+export { getLoggerMetadataFromHost } from "./logger-metadata.js";
 
 // Permissions
-export type { PermissionSpec } from './permissions.js';
-export { DEFAULT_PERMISSIONS } from './permissions.js';
+export type { PermissionSpec } from "./permissions.js";
+export { DEFAULT_PERMISSIONS } from "./permissions.js";
 
 // Execution
-export type { ExecutionMeta, RunResult } from './execution.js';
-export type { ExecutionTarget } from './execution-target.js';
+export type { ExecutionMeta, RunResult } from "./execution.js";
+export type { ExecutionTarget } from "./execution-target.js";
 
 // Plugin Context Descriptor
-export type { PluginContextDescriptor } from './descriptor.js';
+export type { PluginContextDescriptor } from "./descriptor.js";
 
 // UI
 export type {
@@ -62,8 +67,8 @@ export type {
   OutputSectionItem,
   RichOutputSectionItem,
   MessageOptions,
-} from './ui.js';
-export { noopUI } from './ui.js';
+} from "./ui.js";
+export { noopUI } from "./ui.js";
 
 // Trace
 export type {
@@ -71,8 +76,8 @@ export type {
   TraceSpanStatus,
   TraceSpanData,
   TraceEvent,
-} from './trace.js';
-export { noopTraceContext } from './trace.js';
+} from "./trace.js";
+export { noopTraceContext } from "./trace.js";
 
 // Errors
 export {
@@ -88,8 +93,8 @@ export {
   ErrorCode,
   isPluginError,
   wrapError,
-} from './errors.js';
-export type { SerializedError, ErrorCodeType } from './errors.js';
+} from "./errors.js";
+export type { SerializedError, ErrorCodeType } from "./errors.js";
 
 // Runtime
 export type {
@@ -103,7 +108,7 @@ export type {
   RmOptions,
   WriteFileOptions,
   GlobOptions,
-} from './runtime.js';
+} from "./runtime.js";
 
 // Platform
 export type {
@@ -121,13 +126,13 @@ export type {
   CacheAdapter,
   StorageAdapter,
   AnalyticsAdapter,
-} from './platform.js';
+} from "./platform.js";
 
 // Platform context (AsyncLocalStorage)
-export { platformContext } from './platform-context.js';
+export { platformContext } from "./platform-context.js";
 
 // Runtime context (AsyncLocalStorage) — env, fs, fetch shims
-export { runtimeContext } from './runtime-context.js';
+export { runtimeContext } from "./runtime-context.js";
 
 // API
 export type {
@@ -143,7 +148,7 @@ export type {
   EventsAPI,
   LifecycleAPI,
   CleanupFn,
-} from './api.js';
+} from "./api.js";
 
 // Workflows API
 export type {
@@ -153,7 +158,7 @@ export type {
   WorkflowStatus,
   WorkflowRunStatus,
   WorkflowListFilter,
-} from './workflows-api.js';
+} from "./workflows-api.js";
 
 // Jobs API
 export type {
@@ -163,7 +168,7 @@ export type {
   JobStatusInfo,
   JobListFilter,
   JobWaitOptions,
-} from './jobs-api.js';
+} from "./jobs-api.js";
 
 // Cron API
 export type {
@@ -171,7 +176,7 @@ export type {
   CronRegistration,
   CronStatus,
   CronInfo,
-} from './cron-api.js';
+} from "./cron-api.js";
 
 // Environment API
 export type {
@@ -183,7 +188,7 @@ export type {
   EnvironmentCreateRequest,
   EnvironmentInfo,
   EnvironmentStatusInfo,
-} from './environment-api.js';
+} from "./environment-api.js";
 
 // Workspace API
 export type {
@@ -195,7 +200,7 @@ export type {
   WorkspaceAttachRequest,
   WorkspaceAttachmentInfo,
   WorkspaceStatusInfo,
-} from './workspace-api.js';
+} from "./workspace-api.js";
 
 // Snapshot API
 export type {
@@ -208,10 +213,10 @@ export type {
   SnapshotStatusInfo,
   SnapshotGarbageCollectRequest,
   SnapshotGarbageCollectInfo,
-} from './snapshot-api.js';
+} from "./snapshot-api.js";
 
 // Job Context
-export type { JobContext, JobHandler } from './job-context.js';
+export type { JobContext, JobHandler } from "./job-context.js";
 
 // Handlers
 export type {
@@ -231,7 +236,7 @@ export type {
   WorkflowDefinition,
   WebhookHandler,
   WebhookDefinition,
-} from './handlers.js';
+} from "./handlers.js";
 
 // Canonical execution failure taxonomy used by command and workflow hosts.
 export type {
@@ -243,11 +248,11 @@ export type {
   FailureSource,
   RetryDecision,
   RetryPolicyConfig,
-} from '@kb-labs/core-contracts';
+} from "@kb-labs/core-contracts";
 
 // Runner utilities
-export type { ExecutionMetaOptions } from './runner.js';
-export { createExecutionMeta } from './runner.js';
+export type { ExecutionMetaOptions } from "./runner.js";
+export { createExecutionMeta } from "./runner.js";
 
 // Manifest
 export type {
@@ -266,6 +271,8 @@ export type {
   RestConfig,
   WebSocketChannelDecl,
   WebSocketConfig,
+  SseStreamDecl,
+  SseConfig,
   WorkflowHandlerDecl,
   WebhookHandlerDecl,
   WebhookAuthConfig,
@@ -279,16 +286,25 @@ export type {
   JobDecl,
   SetupSpec,
   ErrorSpec,
-} from './manifest.js';
-export { isManifestV3, isServiceManifest, getHandlerPath, getHandlerPermissions } from './manifest.js';
-export { parseManifest, validateManifest, resolveHeaderPolicy } from './manifest-loader.js';
+} from "./manifest.js";
+export {
+  isManifestV3,
+  isServiceManifest,
+  getHandlerPath,
+  getHandlerPermissions,
+} from "./manifest.js";
+export {
+  parseManifest,
+  validateManifest,
+  resolveHeaderPolicy,
+} from "./manifest-loader.js";
 
 // Studio V2 (Module Federation pages)
 export type {
   StudioConfig,
   StudioPageEntry,
   StudioMenuEntry,
-} from './studio.js';
+} from "./studio.js";
 
 // CLI Command Archetypes (opt-in interfaces for plugin authors)
 export type {
@@ -298,4 +314,4 @@ export type {
   ExecuteIntent,
   MutateHandler,
   ExecuteHandler,
-} from './archetypes.js';
+} from "./archetypes.js";
