@@ -375,4 +375,40 @@ describe('loadPlatformConfig', () => {
 
     expect(result.platformConfig.adapters?.llm).toBe('${MISSING_SECRET_VAR}')
   })
+
+  it('shifts loopback adapter infrastructure URLs with KB_NET_OFFSET', async () => {
+    const workspaceRoot = path.join(tmpDir, 'p-net-offset-workspace')
+    makePlatformDir(workspaceRoot, {
+      platform: {
+        adapters: { cache: 'redis', vectorStore: 'qdrant' },
+        adapterOptions: {
+          cache: { url: 'redis://localhost:6379' },
+          vectorStore: { url: 'http://localhost:6333' },
+          serviceTransport: {
+            services: { workflow: { url: 'http://localhost:7778' } },
+          },
+        },
+      },
+    })
+
+    const result = await loadPlatformConfig({
+      startDir: workspaceRoot,
+      env: {
+        KB_PLATFORM_ROOT: workspaceRoot,
+        KB_PROJECT_ROOT: workspaceRoot,
+        KB_NET_OFFSET: '1000',
+      },
+      loadEnvFile: false,
+    })
+
+    expect(result.platformConfig.adapterOptions).toMatchObject({
+      cache: { url: 'redis://localhost:7379' },
+      vectorStore: { url: 'http://localhost:7333' },
+      // The transport owns its own offset application, so it stays canonical
+      // here and is shifted exactly once when the adapter is constructed.
+      serviceTransport: {
+        services: { workflow: { url: 'http://localhost:7778' } },
+      },
+    })
+  })
 })

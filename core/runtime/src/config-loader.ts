@@ -56,6 +56,7 @@ import { resolveRoots, type RootsResolution } from "@kb-labs/core-workspace";
 
 import { CONFIG_FIELD_SCOPE, type PlatformConfig } from "./config.js";
 import { interpolateConfig } from "./config-interpolation.js";
+import { applyLocalNetworkOffset } from "./config-net-offset.js";
 import { PLATFORM_CONFIG_PRODUCT } from "./schema/platform-config-schema.js";
 
 function expandPlatformDir(raw: string, projectRoot: string): string {
@@ -486,7 +487,10 @@ export async function loadPlatformConfig(
   // at boot, not serve traffic with an unresolved `${VAR}` baked into config
   // (see docs/adr/0037-containers-are-canonical-cloud-delivery.md).
   const strictInterpolation = env.NODE_ENV === "production";
-  const effective = interpolateConfig(merged, strictInterpolation, env);
+  const effective = applyLocalNetworkOffset(
+    interpolateConfig(merged, strictInterpolation, env),
+    env,
+  );
 
   return {
     platformConfig: effective,
