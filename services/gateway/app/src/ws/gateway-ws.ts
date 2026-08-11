@@ -152,7 +152,7 @@ export function attachGatewayWs(
           'network.transport': 'websocket',
           'network.connection_id': connectionId,
           'http.route': pathname,
-        });
+        }) ?? logger;
         connectionLogger.info('Gateway WebSocket relay opened', { event: 'websocket.relay.opened' });
         const upstreamWs = new WebSocket(upstreamUrl, {
           headers: { ...forwardWsHeaders(req), 'x-request-id': requestId, 'x-trace-id': traceId },
