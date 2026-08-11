@@ -266,7 +266,7 @@ export interface RestConfig {
     timeoutMs?: number;
   };
   /** Route declarations */
-  routes?: RestRouteDecl[];
+  routes: RestRouteDecl[];
 }
 
 /**
@@ -807,7 +807,7 @@ export function getHandlerPath(
       return manifest.cli?.commands.find((cmd) => cmd.path === id)?.handler;
     case "rest":
       return (
-        manifest.rest?.routes?.find(
+        manifest.rest?.routes.find(
           (route) => `${route.method} ${route.path}` === id,
         )?.handler ??
         manifest.sse?.streams.find((stream) => stream.path === id)?.handler
@@ -842,7 +842,7 @@ export function getHandlerPermissions(
       break;
     case "rest":
       handlerPerms =
-        manifest.rest?.routes?.find(
+        manifest.rest?.routes.find(
           (route) => `${route.method} ${route.path}` === id,
         )?.permissions ??
         manifest.sse?.streams.find((stream) => stream.path === id)?.permissions;
