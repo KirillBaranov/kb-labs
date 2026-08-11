@@ -23,7 +23,7 @@ const logger = {
   trace: vi.fn(), debug: vi.fn(), info: vi.fn(),
   warn: vi.fn(), error: vi.fn(), fatal: vi.fn(),
   child: vi.fn(),
-} as never;
+};
 
 function wire(opts?: { upstreamOpen?: boolean }) {
   const client = new FakeSocket();
@@ -104,6 +104,22 @@ describe('pumpBidirectional', () => {
     // client.close called at most once (guard), upstream.close at most once
     expect(client.close.mock.calls.length).toBeLessThanOrEqual(1);
     expect(upstream.close.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('writes one correlated relay summary with frame counters', () => {
+    const { client, upstream } = wire({ upstreamOpen: true });
+    upstream.emit('open');
+    client.emit('message', Buffer.from('in'), false);
+    upstream.emit('message', Buffer.from('out'), false);
+    client.emit('close', 1000, Buffer.from('done'));
+
+    expect(logger.info).toHaveBeenCalledWith('Gateway WebSocket relay closed', expect.objectContaining({
+      event: 'websocket.relay.closed',
+      clientToUpstreamMessages: 1,
+      upstreamToClientMessages: 1,
+      clientToUpstreamBytes: 2,
+      upstreamToClientBytes: 3,
+    }));
   });
 
   it('does not send to a non-OPEN peer', () => {

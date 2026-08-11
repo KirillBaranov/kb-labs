@@ -106,6 +106,39 @@ export async function mountWebSocketChannels(
         const requestId = (typeof request.headers['x-request-id'] === 'string' ? request.headers['x-request-id'] : undefined) || createExecutionId();
         const traceId = (typeof request.headers['x-trace-id'] === 'string' ? request.headers['x-trace-id'] : undefined) || createExecutionId();
         const tenantId = typeof request.headers['x-tenant-id'] === 'string' ? request.headers['x-tenant-id'] : undefined;
+        const connectionLogger = server.log.child({
+          pluginId: manifest.id,
+          requestId,
+          traceId,
+          tenantId,
+          'network.transport': 'websocket',
+          'network.connection_id': connectionId,
+          'websocket.channel': channel.path,
+        });
+        const transportStats = {
+          inboundMessages: 0,
+          inboundBytes: 0,
+          outboundMessages: 0,
+          outboundBytes: 0,
+          droppedMessages: 0,
+          handlerErrors: 0,
+        };
+        const connectedAt = Date.now();
+        const handlerTimeoutMs = channel.timeoutMs ?? options.defaultTimeoutMs;
+        const maxMessageSize = channel.maxMessageSize ?? options.defaultMaxMessageSize;
+        const idleTimeoutMs = channel.idleTimeoutMs ?? manifest.ws?.defaults?.idleTimeoutMs;
+        let idleTimer: NodeJS.Timeout | undefined;
+        const resetIdleTimer = () => {
+          if (!idleTimeoutMs || idleTimeoutMs <= 0) { return; }
+          if (idleTimer) { clearTimeout(idleTimer); }
+          idleTimer = setTimeout(() => {
+            connectionLogger.warn({
+              event: 'websocket.connection.idle_timeout',
+              idleTimeoutMs,
+            }, '[ws] idle timeout');
+            ws.close(1001, 'Idle timeout');
+          }, idleTimeoutMs);
+        };
 
         // Register connection
         connectionRegistry.register({
@@ -117,7 +150,10 @@ export async function mountWebSocketChannels(
         });
 
         // Create sender interface
-        const sender = createWSSender(ws, connectionId, channel.path);
+        const sender = createWSSender(ws, connectionId, channel.path, {
+          logger: connectionLogger,
+          stats: transportStats,
+        });
 
         // Build WebSocketHostContext
         const hostContext: WebSocketHostContext = {
@@ -160,7 +196,7 @@ export async function mountWebSocketChannels(
               type: 'local',
               cwd: options.workspaceRoot,
             },
-            timeoutMs,
+            timeoutMs: timeoutMs ?? handlerTimeoutMs,
           });
           // Propagate backend errors so onConnect catch block can close the socket
           if (!result.ok) {
@@ -178,9 +214,28 @@ export async function mountWebSocketChannels(
 
         const processMessage = async (data: Buffer): Promise<void> => {
           try {
+            if (maxMessageSize && data.byteLength > maxMessageSize) {
+              connectionLogger.warn({
+                event: 'websocket.message.rejected',
+                reason: 'max_message_size_exceeded',
+                payloadBytes: data.byteLength,
+                maxMessageSize,
+              }, '[ws] message rejected: too large');
+              ws.close(1009, 'Message too large');
+              return;
+            }
+            resetIdleTimer();
             const rawMessage = JSON.parse(data.toString());
-            server.log.info(
-              { plugin: manifest.id, channel: channel.path, connectionId, msgType: rawMessage?.type },
+            transportStats.inboundMessages += 1;
+            transportStats.inboundBytes += data.byteLength;
+            connectionLogger.info(
+              {
+                event: 'websocket.message.received',
+                'messaging.direction': 'inbound',
+                'messaging.message_type': rawMessage?.type,
+                'messaging.message_id': rawMessage?.messageId,
+                payloadBytes: data.byteLength,
+              },
               `[ws] message received — type=${rawMessage?.type}`
             );
             let payload = rawMessage.payload;
@@ -200,14 +255,15 @@ export async function mountWebSocketChannels(
             };
             const t0 = Date.now();
             await executeChannelHandler(messageInput);
-            server.log.info(
-              { plugin: manifest.id, channel: channel.path, connectionId, durationMs: Date.now() - t0 },
+            connectionLogger.info(
+              { event: 'websocket.handler.completed', durationMs: Date.now() - t0 },
               `[ws] message handler completed`
             );
           } catch (error) {
+            transportStats.handlerErrors += 1;
             const errMessage = error instanceof Error ? error.message : String(error);
             const errStack = error instanceof Error ? error.stack : undefined;
-            server.log.error(
+            connectionLogger.error(
               {
                 err: error,
                 errorMessage: errMessage,
@@ -226,7 +282,7 @@ export async function mountWebSocketChannels(
             try {
               await executeChannelHandler(errorInput);
             } catch (err) {
-              server.log.error(
+              connectionLogger.error(
                 { err, plugin: manifest.id, channel: channel.path, connectionId },
                 `[ws] onError handler also failed — plugin "${manifest.id}", channel "${channel.path}"`
               );
@@ -249,11 +305,17 @@ export async function mountWebSocketChannels(
         // Call onConnect lifecycle
         try {
           const connectInput: WSInput = { event: 'connect', sender };
+          const connectedHandlerAt = Date.now();
           await executeChannelHandler(connectInput);
+          resetIdleTimer();
+          connectionLogger.info({
+            event: 'websocket.connection.opened',
+            connectDurationMs: Date.now() - connectedHandlerAt,
+          }, '[ws] connection opened');
         } catch (error) {
           const errMessage = error instanceof Error ? error.message : String(error);
           const errStack = error instanceof Error ? error.stack : undefined;
-          server.log.error(
+          connectionLogger.error(
             {
               err: error,
               errorMessage: errMessage,
@@ -279,6 +341,7 @@ export async function mountWebSocketChannels(
 
         // Handle disconnect
         ws.on('close', async (code: number, reason: Buffer) => {
+          if (idleTimer) { clearTimeout(idleTimer); }
           connectionRegistry.unregister(connectionId);
 
           try {
@@ -289,10 +352,19 @@ export async function mountWebSocketChannels(
             };
             await executeChannelHandler(disconnectInput);
           } catch (error) {
-            server.log.error(
+            transportStats.handlerErrors += 1;
+            connectionLogger.error(
               { err: error, plugin: manifest.id, channel: channel.path, connectionId, code },
               `[ws] onDisconnect failed — plugin "${manifest.id}", channel "${channel.path}"`
             );
+          } finally {
+            connectionLogger.info({
+              event: 'websocket.connection.closed',
+              closeCode: code,
+              closeReason: reason.toString(),
+              durationMs: Date.now() - connectedAt,
+              ...transportStats,
+            }, '[ws] connection closed');
           }
         });
 
@@ -306,7 +378,8 @@ export async function mountWebSocketChannels(
             };
             await executeChannelHandler(errorInput);
           } catch (err) {
-            server.log.error(
+            transportStats.handlerErrors += 1;
+            connectionLogger.error(
               { err, plugin: manifest.id, channel: channel.path, connectionId },
               `[ws] onError handler failed — plugin "${manifest.id}", channel "${channel.path}"`
             );

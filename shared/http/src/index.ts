@@ -29,6 +29,12 @@ export {
   type HttpLogContextInput,
 } from "./log-context.js";
 export {
+  createRealtimeLogger,
+  type RealtimeLogContextInput,
+  type RealtimeTransport,
+} from "./realtime-log-context.js";
+export { createSseStream, type SseStream, type SseStreamOptions } from "./sse-stream.js";
+export {
   OperationMetricsTracker,
   type OperationObserver,
   type OperationStatus,
