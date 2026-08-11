@@ -1,5 +1,9 @@
-export { PluginHeader } from './plugin-header';
-export { CapabilitiesSummary } from './capabilities-summary';
+export { PluginStatusStrip } from './plugin-status-strip';
+export { OverviewTab } from './overview-tab';
+export { CapabilitiesTab } from './capabilities-tab';
+export { ChangelogTab } from './changelog-tab';
+export { RawManifestDrawer } from './raw-manifest-drawer';
+export { PluginMarkdownContent } from './plugin-markdown-content';
 export { CLICommandsTable } from './cli-commands-table';
 export { RestRoutesTable } from './rest-routes-table';
 export { WorkflowsTable } from './workflows-table';
