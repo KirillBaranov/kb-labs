@@ -78,18 +78,18 @@ jobs:
         phase: checks
         # pack-install runs a real `npm pack` + clean-consumer `npm install` per package
         # (~140 packages). At the process-broker's safe concurrency (CHECKS_CONCURRENCY=2,
-        # see plugins/release/manager-core/src/checks.ts) a full run takes ~35min; 1200000ms
-        # (20min) was sized for the old, higher (and broker-deadlocking) concurrency.
-        timeoutMs: 3600000
+        # see plugins/release/manager-core/src/checks.ts) a full run is install-heavy and
+        # can grow with the monorepo; keep a two-hour budget for future package growth.
+        timeoutMs: 7200000
         if: ${{ !inputs.skipChecks }}
         run: pnpm kb release checks --flow ${{ inputs.flow }} --json
 
       - name: Build
         id: build
         phase: build
-        # Full platform flow (~140 packages) can exceed 20min; matches the
-        # Checks step's 1h budget below.
-        timeoutMs: 3600000
+        # Full platform flow (~140 packages) can exceed 20min; keep a two-hour
+        # budget for future package growth and build-order expansion.
+        timeoutMs: 7200000
         run: pnpm kb release build --flow ${{ inputs.flow }} --json
 
       - name: Prepare release review
