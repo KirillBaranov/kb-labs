@@ -151,6 +151,46 @@ func TestSDKVersionPin(t *testing.T) {
 	})
 }
 
+// TestPlatformVersionPinKeepsCompanionAligned exercises the invariant behind
+// the Platform axis with a real installation: an exact platform pin applies
+// to both a service package and its independently-installed companion CLI
+// package. The latter was the original mixed-channel regression.
+func TestPlatformVersionPinKeepsCompanionAligned(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	// CI's Verdaccio only publishes the current checkout, while a developer's
+	// public-registry run needs a released version. The workspace version is
+	// valid in both cases for a release train checkout.
+	pinnedPlatform := readPkgVersion(t, "core/runtime/package.json")
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes", "--platform-version", pinnedPlatform, "--platform", platformDir)
+	if code != 0 {
+		t.Fatalf("install exited %d:\n%s", code, out)
+	}
+
+	for _, pkg := range []string{"core-runtime", "workflow-daemon", "workflow-entry"} {
+		if got := installedVersion(t, platformDir, pkg); got != pinnedPlatform {
+			t.Errorf("installed @kb-labs/%s version = %q, want platform pin %q", pkg, got, pinnedPlatform)
+		}
+	}
+
+	statusOut, code := run(t, bin, "status", "--platform", platformDir)
+	if code != 0 {
+		t.Fatalf("status exited %d:\n%s", code, statusOut)
+	}
+	if !strings.Contains(statusOut, "pinned "+pinnedPlatform) {
+		t.Errorf("status does not show pinned Platform version %q:\n%s", pinnedPlatform, statusOut)
+	}
+}
+
 // TestPlatformChannelCanaryResolves installs with --platform-channel canary
 // and verifies the channel actually reaches the package manager (a real,
 // non-empty, non-literal-"canary" semver lands in node_modules — proving
