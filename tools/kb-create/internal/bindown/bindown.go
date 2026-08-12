@@ -260,23 +260,33 @@ func isRetryableHTTPStatus(status int) bool {
 // verifyChecksum downloads checksums.txt and verifies the file's SHA-256.
 func verifyChecksum(filePath, binaryFile, checksumsURL string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, checksumsURL, nil) // #nosec G107
-	if err != nil {
-		return fmt.Errorf("download checksums: %w", err)
-	}
-	resp, err := client.Do(req) // #nosec G704 -- URL from trusted manifest
-	if err != nil {
-		return fmt.Errorf("download checksums: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GET checksums.txt: HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	var body []byte
+	for attempt := 0; attempt < 3; attempt++ {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, checksumsURL, nil) // #nosec G107
+		if err != nil {
+			return fmt.Errorf("download checksums: %w", err)
+		}
+		resp, err := client.Do(req) // #nosec G704 -- URL from trusted manifest
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				body, err = io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				if err != nil {
+					return err
+				}
+				break
+			}
+			status := resp.StatusCode
+			_ = resp.Body.Close()
+			if !isRetryableHTTPStatus(status) || attempt == 2 {
+				return fmt.Errorf("GET checksums.txt: HTTP %d", status)
+			}
+		} else if attempt == 2 {
+			return fmt.Errorf("download checksums: %w", err)
+		}
+		if attempt < 2 {
+			time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond)
+		}
 	}
 
 	// Find line: "<hash>  <filename>"

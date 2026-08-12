@@ -1,7 +1,12 @@
 package bindown
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -57,5 +62,39 @@ func TestRetryableHTTPStatus(t *testing.T) {
 		if isRetryableHTTPStatus(status) {
 			t.Errorf("status %d should not be retryable", status)
 		}
+	}
+}
+
+func TestVerifyChecksumRetriesTransientResponse(t *testing.T) {
+	data := []byte("binary")
+	hash := sha256.Sum256(data)
+	checksums := fmt.Sprintf("%s  kb-dev-linux-amd64\n", hex.EncodeToString(hash[:]))
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(checksums))
+	}))
+	defer server.Close()
+
+	file, err := os.CreateTemp(t.TempDir(), "binary-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := verifyChecksum(file.Name(), "kb-dev-linux-amd64", server.URL); err != nil {
+		t.Fatalf("verifyChecksum returned error: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("checksum requests = %d, want 2", attempts)
 	}
 }
