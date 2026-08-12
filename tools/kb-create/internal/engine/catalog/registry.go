@@ -14,8 +14,9 @@ import (
 )
 
 type RegistryOptions struct {
-	NPM   string
-	Cache ManifestCache
+	NPM      string
+	Registry string
+	Cache    ManifestCache
 }
 
 // ResolveRegistryPackage downloads only the package artifact and reads its
@@ -35,6 +36,21 @@ func ResolveRegistryPackage(ctx context.Context, packageSpec string, options Reg
 	}
 	defer os.RemoveAll(tempDir)
 	command := exec.CommandContext(ctx, npm, "pack", packageSpec, "--ignore-scripts", "--json", "--pack-destination", tempDir) // #nosec G204 -- explicit package spec and npm executable.
+	// Keep catalog resolution on the same registry as installation. In CI the
+	// e2e suite publishes the freshly built workspace to Verdaccio and exposes
+	// it through KB_REGISTRY_URL; without forwarding that setting, npm pack
+	// silently resolves the package from public npm instead and returns a stale
+	// release whose manifest points at versions absent from Verdaccio.
+	registry := options.Registry
+	if registry == "" {
+		registry = os.Getenv("NPM_CONFIG_REGISTRY")
+	}
+	if registry == "" {
+		registry = os.Getenv("KB_REGISTRY_URL")
+	}
+	if registry != "" {
+		command.Env = append(os.Environ(), "NPM_CONFIG_REGISTRY="+registry)
+	}
 	output, err := command.Output()
 	if err != nil {
 		return ResolvedEntity{}, fmt.Errorf("download package manifest %q: %w", packageSpec, err)
