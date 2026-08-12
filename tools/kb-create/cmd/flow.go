@@ -72,7 +72,7 @@ var flowRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			if err := writeDeclarativeInstallState(compiled); err != nil {
+			if err := writeDeclarativeInstallState(compiled, nil, manifest.ResolvedAxes{}); err != nil {
 				return fmt.Errorf("write install state: %w", err)
 			}
 			completed := 0
@@ -139,12 +139,27 @@ func printHumanPlanSummary(out io.Writer, compiled engineplan.InstallPlan) {
 	}
 }
 
-func writeDeclarativeInstallState(compiled engineplan.InstallPlan) error {
-	source, err := manifest.LoadDefault()
-	if err != nil {
-		return err
+// writeDeclarativeInstallState persists install state after a compiled plan
+// has been applied. source is the manifest that was actually resolved and
+// installed (with axis-mutated Version fields, if the caller resolved
+// axes) — pass nil to fall back to a fresh manifest.LoadDefault() for
+// callers that don't do axis resolution (the interactive wizard, the agent
+// protocol driver). axes is persisted onto the resulting config's
+// Source.{SDK,Platform}{Channel,Version} for `status`/sticky `update` reads;
+// pass the zero value for those same callers.
+func writeDeclarativeInstallState(compiled engineplan.InstallPlan, source *manifest.Manifest, axes manifest.ResolvedAxes) error {
+	if source == nil {
+		loaded, err := manifest.LoadDefault()
+		if err != nil {
+			return err
+		}
+		source = loaded
 	}
 	cfg := installconfig.NewConfig(compiled.PlatformRoot, compiled.ProjectRoot, pm.Detect().Name(), "", "kb-create/declarative", source, installconfig.TelemetryConfig{})
+	cfg.Source.SDKChannel = axisPersistedChannel(axes.SDK)
+	cfg.Source.SDKVersion = axisPersistedVersion(axes.SDK)
+	cfg.Source.PlatformChannel = axisPersistedChannel(axes.Platform)
+	cfg.Source.PlatformVersion = axisPersistedVersion(axes.Platform)
 	cfg.Mode = string(compiled.Source)
 	cfg.ScenarioID = compiled.ScenarioID
 	cfg.LastPlanHash = compiled.PlanHash

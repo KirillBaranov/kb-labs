@@ -20,6 +20,23 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
+// axisSummary formats a version axis for display: "pinned <version>" for an
+// exact pin (no channel), "<channel> (<version>)" when pre-flight resolved
+// a concrete version for a tracked channel, or bare "<channel>" when no
+// resolution happened (e.g. no compatibility matrix to trigger it).
+func axisSummary(channel, version string) string {
+	switch {
+	case channel == "" && version != "":
+		return "pinned " + version
+	case channel != "" && version != "":
+		return fmt.Sprintf("%s (%s)", channel, version)
+	case channel != "":
+		return channel
+	default:
+		return "unknown"
+	}
+}
+
 func runStatus(cmd *cobra.Command, args []string) error {
 	platformDir, err := resolvePlatformDir(cmd)
 	if err != nil {
@@ -38,6 +55,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	out.KeyValue("Project", cfg.CWD)
 	out.KeyValue("PM", cfg.PM)
 	out.KeyValue("Registry", cfg.Source.EffectiveRegistry())
+	out.KeyValue("SDK", axisSummary(cfg.Source.SDKChannel, cfg.Source.SDKVersion))
+	out.KeyValue("Platform", axisSummary(cfg.Source.PlatformChannel, cfg.Source.PlatformVersion))
 	installedLine := cfg.InstalledAt.Format("2006-01-02 15:04")
 	if cfg.Source.InstalledBy != "" {
 		installedLine += "  via " + cfg.Source.InstalledBy

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -394,5 +395,62 @@ func TestSourceRoundTrip(t *testing.T) {
 	}
 	if got.Source.InstalledBy != "kb-create@2.0.0" {
 		t.Errorf("Source.InstalledBy after round-trip = %q, want %q", got.Source.InstalledBy, "kb-create@2.0.0")
+	}
+}
+
+// TestSourceAxisChannelFieldsRoundTrip verifies the four SDK/Platform
+// channel+version fields (added for kb-create's version-axis mechanism)
+// survive a Write/Read cycle.
+func TestSourceAxisChannelFieldsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	m := sampleManifest()
+	cfg := NewConfig(dir, dir, "pnpm", "", "kb-create@2.0.0", &m, TelemetryConfig{})
+	cfg.Source.SDKChannel = "canary"
+	cfg.Source.SDKVersion = "2.115.3"
+	cfg.Source.PlatformChannel = "stable"
+	cfg.Source.PlatformVersion = "2.117.0"
+
+	if err := Write(dir, cfg); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	got, err := Read(dir)
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+
+	if got.Source.SDKChannel != "canary" {
+		t.Errorf("Source.SDKChannel after round-trip = %q, want %q", got.Source.SDKChannel, "canary")
+	}
+	if got.Source.SDKVersion != "2.115.3" {
+		t.Errorf("Source.SDKVersion after round-trip = %q, want %q", got.Source.SDKVersion, "2.115.3")
+	}
+	if got.Source.PlatformChannel != "stable" {
+		t.Errorf("Source.PlatformChannel after round-trip = %q, want %q", got.Source.PlatformChannel, "stable")
+	}
+	if got.Source.PlatformVersion != "2.117.0" {
+		t.Errorf("Source.PlatformVersion after round-trip = %q, want %q", got.Source.PlatformVersion, "2.117.0")
+	}
+}
+
+// TestSourceAxisChannelFieldsOmittedWhenEmpty verifies the new fields don't
+// appear in persisted JSON for installs predating this feature (an empty
+// InstallSource must not gain new visible fields, keeping old install.json
+// diffs/snapshots stable).
+func TestSourceAxisChannelFieldsOmittedWhenEmpty(t *testing.T) {
+	dir := t.TempDir()
+	m := sampleManifest()
+	cfg := NewConfig(dir, dir, "pnpm", "", "", &m, TelemetryConfig{})
+
+	if err := Write(dir, cfg); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	data, err := os.ReadFile(ConfigPath(dir))
+	if err != nil {
+		t.Fatalf("read install.json: %v", err)
+	}
+	for _, field := range []string{"sdkChannel", "sdkVersion", "platformChannel", "platformVersion"} {
+		if strings.Contains(string(data), `"`+field+`"`) {
+			t.Errorf("install.json contains %q with empty value, want omitted", field)
+		}
 	}
 }

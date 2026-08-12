@@ -10,6 +10,7 @@ import (
 
 	installconfig "github.com/kb-labs/create/internal/config"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
+	"github.com/kb-labs/create/internal/manifest"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +60,7 @@ func TestWriteDeclarativeInstallState(t *testing.T) {
 		},
 	}
 
-	if err := writeDeclarativeInstallState(compiled); err != nil {
+	if err := writeDeclarativeInstallState(compiled, nil, manifest.ResolvedAxes{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(platformRoot, ".kb", "install.json")); err != nil {

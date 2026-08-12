@@ -36,7 +36,11 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 		}
 		companionPackages := []string(nil)
 		if service.Plugin != "" {
-			companionPackages = []string{service.Plugin}
+			companion := service.Plugin
+			if service.PluginVersion != "" {
+				companion += "@" + service.PluginVersion
+			}
+			companionPackages = []string{companion}
 		}
 		catalog.Components = append(catalog.Components, Component{ID: id, Kind: "service", Package: service.Pkg, CompanionPackages: companionPackages, Default: service.Default, Config: componentConfig})
 	}

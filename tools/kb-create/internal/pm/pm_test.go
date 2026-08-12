@@ -348,6 +348,13 @@ func TestPnpmInstallRecoversFromIgnoredBuilds(t *testing.T) {
 	if _, err := exec.LookPath("pnpm"); err != nil {
 		t.Skip("pnpm not found in PATH")
 	}
+	// A pnpm binary can be present yet unusable with the active Node runtime
+	// (for example pnpm 11 on Node 20). This integration test exercises pnpm,
+	// so skip rather than misreporting a toolchain mismatch as an installer
+	// regression.
+	if err := exec.Command("pnpm", "--version").Run(); err != nil {
+		t.Skipf("pnpm is not runnable with the active Node runtime: %v", err)
+	}
 
 	fixtureDir := t.TempDir()
 	fixturePkg := `{"name":"kb-fixture-pkg","version":"1.0.0","scripts":{"postinstall":"node -e \"require('fs').writeFileSync('built.txt','ok')\""}}` + "\n"
