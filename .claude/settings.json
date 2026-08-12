@@ -62,8 +62,8 @@
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '\\bpnpm\\s+kb-dev\\s+(start|restart|ensure)\\b'; then case \"$cmd\" in *--config*) : ;; *) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"pnpm kb-dev start/restart/ensure без --config заблокирован. Используй: pnpm kb-dev start --config .kb/devservices.dev.yaml\"}}' ;; esac; fi",
-            "statusMessage": "Проверка pnpm kb-dev config..."
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '\\bpnpm\\s+kb-dev\\s+(start|restart|ensure)\\b'; then missing=\"\"; case \"$cmd\" in *--config*) : ;; *) missing=\"--config\" ;; esac; case \"$cmd\" in *--net-offset*) : ;; *) missing=\"$missing --net-offset\" ;; esac; if [ -n \"$missing\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"pnpm kb-dev start/restart/ensure без${missing} заблокирован. Укажи --config <путь к devservices.yaml> и --net-offset <N>\\\"}}\"; fi; fi",
+            "statusMessage": "Проверка pnpm kb-dev config/net-offset..."
           }
         ]
       },
@@ -73,8 +73,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '^\\s*kb-dev\\s+(start|restart|ensure)\\b'; then case \"$cmd\" in *--config*) : ;; *) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"kb-dev start/restart/ensure без --config заблокирован. Используй: kb-dev start --config .kb/devservices.dev.yaml\"}}' ;; esac; fi",
-            "statusMessage": "Проверка kb-dev config..."
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '^\\s*kb-dev\\s+(start|restart|ensure)\\b'; then missing=\"\"; case \"$cmd\" in *--config*) : ;; *) missing=\"--config\" ;; esac; case \"$cmd\" in *--net-offset*) : ;; *) missing=\"$missing --net-offset\" ;; esac; if [ -n \"$missing\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"kb-dev start/restart/ensure без${missing} заблокирован. Укажи --config <путь к devservices.yaml> и --net-offset <N>\\\"}}\"; fi; fi",
+            "statusMessage": "Проверка kb-dev config/net-offset..."
           }
         ]
       }

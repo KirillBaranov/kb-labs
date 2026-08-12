@@ -11,15 +11,30 @@ globs:
 
 Go binary that manages local development services with process tracking, health checks, dependency ordering, and auto-restart.
 
+## Required flags for start/restart/ensure
+
+A `PreToolUse` hook in `.claude/settings.json` blocks `kb-dev start|restart|ensure`
+(both bare `kb-dev ...` and `pnpm kb-dev ...`) unless the command includes
+**both** `--config <path>` and `--net-offset <N>`. This applies regardless of
+which config file you pass (`devservices.yaml` or `devservices.dev.yaml`) —
+the hook only checks flag presence, not the filename. `stop`/`status`/`logs`/etc.
+are not gated.
+
+```bash
+kb-dev start --config .kb/devservices.yaml --net-offset 0        # will pass the hook
+kb-dev start --config .kb/devservices.dev.yaml --net-offset 0    # will pass the hook
+kb-dev start                                                     # blocked by hook
+```
+
 ## Commands
 
 ```bash
-kb-dev start                 # start all services (dependency-aware parallel)
-kb-dev start rest gateway    # start specific services
-kb-dev start backend         # start a group
+kb-dev start --config <file> --net-offset <N>   # start all services (dependency-aware parallel)
+kb-dev start rest gateway --config <file> --net-offset <N>  # start specific services
+kb-dev start backend --config <file> --net-offset <N>        # start a group
 kb-dev stop                  # stop all
 kb-dev stop workflow         # stop specific
-kb-dev restart               # restart all
+kb-dev restart --config <file> --net-offset <N>  # restart all
 kb-dev status                # health + CPU% + memory per service
 kb-dev status --json         # agent-friendly JSON output
 kb-dev health                # quick health check
@@ -93,12 +108,12 @@ already the active one.
 - `.kb/devservices.yaml` — продакшн/базовые сервисы (используется по умолчанию)
 - `.kb/devservices.dev.yaml` — dev-расширение: добавляет studio, qdrant, redis, kb-web, kb-docs, host-agent, runtime-server
 
-Переключиться через `--config`:
+Переключиться через `--config` (для `start`/`restart`/`ensure` хук также требует `--net-offset`, см. выше):
 
 ```bash
-kb-dev start --config .kb/devservices.dev.yaml          # запустить всё из dev конфига
-kb-dev start studio --config .kb/devservices.dev.yaml   # только студия
-kb-dev start --group backend --config .kb/devservices.dev.yaml  # только backend группа
+kb-dev start --config .kb/devservices.dev.yaml --net-offset 0          # запустить всё из dev конфига
+kb-dev start studio --config .kb/devservices.dev.yaml --net-offset 0   # только студия
+kb-dev start --group backend --config .kb/devservices.dev.yaml --net-offset 0  # только backend группа
 kb-dev status --config .kb/devservices.dev.yaml
 kb-dev stop --config .kb/devservices.dev.yaml
 ```
