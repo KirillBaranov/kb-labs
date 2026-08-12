@@ -11,6 +11,24 @@ globs:
 
 CLI entry point: `pnpm kb release <command>`.
 
+## Release runtime preflight
+
+`kb-labs-workspace` is the only source checkout for a platform release.
+`/Users/kirillbaranov/Desktop/work/kb-labs-infra/platform` is a production
+runtime installation outside the worktree. It may be selected for dogfood
+testing through `platform.dir`, but it must never supply the workflow root or
+branch for a workspace release.
+
+Before starting `release-prepare`:
+
+1. Confirm `git branch --show-current` is `main` in `kb-labs-workspace` and
+   its remote CI is green.
+2. Switch to dev runtime with `pnpm config:dev` if `platform.dir` points to
+   the production installation; then restart the workspace workflow daemon.
+3. Confirm the workflow daemon resolves `.kb/workflows/release-prepare.yml`
+   from this workspace. If it reports another checkout or branch, stop and
+   repair the runtime root—never use the direct release CLI as a workaround.
+
 ---
 
 > ## ⛔ КРИТИЧЕСКИЕ ПРАВИЛА — НАРУШЕНИЕ ЛОМАЕТ РЕЛИЗ
@@ -33,9 +51,11 @@ CLI entry point: `pnpm kb release <command>`.
 > **3. Changesets больше не используется.** `.changeset/`, `pnpm changeset`, `pnpm release`(старый alias на `changeset publish`) — удалены. `plugins/release/*` (эта страница) — единственный источник правды для версий/changelog/публикации.
 >
 > **4. Агент никогда сам не паблишит в npm.** После запушенного тега доставку
-> выполняет CI (`stage` → `deliver-npm`) с credentials из GitHub Secrets и
-> проверяет результат в registry. Финиш локального agent-пути — успешный
-> `release-prepare` и запушенный git-тег; затем агент только наблюдает CI.
+> выполняет CI (`stage` → `deliver-candidate` → `launcher-smoke`) с credentials
+> из GitHub Secrets и проверяет результат в registry. Stable promotion вынесен
+> в отдельный ручной `promote-npm-release.yml`: он принимает `release_tag` и
+> `candidate_run_id`, проверяет canary против manifest и делает только
+> `npm dist-tag add <name>@<version> latest` для тех же артефактов.
 
 ---
 
@@ -120,14 +140,26 @@ gh run list --workflow=publish-npm-on-tag.yml --limit 3
 gh run watch <run-id>
 ```
 
-CI-часть (`stage` → `deliver-npm`, см. `.github/workflows/publish-npm-on-tag.yml`)
+CI-часть (`stage` → `deliver-candidate` → `launcher-smoke`, см.
+`.github/workflows/publish-npm-on-tag.yml`)
 сама резолвит `{flow, channel}` из тега (`resolveFlowFromTag`,
 `release.flows[*].tagPattern`), пакует тарболы один раз (`kb release stage`)
-и паблишит + верифицирует против реального registry (`kb release deliver
---target npm`) — никакого `--flow` вручную, никакого `NPM_TOKEN` от агента.
-Если `deliver-npm` упал после успешного `stage` — просто перезапустить эту
-джобу (`gh run rerun <run-id> --job=deliver-npm`), паблиш идемпотентен,
-тарболы переиспользуются, не пересобираются.
+и публикует candidate под `canary` (`kb release deliver --target npm`) —
+никакого `--flow` вручную, никакого `NPM_TOKEN` от агента. Если
+`deliver-candidate` упал после успешного `stage` — перезапустить эту джобу
+(`gh run rerun <run-id> --job=deliver-candidate`), публикация идемпотентна,
+тарболы переиспользуются, не пересобираются. После зелёного smoke promotion
+запускается отдельно:
+
+```bash
+gh workflow run promote-npm-release.yml \
+  -f release_tag=platform-vX.Y.Z \
+  -f candidate_run_id=<successful-publish-run-id>
+```
+
+Promotion отклоняет любой run без успешных `deliver-candidate` и
+`launcher-smoke`, проверяет, что `@canary` указывает на версии из manifest,
+и не делает новый build/pack/publish.
 
 **Если что-то пошло не так до пуша тега** (validation/checks/build упали, approval
 отклонён) — просто чинить и перезапускать воркфлоу заново, тег ещё не
