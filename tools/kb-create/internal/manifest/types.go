@@ -50,7 +50,7 @@ type Component struct {
 	GatewayRewrite   *string       `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
 	GatewayWebSocket bool          `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
 	Plugin           string        `json:"plugin,omitempty"`           // companion CLI plugin pkg (services only)
-	PluginVersion    string        `json:"-"`                          // resolved companion CLI plugin version (services only)
+	PluginVersion    string        `json:"pluginVersion,omitempty"`    // resolved companion CLI plugin version (services only)
 	Config           []ConfigPatch `json:"config,omitempty"`
 }
 

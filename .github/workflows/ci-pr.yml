@@ -378,6 +378,7 @@ jobs:
             const names = [
               ...(manifest.core ?? []).map((item) => item.name),
               ...(manifest.services ?? []).map((item) => item.pkg),
+              ...(manifest.services ?? []).map((item) => item.plugin),
               ...(manifest.adapters ?? []).map((item) => item.name),
               ...(manifest.plugins ?? []).map((item) => item.pkg),
             ].filter(Boolean);
