@@ -36,6 +36,20 @@ func TestFromManifestKeepsJSONManifestAsComponentSource(t *testing.T) {
 	}
 }
 
+func TestFromManifestPinsResolvedServiceCompanionPackage(t *testing.T) {
+	source := manifest.Manifest{Services: []manifest.Component{{
+		ID: "workflow", Pkg: "@kb-labs/workflow", Plugin: "@kb-labs/workflow-entry", PluginVersion: "2.118.1",
+	}}}
+	result, err := FromManifest(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, ok := result.Component("service:workflow")
+	if !ok || len(service.CompanionPackages) != 1 || service.CompanionPackages[0] != "@kb-labs/workflow-entry@2.118.1" {
+		t.Fatalf("service companion packages = %#v", service.CompanionPackages)
+	}
+}
+
 func TestFromManifestConvertsReusableEffects(t *testing.T) {
 	source := manifest.Manifest{Effects: []manifest.ConfigEffect{{
 		ID: "gateway.access.local",

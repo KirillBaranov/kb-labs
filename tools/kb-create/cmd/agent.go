@@ -14,6 +14,7 @@ import (
 	"github.com/kb-labs/create/internal/engine/flow"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/engine/scenario"
+	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/spf13/cobra"
 )
@@ -178,7 +179,7 @@ func runAgentApply(cmd *cobra.Command, _ []string) error {
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 	})
 	if runErr == nil && !agentPlanOnly {
-		if stateErr := writeDeclarativeInstallState(compiled); stateErr != nil {
+		if stateErr := writeDeclarativeInstallState(compiled, nil, manifest.ResolvedAxes{}); stateErr != nil {
 			runErr = fmt.Errorf("write install state: %w", stateErr)
 		}
 	}

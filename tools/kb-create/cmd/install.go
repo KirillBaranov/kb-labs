@@ -28,13 +28,18 @@ import (
 )
 
 var (
-	flagInstallPlugins     string
-	flagInstallServices    string
-	flagInstallAdapters    string
-	flagInstallPlatform    string
-	flagInstallProjectRoot string
-	flagInstallRegistry    string
-	flagInstallDevManifest string
+	flagInstallPlugins         string
+	flagInstallServices        string
+	flagInstallAdapters        string
+	flagInstallPlatform        string
+	flagInstallProjectRoot     string
+	flagInstallRegistry        string
+	flagInstallDevManifest     string
+	flagInstallSDKVersion      string
+	flagInstallSDKChannel      string
+	flagInstallPlatformVersion string
+	flagInstallPlatformChannel string
+	flagInstallForceCompat     bool
 )
 
 var installCmd = &cobra.Command{
@@ -54,6 +59,11 @@ func init() {
 	installCmd.Flags().StringVar(&flagInstallProjectRoot, "project-root", "", "project directory to install into (defaults to the project used by the last install for this platform, or the current directory)")
 	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	installCmd.Flags().StringVar(&flagInstallDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
+	installCmd.Flags().StringVar(&flagInstallSDKVersion, "sdk-version", "", "pin the SDK (@kb-labs/sdk) to an exact version — mutually exclusive with --sdk-channel")
+	installCmd.Flags().StringVar(&flagInstallSDKChannel, "sdk-channel", "", `track a release channel for the SDK: "stable" (default) or "canary"`)
+	installCmd.Flags().StringVar(&flagInstallPlatformVersion, "platform-version", "", "pin core+adapters+every service+every plugin to an exact version, all identical — mutually exclusive with --platform-channel")
+	installCmd.Flags().StringVar(&flagInstallPlatformChannel, "platform-channel", "", `track a release channel for core+adapters+every service+every plugin: "stable" (default) or "canary"`)
+	installCmd.Flags().BoolVar(&flagInstallForceCompat, "force-compat", false, "install even if the resolved SDK/Platform versions violate the release's compatibility matrix")
 	rootCmd.AddCommand(installCmd)
 }
 
@@ -73,6 +83,14 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
+	axes, err := resolveAxisFlags(flagInstallSDKVersion, flagInstallSDKChannel, flagInstallPlatformVersion, flagInstallPlatformChannel)
+	if err != nil {
+		return err
+	}
+	if err := preflightCompatibility(&axes, manifestSource, pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}), flagInstallForceCompat, out); err != nil {
+		return err
+	}
+	platformOverrides := manifest.ApplyAxisResolution(manifestSource, axes)
 	catalog, err := enginecatalog.FromManifest(*manifestSource)
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)
@@ -123,7 +141,13 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		}
 		canonicalServices = append(canonicalServices, canonical)
 	}
-	packageOverrides := make(map[string]string, len(pluginVersions)+len(serviceVersions))
+	packageOverrides := make(map[string]string, len(platformOverrides)+len(pluginVersions)+len(serviceVersions))
+	for id, spec := range platformOverrides {
+		packageOverrides[id] = spec
+	}
+	// Per-ID --plugins/--services id@version pins are applied after the
+	// blanket Platform-axis spec, so an explicit per-component pin still
+	// wins for that one component.
 	for id, version := range pluginVersions {
 		packageOverrides["plugin:"+id] = componentPackageSpec(catalog, "plugin:"+id, version)
 	}
@@ -193,7 +217,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	}
 	printAdapterReconciliation(out, platformDir, adapters, result.InstalledPlugins)
 	printEnvHints(out, platformDir, result.InstalledPlugins)
-	if err := writeDeclarativeInstallState(compiled); err != nil {
+	if err := writeDeclarativeInstallState(compiled, manifestSource, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
 	completed := 0

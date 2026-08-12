@@ -57,6 +57,17 @@ type InstallSource struct {
 	Registry    string    `json:"registry,omitempty"`
 	InstalledBy string    `json:"installedBy,omitempty"` // "kb-create@1.4.2"
 	InstalledAt time.Time `json:"installedAt"`
+
+	// SDKChannel/PlatformChannel record which release channel ("stable" or
+	// "canary") each version axis was tracking as of the last install/update.
+	// SDKVersion/PlatformVersion record the concrete resolved version (not
+	// the dist-tag) — set either from an exact --*-version pin or from the
+	// pre-flight registry resolution of the channel. Read back by `update`
+	// (sticky channel default) and displayed by `status`.
+	SDKChannel      string `json:"sdkChannel,omitempty"`
+	SDKVersion      string `json:"sdkVersion,omitempty"`
+	PlatformChannel string `json:"platformChannel,omitempty"`
+	PlatformVersion string `json:"platformVersion,omitempty"`
 }
 
 // EffectiveRegistry returns the registry URL, falling back to the public npm default.
