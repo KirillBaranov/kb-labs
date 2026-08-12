@@ -246,6 +246,11 @@ jobs:
     env:
       COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.ci-launcher.yml
       COMPOSE_PROJECT_NAME: kb-e2e-launcher
+      # This job tests the freshly packed workspace in local Verdaccio. Do not
+      # fetch the public stable installer manifest (which may point at an older
+      # release than this checkout); use the embedded product manifest and the
+      # local registry packages instead.
+      KB_CREATE_OFFLINE: "1"
 
     steps:
       - uses: actions/checkout@v4
