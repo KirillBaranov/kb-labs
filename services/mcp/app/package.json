@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mcp-app",
-  "version": "2.118.0",
+  "version": "2.118.1",
   "type": "module",
   "main": "./dist/index.js",
   "files": [
