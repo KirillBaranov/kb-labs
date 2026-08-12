@@ -306,6 +306,9 @@ jobs:
     env:
       COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.ci-launcher.yml
       COMPOSE_PROJECT_NAME: kb-e2e-launcher
+      # The PR Verdaccio contains this checkout, not necessarily the public
+      # stable release referenced by the remote installer manifest.
+      KB_CREATE_OFFLINE: "1"
 
     steps:
       - uses: actions/checkout@v4
