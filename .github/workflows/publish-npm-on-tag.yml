@@ -178,8 +178,11 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # Post-publish launcher smoke (kb-create e2e) — runs the full kb-create
-  # end-to-end suite against the packages we just delivered to npm. Last-mile
+  # Post-publish launcher smoke runs one bounded, isolated kb-create journey
+  # against the packages we just delivered to npm. The exhaustive lifecycle
+  # suite runs separately: promotion must fail quickly with a precise boundary,
+  # never because an unrelated final test consumed a global suite timeout.
+  # Last-mile
   # gate: if any transitive dep was published with broken workspace:* deps,
   # missing versions, unreadable manifests, or similar publish-time
   # regressions, this job turns red instead of a user bug report. Runs after
@@ -189,12 +192,7 @@ jobs:
     name: kb-create post-publish smoke
     runs-on: ubuntu-latest
     needs: deliver-candidate
-    # 20min wasn't a hang — with --live streaming (see the `run` step below)
-    # the log showed ~20 sequential Go e2e tests genuinely passing at ~2min
-    # each (TestInstallYes alone: 272s), just needing more wall-clock than
-    # the job had. 40min budget rather than trying to parallelize/speed up
-    # tests that install and exercise a real kb-create binary end to end.
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -213,13 +211,12 @@ jobs:
       - name: Build host kb-devkit
         run: make build
         working-directory: tools/kb-devkit
-      - name: Run kb-create e2e against just-published packages
-        # --live: single-package run, so the concurrency=1 it forces costs
-        # nothing — but without it kb-devkit buffers all output in memory
-        # until the command exits (see executor.go runCommand). If this step
-        # ever hits the job timeout, the buffered output dies with the killed
-        # process and the log shows nothing between start and cancellation.
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache --live
+      - name: Run isolated kb-create release smoke against just-published packages
+        # The Make target has its own 12-minute Go-suite deadline and executes
+        # just the promotion-critical journey. The full lifecycle matrix is a
+        # separate, sharded signal rather than a hidden dependency of this gate.
+        run: make e2e-release-smoke
+        working-directory: tools/kb-create
         env:
           # The candidate is published under the canary dist-tag. Without
           # this override kb-create resolves `latest` and tests the previous

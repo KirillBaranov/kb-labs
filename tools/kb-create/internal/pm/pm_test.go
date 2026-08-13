@@ -71,6 +71,17 @@ func TestPnpmManagerName(t *testing.T) {
 	}
 }
 
+func TestPnpmListInstalledTreatsFreshDirectoryAsEmptyInventory(t *testing.T) {
+	dir := t.TempDir()
+	installed, err := (&PnpmManager{}).ListInstalled(dir)
+	if err != nil {
+		t.Fatalf("ListInstalled() on a fresh directory returned an error: %v", err)
+	}
+	if len(installed) != 0 {
+		t.Fatalf("ListInstalled() = %#v, want an empty inventory", installed)
+	}
+}
+
 func TestPnpmInstallArgsUseAppendOnlyReporter(t *testing.T) {
 	p := &PnpmManager{Registry: "http://localhost:4873"}
 	args := p.installArgs("add", "/tmp/project", []string{"@kb-labs/gateway-app"})

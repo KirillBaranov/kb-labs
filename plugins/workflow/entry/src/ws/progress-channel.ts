@@ -13,16 +13,41 @@ import { getWorkflowDaemonUrl } from '../http-client.js';
 const SubscribeMsg = defineMessage<{ jobId: string }>('subscribe');
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const UnsubscribeMsg = defineMessage<{}>('unsubscribe');
-const ErrorMsg = defineMessage<{ error: string }>('error');
-const StepStartMsg = defineMessage<{ stepName: string; stepIndex: number }>('step_start');
+const ErrorMsg = defineMessage<{
+  error: string;
+  code: 'NOT_FOUND' | 'DEPENDENCY_UNAVAILABLE';
+}>('error');
+const StepStartMsg = defineMessage<{ stepName: string; stepIndex: number }>(
+  'step_start',
+);
 
-type Incoming = ReturnType<typeof SubscribeMsg.create> | ReturnType<typeof UnsubscribeMsg.create>;
-type Outgoing = ReturnType<typeof StepStartMsg.create> | ReturnType<typeof ErrorMsg.create>;
+type Incoming =
+  | ReturnType<typeof SubscribeMsg.create>
+  | ReturnType<typeof UnsubscribeMsg.create>;
+type Outgoing =
+  | ReturnType<typeof StepStartMsg.create>
+  | ReturnType<typeof ErrorMsg.create>;
 
-async function checkJobExists(jobId: string): Promise<boolean> {
+type ExistenceProbe =
+  | { exists: true }
+  | { exists: false; unavailable?: boolean };
+
+async function checkJobExists(jobId: string): Promise<ExistenceProbe> {
   const daemonUrl = getWorkflowDaemonUrl();
-  const res = await fetch(`${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`);
-  return res.status !== 404;
+  try {
+    const res = await fetch(
+      `${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`,
+    );
+    if (res.status === 404) {
+      return { exists: false };
+    }
+    if (!res.ok) {
+      return { exists: false, unavailable: true };
+    }
+    return { exists: true };
+  } catch {
+    return { exists: false, unavailable: true };
+  }
 }
 
 export default defineWebSocket<unknown, Incoming, Outgoing>({
@@ -31,7 +56,9 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
 
   handler: {
     async onConnect(ctx, _sender) {
-      ctx.platform.logger.info('[progress-channel] Client connected', { connectionId: ctx.requestId });
+      ctx.platform.logger.info('[progress-channel] Client connected', {
+        connectionId: ctx.requestId,
+      });
     },
 
     async onMessage(ctx, message, sender) {
@@ -39,16 +66,27 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
         .on(SubscribeMsg, async (_ctx, payload) => {
           const { jobId } = payload;
 
-          const exists = await checkJobExists(jobId).catch(() => true);
-          if (!exists) {
-            await sender.send(ErrorMsg.create({ error: `Job ${jobId} not found` }));
-            sender.close(1008, 'Job not found');
+          const probe = await checkJobExists(jobId);
+          if (!probe.exists) {
+            const code = probe.unavailable
+              ? 'DEPENDENCY_UNAVAILABLE'
+              : 'NOT_FOUND';
+            const error = probe.unavailable
+              ? 'Workflow daemon is unavailable; progress cannot be subscribed right now'
+              : `Job ${jobId} not found`;
+            await sender.send(ErrorMsg.create({ error, code }));
+            sender.close(probe.unavailable ? 1013 : 1008, code);
             return;
           }
 
-          ctx.platform.logger.info('[progress-channel] Subscribed to progress', { jobId });
+          ctx.platform.logger.info(
+            '[progress-channel] Subscribed to progress',
+            { jobId },
+          );
           // Progress streaming is not yet implemented — send acknowledgement only
-          await sender.send(StepStartMsg.create({ stepName: 'initialization', stepIndex: 0 }));
+          await sender.send(
+            StepStartMsg.create({ stepName: 'initialization', stepIndex: 0 }),
+          );
         })
         .on(UnsubscribeMsg, async (_ctx) => {
           ctx.platform.logger.info('[progress-channel] Unsubscribed');
@@ -58,13 +96,20 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
     },
 
     async onDisconnect(ctx, _code, _reason) {
-      ctx.platform.logger.info('[progress-channel] Client disconnected', { connectionId: ctx.requestId });
+      ctx.platform.logger.info('[progress-channel] Client disconnected', {
+        connectionId: ctx.requestId,
+      });
     },
 
     async onError(ctx, error, sender) {
       ctx.platform.logger.error('[progress-channel] Error', error);
       try {
-        await sender.send(ErrorMsg.create({ error: error.message }));
+        await sender.send(
+          ErrorMsg.create({
+            error: error.message,
+            code: 'DEPENDENCY_UNAVAILABLE',
+          }),
+        );
       } catch {
         // socket may be closed
       }
