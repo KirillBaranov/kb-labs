@@ -11,21 +11,23 @@ import (
 	"path/filepath"
 
 	"github.com/kb-labs/create/v2/catalog"
+	"github.com/kb-labs/create/v2/release"
 )
 
 func main() {
 	input := flag.String("input", "", "normalized V2 release-index export JSON")
 	output := flag.String("output", "", "sealed immutable release-index JSON")
+	manifestRoot := flag.String("manifest-root", "", "staging root containing exact V2 package manifests")
 	flag.Parse()
-	if err := run(*input, *output); err != nil {
+	if err := run(*input, *output, *manifestRoot); err != nil {
 		_ = json.NewEncoder(os.Stderr).Encode(map[string]any{"ok": false, "error": map[string]string{"code": "KB_CREATE_RELEASE_INDEX_INVALID", "message": "could not seal V2 release index", "cause": err.Error(), "hint": "fix the normalized manifest export before publishing the release"}})
 		os.Exit(2)
 	}
 }
 
-func run(input, output string) error {
-	if input == "" || output == "" {
-		return fmt.Errorf("--input and --output are required")
+func run(input, output, manifestRoot string) error {
+	if input == "" || output == "" || manifestRoot == "" {
+		return fmt.Errorf("--input, --output and --manifest-root are required")
 	}
 	data, err := os.ReadFile(input)
 	if err != nil {
@@ -34,6 +36,10 @@ func run(input, output string) error {
 	var source catalog.Catalog
 	if err := json.Unmarshal(data, &source); err != nil {
 		return err
+	}
+	source, err = release.EnrichWithManifests(source, manifestRoot)
+	if err != nil {
+		return fmt.Errorf("export V2 package manifests: %w", err)
 	}
 	// Exports intentionally omit release-controlled fields. Schema and digest
 	// are assigned here, after all manifest data has been collected.

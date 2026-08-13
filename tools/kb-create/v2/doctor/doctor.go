@@ -15,11 +15,13 @@ type Manifest struct {
 	Requirements []Requirement `json:"requirements"`
 }
 type Requirement struct {
-	ID       string `json:"id,omitempty"`
-	Path     string `json:"path"`
-	Secret   bool   `json:"secret"`
-	Required bool   `json:"required"`
-	Hint     string `json:"hint"`
+	ID       string   `json:"id,omitempty"`
+	Path     string   `json:"path"`
+	Secret   bool     `json:"secret"`
+	Required bool     `json:"required"`
+	Hint     string   `json:"hint"`
+	Env      string   `json:"env,omitempty"`
+	Services []string `json:"services,omitempty"`
 	// Default is present only when the manifest explicitly declares a safe,
 	// non-secret value. Its absence means doctor must request input instead of
 	// inventing a configuration choice.
