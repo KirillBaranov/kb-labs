@@ -83,4 +83,7 @@ type Snapshot struct {
 	ReceiptID     string    `json:"receiptId"`
 	ArtifactState string    `json:"artifactState"`
 	ConfigState   string    `json:"configState"`
+	// Files are managed projections captured before a lifecycle mutation. They
+	// are bytes rather than paths so restore never reaches outside platformRoot.
+	Files map[string][]byte `json:"files"`
 }
