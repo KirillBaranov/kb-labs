@@ -10,23 +10,26 @@ import (
 )
 
 type Manifest struct {
-	ID           string
-	Requirements []Requirement
+	ID           string        `json:"id"`
+	Requirements []Requirement `json:"requirements"`
 }
 type Requirement struct {
-	Path     string
-	Secret   bool
-	Required bool
-	Hint     string
+	Path     string `json:"path"`
+	Secret   bool   `json:"secret"`
+	Required bool   `json:"required"`
+	Hint     string `json:"hint"`
 }
 type Finding struct {
-	Code, Component, Path, Hint string
-	SafeFix                     bool
+	Code      string `json:"code"`
+	Component string `json:"component"`
+	Path      string `json:"path"`
+	Hint      string `json:"hint"`
+	SafeFix   bool   `json:"safeFix"`
 }
 
 type RepairPlan struct {
-	SafeDefaults  []Finding
-	RequiredInput []Finding
+	SafeDefaults  []Finding `json:"safeDefaults"`
+	RequiredInput []Finding `json:"requiredInput"`
 }
 
 // Diagnose accepts values only as presence/validation state. Callers must not

@@ -22,7 +22,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "kb-dev", file)
+	code := run("plan", index, input, "", "", "", "", "kb-dev", file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "kb-dev", file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -60,7 +60,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -71,7 +71,34 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", file); code != 2 {
 		t.Fatalf("exit code = %d", code)
+	}
+}
+
+func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "doctor.json")
+	output := filepath.Join(dir, "output.json")
+	if err := os.WriteFile(input, []byte(`{"manifests":[{"id":"plugin","requirements":[{"path":"/plugin/token","secret":true,"required":true,"hint":"set token"}]}],"configured":{}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Create(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := run("doctor", "", "", input, "", "", "", "kb-dev", file); code != 1 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(data, &response); err != nil || response["ok"] != false {
+		t.Fatalf("output/error = %s / %v", data, err)
 	}
 }

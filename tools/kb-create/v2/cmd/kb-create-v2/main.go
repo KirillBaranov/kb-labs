@@ -14,6 +14,7 @@ import (
 	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
 	"github.com/kb-labs/create/v2/diagnostics"
+	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/logs"
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/services"
@@ -23,19 +24,23 @@ import (
 func main() {
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
+	doctorInput := flag.String("doctor-input", "", "path to V2 manifest-derived doctor JSON")
 	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
 	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
 	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
-	os.Exit(run(*operation, *index, *input, *platformRoot, *snapshotID, *registry, *kbdev, os.Stdout))
+	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, os.Stdout))
 }
 
-func run(operation, indexPath, inputPath, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
-	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" {
-		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, or rollback", nil))
+func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
+	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" {
+		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, or doctor", nil))
 		return 2
+	}
+	if operation == "doctor" {
+		return runDoctor(doctorInput, output)
 	}
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
@@ -87,6 +92,28 @@ func run(operation, indexPath, inputPath, platformRoot, snapshotID, registry, kb
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
 	return 1
+}
+
+func runDoctor(path string, output *os.File) int {
+	if path == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--doctor-input is required", "pass manifest-derived requirements and configured presence state", nil))
+		return 2
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "doctor input could not be read", "supply a readable V2 doctor input JSON file", err))
+		return 2
+	}
+	response, err := doctor.DiagnoseJSON(data)
+	if err != nil {
+		write(output, failure("KB_CREATE_DOCTOR_INPUT_INVALID", "doctor input could not be decoded", "supply V2 manifest requirement JSON without secret values", err))
+		return 2
+	}
+	write(output, response)
+	if !response.OK {
+		return 1
+	}
+	return 0
 }
 
 func runRecovery(operation, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
