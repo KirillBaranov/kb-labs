@@ -67,11 +67,11 @@ test('WS-L02: level filter — warn level excludes debug/info messages', async (
   }, await authHeaders(request));
 });
 
-test('WS-L03: unknown jobId — server sends error message, does not hang', async ({ request }) => {
+test('WS-L03: unknown runId — server sends a classified error, does not hang', async ({ request }) => {
   await withWs(logsWsUrl('nonexistent-job-xyz'), async (ws) => {
     ws.send({ type: 'subscribe', jobId: 'nonexistent-job-xyz' });
 
-    const msg = await expectWsMessage<{ type: string; payload?: { error?: string } }>(
+    const msg = await expectWsMessage<{ type: string; payload?: { error?: string; code?: string } }>(
       ws,
       (m) => m.type === 'error',
       { timeoutMs: 5_000, label: 'error message for unknown job' },
@@ -79,6 +79,7 @@ test('WS-L03: unknown jobId — server sends error message, does not hang', asyn
 
     expect(msg.type).toBe('error');
     expect(msg.payload?.error).toBeTruthy();
+    expect(msg.payload?.code).toBe('NOT_FOUND');
   }, await authHeaders(request));
 });
 

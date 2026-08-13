@@ -14,7 +14,9 @@ import { getWorkflowDaemonUrl } from '../http-client.js';
 const POLL_INTERVAL_MS = 1_500;
 
 // Define typed messages
-const SubscribeMsg = defineMessage<{ jobId: string; level?: string }>('subscribe');
+const SubscribeMsg = defineMessage<{ jobId: string; level?: string }>(
+  'subscribe',
+);
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const UnsubscribeMsg = defineMessage<{}>('unsubscribe');
 
@@ -25,9 +27,14 @@ const LogMsg = defineMessage<{
   context?: Record<string, unknown>;
 }>('log');
 
-const ErrorMsg = defineMessage<{ error: string }>('error');
+const ErrorMsg = defineMessage<{
+  error: string;
+  code: 'NOT_FOUND' | 'DEPENDENCY_UNAVAILABLE';
+}>('error');
 
-type Incoming = ReturnType<typeof SubscribeMsg.create> | ReturnType<typeof UnsubscribeMsg.create>;
+type Incoming =
+  | ReturnType<typeof SubscribeMsg.create>
+  | ReturnType<typeof UnsubscribeMsg.create>;
 
 type Outgoing =
   | ReturnType<typeof LogMsg.create>
@@ -50,6 +57,10 @@ type DaemonLog = {
   context?: Record<string, unknown>;
 };
 
+type ExistenceProbe =
+  | { exists: true }
+  | { exists: false; unavailable?: boolean };
+
 function normalizeLevel(level: string): 'info' | 'warn' | 'error' | 'debug' {
   switch (level) {
     case 'trace':
@@ -66,42 +77,79 @@ function normalizeLevel(level: string): 'info' | 'warn' | 'error' | 'debug' {
 }
 
 function levelMatches(logLevel: string, filterLevel?: string): boolean {
-  if (!filterLevel || filterLevel === 'all') { return true; }
-  const levelOrder: Record<string, number> = { debug: 0, trace: 0, info: 1, warn: 2, error: 3, fatal: 3 };
+  if (!filterLevel || filterLevel === 'all') {
+    return true;
+  }
+  const levelOrder: Record<string, number> = {
+    debug: 0,
+    trace: 0,
+    info: 1,
+    warn: 2,
+    error: 3,
+    fatal: 3,
+  };
   return (levelOrder[logLevel] ?? 1) >= (levelOrder[filterLevel] ?? 0);
 }
 
-async function fetchLogs(runId: string, offset: number, level?: string): Promise<DaemonLog[]> {
+async function fetchLogs(
+  runId: string,
+  offset: number,
+  level?: string,
+): Promise<DaemonLog[]> {
   const daemonUrl = getWorkflowDaemonUrl();
   const params = new URLSearchParams({ limit: '200', offset: String(offset) });
-  if (level) { params.set('level', level); }
+  if (level) {
+    params.set('level', level);
+  }
   const url = `${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}/logs?${params}`;
   const res = await fetch(url);
-  if (!res.ok) { return []; }
-  const body = await res.json() as { ok?: boolean; data?: { logs?: DaemonLog[] } };
+  if (!res.ok) {
+    return [];
+  }
+  const body = (await res.json()) as {
+    ok?: boolean;
+    data?: { logs?: DaemonLog[] };
+  };
   return body?.data?.logs ?? [];
 }
 
-async function checkRunExists(runId: string): Promise<boolean> {
+async function checkRunExists(runId: string): Promise<ExistenceProbe> {
   const daemonUrl = getWorkflowDaemonUrl();
-  const res = await fetch(`${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}`);
-  return res.status !== 404;
+  try {
+    const res = await fetch(
+      `${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}`,
+    );
+    if (res.status === 404) {
+      return { exists: false };
+    }
+    if (!res.ok) {
+      return { exists: false, unavailable: true };
+    }
+    return { exists: true };
+  } catch {
+    return { exists: false, unavailable: true };
+  }
 }
 
 function clearConnection(connectionId: string): void {
   activeSubscriptions.delete(connectionId);
   const timer = pollingTimers.get(connectionId);
-  if (timer) { clearInterval(timer); pollingTimers.delete(connectionId); }
+  if (timer) {
+    clearInterval(timer);
+    pollingTimers.delete(connectionId);
+  }
   logOffsets.delete(connectionId);
 }
 
 export default defineWebSocket<unknown, Incoming, Outgoing>({
-  path: '/logs/:jobId',
+  path: '/logs/:runId',
   description: 'Real-time job logs streaming',
 
   handler: {
     async onConnect(ctx, _sender) {
-      ctx.platform.logger.info('[logs-channel] Client connected', { connectionId: ctx.requestId });
+      ctx.platform.logger.info('[logs-channel] Client connected', {
+        connectionId: ctx.requestId,
+      });
     },
 
     async onMessage(ctx, message, sender) {
@@ -112,10 +160,16 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           const { jobId: runId, level } = payload;
 
           // Validate run exists before subscribing
-          const exists = await checkRunExists(runId).catch(() => true);
-          if (!exists) {
-            await sender.send(ErrorMsg.create({ error: `Run ${runId} not found` }));
-            sender.close(1008, 'Run not found');
+          const probe = await checkRunExists(runId);
+          if (!probe.exists) {
+            const code = probe.unavailable
+              ? 'DEPENDENCY_UNAVAILABLE'
+              : 'NOT_FOUND';
+            const error = probe.unavailable
+              ? 'Workflow daemon is unavailable; logs cannot be subscribed right now'
+              : `Run ${runId} not found`;
+            await sender.send(ErrorMsg.create({ error, code }));
+            sender.close(probe.unavailable ? 1013 : 1008, code);
             return;
           }
 
@@ -137,18 +191,28 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           // subscribe-then-unsubscribe contract deterministic. Consumers
           // that need full history can fetch it via the daemon's REST
           // /api/v1/runs/:runId/logs endpoint directly.
-          const initialLogs = await fetchLogs(runId, 0, level).catch(() => [] as DaemonLog[]);
-          if (!activeSubscriptions.has(connectionId)) { return; }
+          const initialLogs = await fetchLogs(runId, 0, level).catch(
+            () => [] as DaemonLog[],
+          );
+          if (!activeSubscriptions.has(connectionId)) {
+            return;
+          }
           const tail = initialLogs.slice(-1);
           for (const log of tail) {
-            if (!levelMatches(log.level, level)) { continue; }
-            if (!activeSubscriptions.has(connectionId)) { return; }
-            await sender.send(LogMsg.create({
-              timestamp: log.timestamp,
-              level: normalizeLevel(log.level),
-              message: log.message,
-              context: log.context,
-            }));
+            if (!levelMatches(log.level, level)) {
+              continue;
+            }
+            if (!activeSubscriptions.has(connectionId)) {
+              return;
+            }
+            await sender.send(
+              LogMsg.create({
+                timestamp: log.timestamp,
+                level: normalizeLevel(log.level),
+                message: log.message,
+                context: log.context,
+              }),
+            );
           }
           logOffsets.set(connectionId, initialLogs.length);
 
@@ -156,20 +220,38 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           // cancel an in-flight tick — gate every send on activeSubscriptions
           // so a late fetch resolving after unsubscribe stays silent.
           const timer = setInterval(async () => {
-            if (!activeSubscriptions.has(connectionId)) { return; }
+            if (!activeSubscriptions.has(connectionId)) {
+              return;
+            }
             const currentOffset = logOffsets.get(connectionId) ?? 0;
-            const newLogs = await fetchLogs(runId, currentOffset, level).catch(() => [] as DaemonLog[]);
-            if (!activeSubscriptions.has(connectionId)) { return; }
-            if (newLogs.length === 0) { return; }
+            const newLogs = await fetchLogs(runId, currentOffset, level).catch(
+              () => [] as DaemonLog[],
+            );
+            if (!activeSubscriptions.has(connectionId)) {
+              return;
+            }
+            if (newLogs.length === 0) {
+              return;
+            }
             for (const log of newLogs) {
-              if (!levelMatches(log.level, level)) { continue; }
-              if (!activeSubscriptions.has(connectionId)) { return; }
-              await sender.send(LogMsg.create({
-                timestamp: log.timestamp,
-                level: normalizeLevel(log.level),
-                message: log.message,
-                context: log.context,
-              })).catch(() => { /* socket may have closed */ });
+              if (!levelMatches(log.level, level)) {
+                continue;
+              }
+              if (!activeSubscriptions.has(connectionId)) {
+                return;
+              }
+              await sender
+                .send(
+                  LogMsg.create({
+                    timestamp: log.timestamp,
+                    level: normalizeLevel(log.level),
+                    message: log.message,
+                    context: log.context,
+                  }),
+                )
+                .catch(() => {
+                  /* socket may have closed */
+                });
             }
             logOffsets.set(connectionId, currentOffset + newLogs.length);
           }, POLL_INTERVAL_MS);
@@ -189,14 +271,21 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
 
     async onDisconnect(ctx, _code, _reason) {
       clearConnection(ctx.requestId);
-      ctx.platform.logger.info('[logs-channel] Client disconnected', { connectionId: ctx.requestId });
+      ctx.platform.logger.info('[logs-channel] Client disconnected', {
+        connectionId: ctx.requestId,
+      });
     },
 
     async onError(ctx, error, sender) {
       ctx.platform.logger.error('[logs-channel] Error', error);
       clearConnection(ctx.requestId);
       try {
-        await sender.send(ErrorMsg.create({ error: error.message }));
+        await sender.send(
+          ErrorMsg.create({
+            error: error.message,
+            code: 'DEPENDENCY_UNAVAILABLE',
+          }),
+        );
       } catch {
         // socket may be closed
       }
