@@ -32,11 +32,14 @@ func TestCompileIsDeterministicAndCarriesConfigAssembly(t *testing.T) {
 	if len(first.Assembly.Patches) != 4 || len(first.Assembly.Outputs) != 1 {
 		t.Fatalf("assembly = %#v", first.Assembly)
 	}
-	if len(first.Actions) != 4 || first.Actions[len(first.Actions)-1].Kind != ActionWriteConfig {
+	if len(first.Actions) != 3 || first.Actions[len(first.Actions)-1].Kind != ActionWriteConfig {
 		t.Fatalf("actions = %#v", first.Actions)
 	}
-	if len(first.Actions[2].DependsOn) != 2 || first.Actions[2].DependsOn[0] != "install:commit" || first.Actions[2].DependsOn[1] != "install:provider:cache" {
-		t.Fatalf("provider dependencies = %#v", first.Actions[1])
+	if first.Actions[1].ID != "install:selection" || first.Actions[1].Inputs["packages"] != "@kb-labs/commit\n@kb-labs/state-broker-adapter" {
+		t.Fatalf("selection batch = %#v", first.Actions[1])
+	}
+	if len(first.Actions[2].DependsOn) != 2 || first.Actions[2].DependsOn[0] != "bind:cache" || first.Actions[2].DependsOn[1] != "install:selection" {
+		t.Fatalf("config dependencies = %#v", first.Actions[2])
 	}
 }
 
@@ -57,12 +60,12 @@ func TestCompileInstallsServiceCompanionPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Actions) != 3 {
+	if len(result.Actions) != 2 {
 		t.Fatalf("actions = %#v", result.Actions)
 	}
-	companion := result.Actions[1]
-	if companion.ID != "install:workflow:companion:0" || companion.Inputs["package"] != "@kb-labs/workflow-entry" {
-		t.Fatalf("companion action = %#v", companion)
+	selection := result.Actions[0]
+	if selection.ID != "install:selection" || selection.Inputs["packages"] != "@kb-labs/workflow-daemon\n@kb-labs/workflow-entry" {
+		t.Fatalf("selection batch = %#v", selection)
 	}
 }
 
@@ -72,7 +75,7 @@ func TestCompileUsesPreferredCompatibleProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Actions[2].Inputs["provider"] != "state-broker" {
+	if result.Actions[0].Inputs["provider"] != "state-broker" {
 		t.Fatalf("actions = %#v", result.Actions)
 	}
 }

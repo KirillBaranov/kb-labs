@@ -33,14 +33,22 @@ func (a *PMAdapter) Installed(_ context.Context, packageSpec string) (bool, erro
 }
 
 func (a *PMAdapter) Install(ctx context.Context, packageSpec string) error {
-	return a.run(ctx, packageSpec, false)
+	return a.InstallMany(ctx, []string{packageSpec})
 }
 
 func (a *PMAdapter) Update(ctx context.Context, packageSpec string) error {
-	return a.run(ctx, packageSpec, true)
+	return a.UpdateMany(ctx, []string{packageSpec})
 }
 
-func (a *PMAdapter) run(ctx context.Context, packageSpec string, update bool) error {
+func (a *PMAdapter) InstallMany(ctx context.Context, packageSpecs []string) error {
+	return a.run(ctx, packageSpecs, false)
+}
+
+func (a *PMAdapter) UpdateMany(ctx context.Context, packageSpecs []string) error {
+	return a.run(ctx, packageSpecs, true)
+}
+
+func (a *PMAdapter) run(ctx context.Context, packageSpecs []string, update bool) error {
 	if a.Manager == nil || a.Dir == "" {
 		return fmt.Errorf("package manager adapter is not configured")
 	}
@@ -48,10 +56,10 @@ func (a *PMAdapter) run(ctx context.Context, packageSpec string, update bool) er
 	result := make(chan error, 1)
 	go func() {
 		if update {
-			result <- a.Manager.Update(a.Dir, []string{packageSpec}, progress)
+			result <- a.Manager.Update(a.Dir, packageSpecs, progress)
 			return
 		}
-		result <- a.Manager.Install(a.Dir, []string{packageSpec}, progress)
+		result <- a.Manager.Install(a.Dir, packageSpecs, progress)
 	}()
 	for {
 		select {

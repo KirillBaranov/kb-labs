@@ -118,9 +118,7 @@ func printHumanPlanSummary(out io.Writer, compiled engineplan.InstallPlan) {
 	for _, action := range compiled.Actions {
 		switch action.Kind {
 		case engineplan.ActionInstallPackage:
-			if pkg := action.Inputs["package"]; pkg != "" {
-				packages = append(packages, pkg)
-			}
+			packages = append(packages, actionPackages(action)...)
 		case engineplan.ActionBindProvider:
 			if capability := action.Inputs["capability"]; capability != "" {
 				providers = append(providers, capability+" → "+action.Inputs["provider"])
@@ -145,6 +143,26 @@ func printHumanPlanSummary(out io.Writer, compiled engineplan.InstallPlan) {
 		}
 		fmt.Fprintf(out, "  Generates · %s\n", strings.Join(outputs, ", "))
 	}
+}
+
+func actionPackages(action engineplan.PlanAction) []string {
+	if packages := action.Inputs["packages"]; packages != "" {
+		return strings.Split(packages, "\n")
+	}
+	if pkg := action.Inputs["package"]; pkg != "" {
+		return []string{pkg}
+	}
+	return nil
+}
+
+func actionComponents(action engineplan.PlanAction) []string {
+	if components := action.Inputs["components"]; components != "" {
+		return strings.Split(components, "\n")
+	}
+	if component := action.Inputs["component"]; component != "" {
+		return []string{component}
+	}
+	return nil
 }
 
 func summarizePackages(packages []string, limit int) string {
@@ -193,16 +211,17 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan, source *manif
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
 		}
-		component := action.Inputs["component"]
-		kind, id := manifestComponent(component)
-		switch kind {
-		case "plugin":
-			if !containsString(cfg.SelectedPlugins, id) {
-				cfg.SelectedPlugins = append(cfg.SelectedPlugins, id)
-			}
-		case "service":
-			if !containsString(cfg.SelectedServices, id) {
-				cfg.SelectedServices = append(cfg.SelectedServices, id)
+		for _, component := range actionComponents(action) {
+			kind, id := manifestComponent(component)
+			switch kind {
+			case "plugin":
+				if !containsString(cfg.SelectedPlugins, id) {
+					cfg.SelectedPlugins = append(cfg.SelectedPlugins, id)
+				}
+			case "service":
+				if !containsString(cfg.SelectedServices, id) {
+					cfg.SelectedServices = append(cfg.SelectedServices, id)
+				}
 			}
 		}
 	}

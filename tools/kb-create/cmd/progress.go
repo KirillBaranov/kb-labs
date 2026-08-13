@@ -39,7 +39,11 @@ func installationProgress(out io.Writer, compiled engineplan.InstallPlan) func(e
 	total := 0
 	for _, action := range compiled.Actions {
 		if action.Kind == engineplan.ActionInstallPackage {
-			total++
+			count := len(actionPackages(action))
+			if count == 0 {
+				count = 1
+			}
+			total += count
 		}
 	}
 	seen := make(map[string]struct{}, total)
@@ -52,7 +56,16 @@ func installationProgress(out io.Writer, compiled engineplan.InstallPlan) func(e
 			return
 		}
 		seen[event.ActionID] = struct{}{}
-		completed++
+		for _, action := range compiled.Actions {
+			if action.ID == event.ActionID {
+				count := len(actionPackages(action))
+				if count == 0 {
+					count = 1
+				}
+				completed += count
+				break
+			}
+		}
 		if completed == 1 || completed == total || completed%5 == 0 {
 			fmt.Fprintf(out, "  Installing packages %d/%d…\n", completed, total)
 		}

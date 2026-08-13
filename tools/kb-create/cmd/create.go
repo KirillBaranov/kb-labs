@@ -164,7 +164,7 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	packageActions := 0
 	for _, action := range compiled.Actions {
 		if action.Kind == engineplan.ActionInstallPackage {
-			packageActions++
+			packageActions += len(actionPackages(action))
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
@@ -253,12 +253,14 @@ func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, servi
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
 		}
-		kind, id := manifestComponent(action.Inputs["component"])
-		switch kind {
-		case "plugin":
-			plugins = append(plugins, id)
-		case "service":
-			services = append(services, id)
+		for _, component := range actionComponents(action) {
+			kind, id := manifestComponent(component)
+			switch kind {
+			case "plugin":
+				plugins = append(plugins, id)
+			case "service":
+				services = append(services, id)
+			}
 		}
 	}
 	sort.Strings(plugins)
