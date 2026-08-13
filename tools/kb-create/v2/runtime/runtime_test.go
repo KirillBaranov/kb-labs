@@ -57,6 +57,21 @@ func TestApplyDoesNotCommitReceiptWhenArtifactInstallFails(t *testing.T) {
 	}
 }
 
+func TestApplyRemovesGeneratedProjectionWhenReadinessFails(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "plan", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	_, err := Apply(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{}})
+	if err == nil {
+		t.Fatal("expected readiness failure")
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".kb", "kb.config.jsonc")); !os.IsNotExist(statErr) {
+		t.Fatalf("stale config after failed apply: %v", statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".kb", "v2", "receipt.json")); !os.IsNotExist(statErr) {
+		t.Fatalf("receipt after failed apply: %v", statErr)
+	}
+}
+
 func TestUpdateSnapshotsPreviousVerifiedReceipt(t *testing.T) {
 	root := t.TempDir()
 	previous := contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "before", Plan: contracts.ResolvedInstallPlan{PlanHash: "old"}}

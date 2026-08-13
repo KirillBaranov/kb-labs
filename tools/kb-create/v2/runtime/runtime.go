@@ -57,6 +57,9 @@ func Apply(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.Ins
 	now := now(deps.Clock)
 	check, err := verify.Run(plan, deps.Status, now)
 	if err != nil {
+		// A fresh run has no prior receipt to restore. Remove only V2-owned
+		// projections so an incomplete graph cannot masquerade as installed.
+		_ = removeProjections(plan.Request.PlatformRoot)
 		return contracts.InstallReceipt{}, fmt.Errorf("verify resolved service graph: %w", err)
 	}
 	result := contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: receiptID(plan.PlanHash, now), CreatedAt: now, CorrelationID: deps.CorrelationID, Plan: plan, Verification: check}
@@ -108,13 +111,20 @@ func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, erro
 		}
 		// Only V2-owned projections are removed. Project roots and any user
 		// authored files remain outside this operation's authority.
-		for _, relative := range []string{".kb/kb.config.jsonc", ".kb/devservices.yaml"} {
-			if err := os.Remove(filepath.Join(platformRoot, relative)); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("remove managed projection %s: %w", relative, err)
-			}
+		if err := removeProjections(platformRoot); err != nil {
+			return err
 		}
 		return receipt.Delete(platformRoot)
 	}, nil, deps.Artifacts.Restore)
+}
+
+func removeProjections(platformRoot string) error {
+	for _, relative := range []string{".kb/kb.config.jsonc", ".kb/devservices.yaml"} {
+		if err := os.Remove(filepath.Join(platformRoot, relative)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove managed projection %s: %w", relative, err)
+		}
+	}
+	return nil
 }
 
 func now(clock Clock) time.Time {
