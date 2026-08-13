@@ -222,3 +222,39 @@ jobs:
           # this override kb-create resolves `latest` and tests the previous
           # stable release instead of the artifacts delivered above.
           KB_CREATE_PACKAGE_TAG: canary
+
+      - name: Capture release-smoke diagnostics
+        if: always()
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -u
+          out=/tmp/kb-create-release-smoke
+          mkdir -p "$out"
+          {
+            echo "release_tag=$RELEASE_TAG"
+            echo "source_sha=$SOURCE_SHA"
+            echo "captured_at=$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_os=$RUNNER_OS"
+          } > "$out/context.env"
+          {
+            node --version
+            pnpm --version
+            go version
+          } > "$out/toolchain.txt" 2>&1 || true
+          ps auxww > "$out/processes.txt" 2>&1 || true
+          (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null || true) > "$out/listening-ports.txt" 2>&1
+          df -h > "$out/disk.txt" 2>&1 || true
+          (free -h 2>/dev/null || vm_stat 2>/dev/null || true) > "$out/memory.txt" 2>&1
+          find "$RUNNER_TEMP" -maxdepth 2 -type d -name 'TestReleaseCandidateJourney*' -print \
+            > "$out/retained-fixtures.txt" 2>&1 || true
+
+      - name: Upload release-smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-create-release-smoke-diagnostics-${{ github.run_id }}
+          path: /tmp/kb-create-release-smoke/
+          retention-days: 30
