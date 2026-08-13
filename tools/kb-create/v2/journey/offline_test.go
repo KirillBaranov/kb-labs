@@ -16,9 +16,9 @@ import (
 	"github.com/kb-labs/create/v2/verify"
 )
 
-type status []string
+type status []verify.ObservedService
 
-func (s status) ServiceStatuses(string) ([]string, error) { return s, nil }
+func (s status) ServiceStatuses(string) ([]verify.ObservedService, error) { return s, nil }
 
 type offlineArtifacts struct {
 	installed, removed []contracts.Artifact
@@ -48,7 +48,7 @@ func TestOfflineJourneyUsesResolvedGraphAsSingleTruth(t *testing.T) {
 	if _, err := render.Write(plan); err != nil {
 		t.Fatal(err)
 	}
-	check, err := verify.Run(plan, status{"gateway"}, time.Unix(0, 0))
+	check, err := verify.Run(plan, status{{ID: "gateway", State: "alive"}}, time.Unix(0, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestOfflineLifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall(t *te
 	root := t.TempDir()
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "first-plan", Request: contracts.InstallRequest{PlatformRoot: root}, Artifacts: []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "1.0.0"}}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
 	artifacts := &offlineArtifacts{}
-	deps := runtime.Dependencies{Artifacts: artifacts, Status: status{"gateway"}, Clock: journeyClock{time.Unix(10, 0)}}
+	deps := runtime.Dependencies{Artifacts: artifacts, Status: status{{ID: "gateway", State: "alive"}}, Clock: journeyClock{time.Unix(10, 0)}}
 	first, err := runtime.Apply(plan, deps)
 	if err != nil {
 		t.Fatal(err)

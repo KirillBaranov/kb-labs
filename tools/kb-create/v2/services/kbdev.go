@@ -1,0 +1,60 @@
+// Package services adapts the public kb-dev JSON protocol to V2 verification.
+// It never imports kb-dev implementation code: the binary protocol is the
+// compatibility boundary that remains valid after launcher cutover.
+package services
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"sort"
+
+	"github.com/kb-labs/create/v2/verify"
+)
+
+type Runner interface {
+	Output(context.Context, string, ...string) ([]byte, error)
+}
+
+type commandRunner struct{}
+
+func (commandRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, name, args...).Output()
+}
+
+// KBDev reads the public JSON emitted by `kb-dev status --json`.
+type KBDev struct {
+	Binary string
+	Runner Runner
+}
+
+func (client KBDev) ServiceStatuses(platformRoot string) ([]verify.ObservedService, error) {
+	binary := client.Binary
+	if binary == "" {
+		binary = "kb-dev"
+	}
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	data, err := runner.Output(context.Background(), binary, "--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "status", "--json")
+	if err != nil {
+		return nil, fmt.Errorf("kb-dev status: %w", err)
+	}
+	var response struct {
+		Services map[string]struct {
+			State string `json:"state"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("decode kb-dev status JSON: %w", err)
+	}
+	result := make([]verify.ObservedService, 0, len(response.Services))
+	for id, service := range response.Services {
+		result = append(result, verify.ObservedService{ID: id, State: service.State})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}

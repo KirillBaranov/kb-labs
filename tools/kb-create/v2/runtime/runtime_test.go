@@ -9,6 +9,7 @@ import (
 
 	"github.com/kb-labs/create/v2/contracts"
 	"github.com/kb-labs/create/v2/receipt"
+	"github.com/kb-labs/create/v2/verify"
 )
 
 type fixedClock struct{ time.Time }
@@ -32,15 +33,15 @@ func (f *fakeInstaller) Uninstall(items []contracts.Artifact) error {
 	return nil
 }
 
-type fakeStatus []string
+type fakeStatus []verify.ObservedService
 
-func (s fakeStatus) ServiceStatuses(string) ([]string, error) { return s, nil }
+func (s fakeStatus) ServiceStatuses(string) ([]verify.ObservedService, error) { return s, nil }
 
 func TestApplyCommitsReceiptOnlyAfterGraphVerification(t *testing.T) {
 	root := t.TempDir()
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "123456789012345", Request: contracts.InstallRequest{PlatformRoot: root}, Artifacts: []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2.0.0"}}, ServiceGraph: contracts.ServiceGraph{PlatformVersion: "2.0.0", Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
 	installer := &fakeInstaller{}
-	receipt, err := Apply(plan, Dependencies{Artifacts: installer, Status: fakeStatus{"gateway"}, Clock: fixedClock{time.Unix(0, 0)}, CorrelationID: "c1"})
+	receipt, err := Apply(plan, Dependencies{Artifacts: installer, Status: fakeStatus{{ID: "gateway", State: "alive"}}, Clock: fixedClock{time.Unix(0, 0)}, CorrelationID: "c1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestUpdateSnapshotsPreviousVerifiedReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "new-plan-123456", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
-	result, snapshot, err := Update(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{"gateway"}, Clock: fixedClock{time.Unix(4, 0)}})
+	result, snapshot, err := Update(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{{ID: "gateway", State: "alive"}}, Clock: fixedClock{time.Unix(4, 0)}})
 	if err != nil || snapshot.ReceiptID != "before" || result.SnapshotID != snapshot.ID {
 		t.Fatalf("result/snapshot/err = %#v / %#v / %v", result, snapshot, err)
 	}

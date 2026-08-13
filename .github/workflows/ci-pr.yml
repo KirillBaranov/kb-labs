@@ -116,7 +116,7 @@ jobs:
           - shard: doctor-diagnostics
             packages: ./v2/doctor ./v2/diagnostics
           - shard: offline-journey
-            packages: ./v2/journey ./v2/verify
+            packages: ./v2/journey ./v2/services ./v2/verify
     permissions:
       contents: read
     defaults:

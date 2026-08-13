@@ -17,7 +17,15 @@ import (
 )
 
 type StatusProvider interface {
-	ServiceStatuses(platformRoot string) ([]string, error)
+	ServiceStatuses(platformRoot string) ([]ObservedService, error)
+}
+
+// ObservedService is the small stable subset V2 needs from the service
+// manager. The manager may expose richer diagnostics without changing V2's
+// verification contract.
+type ObservedService struct {
+	ID    string
+	State string
 }
 
 func Run(plan contracts.ResolvedInstallPlan, status StatusProvider, now time.Time) (contracts.Verification, error) {
@@ -44,10 +52,10 @@ func Run(plan contracts.ResolvedInstallPlan, status StatusProvider, now time.Tim
 	if err != nil {
 		return contracts.Verification{}, fmt.Errorf("kb-dev status: %w", err)
 	}
-	if !sameStrings(statuses, requiredIDs(plan.ServiceGraph)) {
+	if !sameObserved(statuses, plan.ServiceGraph) {
 		return contracts.Verification{}, &contracts.LauncherError{Code: contracts.CodeServiceGraphMismatch, Stage: contracts.StageVerify, Message: "kb-dev status does not equal resolved service graph", Hint: "Inspect the service graph in the diagnostic dossier and run doctor --fix."}
 	}
-	return contracts.Verification{ConfigSHA256: digest(config), DevservicesSHA256: digest(devservicesData), ServiceStatus: append([]string(nil), statuses...), ReadinessCheckedAt: now.UTC()}, nil
+	return contracts.Verification{ConfigSHA256: digest(config), DevservicesSHA256: digest(devservicesData), ServiceStatus: observedIDs(statuses), ReadinessCheckedAt: now.UTC()}, nil
 }
 
 func sameGraph(file render.DevservicesFile, graph contracts.ServiceGraph) bool {
@@ -62,12 +70,27 @@ func sameGraph(file render.DevservicesFile, graph contracts.ServiceGraph) bool {
 	}
 	return true
 }
-func requiredIDs(graph contracts.ServiceGraph) []string {
-	result := make([]string, 0, len(graph.Services))
-	for _, v := range graph.Services {
-		if v.Required {
-			result = append(result, v.ID)
+func sameObserved(observed []ObservedService, graph contracts.ServiceGraph) bool {
+	states := make(map[string]string, len(observed))
+	for _, service := range observed {
+		states[service.ID] = service.State
+	}
+	if len(states) != len(graph.Services) {
+		return false
+	}
+	for _, expected := range graph.Services {
+		state, exists := states[expected.ID]
+		if !exists || (expected.Required && state != "alive") {
+			return false
 		}
+	}
+	return true
+}
+
+func observedIDs(observed []ObservedService) []string {
+	result := make([]string, 0, len(observed))
+	for _, service := range observed {
+		result = append(result, service.ID)
 	}
 	sort.Strings(result)
 	return result
