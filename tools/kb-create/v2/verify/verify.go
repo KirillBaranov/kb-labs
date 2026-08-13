@@ -20,11 +20,7 @@ type StatusProvider interface {
 }
 
 func Run(plan contracts.ResolvedInstallPlan, status StatusProvider, now time.Time) (contracts.Verification, error) {
-	root := plan.Request.ProjectRoot
-	if root == "" {
-		root = plan.Request.PlatformRoot
-	}
-	config, err := os.ReadFile(filepath.Join(root, "kb.config.jsonc"))
+	config, err := os.ReadFile(filepath.Join(plan.Request.PlatformRoot, ".kb", "kb.config.jsonc"))
 	if err != nil {
 		return contracts.Verification{}, fmt.Errorf("read runtime config: %w", err)
 	}

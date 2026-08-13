@@ -40,7 +40,7 @@ func TestOfflineJourneyUsesResolvedGraphAsSingleTruth(t *testing.T) {
 	if err != nil || loaded.Plan.PlanHash != plan.PlanHash {
 		t.Fatalf("receipt %#v, %v", loaded, err)
 	}
-	config, err := os.ReadFile(filepath.Join(root, "kb.config.jsonc"))
+	config, err := os.ReadFile(filepath.Join(root, ".kb", "kb.config.jsonc"))
 	if err != nil {
 		t.Fatal(err)
 	}

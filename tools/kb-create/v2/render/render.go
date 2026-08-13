@@ -61,14 +61,13 @@ func Write(plan contracts.ResolvedInstallPlan) (Output, error) {
 	if err := output.Devservices.Save(plan.Request.PlatformRoot); err != nil {
 		return Output{}, fmt.Errorf("write devservices: %w", err)
 	}
-	root := plan.Request.ProjectRoot
-	if root == "" {
-		root = plan.Request.PlatformRoot
-	}
-	if err := os.MkdirAll(root, 0o750); err != nil {
+	root := plan.Request.PlatformRoot
+	if err := os.MkdirAll(filepath.Join(root, ".kb"), 0o750); err != nil {
 		return Output{}, fmt.Errorf("create config root: %w", err)
 	}
-	path := filepath.Join(root, ConfigFilename)
+	// The platform owns the generated full configuration. Projects retain their
+	// own minimal platform pointer through the existing scaffold contract.
+	path := filepath.Join(root, ".kb", ConfigFilename)
 	if err := os.WriteFile(path+".tmp", output.Config, 0o600); err != nil {
 		return Output{}, fmt.Errorf("write runtime config: %w", err)
 	}
