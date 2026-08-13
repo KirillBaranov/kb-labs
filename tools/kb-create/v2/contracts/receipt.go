@@ -14,6 +14,8 @@ type Artifact struct {
 	Package string `json:"package"`
 	Version string `json:"version"`
 	SHA256  string `json:"sha256"`
+	URL     string `json:"url,omitempty"`
+	Target  string `json:"target,omitempty"`
 }
 
 type Service struct {

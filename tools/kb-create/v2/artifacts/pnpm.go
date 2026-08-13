@@ -115,6 +115,9 @@ func specs(items []contracts.Artifact) ([]string, error) {
 	seen := make(map[string]struct{}, len(items))
 	result := make([]string, 0, len(items))
 	for _, item := range items {
+		if item.Kind == "binary" {
+			continue
+		}
 		if item.Package == "" || item.Version == "" {
 			return nil, fmt.Errorf("artifact %q must declare package and exact version", item.ID)
 		}

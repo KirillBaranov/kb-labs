@@ -1,0 +1,37 @@
+package artifacts
+
+import (
+	"crypto/sha256"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/kb-labs/create/v2/contracts"
+)
+
+func TestBinariesInstallsOnlyVerifiedReleaseAsset(t *testing.T) {
+	payload := []byte("kb-dev-binary")
+	sum := fmt.Sprintf("%x", sha256.Sum256(payload))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write(payload) }))
+	defer server.Close()
+	root := t.TempDir()
+	if err := (Binaries{Root: root}).Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", URL: server.URL, SHA256: sum, Target: "kb-dev"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".kb", "v2", "bin", "kb-dev"))
+	if err != nil || string(data) != string(payload) {
+		t.Fatalf("binary/error = %q / %v", data, err)
+	}
+}
+
+func TestBinariesRejectsChecksumMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("wrong")) }))
+	defer server.Close()
+	err := (Binaries{Root: t.TempDir()}).Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", URL: server.URL, SHA256: "bad", Target: "kb-dev"}})
+	if err == nil {
+		t.Fatal("expected checksum error")
+	}
+}

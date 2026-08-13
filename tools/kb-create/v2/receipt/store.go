@@ -53,7 +53,7 @@ func CreateSnapshot(platformRoot string, now time.Time) (contracts.Snapshot, err
 		return contracts.Snapshot{}, fmt.Errorf("read active receipt: %w", err)
 	}
 	files := map[string][]byte{}
-	for _, relative := range []string{".kb/v2/receipt.json", ".kb/kb.config.jsonc", ".kb/devservices.yaml", ".kb/install.json", "package.json", "pnpm-lock.yaml"} {
+	for _, relative := range []string{".kb/v2/receipt.json", ".kb/v2/bin/kb-dev", ".kb/kb.config.jsonc", ".kb/devservices.yaml", ".kb/install.json", "package.json", "pnpm-lock.yaml"} {
 		data, readErr := os.ReadFile(filepath.Join(platformRoot, relative))
 		if readErr == nil {
 			files[relative] = data

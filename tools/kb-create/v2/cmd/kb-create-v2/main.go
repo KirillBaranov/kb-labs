@@ -53,7 +53,7 @@ func main() {
 	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
 	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
-	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
+	kbdev := flag.String("kb-dev", "", "optional override for release-managed kb-dev binary")
 	telemetryURL := flag.String("telemetry-endpoint", "", "opt-in anonymous telemetry endpoint")
 	telemetryAllowed := flag.Bool("telemetry-consent", false, "allow anonymous operational telemetry")
 	flag.Parse()
@@ -141,7 +141,8 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		write(output, failure("KB_CREATE_SECRET_INPUT_INVALID", "secret input could not be stored", "use --secret-env requirement=ENV_VAR and set the environment variable", err))
 		return 2
 	}
-	deps := runtime.Dependencies{Artifacts: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Log: transcript}, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
+	artifactExecutor := artifacts.Composite{Packages: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Log: transcript}, Binaries: artifacts.Binaries{Root: response.Plan.Request.PlatformRoot}}
+	deps := runtime.Dependencies{Artifacts: artifactExecutor, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
 	if operation == "apply" {
 		receipt, applyErr := runtime.Apply(*response.Plan, deps)
 		if applyErr == nil {
@@ -361,7 +362,7 @@ func runRecovery(operation, platformRoot, snapshotID, registry, kbdev string, ou
 	}
 	defer transcript.Close()
 	service := services.KBDev{Binary: kbdev}
-	deps := runtime.Dependencies{Artifacts: artifacts.Pnpm{Root: platformRoot, Registry: registry, Log: transcript}, Activator: service, Deactivator: service, Status: service, CorrelationID: correlationID}
+	deps := runtime.Dependencies{Artifacts: artifacts.Composite{Packages: artifacts.Pnpm{Root: platformRoot, Registry: registry, Log: transcript}, Binaries: artifacts.Binaries{Root: platformRoot}}, Activator: service, Deactivator: service, Status: service, CorrelationID: correlationID}
 	if operation == "uninstall" {
 		snapshot, uninstallErr := runtime.Uninstall(platformRoot, deps)
 		if uninstallErr == nil {

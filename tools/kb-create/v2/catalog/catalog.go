@@ -73,6 +73,11 @@ func Validate(source Catalog) error {
 		if len(platform.Profiles) == 0 {
 			return fmt.Errorf("platform bundle %q has no service profile", key)
 		}
+		for _, binary := range platform.Binaries {
+			if binary.ID == "" || binary.OS == "" || binary.Arch == "" || binary.URL == "" || binary.SHA256 == "" || binary.Filename == "" {
+				return fmt.Errorf("platform bundle %q has incomplete binary artifact", key)
+			}
+		}
 	}
 	return nil
 }
@@ -139,6 +144,18 @@ type PlatformBundle struct {
 	Profiles map[string]contracts.ServiceGraph `json:"profiles"`
 	Requires []Requirement                     `json:"requires,omitempty"`
 	Config   []ConfigRequirement               `json:"config,omitempty"`
+	Binaries []Binary                          `json:"binaries,omitempty"`
+}
+
+// Binary is release-owned tooling required by a platform bundle. URLs and
+// hashes are immutable release assets, never guessed from a "latest" tag.
+type Binary struct {
+	ID       string `json:"id"`
+	OS       string `json:"os"`
+	Arch     string `json:"arch"`
+	URL      string `json:"url"`
+	SHA256   string `json:"sha256"`
+	Filename string `json:"filename"`
 }
 
 type Component struct {

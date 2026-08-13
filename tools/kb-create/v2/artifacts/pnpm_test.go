@@ -51,3 +51,12 @@ func TestPnpmPreservesPackageManagerFailure(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+func TestPnpmSkipsReleaseManagedBinary(t *testing.T) {
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: t.TempDir(), Runner: runner}).Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", Version: "2"}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+}

@@ -31,10 +31,7 @@ type KBDev struct {
 }
 
 func (client KBDev) ServiceStatuses(platformRoot string) ([]verify.ObservedService, error) {
-	binary := client.Binary
-	if binary == "" {
-		binary = "kb-dev"
-	}
+	binary := client.binary(platformRoot)
 	runner := client.Runner
 	if runner == nil {
 		runner = commandRunner{}
@@ -66,10 +63,7 @@ func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
 	if len(serviceIDs) == 0 {
 		return nil
 	}
-	binary := client.Binary
-	if binary == "" {
-		binary = "kb-dev"
-	}
+	binary := client.binary(platformRoot)
 	runner := client.Runner
 	if runner == nil {
 		runner = commandRunner{}
@@ -87,10 +81,7 @@ func (client KBDev) Stop(platformRoot string, serviceIDs []string) error {
 	if len(serviceIDs) == 0 {
 		return nil
 	}
-	binary := client.Binary
-	if binary == "" {
-		binary = "kb-dev"
-	}
+	binary := client.binary(platformRoot)
 	runner := client.Runner
 	if runner == nil {
 		runner = commandRunner{}
@@ -102,4 +93,11 @@ func (client KBDev) Stop(platformRoot string, serviceIDs []string) error {
 		return fmt.Errorf("kb-dev stop: %w", err)
 	}
 	return nil
+}
+
+func (client KBDev) binary(platformRoot string) string {
+	if client.Binary != "" {
+		return client.Binary
+	}
+	return filepath.Join(platformRoot, ".kb", "v2", "bin", "kb-dev")
 }

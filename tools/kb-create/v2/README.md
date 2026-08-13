@@ -63,9 +63,23 @@ references and cannot have a scenario default. The migrated built-ins are
 `commit`, `custom`, `explore`, `plugin-author`, and `release`.
 
 Release automation creates the index with `kb-create-v2-index --input
-manifest-export.json --output release-index.json`. The command rejects an
-index whose channel points outside its platform set and seals the canonical
-payload with a digest. `kb-create-v2` verifies that digest before resolving.
+manifest-export.json --manifest-root staging-root --output release-index.json`.
+The command reads the exact V2 manifests staged with each artifact and replaces
+any hand-authored config projection; missing/mismatched manifests fail the
+release. It then rejects an index whose channel points outside its platform
+set and seals the canonical payload with a digest. `kb-create-v2` verifies
+that digest before resolving.
+
+Secret input uses `--secret-env requirement.id=ENV_VAR`, so CI/agents pass a
+reference to process environment rather than secret text through argv/JSON.
+V2 stores the value only in `.kb/v2/secrets.env` (0600); generated config,
+receipt, scenario state, logs, diagnostics and telemetry retain only the
+manifest requirement or `${ENV_VAR}` placeholder. `kb-dev` reads this private
+store when it expands the rendered service environment.
+
+The platform bundle can also declare an OS/architecture-specific `kb-dev`
+binary asset. V2 verifies its SHA-256 and installs it in `.kb/v2/bin`; a CLI
+`--kb-dev` is an explicit development override, not a release dependency.
 
 ## Why V2
 
