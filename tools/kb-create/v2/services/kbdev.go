@@ -82,3 +82,24 @@ func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
 	}
 	return nil
 }
+
+func (client KBDev) Stop(platformRoot string, serviceIDs []string) error {
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+	binary := client.Binary
+	if binary == "" {
+		binary = "kb-dev"
+	}
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "stop"}
+	args = append(args, serviceIDs...)
+	args = append(args, "--json")
+	if _, err := runner.Output(context.Background(), binary, args...); err != nil {
+		return fmt.Errorf("kb-dev stop: %w", err)
+	}
+	return nil
+}

@@ -46,6 +46,10 @@ func (a *fakeActivator) Ensure(_ string, ids []string) error {
 	a.ids = append(a.ids, ids...)
 	return a.err
 }
+func (a *fakeActivator) Stop(_ string, ids []string) error {
+	a.ids = append(a.ids, ids...)
+	return a.err
+}
 
 func TestApplyCommitsReceiptOnlyAfterGraphVerification(t *testing.T) {
 	root := t.TempDir()
@@ -123,7 +127,8 @@ func TestUninstallUsesReceiptArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	installer := &fakeInstaller{}
-	if _, err := Uninstall(root, Dependencies{Artifacts: installer, Clock: fixedClock{time.Unix(5, 0)}}); err != nil {
+	services := &fakeActivator{}
+	if _, err := Uninstall(root, Dependencies{Artifacts: installer, Status: fakeStatus{}, Activator: services, Deactivator: services, Clock: fixedClock{time.Unix(5, 0)}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(installer.removed) != 1 || installer.removed[0].ID != "plugin" {

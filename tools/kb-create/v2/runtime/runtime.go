@@ -26,6 +26,9 @@ type ArtifactUninstaller interface {
 type ServiceActivator interface {
 	Ensure(platformRoot string, serviceIDs []string) error
 }
+type ServiceDeactivator interface {
+	Stop(platformRoot string, serviceIDs []string) error
+}
 
 type Clock interface{ Now() time.Time }
 
@@ -34,10 +37,11 @@ type systemClock struct{}
 func (systemClock) Now() time.Time { return time.Now().UTC() }
 
 type Dependencies struct {
-	Artifacts ArtifactInstaller
-	Status    verify.StatusProvider
-	Activator ServiceActivator
-	Clock     Clock
+	Artifacts   ArtifactInstaller
+	Status      verify.StatusProvider
+	Activator   ServiceActivator
+	Deactivator ServiceDeactivator
+	Clock       Clock
 	// CorrelationID is supplied by a frontend; it is persisted verbatim in the
 	// receipt and must be safe to disclose in a diagnostic bundle.
 	CorrelationID string
@@ -107,8 +111,8 @@ func Update(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.In
 // operation can recover; a successful deletion leaves explicit recovery data
 // rather than claiming user-authored project files are disposable.
 func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, error) {
-	if deps.Artifacts == nil {
-		return contracts.Snapshot{}, fmt.Errorf("uninstall: artifact installer is required")
+	if deps.Artifacts == nil || deps.Status == nil || deps.Activator == nil || deps.Deactivator == nil {
+		return contracts.Snapshot{}, fmt.Errorf("uninstall: artifact installer, status provider, service activator and service deactivator are required")
 	}
 	uninstaller, ok := deps.Artifacts.(ArtifactUninstaller)
 	if !ok {
@@ -118,7 +122,11 @@ func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, erro
 	if err != nil {
 		return contracts.Snapshot{}, fmt.Errorf("uninstall: read active receipt: %w", err)
 	}
+	ids := serviceIDs(active.Plan.ServiceGraph)
 	return lifecycle.Mutate(platformRoot, now(deps.Clock), func() error {
+		if err := deps.Deactivator.Stop(platformRoot, ids); err != nil {
+			return err
+		}
 		if err := uninstaller.Uninstall(active.Plan.Artifacts); err != nil {
 			return err
 		}
@@ -128,7 +136,21 @@ func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, erro
 			return err
 		}
 		return receipt.Delete(platformRoot)
-	}, nil, deps.Artifacts.Restore)
+	}, func() error {
+		observed, err := deps.Status.ServiceStatuses(platformRoot)
+		if err != nil {
+			return err
+		}
+		if len(observed) != 0 {
+			return fmt.Errorf("V2 uninstall left configured services")
+		}
+		return nil
+	}, func() error {
+		if err := deps.Artifacts.Restore(); err != nil {
+			return err
+		}
+		return deps.Activator.Ensure(platformRoot, ids)
+	})
 }
 
 func removeProjections(platformRoot string) error {

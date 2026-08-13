@@ -54,3 +54,14 @@ func TestKBDevEnsuresResolvedGraph(t *testing.T) {
 		t.Fatalf("args = %#v", runner.args)
 	}
 }
+
+func TestKBDevStopsResolvedGraph(t *testing.T) {
+	runner := &fakeRunner{data: []byte(`{"ok":true}`)}
+	if err := (KBDev{Runner: runner}).Stop("/platform", []string{"gateway"}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"--config", "/platform/.kb/devservices.yaml", "stop", "gateway", "--json"}
+	if !reflect.DeepEqual(runner.args, want) {
+		t.Fatalf("args = %#v", runner.args)
+	}
+}

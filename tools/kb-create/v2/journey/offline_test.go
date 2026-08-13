@@ -35,6 +35,14 @@ func (a *offlineArtifacts) Uninstall(items []contracts.Artifact) error {
 	return nil
 }
 
+type lifecycleServices struct{ status }
+
+func (services *lifecycleServices) Ensure(_ string, _ []string) error { return nil }
+func (services *lifecycleServices) Stop(_ string, _ []string) error {
+	services.status = nil
+	return nil
+}
+
 type journeyClock struct{ time.Time }
 
 func (c journeyClock) Now() time.Time { return c.Time }
@@ -77,7 +85,8 @@ func TestOfflineLifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall(t *te
 	root := t.TempDir()
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "first-plan", Request: contracts.InstallRequest{PlatformRoot: root}, Artifacts: []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "1.0.0"}}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
 	artifacts := &offlineArtifacts{}
-	deps := runtime.Dependencies{Artifacts: artifacts, Status: status{{ID: "gateway", State: "alive"}}, Clock: journeyClock{time.Unix(10, 0)}}
+	managed := &lifecycleServices{status: status{{ID: "gateway", State: "alive"}}}
+	deps := runtime.Dependencies{Artifacts: artifacts, Status: managed, Activator: managed, Deactivator: managed, Clock: journeyClock{time.Unix(10, 0)}}
 	first, err := runtime.Apply(plan, deps)
 	if err != nil {
 		t.Fatal(err)
