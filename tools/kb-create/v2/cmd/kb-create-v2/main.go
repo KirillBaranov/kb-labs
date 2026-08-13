@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kb-labs/create/v2/artifacts"
@@ -24,6 +25,15 @@ import (
 func main() {
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
+	requestRoot := flag.String("request-platform-root", "", "platform root for direct CI/agent request")
+	platformVersion := flag.String("platform-version", "", "exact platform version for direct request")
+	platformChannel := flag.String("platform-channel", "", "platform channel: stable, canary, experimental")
+	sdkVersion := flag.String("sdk-version", "", "exact SDK version for direct request")
+	serviceProfile := flag.String("service-profile", "", "platform-owned service profile for direct request")
+	plugins := flag.String("plugins", "", "comma-separated plugin IDs or id@version pins")
+	adapters := flag.String("adapters", "", "comma-separated adapter IDs or id@version pins")
+	policy := flag.String("policy", "strict", "compatibility policy: strict, compatible, upgrade-safe")
+	offline := flag.Bool("offline", false, "use offline artifact source")
 	doctorInput := flag.String("doctor-input", "", "path to V2 manifest-derived doctor JSON")
 	doctorFix := flag.Bool("fix", false, "apply only manifest-declared safe doctor defaults")
 	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
@@ -32,10 +42,16 @@ func main() {
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
-	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, os.Stdout))
+	direct := directRequest{PlatformRoot: *requestRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
+	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, direct, os.Stdout))
 }
 
-func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, output *os.File) int {
+type directRequest struct {
+	PlatformRoot, PlatformVersion, PlatformChannel, SDKVersion, ServiceProfile, Plugins, Adapters, Policy string
+	Offline                                                                                               bool
+}
+
+func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, direct directRequest, output *os.File) int {
 	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" {
 		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, or doctor", nil))
 		return 2
@@ -46,8 +62,8 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
 	}
-	if indexPath == "" || inputPath == "" {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and --input are required", "pass immutable release index and V2 request JSON files", nil))
+	if indexPath == "" || (inputPath == "" && direct.PlatformRoot == "") {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and either --input or --request-platform-root are required", "pass immutable release index plus V2 request JSON or direct CI flags", nil))
 		return 2
 	}
 	source, err := catalog.LoadFile(indexPath)
@@ -55,12 +71,23 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		write(output, failure("KB_CREATE_RELEASE_INDEX_INVALID", "release index could not be loaded", "supply a valid immutable V2 release index", err))
 		return 2
 	}
-	data, err := os.ReadFile(inputPath)
-	if err != nil {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "request could not be read", "supply a readable V2 request JSON file", err))
-		return 2
+	var response transport.PlanResponse
+	if inputPath != "" {
+		data, err := os.ReadFile(inputPath)
+		if err != nil {
+			write(output, failure("KB_CREATE_INPUT_REQUIRED", "request could not be read", "supply a readable V2 request JSON file", err))
+			return 2
+		}
+		response = transport.Plan(data, source)
+	} else {
+		request, requestErr := direct.normalize()
+		if requestErr != nil {
+			write(output, failure("KB_CREATE_INPUT_REQUIRED", "direct request is invalid", "correct direct CI flags or provide --input", requestErr))
+			return 2
+		}
+		data, _ := json.Marshal(request)
+		response = transport.Plan(data, source)
 	}
-	response := transport.Plan(data, source)
 	if !response.OK {
 		write(output, response)
 		return 2
@@ -93,6 +120,50 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
 	return 1
+}
+
+func (value directRequest) normalize() (contracts.InstallRequest, error) {
+	request := contracts.InstallRequest{Schema: contracts.RequestSchema, PlatformRoot: value.PlatformRoot, Platform: contracts.VersionSelector{Version: value.PlatformVersion, Channel: contracts.Channel(value.PlatformChannel)}, SDK: contracts.VersionSelector{Version: value.SDKVersion}, ServiceProfile: value.ServiceProfile, Policy: contracts.CompatibilityPolicy(value.Policy), Source: contracts.SourceRegistry}
+	if value.Offline {
+		request.Source = contracts.SourceOffline
+	}
+	plugins, err := parseComponents(value.Plugins)
+	if err != nil {
+		return contracts.InstallRequest{}, err
+	}
+	adapters, err := parseComponents(value.Adapters)
+	if err != nil {
+		return contracts.InstallRequest{}, err
+	}
+	request.Plugins, request.Adapters = plugins, adapters
+	return request.Normalize()
+}
+
+func parseComponents(value string) ([]contracts.ComponentRequest, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	items := strings.Split(value, ",")
+	result := make([]contracts.ComponentRequest, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return nil, fmt.Errorf("component list contains empty item")
+		}
+		id, version, pinned := strings.Cut(item, "@")
+		if strings.TrimSpace(id) == "" {
+			return nil, fmt.Errorf("component ID is required")
+		}
+		component := contracts.ComponentRequest{ID: id}
+		if pinned {
+			if version == "" {
+				return nil, fmt.Errorf("component %q has empty version", id)
+			}
+			component.Version.Version = version
+		}
+		result = append(result, component)
+	}
+	return result, nil
 }
 
 func runDoctor(path, platformRoot, kbdev string, fix bool, output *os.File) int {

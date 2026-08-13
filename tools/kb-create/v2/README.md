@@ -36,6 +36,13 @@ rollback), so they recover the verified V2 receipt rather than recalculating a
 new plan. Raw package-manager transcript is private under `.kb/logs/`; failed
 operations add a redacted dossier under `.kb/diagnostics/`.
 
+CI and agents may pass the request file unchanged, or use direct flags such
+as `--request-platform-root`, `--platform-version`/`--platform-channel`,
+`--sdk-version`, `--plugins id@version,...`, `--adapters id@version,...`,
+`--service-profile`, `--policy`, and `--offline`. Both forms normalize into
+the same `InstallRequest` before resolution; flags never build a separate
+shell-level install sequence.
+
 Release automation creates the index with `kb-create-v2-index --input
 manifest-export.json --output release-index.json`. The command rejects an
 index whose channel points outside its platform set and seals the canonical

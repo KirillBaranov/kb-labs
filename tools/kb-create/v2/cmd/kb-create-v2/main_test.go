@@ -33,7 +33,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "", "kb-dev", false, file)
+	code := run("plan", index, input, "", "", "", "", "kb-dev", false, directRequest{}, file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -71,7 +71,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -82,7 +82,7 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -98,7 +98,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, file); code != 1 {
+	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, directRequest{}, file); code != 1 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := file.Close(); err != nil {
@@ -111,5 +111,31 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	var response map[string]any
 	if err := json.Unmarshal(data, &response); err != nil || response["ok"] != false {
 		t.Fatalf("output/error = %s / %v", data, err)
+	}
+}
+
+func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
+	dir := t.TempDir()
+	index := filepath.Join(dir, "index.json")
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.2.0", Package: "@kb/review", SHA256: "review"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(index, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output, err := os.Create(filepath.Join(dir, "output.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := run("plan", index, "", "", "", "", "", "kb-dev", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
