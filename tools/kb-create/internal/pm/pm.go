@@ -3,8 +3,11 @@
 package pm
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // Progress reports installation progress for a single step.
@@ -13,6 +16,36 @@ type Progress struct {
 	Package string
 	Line    string // raw output line for logging
 	Done    bool
+}
+
+// CommandError keeps the useful tail of a package-manager failure. The
+// launcher renders this compactly for humans while the complete stream is
+// retained in the per-run log by the caller.
+type CommandError struct {
+	Command string
+	Output  string
+	Cause   error
+}
+
+func (e *CommandError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+	if e.Output == "" {
+		return fmt.Sprintf("%s: %v", e.Command, e.Cause)
+	}
+	return fmt.Sprintf("%s: %v\n%s", e.Command, e.Cause, e.Output)
+}
+func (e *CommandError) Unwrap() error { return e.Cause }
+
+// FailureSummary extracts only the actionable package-manager tail. It keeps
+// terminal diagnostics stable without making callers depend on a concrete PM.
+func FailureSummary(err error) string {
+	var commandErr *CommandError
+	if !errors.As(err, &commandErr) {
+		return ""
+	}
+	return strings.TrimSpace(commandErr.Output)
 }
 
 // InstalledPackage describes a package found in node_modules.

@@ -2,13 +2,17 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/kb-labs/create/internal/engine/executor"
+	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/pm"
 )
 
 func TestColorEnabled_DisabledByNoColor(t *testing.T) {
@@ -161,14 +165,13 @@ func TestPrintFatalErrorUsesErrorRail(t *testing.T) {
 }
 
 func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
-	got := captureStdout(t, printSupportHint)
+	got := captureStdout(t, func() { printSupportHint("/tmp/install.log") })
 	for _, want := range []string{
-		"Thanks for taking the time",
-		"helps us make KB Labs more reliable",
-		"Please include the failure details above",
+		"What to do next",
+		"No successful install state was recorded",
+		"/tmp/install.log",
 		"https://docs.kblabs.ru/en/guides/troubleshooting",
 		"https://github.com/kb-labs-team/kb-labs/issues",
-		"@kirill_baranov",
 		"│",
 	} {
 		if !strings.Contains(got, want) {
@@ -179,6 +182,41 @@ func TestPrintSupportHintUsesLeftRailAndRecoveryLinks(t *testing.T) {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("support hint still renders a closed box %q: %q", unwanted, got)
 		}
+	}
+}
+
+func TestPrintFatalErrorRendersPackageManagerTailOnce(t *testing.T) {
+	commandErr := &pm.CommandError{Command: "pnpm add broken", Cause: errors.New("exit status 1"), Output: "ERR_PNPM_FETCH_404\nmissing package"}
+	got := captureStdout(t, func() {
+		printFatalError(fmt.Errorf("declarative installation failed: %w", commandErr), "dev")
+	})
+	if strings.Count(got, "ERR_PNPM_FETCH_404") != 1 || strings.Count(got, "missing package") != 1 {
+		t.Fatalf("package-manager details must not be duplicated: %q", got)
+	}
+}
+
+func TestInstallationProgressReportsMilestonesOnly(t *testing.T) {
+	var rendered strings.Builder
+	compiled := engineplan.InstallPlan{Actions: []engineplan.PlanAction{
+		{ID: "install:one", Kind: engineplan.ActionInstallPackage},
+		{ID: "install:two", Kind: engineplan.ActionInstallPackage},
+		{ID: "install:three", Kind: engineplan.ActionInstallPackage},
+		{ID: "install:four", Kind: engineplan.ActionInstallPackage},
+		{ID: "install:five", Kind: engineplan.ActionInstallPackage},
+		{ID: "install:six", Kind: engineplan.ActionInstallPackage},
+	}}
+	report := installationProgress(&rendered, compiled)
+	for _, id := range []string{"install:one", "install:two", "install:three", "install:four", "install:five", "install:six"} {
+		report(executor.Event{ActionID: id, Status: executor.StatusApplying})
+	}
+	got := rendered.String()
+	for _, want := range []string{"Installing packages 1/6", "Installing packages 5/6", "Installing packages 6/6"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("milestone missing %q: %q", want, got)
+		}
+	}
+	if strings.Contains(got, "2/6") || strings.Contains(got, "3/6") || strings.Contains(got, "4/6") {
+		t.Errorf("intermediate package progress is noisy: %q", got)
 	}
 }
 

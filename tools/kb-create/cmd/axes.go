@@ -69,8 +69,8 @@ func preflightCompatibility(axes *manifest.ResolvedAxes, m *manifest.Manifest, m
 	// matrix to validate against — this is what makes `status` show
 	// "canary (2.118.1)" instead of a bare "canary".
 	if !offline && canResolve {
-		resolveAxisDisplayVersion(&axes.SDK, manifest.SDKPackageName, resolver, out)
-		resolveAxisDisplayVersion(&axes.Platform, manifest.PlatformRepresentativePackage, resolver, out)
+		resolveAxisDisplayVersion(&axes.SDK, manifest.SDKPackageName, resolver)
+		resolveAxisDisplayVersion(&axes.Platform, manifest.PlatformRepresentativePackage, resolver)
 	}
 
 	if len(m.Compatibility) == 0 {
@@ -124,15 +124,15 @@ func preflightCompatibility(axes *manifest.ResolvedAxes, m *manifest.Manifest, m
 }
 
 // resolveAxisDisplayVersion fills axis.Resolved from the registry when the
-// axis is channel-tracked (an exact pin needs no lookup). Failures are
-// non-fatal — a warning, not an error — since this is purely for display.
-func resolveAxisDisplayVersion(axis *manifest.AxisSelection, pkg string, resolver pm.VersionResolver, out output) {
+// axis is channel-tracked (an exact pin needs no lookup). Failures are silent:
+// this lookup only enriches later status output and must not distract from a
+// real installation error or make offline use look broken.
+func resolveAxisDisplayVersion(axis *manifest.AxisSelection, pkg string, resolver pm.VersionResolver) {
 	if axis.Version != "" || axis.Resolved != "" {
 		return
 	}
 	version, err := resolver.ResolveVersion(pkg, axis.DistTag())
 	if err != nil {
-		out.Warn(fmt.Sprintf("could not resolve %s@%s: %v", pkg, axis.DistTag(), err))
 		return
 	}
 	axis.Resolved = version

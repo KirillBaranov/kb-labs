@@ -99,7 +99,7 @@ func Execute() {
 			os.Exit(1)
 		}
 		printFatalError(err, rootCmd.Version)
-		printSupportHint()
+		printSupportHint(failureLogPath)
 		os.Exit(1)
 	}
 	var d *diag.Diag

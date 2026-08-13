@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
+	"github.com/kb-labs/create/internal/pm"
 )
 
 var (
@@ -301,20 +303,23 @@ func printAgentHandoff(path string) {
 // printSupportHint gives a compact recovery route after an install or doctor
 // failure. It intentionally uses one left rail instead of a closed box: the
 // error above remains the primary information, while support is a next step.
-func printSupportHint() {
+func printSupportHint(logPath string) {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 
 	fmt.Println()
-	printRailNotice("Thanks for taking the time to report this.", []string{
-		dim.Render("Your report helps us make KB Labs more reliable."),
-		"",
-		dim.Render("Please include the failure details above."),
+	lines := []string{
+		dim.Render("No successful install state was recorded."),
+	}
+	if logPath != "" {
+		lines = append(lines, railKeyValue("Full log", styleBlue.Render(logPath)))
+	}
+	lines = append(lines,
 		"",
 		railKeyValue("Troubleshooting", url.Render("https://docs.kblabs.ru/en/guides/troubleshooting")),
-		railKeyValue("GitHub issues", url.Render("https://github.com/kb-labs-team/kb-labs/issues")),
-		railKeyValue("Telegram", url.Render("@kirill_baranov")),
-	})
+		railKeyValue("Report issue", url.Render("https://github.com/kb-labs-team/kb-labs/issues")),
+	)
+	printRailNotice("What to do next", lines)
 	fmt.Println()
 }
 
@@ -367,12 +372,31 @@ func railKeyValue(label, value string) string {
 // be pasted into an issue. It intentionally includes only runtime facts, never
 // project paths, source code, API keys, or user configuration values.
 func printFatalError(err error, version string) {
-	lines := []string{"Failure details — copy this when reporting the issue:"}
-	for _, line := range strings.Split(strings.TrimSpace(err.Error()), "\n") {
+	title := "Installation failed"
+	lines := make([]string, 0)
+	var commandErr *pm.CommandError
+	if errors.As(err, &commandErr) {
+		title = "Package installation failed"
+		lines = append(lines, "The package registry or dependency set rejected an artifact.")
+		if summary := pm.FailureSummary(err); summary != "" {
+			lines = append(lines, "", "Package-manager detail:", summary)
+		}
+	}
+	errText := strings.TrimSpace(err.Error())
+	if commandErr != nil {
+		// The wrapped action error includes CommandError.Error(). Its output has
+		// already been rendered as the dedicated detail section above.
+		errText = strings.TrimSpace(strings.Replace(errText, commandErr.Error(), "", 1))
+		errText = strings.TrimSuffix(errText, ":")
+	}
+	for _, line := range strings.Split(errText, "\n") {
+		if strings.HasPrefix(line, "pnpm ") || strings.TrimSpace(line) == "" {
+			continue
+		}
 		lines = append(lines, line)
 	}
 	lines = append(lines, "", "Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version)
-	printRailErrorBlock("Installation failed", lines)
+	printRailErrorBlock(title, lines)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
