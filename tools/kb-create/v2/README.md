@@ -21,11 +21,20 @@ The V2 boundary is executable and covered by an offline journey test:
 - `artifacts/`, `runtime/`, `receipt/`, `doctor/` and `diagnostics/` establish
   exact artifact application, recovery, manifest-gap
   reporting and redacted dossiers before CLI cutover exposes the flow.
+- `cmd/kb-create-v2/` is the standalone machine frontend today: `plan`,
+  `apply`, `update`, `uninstall`, explicit `rollback`, and manifest-aware
+  `doctor` all use V2 contracts and emit one JSON envelope.
 
 This is intentionally not wired to legacy `install` yet. Connecting two
 resolvers or lifecycle owners to one production command would recreate the
 split-brain V2 removes. Cutover replaces the legacy root rather than adapting
 V2 to legacy state.
+
+`apply` and `update` require an immutable release index and request. Recovery
+operations deliberately require only `--platform-root` (and a snapshot for
+rollback), so they recover the verified V2 receipt rather than recalculating a
+new plan. Raw package-manager transcript is private under `.kb/logs/`; failed
+operations add a redacted dossier under `.kb/diagnostics/`.
 
 ## Why V2
 
