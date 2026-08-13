@@ -7,6 +7,8 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -109,6 +111,59 @@ func New(value Scenario) (State, error) {
 		}
 	}
 	return state, nil
+}
+
+// LoadState resumes a prior non-secret scenario state. Missing state starts a
+// new journey with defaults; an unrelated/corrupt state is never accepted.
+func LoadState(platformRoot string, value Scenario) (State, error) {
+	data, err := os.ReadFile(statePath(platformRoot, value.ID))
+	if os.IsNotExist(err) {
+		return New(value)
+	}
+	if err != nil {
+		return State{}, err
+	}
+	var state State
+	if err := json.Unmarshal(data, &state); err != nil {
+		return State{}, fmt.Errorf("decode scenario state: %w", err)
+	}
+	if state.ScenarioID != value.ID {
+		return State{}, fmt.Errorf("scenario state belongs to %q", state.ScenarioID)
+	}
+	return state, nil
+}
+
+// SaveState persists only non-secret answers. Secret values must live in the
+// selected secret store, never in a receipt, journal, diagnostic, or resume
+// file.
+func SaveState(platformRoot string, value Scenario, state State) error {
+	if state.ScenarioID != value.ID {
+		return fmt.Errorf("state does not belong to scenario %q", value.ID)
+	}
+	copy := State{ScenarioID: state.ScenarioID, Answers: map[string]json.RawMessage{}}
+	for _, field := range value.Fields {
+		if field.Secret {
+			continue
+		}
+		if answer, ok := state.Answers[field.ID]; ok {
+			copy.Answers[field.ID] = append(json.RawMessage(nil), answer...)
+		}
+	}
+	data, err := json.MarshalIndent(copy, "", "  ")
+	if err != nil {
+		return err
+	}
+	path := statePath(platformRoot, value.ID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
+	}
+	if err := os.WriteFile(path+".tmp", append(data, '\n'), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(path+".tmp", path)
+}
+func statePath(platformRoot, id string) string {
+	return filepath.Join(platformRoot, ".kb", "v2", "scenarios", id+".json")
 }
 func Answer(value Scenario, state State, id string, raw json.RawMessage) (State, error) {
 	if state.ScenarioID != value.ID {

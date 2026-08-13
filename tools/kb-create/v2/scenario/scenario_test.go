@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/v2/catalog"
@@ -42,6 +43,30 @@ func TestMigratedBuiltinsCompileToSharedV2Requests(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestScenarioResumePersistsOnlyNonSecretAnswers(t *testing.T) {
+	definition := Scenario{Schema: Schema, ID: "resume", Fields: []Field{{ID: "mode", Requirement: "mode", Type: "select", Default: []byte(`"local"`), Options: []Option{{Value: "local"}}}, {ID: "token", Requirement: "token", Type: "string", Secret: true, Required: true}}}
+	state, err := New(definition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err = Answer(definition, state, "token", []byte(`"super-secret"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := SaveState(root, definition, state); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".kb", "v2", "scenarios", "resume.json"))
+	if err != nil || strings.Contains(string(data), "super-secret") {
+		t.Fatalf("state/error = %s / %v", data, err)
+	}
+	loaded, err := LoadState(root, definition)
+	if err != nil || string(loaded.Answers["mode"]) != `"local"` || loaded.Answers["token"] != nil {
+		t.Fatalf("loaded/error = %#v / %v", loaded, err)
 	}
 }
 
