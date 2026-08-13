@@ -60,3 +60,15 @@ func TestPnpmSkipsReleaseManagedBinary(t *testing.T) {
 		t.Fatalf("calls = %#v", runner.calls)
 	}
 }
+
+func TestPnpmUsesOfflineModeWhenRequested(t *testing.T) {
+	root := t.TempDir()
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: root, Offline: true, Runner: runner}).Install([]contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2"}}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"add", "--dir", root, "--reporter=append-only", "--offline", "@kb/platform@2"}
+	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+}

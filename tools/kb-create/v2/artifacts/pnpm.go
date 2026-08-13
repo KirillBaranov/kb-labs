@@ -31,6 +31,7 @@ func (commandRunner) Run(ctx context.Context, output io.Writer, name string, arg
 type Pnpm struct {
 	Root     string
 	Registry string
+	Offline  bool
 	Runner   Runner
 	// Log receives the complete package-manager transcript. It is deliberately
 	// file-oriented: raw package-manager output must never pollute human or JSON
@@ -76,6 +77,9 @@ func (p Pnpm) run(command string, specs ...string) error {
 		return fmt.Errorf("V2 platform root is required")
 	}
 	args := []string{command, "--dir", p.Root, "--reporter=append-only"}
+	if p.Offline {
+		args = append(args, "--offline")
+	}
 	args = append(args, specs...)
 	if p.Registry != "" {
 		args = append(args, "--registry", p.Registry)
