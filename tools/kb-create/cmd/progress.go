@@ -29,8 +29,27 @@ func logPackageManagerProgress(log *logger.Logger) func(pm.Progress) {
 		if log == nil || strings.TrimSpace(event.Line) == "" {
 			return
 		}
-		log.Printf("[package-manager] %s", event.Line)
+		log.Printf("[package-manager] %s", redactLogLine(event.Line))
 	}
+}
+
+func redactLogLine(line string) string {
+	for _, key := range []string{"NPM_TOKEN", "NODE_AUTH_TOKEN", "KB_LABS_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"} {
+		for _, separator := range []string{"=", ":"} {
+			prefix := key + separator
+			if strings.HasPrefix(strings.TrimSpace(line), prefix) {
+				return key + "=[REDACTED]"
+			}
+		}
+	}
+	// Registries can echo bearer auth in URLs. Keep the host/path useful but
+	// never persist a credential in the diagnostic dossier.
+	if at := strings.Index(line, "@"); at > 0 && strings.Contains(line[:at], "://") {
+		if scheme := strings.LastIndex(line[:at], "://"); scheme >= 0 {
+			return line[:scheme+3] + "[REDACTED]@" + line[at+1:]
+		}
+	}
+	return line
 }
 
 // installationProgress reports meaningful milestones only. Package-manager

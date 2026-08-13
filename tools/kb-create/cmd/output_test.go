@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kb-labs/clikit/diag"
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	"github.com/kb-labs/create/internal/installer"
@@ -195,6 +196,39 @@ func TestPrintFatalErrorRendersPackageManagerTailOnce(t *testing.T) {
 	}
 }
 
+func TestPrintFatalDiagnosticIncludesPublicContract(t *testing.T) {
+	got := captureStdout(t, func() {
+		printFatalDiagnostic(diag.New("ERR_EXAMPLE", "Action failed", diag.WithReason("the concrete cause"), diag.WithHint("do the safe recovery")), "dev")
+	})
+	for _, want := range []string{"Action failed", "Code: ERR_EXAMPLE", "the concrete cause", "Next step:", "do the safe recovery"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("diagnostic missing %q: %q", want, got)
+		}
+	}
+}
+
+func TestPrintFatalDiagnosticFiltersPackageManagerNoise(t *testing.T) {
+	err := fmt.Errorf("action install:foundation failed: %w", &pm.CommandError{Command: "pnpm add noisy", Cause: errors.New("exit status 1"), Output: "[WARN] unrelated warning\nProgress: resolved 1\nERR_PNPM_NO_MATCHING_VERSION missing package\nThe requested version is not published\nOther releases are available"})
+	got := captureStdout(t, func() { printFatalDiagnostic(classifyError(err), "dev") })
+	for _, unwanted := range []string{"unrelated warning", "Progress: resolved", "pnpm add noisy"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("human diagnostic leaked package-manager noise %q: %q", unwanted, got)
+		}
+	}
+	for _, want := range []string{"ERR_PNPM_NO_MATCHING_VERSION", "The requested version is not published"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("human diagnostic omitted actionable package failure %q: %q", want, got)
+		}
+	}
+}
+
+func TestRailPrefixesEachLineOfMultilineDetail(t *testing.T) {
+	got := captureStdout(t, func() { printRailNotice("test", []string{"first\nsecond"}) })
+	if !strings.Contains(got, "│ first\n│ second") {
+		t.Errorf("multiline rail is not aligned: %q", got)
+	}
+}
+
 func TestInstallationProgressReportsMilestonesOnly(t *testing.T) {
 	var rendered strings.Builder
 	compiled := engineplan.InstallPlan{Actions: []engineplan.PlanAction{
@@ -217,6 +251,18 @@ func TestInstallationProgressReportsMilestonesOnly(t *testing.T) {
 	}
 	if strings.Contains(got, "2/6") || strings.Contains(got, "3/6") || strings.Contains(got, "4/6") {
 		t.Errorf("intermediate package progress is noisy: %q", got)
+	}
+}
+
+func TestRedactLogLineRemovesKnownCredentials(t *testing.T) {
+	for _, test := range []struct{ input, want string }{
+		{"NPM_TOKEN=secret", "NPM_TOKEN=[REDACTED]"},
+		{"OPENAI_API_KEY: secret", "OPENAI_API_KEY=[REDACTED]"},
+		{"fetch https://token@registry.example.test/pkg", "fetch https://[REDACTED]@registry.example.test/pkg"},
+	} {
+		if got := redactLogLine(test.input); got != test.want {
+			t.Errorf("redactLogLine(%q) = %q, want %q", test.input, got, test.want)
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/kb-labs/clikit/diag"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
@@ -357,11 +358,13 @@ func printRailErrorBlock(title string, lines []string) {
 }
 
 func printRailLine(rail, line string) {
-	if line == "" {
-		fmt.Println(rail)
-		return
+	for _, part := range strings.Split(line, "\n") {
+		if part == "" {
+			fmt.Println(rail)
+			continue
+		}
+		fmt.Println(rail + " " + part)
 	}
-	fmt.Println(rail + " " + line)
 }
 
 func railKeyValue(label, value string) string {
@@ -397,6 +400,62 @@ func printFatalError(err error, version string) {
 	}
 	lines = append(lines, "", "Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version)
 	printRailErrorBlock(title, lines)
+}
+
+func printFatalDiagnostic(d *diag.Diag, version string) {
+	if d == nil {
+		printFatalError(errors.New("unknown error"), version)
+		return
+	}
+	lines := []string{styleMuted.Render("Code: ") + styleWhite.Render(d.Code)}
+	if reason := diagnosticReason(d); reason != "" {
+		lines = append(lines, "", reason)
+	}
+	if d.Hint != "" {
+		lines = append(lines, "", styleBold.Render("Next step:"), d.Hint)
+	}
+	lines = append(lines, "", "Runtime: "+runtime.GOOS+"/"+runtime.GOARCH+" · kb-create "+version)
+	printRailErrorBlock(d.Message, lines)
+}
+
+func diagnosticReason(d *diag.Diag) string {
+	if d == nil {
+		return ""
+	}
+	var commandErr *pm.CommandError
+	if !errors.As(d, &commandErr) {
+		return d.Reason
+	}
+	parts := strings.Split(d.Reason, "\n")
+	action := ""
+	for _, part := range parts {
+		if strings.HasPrefix(part, "action ") && strings.Contains(part, " failed") {
+			action = part[:strings.Index(part, " failed")]
+			break
+		}
+	}
+	detail := packageManagerFailureDetail(pm.FailureSummary(commandErr))
+	if action == "" {
+		return detail
+	}
+	if detail == "" {
+		return action + " failed"
+	}
+	return action + " failed\n" + detail
+}
+
+func packageManagerFailureDetail(output string) string {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "ERR_PNPM_") || strings.Contains(line, "npm ERR!") {
+			end := i + 3
+			if end > len(lines) {
+				end = len(lines)
+			}
+			return strings.Join(lines[i:end], "\n")
+		}
+	}
+	return ""
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
