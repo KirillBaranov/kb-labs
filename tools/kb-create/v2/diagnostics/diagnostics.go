@@ -24,6 +24,7 @@ type Dossier struct {
 	ServiceGraph  []string                 `json:"serviceGraph,omitempty"`
 	Journal       []string                 `json:"journal,omitempty"`
 	Logs          []string                 `json:"logs,omitempty"`
+	LogPath       string                   `json:"logPath,omitempty"`
 }
 
 func Redact(value string, secrets []string) string {

@@ -43,3 +43,14 @@ func TestKBDevPreservesStatusFailure(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestKBDevEnsuresResolvedGraph(t *testing.T) {
+	runner := &fakeRunner{data: []byte(`{"ok":true}`)}
+	if err := (KBDev{Runner: runner}).Ensure("/platform", []string{"gateway", "worker"}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"--config", "/platform/.kb/devservices.yaml", "ensure", "gateway", "worker", "--json"}
+	if !reflect.DeepEqual(runner.args, want) {
+		t.Fatalf("args = %#v", runner.args)
+	}
+}

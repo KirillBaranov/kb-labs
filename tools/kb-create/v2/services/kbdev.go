@@ -58,3 +58,27 @@ func (client KBDev) ServiceStatuses(platformRoot string) ([]verify.ObservedServi
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
 }
+
+// Ensure brings the exact resolved graph to its desired state before V2 reads
+// status. The public `kb-dev ensure --json` command is idempotent and agent
+// friendly; its non-zero exit is preserved as an apply failure.
+func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+	binary := client.Binary
+	if binary == "" {
+		binary = "kb-dev"
+	}
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "ensure"}
+	args = append(args, serviceIDs...)
+	args = append(args, "--json")
+	if _, err := runner.Output(context.Background(), binary, args...); err != nil {
+		return fmt.Errorf("kb-dev ensure: %w", err)
+	}
+	return nil
+}

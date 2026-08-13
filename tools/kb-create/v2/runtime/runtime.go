@@ -23,6 +23,9 @@ type ArtifactInstaller interface {
 type ArtifactUninstaller interface {
 	Uninstall([]contracts.Artifact) error
 }
+type ServiceActivator interface {
+	Ensure(platformRoot string, serviceIDs []string) error
+}
 
 type Clock interface{ Now() time.Time }
 
@@ -33,6 +36,7 @@ func (systemClock) Now() time.Time { return time.Now().UTC() }
 type Dependencies struct {
 	Artifacts ArtifactInstaller
 	Status    verify.StatusProvider
+	Activator ServiceActivator
 	Clock     Clock
 	// CorrelationID is supplied by a frontend; it is persisted verbatim in the
 	// receipt and must be safe to disclose in a diagnostic bundle.
@@ -53,6 +57,12 @@ func Apply(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.Ins
 	}
 	if _, err := render.Write(plan); err != nil {
 		return contracts.InstallReceipt{}, fmt.Errorf("render resolved projections: %w", err)
+	}
+	if deps.Activator != nil {
+		if err := deps.Activator.Ensure(plan.Request.PlatformRoot, serviceIDs(plan.ServiceGraph)); err != nil {
+			_ = removeProjections(plan.Request.PlatformRoot)
+			return contracts.InstallReceipt{}, fmt.Errorf("ensure resolved service graph: %w", err)
+		}
 	}
 	now := now(deps.Clock)
 	check, err := verify.Run(plan, deps.Status, now)
@@ -142,4 +152,12 @@ func receiptID(planHash string, createdAt time.Time) string {
 		planHash = planHash[:12]
 	}
 	return createdAt.Format("20060102T150405Z") + "-" + planHash
+}
+
+func serviceIDs(graph contracts.ServiceGraph) []string {
+	result := make([]string, 0, len(graph.Services))
+	for _, service := range graph.Services {
+		result = append(result, service.ID)
+	}
+	return result
 }

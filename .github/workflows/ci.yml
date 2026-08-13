@@ -44,7 +44,7 @@ jobs:
           - shard: resolver-config
             packages: ./v2/catalog ./v2/contracts ./v2/resolve ./v2/render ./v2/transport
           - shard: runtime-recovery
-            packages: ./v2/artifacts ./v2/receipt ./v2/lifecycle ./v2/runtime
+            packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
           - shard: doctor-diagnostics
             packages: ./v2/doctor ./v2/diagnostics
           - shard: offline-journey

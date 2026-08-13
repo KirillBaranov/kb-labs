@@ -22,7 +22,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run(index, input, file)
+	code := run("plan", index, input, "", "kb-dev", file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,18 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("", "", file); code != 2 {
+	if code := run("plan", "", "", "", "kb-dev", file); code != 2 {
+		t.Fatalf("exit code = %d", code)
+	}
+}
+
+func TestRunRejectsUnknownOperation(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if code := run("destroy-everything", "", "", "", "kb-dev", file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }

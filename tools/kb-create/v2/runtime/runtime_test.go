@@ -37,6 +37,16 @@ type fakeStatus []verify.ObservedService
 
 func (s fakeStatus) ServiceStatuses(string) ([]verify.ObservedService, error) { return s, nil }
 
+type fakeActivator struct {
+	ids []string
+	err error
+}
+
+func (a *fakeActivator) Ensure(_ string, ids []string) error {
+	a.ids = append(a.ids, ids...)
+	return a.err
+}
+
 func TestApplyCommitsReceiptOnlyAfterGraphVerification(t *testing.T) {
 	root := t.TempDir()
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "123456789012345", Request: contracts.InstallRequest{PlatformRoot: root}, Artifacts: []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2.0.0"}}, ServiceGraph: contracts.ServiceGraph{PlatformVersion: "2.0.0", Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
@@ -47,6 +57,18 @@ func TestApplyCommitsReceiptOnlyAfterGraphVerification(t *testing.T) {
 	}
 	if receipt.ID != "19700101T000000Z-123456789012" || len(installer.artifacts) != 1 {
 		t.Fatalf("receipt/installer = %#v / %#v", receipt, installer)
+	}
+}
+
+func TestApplyEnsuresResolvedGraphBeforeVerification(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	activator := &fakeActivator{}
+	if _, err := Apply(plan, Dependencies{Artifacts: &fakeInstaller{}, Activator: activator, Status: fakeStatus{{ID: "gateway", State: "alive"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(activator.ids) != 1 || activator.ids[0] != "gateway" {
+		t.Fatalf("ensured = %#v", activator.ids)
 	}
 }
 
