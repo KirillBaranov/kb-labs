@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/v2/catalog"
@@ -33,7 +34,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "", "kb-dev", false, directRequest{}, file)
+	code := run("plan", index, input, "", "", "", "", "kb-dev", false, "", "", directRequest{}, file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, "", "", directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -71,7 +72,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, "", "", directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -82,7 +83,7 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, directRequest{}, file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, "", "", directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -98,7 +99,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, directRequest{}, file); code != 1 {
+	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, "", "", directRequest{}, file); code != 1 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := file.Close(); err != nil {
@@ -132,10 +133,44 @@ func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("plan", index, "", "", "", "", "", "kb-dev", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
+	if code := run("plan", index, "", "", "", "", "", "kb-dev", false, "", "", directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := output.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
+	dir := t.TempDir()
+	index := filepath.Join(dir, "index.json")
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "gateway.access.mode", Path: "/gateway/access/mode", Default: `"secured"`}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(index, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output, err := os.Create(filepath.Join(dir, "output.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := run("plan", index, "", "", "", "", "", "kb-dev", false, "custom", `{"access.mode":"local"}`, directRequest{PlatformRoot: "/tmp/platform", Offline: true, Policy: "compatible"}, output)
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	result, err := os.ReadFile(filepath.Join(dir, "output.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(result), `"path":"/gateway/access/mode"`) || !strings.Contains(string(result), `"json":"\"local\""`) {
+		t.Fatalf("plan = %s", result)
 	}
 }

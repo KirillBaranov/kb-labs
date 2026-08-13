@@ -18,6 +18,7 @@ import (
 	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/logs"
 	"github.com/kb-labs/create/v2/runtime"
+	"github.com/kb-labs/create/v2/scenario"
 	"github.com/kb-labs/create/v2/services"
 	"github.com/kb-labs/create/v2/transport"
 	"github.com/kb-labs/create/v2/wizard"
@@ -36,6 +37,8 @@ func main() {
 	policy := flag.String("policy", "strict", "compatibility policy: strict, compatible, upgrade-safe")
 	offline := flag.Bool("offline", false, "use offline artifact source")
 	doctorInput := flag.String("doctor-input", "", "path to V2 manifest-derived doctor JSON")
+	scenarioID := flag.String("scenario", "", "built-in V2 scenario ID")
+	scenarioAnswers := flag.String("scenario-answers", "", "JSON object of V2 scenario field answers")
 	doctorFix := flag.Bool("fix", false, "apply only manifest-declared safe doctor defaults")
 	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
 	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
@@ -44,7 +47,7 @@ func main() {
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
 	direct := directRequest{PlatformRoot: *requestRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
-	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, direct, os.Stdout))
+	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, *scenarioID, *scenarioAnswers, direct, os.Stdout))
 }
 
 type directRequest struct {
@@ -52,7 +55,7 @@ type directRequest struct {
 	Offline                                                                                               bool
 }
 
-func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, direct directRequest, output *os.File) int {
+func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, scenarioID, scenarioAnswers string, direct directRequest, output *os.File) int {
 	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" {
 		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, or wizard", nil))
 		return 2
@@ -89,6 +92,14 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 			write(output, failure("KB_CREATE_INPUT_REQUIRED", "direct request is invalid", "correct direct CI flags or provide --input", requestErr))
 			return 2
 		}
+		if scenarioID != "" {
+			compiled, scenarioErr := compileScenario(scenarioID, scenarioAnswers, request)
+			if scenarioErr != nil {
+				write(output, failure("KB_CREATE_SCENARIO_INVALID", "scenario could not be compiled", "inspect scenario answers and manifest requirements", scenarioErr))
+				return 2
+			}
+			request = compiled
+		}
 		data, _ := json.Marshal(request)
 		response = transport.Plan(data, source)
 	}
@@ -124,6 +135,30 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
 	return 1
+}
+
+func compileScenario(id, answers string, base contracts.InstallRequest) (contracts.InstallRequest, error) {
+	definition, err := scenario.Load(id)
+	if err != nil {
+		return contracts.InstallRequest{}, err
+	}
+	state, err := scenario.New(definition)
+	if err != nil {
+		return contracts.InstallRequest{}, err
+	}
+	if answers != "" {
+		var values map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(answers), &values); err != nil {
+			return contracts.InstallRequest{}, fmt.Errorf("decode scenario answers: %w", err)
+		}
+		for field, value := range values {
+			state, err = scenario.Answer(definition, state, field, value)
+			if err != nil {
+				return contracts.InstallRequest{}, err
+			}
+		}
+	}
+	return scenario.Compile(definition, state, base)
 }
 
 func runWizard(indexPath, platformRoot string, output *os.File) int {

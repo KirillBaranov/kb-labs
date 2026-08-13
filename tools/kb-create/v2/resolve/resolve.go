@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -99,7 +100,10 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	}
 	artifacts = uniqueArtifacts(artifacts)
 	bindings = uniqueBindings(bindings)
-	patches := configPatches(platform.Version, artifacts, bindings)
+	patches, err := configPatches(platform, artifacts, bindings, source, request)
+	if err != nil {
+		return contracts.ResolvedInstallPlan{}, err
+	}
 	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches}
 	plan.PlanHash = hash(plan)
 	return plan, nil
@@ -202,8 +206,8 @@ func uniqueBindings(values []contracts.ProviderBinding) []contracts.ProviderBind
 	sort.Slice(result, func(i, j int) bool { return result[i].Capability < result[j].Capability })
 	return result
 }
-func configPatches(platform string, artifacts []contracts.Artifact, bindings []contracts.ProviderBinding) []contracts.ConfigPatch {
-	result := []contracts.ConfigPatch{{Path: "/platform/version", Value: platform, Owner: "platform"}}
+func configPatches(platform catalog.PlatformBundle, artifacts []contracts.Artifact, bindings []contracts.ProviderBinding, source catalog.Catalog, request contracts.InstallRequest) ([]contracts.ConfigPatch, error) {
+	result := []contracts.ConfigPatch{{Path: "/platform/version", Value: platform.Version, Owner: "platform"}}
 	for _, v := range bindings {
 		result = append(result, contracts.ConfigPatch{Path: "/platform/adapters/" + v.Capability, Value: v.Package + "@" + v.Version, Owner: "adapter:" + v.AdapterID})
 	}
@@ -212,7 +216,66 @@ func configPatches(platform string, artifacts []contracts.Artifact, bindings []c
 			result = append(result, contracts.ConfigPatch{Path: "/plugins/" + v.ID, Value: v.Package + "@" + v.Version, Owner: "plugin:" + v.ID})
 		}
 	}
-	return result
+	requirements := append([]catalog.ConfigRequirement(nil), platform.Config...)
+	for _, artifact := range artifacts {
+		for _, component := range append(append([]catalog.Component(nil), source.Plugins...), source.SDKs...) {
+			if component.ID == artifact.ID && component.Version == artifact.Version {
+				requirements = append(requirements, component.Config...)
+			}
+		}
+		for _, adapter := range source.Adapters {
+			if adapter.ID == artifact.ID && adapter.Version == artifact.Version {
+				requirements = append(requirements, adapter.Config...)
+			}
+		}
+	}
+	known := map[string]bool{}
+	secrets := map[string]bool{}
+	for _, requirement := range requirements {
+		if requirement.ID == "" || requirement.Path == "" {
+			return nil, fmt.Errorf("selected manifest has invalid configuration requirement")
+		}
+		known[requirement.ID] = true
+		secrets[requirement.ID] = requirement.Secret
+		value, supplied := request.Values[requirement.ID]
+		if requirement.Secret {
+			if supplied {
+				return nil, launcherError(contracts.CodeInputRequired, "secret "+requirement.ID+" must be supplied through the secret store", map[string]string{"requirement": requirement.ID})
+			}
+			if requirement.Required && !contains(request.SecretInputs, requirement.ID) {
+				return nil, launcherError(contracts.CodeInputRequired, "required secret input "+requirement.ID+" is missing", map[string]string{"requirement": requirement.ID})
+			}
+			continue
+		}
+		if !supplied {
+			value = requirement.Default
+		}
+		if value == "" && requirement.Required {
+			return nil, launcherError(contracts.CodeConfigRequired, "required configuration "+requirement.ID+" is missing", map[string]string{"requirement": requirement.ID})
+		}
+		if value != "" {
+			result = append(result, contracts.ConfigPatch{Path: requirement.Path, JSON: value, Owner: "manifest:" + requirement.ID})
+		}
+	}
+	for id := range request.Values {
+		if !known[id] {
+			return nil, launcherError(contracts.CodeConfigRequired, "configuration "+id+" is not declared by selected manifests", map[string]string{"requirement": id})
+		}
+	}
+	for _, id := range request.SecretInputs {
+		if !known[id] || !secrets[id] {
+			return nil, launcherError(contracts.CodeInputRequired, "secret input "+id+" is not declared by selected manifests", map[string]string{"requirement": id})
+		}
+	}
+	return result, nil
+}
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }
 func compatible(rangeValue, version, name string) error {
 	if rangeValue == "" || rangeValue == "*" {

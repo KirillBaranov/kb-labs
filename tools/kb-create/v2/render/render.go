@@ -78,6 +78,7 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		return Output{}, err
 	}
 	adapters, plugins := map[string]string{}, map[string]string{}
+	extra := map[string]any{}
 	for _, patch := range plan.ConfigPatches {
 		if len(patch.Path) > len("/platform/adapters/") && patch.Path[:len("/platform/adapters/")] == "/platform/adapters/" {
 			adapters[patch.Path[len("/platform/adapters/"):]] = patch.Value
@@ -85,13 +86,61 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		if len(patch.Path) > len("/plugins/") && patch.Path[:len("/plugins/")] == "/plugins/" {
 			plugins[patch.Path[len("/plugins/"):]] = patch.Value
 		}
+		if patch.JSON != "" {
+			if err := setConfigValue(extra, patch.Path, patch.JSON); err != nil {
+				return Output{}, fmt.Errorf("apply config patch %s: %w", patch.Path, err)
+			}
+		}
 	}
 	config := map[string]any{"platform": map[string]any{"version": plan.ServiceGraph.PlatformVersion, "adapters": adapters}, "plugins": plugins}
+	merge(config, extra)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return Output{}, fmt.Errorf("marshal runtime config: %w", err)
 	}
 	return Output{Config: append(data, '\n'), Devservices: file}, nil
+}
+
+func setConfigValue(root map[string]any, pointer, raw string) error {
+	if !strings.HasPrefix(pointer, "/") || pointer == "/" {
+		return fmt.Errorf("not a JSON pointer")
+	}
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		return err
+	}
+	parts := strings.Split(strings.TrimPrefix(pointer, "/"), "/")
+	current := root
+	for _, encoded := range parts[:len(parts)-1] {
+		key := strings.ReplaceAll(strings.ReplaceAll(encoded, "~1", "/"), "~0", "~")
+		next, exists := current[key]
+		if !exists {
+			child := map[string]any{}
+			current[key] = child
+			current = child
+			continue
+		}
+		child, ok := next.(map[string]any)
+		if !ok {
+			return fmt.Errorf("crosses non-object %q", key)
+		}
+		current = child
+	}
+	key := strings.ReplaceAll(strings.ReplaceAll(parts[len(parts)-1], "~1", "/"), "~0", "~")
+	current[key] = value
+	return nil
+}
+
+func merge(target, source map[string]any) {
+	for key, value := range source {
+		if child, ok := value.(map[string]any); ok {
+			if existing, ok := target[key].(map[string]any); ok {
+				merge(existing, child)
+				continue
+			}
+		}
+		target[key] = value
+	}
 }
 
 // Write owns the V2 projections after cutover. Both paths are deterministic

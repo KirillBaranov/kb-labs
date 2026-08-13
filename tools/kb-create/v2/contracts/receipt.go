@@ -53,6 +53,7 @@ type ResolvedInstallPlan struct {
 type ConfigPatch struct {
 	Path  string `json:"path"`
 	Value string `json:"value,omitempty"`
+	JSON  string `json:"json,omitempty"`
 	Owner string `json:"owner"`
 }
 

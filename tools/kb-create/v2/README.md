@@ -48,6 +48,20 @@ For a human, `kb-create-v2 --operation wizard --index release-index.json
 returns the same JSON request on stdout. It does not apply anything or own a
 second resolver; feed that request into `plan` or `apply` to continue.
 
+## Scenarios
+
+`scenario/` is the reusable journey layer. A V2 scenario declares only
+product axes (profile/plugins/adapters), validated fields, and either a
+manifest requirement ID or a provider capability. It has no shell actions,
+package specs, arbitrary file writes, or `devservices.yaml` patches.
+
+Use `--scenario <id> --scenario-answers '{"field":"value"}'` with direct
+request flags. The scenario compiles into the same `InstallRequest`; resolver
+accepts each value only when the selected platform/plugin/adapter manifest
+declares that requirement and JSON Pointer. Secret fields become secret-store
+references and cannot have a scenario default. The migrated built-ins are
+`commit`, `custom`, `explore`, `plugin-author`, and `release`.
+
 Release automation creates the index with `kb-create-v2-index --input
 manifest-export.json --output release-index.json`. The command rejects an
 index whose channel points outside its platform set and seals the canonical
