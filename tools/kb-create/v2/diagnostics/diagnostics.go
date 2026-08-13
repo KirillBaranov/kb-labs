@@ -4,6 +4,7 @@ package diagnostics
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,12 @@ type Dossier struct {
 	CorrelationID string                   `json:"correlationId"`
 	Error         *contracts.LauncherError `json:"error"`
 	PlanHash      string                   `json:"planHash"`
+	ReceiptID     string                   `json:"receiptId,omitempty"`
+	SnapshotID    string                   `json:"snapshotId,omitempty"`
+	Stage         contracts.ErrorStage     `json:"stage"`
+	Toolchain     map[string]string        `json:"toolchain,omitempty"`
+	ConfigHashes  map[string]string        `json:"configHashes,omitempty"`
+	ServiceGraph  []string                 `json:"serviceGraph,omitempty"`
 	Journal       []string                 `json:"journal,omitempty"`
 	Logs          []string                 `json:"logs,omitempty"`
 }
@@ -29,6 +36,15 @@ func Redact(value string, secrets []string) string {
 	return result
 }
 func Write(platformRoot string, dossier Dossier, secrets []string) (string, error) {
+	if dossier.CorrelationID == "" {
+		return "", fmt.Errorf("diagnostic correlation ID is required")
+	}
+	if dossier.Error != nil {
+		dossier.Error.Cause = Redact(dossier.Error.Cause, secrets)
+		for key, value := range dossier.Error.Details {
+			dossier.Error.Details[key] = Redact(value, secrets)
+		}
+	}
 	for i := range dossier.Journal {
 		dossier.Journal[i] = Redact(dossier.Journal[i], secrets)
 	}
