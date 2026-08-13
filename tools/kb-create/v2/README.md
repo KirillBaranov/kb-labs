@@ -36,6 +36,11 @@ rollback), so they recover the verified V2 receipt rather than recalculating a
 new plan. Raw package-manager transcript is private under `.kb/logs/`; failed
 operations add a redacted dossier under `.kb/diagnostics/`.
 
+Release automation creates the index with `kb-create-v2-index --input
+manifest-export.json --output release-index.json`. The command rejects an
+index whose channel points outside its platform set and seals the canonical
+payload with a digest. `kb-create-v2` verifies that digest before resolving.
+
 ## Why V2
 
 The current launcher contains valuable capabilities — a declarative action
