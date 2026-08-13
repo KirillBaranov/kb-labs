@@ -69,6 +69,13 @@ func TestPopulateSecretsReadsEnvironmentWithoutSerialization(t *testing.T) {
 	}
 }
 
+func TestParseComponentsSupportsScopedIDsAndPins(t *testing.T) {
+	components, err := parseComponents("@kb-labs/review@1.2.3,commit")
+	if err != nil || len(components) != 2 || components[0].ID != "@kb-labs/review" || components[0].Version.Version != "1.2.3" || components[1].ID != "commit" {
+		t.Fatalf("components/error = %#v / %v", components, err)
+	}
+}
+
 func TestRunRequiresBothMachineInputs(t *testing.T) {
 	file, err := os.CreateTemp(t.TempDir(), "output")
 	if err != nil {
@@ -106,7 +113,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	dir := t.TempDir()
 	input := filepath.Join(dir, "doctor.json")
 	output := filepath.Join(dir, "output.json")
-	if err := os.WriteFile(input, []byte(`{"manifests":[{"id":"plugin","requirements":[{"path":"/plugin/token","secret":true,"required":true,"hint":"set token"}]}],"configured":{}}`), 0o600); err != nil {
+	if err := os.WriteFile(input, []byte(`{"manifests":[{"id":"plugin","requirements":[{"id":"plugin.token","path":"/plugin/token","secret":true,"required":true,"hint":"set token"}]}],"configured":{}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	file, err := os.Create(output)

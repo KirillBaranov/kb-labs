@@ -31,6 +31,11 @@ func Decode(data []byte) (Input, error) {
 		if manifest.ID == "" {
 			return Input{}, fmt.Errorf("doctor manifest ID is required")
 		}
+		for _, requirement := range manifest.Requirements {
+			if requirement.Secret && requirement.ID == "" {
+				return Input{}, fmt.Errorf("secret doctor requirement in %s needs an ID", manifest.ID)
+			}
+		}
 	}
 	return input, nil
 }

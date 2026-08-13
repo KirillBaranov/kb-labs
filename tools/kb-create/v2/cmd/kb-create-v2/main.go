@@ -265,7 +265,12 @@ func parseComponents(value string) ([]contracts.ComponentRequest, error) {
 		if item == "" {
 			return nil, fmt.Errorf("component list contains empty item")
 		}
-		id, version, pinned := strings.Cut(item, "@")
+		// Scoped npm-style component IDs contain an @ themselves. Only the last
+		// separator denotes an optional immutable version pin.
+		id, version, pinned := item, "", false
+		if at := strings.LastIndex(item, "@"); at > 0 {
+			id, version, pinned = item[:at], item[at+1:], true
+		}
 		if strings.TrimSpace(id) == "" {
 			return nil, fmt.Errorf("component ID is required")
 		}

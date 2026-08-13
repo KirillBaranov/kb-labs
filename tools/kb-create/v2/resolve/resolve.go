@@ -237,11 +237,16 @@ func configPatches(platform catalog.PlatformBundle, artifacts []contracts.Artifa
 	}
 	known := map[string]bool{}
 	secrets := map[string]bool{}
+	owners := map[string]string{}
 	for _, requirement := range requirements {
 		if requirement.ID == "" || (!requirement.Secret && requirement.Path == "") {
 			return nil, fmt.Errorf("selected manifest has invalid configuration requirement")
 		}
 		known[requirement.ID] = true
+		if previous, exists := owners[requirement.ID]; exists && previous != requirement.Path {
+			return nil, launcherError(contracts.CodeConfigRequired, "configuration requirement "+requirement.ID+" is declared with conflicting paths", map[string]string{"requirement": requirement.ID})
+		}
+		owners[requirement.ID] = requirement.Path
 		secrets[requirement.ID] = requirement.Secret
 		value, supplied := request.Values[requirement.ID]
 		if requirement.Secret {
