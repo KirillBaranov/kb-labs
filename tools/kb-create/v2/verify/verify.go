@@ -11,8 +11,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/kb-labs/create/internal/devservices"
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/render"
+	"gopkg.in/yaml.v3"
 )
 
 type StatusProvider interface {
@@ -24,9 +25,17 @@ func Run(plan contracts.ResolvedInstallPlan, status StatusProvider, now time.Tim
 	if err != nil {
 		return contracts.Verification{}, fmt.Errorf("read runtime config: %w", err)
 	}
-	services, err := devservices.Load(plan.Request.PlatformRoot)
+	devservicesPath := filepath.Join(plan.Request.PlatformRoot, ".kb", "devservices.yaml")
+	devservicesData, err := os.ReadFile(devservicesPath)
 	if err != nil {
-		return contracts.Verification{}, err
+		return contracts.Verification{}, fmt.Errorf("read devservices: %w", err)
+	}
+	var services render.DevservicesFile
+	if err := yaml.Unmarshal(devservicesData, &services); err != nil {
+		return contracts.Verification{}, fmt.Errorf("parse devservices: %w", err)
+	}
+	if err := services.Validate(); err != nil {
+		return contracts.Verification{}, fmt.Errorf("validate devservices: %w", err)
 	}
 	if !sameGraph(services, plan.ServiceGraph) {
 		return contracts.Verification{}, &contracts.LauncherError{Code: contracts.CodeServiceGraphMismatch, Stage: contracts.StageVerify, Message: "rendered devservices does not equal resolved service graph", Hint: "Run doctor --fix to rebuild generated files from the install receipt."}
@@ -38,14 +47,10 @@ func Run(plan contracts.ResolvedInstallPlan, status StatusProvider, now time.Tim
 	if !sameStrings(statuses, requiredIDs(plan.ServiceGraph)) {
 		return contracts.Verification{}, &contracts.LauncherError{Code: contracts.CodeServiceGraphMismatch, Stage: contracts.StageVerify, Message: "kb-dev status does not equal resolved service graph", Hint: "Inspect the service graph in the diagnostic dossier and run doctor --fix."}
 	}
-	dev, err := os.ReadFile(devservices.Path(plan.Request.PlatformRoot))
-	if err != nil {
-		return contracts.Verification{}, err
-	}
-	return contracts.Verification{ConfigSHA256: digest(config), DevservicesSHA256: digest(dev), ServiceStatus: append([]string(nil), statuses...), ReadinessCheckedAt: now.UTC()}, nil
+	return contracts.Verification{ConfigSHA256: digest(config), DevservicesSHA256: digest(devservicesData), ServiceStatus: append([]string(nil), statuses...), ReadinessCheckedAt: now.UTC()}, nil
 }
 
-func sameGraph(file *devservices.File, graph contracts.ServiceGraph) bool {
+func sameGraph(file render.DevservicesFile, graph contracts.ServiceGraph) bool {
 	if len(file.Services) != len(graph.Services) {
 		return false
 	}

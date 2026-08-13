@@ -133,3 +133,14 @@ func TestUpdateRestoresPreviousReceiptWhenNewGraphFailsVerification(t *testing.T
 		t.Fatalf("receipt = %#v, %v", active, readErr)
 	}
 }
+
+func TestUpdateRejectsMissingDependenciesBeforeSnapshot(t *testing.T) {
+	plan := contracts.ResolvedInstallPlan{
+		Schema:  contracts.ResolvedPlanSchema,
+		Request: contracts.InstallRequest{PlatformRoot: t.TempDir()},
+	}
+	_, snapshot, err := Update(plan, Dependencies{})
+	if err == nil || snapshot.ID != "" {
+		t.Fatalf("result = snapshot %#v, error %v", snapshot, err)
+	}
+}

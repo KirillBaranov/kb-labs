@@ -14,8 +14,8 @@ The V2 boundary is executable and covered by an offline journey test:
   capability providers without scanning an installation.
 - `resolve/` emits the immutable `ResolvedInstallPlan` and fails on missing or
   ambiguous providers instead of selecting one by iteration order.
-- `render/` projects that plan into `kb.config.jsonc` and `devservices.yaml`;
-  the latter uses the existing locking/validation API.
+- `render/` projects that plan into `kb.config.jsonc` and `devservices.yaml`,
+  with V2-owned validation and atomic writes.
 - `verify/` enforces `resolved graph == devservices == kb-dev status` through
   a status adapter, equally usable in a real run and an offline journey.
 - `artifacts/`, `runtime/`, `receipt/`, `doctor/` and `diagnostics/` establish
@@ -60,7 +60,7 @@ flowchart TD
   A["Wizard / CI flags / agent protocol / scenario"] --> B["InstallRequest"]
   B --> C["Compatibility matrix + resolver"]
   C --> D["ResolvedInstallPlan"]
-  D --> E["Existing engine: apply, journal, rollback"]
+  D --> E["V2 runtime: apply, journal, rollback"]
   E --> F["InstallReceipt + immutable snapshot"]
   F --> G["Render config + service graph"]
   G --> H["Verify artifacts, kb-dev status, readiness"]
@@ -192,7 +192,7 @@ configuration, service graph and readiness before updating the receipt.
 
 ## Engine, receipt and snapshots
 
-The engine receives the resolved action DAG and remains responsible for
+The V2 runtime receives the resolved action DAG and is responsible for
 variables, step-level errors, retry policy, journal, lock and rollback.
 
 After a verified apply, V2 writes an immutable receipt containing:
@@ -269,8 +269,8 @@ V2 may replace the launcher only when all are true:
 
 1. Define V2 contracts and fixture catalog: request, matrix, resolved plan,
    receipt, snapshot and `LauncherError` schemas.
-2. Adapt the existing engine to accept a resolved V2 plan and produce V2
-   journal/receipt events; do not duplicate execution logic.
+2. Complete the V2 runtime's resolved-plan application, journal and receipt
+   events; it owns execution semantics rather than adapting old state.
 3. Implement config/service graph renderer and verifier, then make offline
    config-contract tests authoritative.
 4. Implement V2 fresh/default and explicit CI path, followed by wizard and

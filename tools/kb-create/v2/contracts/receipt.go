@@ -37,9 +37,9 @@ type ProviderBinding struct {
 	Version    string `json:"version"`
 }
 
-// ResolvedInstallPlan is the only product decision passed to the existing
-// engine. The engine converts its artifacts/config/variables to actions; it
-// must not re-resolve versions or discover unplanned services.
+// ResolvedInstallPlan is the only product decision passed to the V2 runtime.
+// The runtime converts its artifacts/config/variables to actions; it must not
+// re-resolve versions or discover unplanned services.
 type ResolvedInstallPlan struct {
 	Schema           string            `json:"schema"`
 	Request          InstallRequest    `json:"request"`

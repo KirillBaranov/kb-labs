@@ -73,6 +73,9 @@ func Apply(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.Ins
 // set. Any apply or graph-verification failure restores managed files, receipt
 // and the package-manager lock state through ArtifactInstaller.Restore.
 func Update(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.InstallReceipt, contracts.Snapshot, error) {
+	if deps.Artifacts == nil || deps.Status == nil {
+		return contracts.InstallReceipt{}, contracts.Snapshot{}, fmt.Errorf("update resolved plan: artifact installer and status provider are required")
+	}
 	var result contracts.InstallReceipt
 	snapshot, err := lifecycle.Mutate(plan.Request.PlatformRoot, now(deps.Clock), func() error {
 		var applyErr error
