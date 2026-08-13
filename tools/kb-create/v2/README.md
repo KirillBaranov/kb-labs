@@ -1,0 +1,196 @@
+# kb-create V2 — launcher contract reset
+
+**Status:** proposed implementation plan  
+**Scope:** a new launcher chain under `tools/kb-create/v2/`. V2 replaces the
+production installation path at cutover; it does not replace the existing
+execution engine.
+
+## Why V2
+
+The current launcher contains valuable capabilities — a declarative action
+engine, catalog, journal, recovery primitives, wizard, agent protocol and
+direct CI flow — but the ownership of an installation is split between legacy
+installer code, plan execution and a scan of the final `node_modules` tree.
+That makes service/configuration output an incidental effect rather than a
+proved result of the user's choice.
+
+V2 makes one promise: a user, CI job and agent ask for the same installation;
+the launcher resolves the same compatible artifacts, applies the same action
+DAG, renders the same service graph, and either verifies it or fails with an
+actionable recovery path.
+
+## Non-goals
+
+- Do not rewrite `internal/engine`. It remains the transaction executor:
+  action DAG, variables, journal, retries, rollback handlers and locks.
+- Do not retain two production install semantics after cutover. Existing
+  launcher code is a migration input and temporary compatibility boundary,
+  not a permanent second source of truth.
+- Do not make network E2E the primary correctness proof. Most V2 coverage
+  runs against deterministic offline artifact fixtures; real npm is reserved
+  for candidate smoke.
+
+## Target architecture
+
+```mermaid
+flowchart TD
+  A["Wizard / CI flags / agent protocol / scenario"] --> B["InstallRequest"]
+  B --> C["Compatibility matrix + resolver"]
+  C --> D["ResolvedInstallPlan"]
+  D --> E["Existing engine: apply, journal, rollback"]
+  E --> F["InstallReceipt + immutable snapshot"]
+  F --> G["Render config + service graph"]
+  G --> H["Verify artifacts, kb-dev status, readiness"]
+  H --> I["Success or LauncherError + diagnostic bundle"]
+  F --> J["doctor --fix / update / uninstall / rollback"]
+```
+
+### One ownership rule
+
+`ResolvedInstallPlan` owns requested components, exact artifact versions,
+companion components, config patches, binaries and the expected service graph.
+`devservices.yaml` and generated runtime configuration are rendered outputs.
+A package scan validates declared artifacts; it must never decide which
+services the user received merely because a transitive dependency exposes a
+manifest.
+
+The required post-condition is:
+
+```text
+resolved expected services == rendered devservices services == kb-dev status services
+```
+
+An explicit, resolver-produced companion set is the only permitted exception
+to a direct user selection.
+
+## Public operation model
+
+All transports compile to the same request and invoke the same operations:
+
+```text
+plan → apply → status → verify
+update → snapshot → apply → verify | rollback
+uninstall → plan → apply → verify
+doctor --fix → recovery plan → apply → verify
+```
+
+`InstallRequest` supports the same first-class axes everywhere:
+
+- platform and SDK exact version or channel: `stable`, `canary`,
+  `experimental`;
+- core profile, services, plugins, adapters and provider preferences;
+- explicit project/platform roots;
+- artifact source: online registry or offline fixture;
+- scenario ID for a reusable user journey.
+
+Wizard selects valid options from the resolver. CI and agents can submit the
+request directly in flags or JSON. Neither may reconstruct a shell sequence.
+
+## Compatibility matrix and resolver
+
+The matrix is evaluated before every network or filesystem side effect. It
+answers which combinations of platform/SDK/channel/components/binaries are
+valid, selects required companions and yields exact versions plus a service
+dependency graph. Invalid requests fail fast with the same error contract as
+runtime failures.
+
+The resolver also validates graph completeness before `apply`: required
+providers, ports, dependency targets, offline artifacts and mandatory service
+metadata must all resolve. No command may claim success with an incomplete
+default configuration.
+
+## Engine, receipt and snapshots
+
+The engine receives the resolved action DAG and remains responsible for
+variables, step-level errors, retry policy, journal, lock and rollback.
+
+After a verified apply, V2 writes an immutable receipt containing:
+
+- normalized request and resolved artifacts (including hashes);
+- expected service graph and hashes of generated configuration;
+- engine journal/correlation ID and verification evidence;
+- snapshot parent/ID and active channel/version axes.
+
+Before update or uninstall, V2 creates a snapshot of receipt, generated
+configuration, service graph, managed locks and resolved artifacts. Failed
+verification restores that snapshot; `rollback --to <snapshot>` is explicit
+and uses the same engine/recovery model.
+
+## Errors, logs and diagnostics
+
+Every operation uses one redacted `LauncherError` contract:
+
+```text
+code, stage(resolve|apply|verify|recover), retryable,
+message, safe cause, hint, correlation ID, safe details
+```
+
+The error is rendered for humans, returned through `--json` and agent
+protocol, persisted in the journal/receipt, and consumed by `doctor --fix`.
+
+Each invocation writes a full local log. A failure additionally writes a
+redacted dossier under `.kb/diagnostics/<correlation-id>/` with resolved plan,
+receipt/snapshot metadata, engine journal, package-manager output, toolchain,
+config hashes, service graph and `kb-dev status`. The CLI prints one recovery
+command and the bundle path so users can attach it to an issue without manual
+terminal reconstruction.
+
+## Opt-in anonymous telemetry
+
+With explicit consent only, V2 emits a small, non-blocking anonymous outcome
+event: operation, stage, error code, duration, OS/architecture, selected
+component count and channel. It never sends paths, repository/project names,
+environment values, package-manager output, logs, tokens or the diagnostic
+bundle. Offline/no-consent operation is behaviorally identical and telemetry
+failure never changes the installation result.
+
+## Test strategy: shard by contract and resources
+
+| Shard | Source | Assertion | Network |
+|---|---|---|---|
+| `resolver-contract` | matrix + fixture catalog | request resolves/rejects with an explicit reason and exact graph | none |
+| `config-contract` | resolved plan | graph renders valid config, no unexpected/missing service, ports/dependencies valid | none |
+| `engine-recovery` | fake package/binary adapters | journal, partial failure, retry, rollback and doctor recovery | none |
+| `launcher-journey` | offline tarball/binary fixtures | fresh, explicit, rerun, update, uninstall and rollback | none |
+| `service-profile` | isolated fixture per profile | `kb-dev status` equals receipt graph; required services meet readiness | fixture/local |
+| `release-smoke` | exact npm canary + released binaries | default fresh install and required runtime contract | real npm only |
+
+Each shard owns a distinct HOME, platform/project roots, port allocation and
+artifact namespace. Shards are never organised by test filename; they are
+organised by the mutable resources and contract they own.
+
+## Cutover gates
+
+V2 may replace the launcher only when all are true:
+
+1. Default fresh install, explicit CI request, scenario/wizard and agent use
+   the same resolved request/engine path.
+2. `create`, `update`, `uninstall`, `doctor --fix` and rollback operate on
+   receipts/snapshots, not legacy per-command state.
+3. Default and every supported service profile pass the graph/config/status
+   contract; required defaults pass readiness.
+4. Offline matrix is deterministic; post-publish smoke passes the exact
+   candidate artifacts.
+5. Every failure emits a redacted diagnostic bundle and actionable error.
+
+## Delivery sequence
+
+1. Define V2 contracts and fixture catalog: request, matrix, resolved plan,
+   receipt, snapshot and `LauncherError` schemas.
+2. Adapt the existing engine to accept a resolved V2 plan and produce V2
+   journal/receipt events; do not duplicate execution logic.
+3. Implement config/service graph renderer and verifier, then make offline
+   config-contract tests authoritative.
+4. Implement V2 fresh/default and explicit CI path, followed by wizard and
+   agent adapters.
+5. Add update/uninstall/doctor/rollback over snapshots and recovery plans.
+6. Add redacted dossiers and consent-gated telemetry.
+7. Run the full matrix and make V2 the only production path in a deliberate
+   breaking cutover, consistent with ADR-0035.
+
+## Existing decisions this completes
+
+- `docs/adr/0028-human-and-agent-frontends-share-the-engine.md`
+- `docs/adr/0031-deterministic-install-plans-and-recovery.md`
+- `docs/adr/0035-breaking-cutover-for-the-new-installer-contract.md`
+
