@@ -139,6 +139,34 @@ returns structured `KB_CREATE_INPUT_REQUIRED` with a human hint and machine
 schema. CI/agents supply those values in `InstallRequest` and resume the same
 receipt/journal without recomputing a different flow.
 
+### Doctor is manifest-aware configuration diagnosis
+
+`doctor` loads the active receipt, resolves the installed package manifests
+for every selected platform component, plugin and adapter, and compares their
+declared requirements with the effective generated configuration. It reports
+missing values, invalid values, unresolved capabilities and stale bindings as
+structured findings — never by treating an absent default as a later runtime
+failure.
+
+For each finding it records the manifest owner, config path/key, whether the
+value is secret, expected schema/constraint, safe current-state summary and a
+recovery action. Secret values are never printed, bundled or sent through
+telemetry; the only permitted state is `set`, `missing` or `invalid`.
+
+```text
+KB_CREATE_CONFIG_REQUIRED
+Owner: @kb-labs/plugin-x@4.1.0
+Requirement: adapters.llm.apiKey (secret)
+Current state: missing
+Hint: kb-create doctor --fix --input adapters.llm.apiKey
+```
+
+`doctor --fix` must not invent a secret or silently choose between competing
+providers. It may render safe manifest defaults, restore a receipt/snapshot,
+rebuild derived config and ask a human/agent for required input through the
+same `InstallRequest` schema. The subsequent engine run verifies the repaired
+configuration, service graph and readiness before updating the receipt.
+
 ## Engine, receipt and snapshots
 
 The engine receives the resolved action DAG and remains responsible for
@@ -191,6 +219,7 @@ failure never changes the installation result.
 | `resolver-contract` | matrix + fixture catalog | request resolves/rejects with an explicit reason and exact graph | none |
 | `config-contract` | resolved plan | graph renders valid config, no unexpected/missing service, ports/dependencies valid | none |
 | `engine-recovery` | fake package/binary adapters | journal, partial failure, retry, rollback and doctor recovery | none |
+| `doctor-manifest-contract` | manifests + effective-config fixtures | required/default/secret fields, provider bindings and repair-plan generation | none |
 | `launcher-journey` | offline tarball/binary fixtures | fresh, explicit, rerun, update, uninstall and rollback | none |
 | `service-profile` | isolated fixture per profile | `kb-dev status` equals receipt graph; required services meet readiness | fixture/local |
 | `release-smoke` | exact npm canary + released binaries | default fresh install and required runtime contract | real npm only |
@@ -205,8 +234,8 @@ V2 may replace the launcher only when all are true:
 
 1. Default fresh install, explicit CI request, scenario/wizard and agent use
    the same resolved request/engine path.
-2. `create`, `update`, `uninstall`, `doctor --fix` and rollback operate on
-   receipts/snapshots, not legacy per-command state.
+2. `create`, `update`, `uninstall`, manifest-aware `doctor --fix` and rollback
+   operate on receipts/snapshots, not legacy per-command state.
 3. Default and every supported service profile pass the graph/config/status
    contract; required defaults pass readiness.
 4. Offline matrix is deterministic; post-publish smoke passes the exact
