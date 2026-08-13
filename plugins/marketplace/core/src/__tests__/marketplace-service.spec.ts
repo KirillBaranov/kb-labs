@@ -168,7 +168,9 @@ describe('MarketplaceService', () => {
       source.install = async (...args) => {
         active++;
         maxActive = Math.max(maxActive, active);
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, 20);
+        });
         try {
           return await originalInstall(...args);
         } finally {
