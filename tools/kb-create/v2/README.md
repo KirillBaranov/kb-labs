@@ -43,6 +43,11 @@ as `--request-platform-root`, `--platform-version`/`--platform-channel`,
 the same `InstallRequest` before resolution; flags never build a separate
 shell-level install sequence.
 
+For a human, `kb-create-v2 --operation wizard --index release-index.json
+--request-platform-root /path/to/platform` asks only for product axes and
+returns the same JSON request on stdout. It does not apply anything or own a
+second resolver; feed that request into `plan` or `apply` to continue.
+
 Release automation creates the index with `kb-create-v2-index --input
 manifest-export.json --output release-index.json`. The command rejects an
 index whose channel points outside its platform set and seals the canonical

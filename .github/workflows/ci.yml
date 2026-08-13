@@ -42,7 +42,7 @@ jobs:
       matrix:
         include:
           - shard: resolver-config
-            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/resolve ./v2/render ./v2/transport
+            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/resolve ./v2/render ./v2/transport ./v2/wizard
           - shard: runtime-recovery
             packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
           - shard: doctor-diagnostics

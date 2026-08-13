@@ -20,6 +20,7 @@ import (
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/services"
 	"github.com/kb-labs/create/v2/transport"
+	"github.com/kb-labs/create/v2/wizard"
 )
 
 func main() {
@@ -52,12 +53,15 @@ type directRequest struct {
 }
 
 func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, direct directRequest, output *os.File) int {
-	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" {
-		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, or doctor", nil))
+	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" {
+		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, or wizard", nil))
 		return 2
 	}
 	if operation == "doctor" {
 		return runDoctor(doctorInput, platformRoot, kbdev, doctorFix, output)
+	}
+	if operation == "wizard" {
+		return runWizard(indexPath, direct.PlatformRoot, output)
 	}
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
@@ -120,6 +124,25 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
 	return 1
+}
+
+func runWizard(indexPath, platformRoot string, output *os.File) int {
+	if indexPath == "" || platformRoot == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and --request-platform-root are required", "pass the sealed release index and desired platform root", nil))
+		return 2
+	}
+	source, err := catalog.LoadFile(indexPath)
+	if err != nil {
+		write(output, failure("KB_CREATE_RELEASE_INDEX_INVALID", "release index could not be loaded", "supply a valid sealed V2 release index", err))
+		return 2
+	}
+	request, err := wizard.Request(source, platformRoot, wizard.IO{In: os.Stdin, Out: os.Stderr})
+	if err != nil {
+		write(output, failure("KB_CREATE_WIZARD_INPUT_INVALID", "wizard answer is invalid", "choose one of the displayed compatible options", err))
+		return 2
+	}
+	write(output, map[string]any{"ok": true, "request": request})
+	return 0
 }
 
 func (value directRequest) normalize() (contracts.InstallRequest, error) {
