@@ -35,3 +35,20 @@ func TestBinariesRejectsChecksumMismatch(t *testing.T) {
 		t.Fatal("expected checksum error")
 	}
 }
+
+func TestCompositeRemovesBinaryWhenPackageInstallFails(t *testing.T) {
+	payload := []byte("kb-dev-binary")
+	sum := fmt.Sprintf("%x", sha256.Sum256(payload))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write(payload) }))
+	defer server.Close()
+	root := t.TempDir()
+	runner := &fakeRunner{err: fmt.Errorf("pnpm failed")}
+	executor := Composite{Packages: Pnpm{Root: root, Runner: runner}, Binaries: Binaries{Root: root}}
+	err := executor.Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", URL: server.URL, SHA256: sum, Target: "kb-dev"}, {ID: "platform", Package: "@kb/platform", Version: "2"}})
+	if err == nil {
+		t.Fatal("expected package failure")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".kb", "v2", "bin", "kb-dev")); !os.IsNotExist(err) {
+		t.Fatalf("binary remains after failed package install: %v", err)
+	}
+}

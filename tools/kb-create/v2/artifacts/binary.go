@@ -57,29 +57,43 @@ func (b Binaries) Install(items []contracts.Artifact) error {
 	return nil
 }
 
+func (b Binaries) Remove(items []contracts.Artifact) error {
+	for _, item := range items {
+		if item.Kind != "binary" {
+			continue
+		}
+		path := filepath.Join(b.Root, ".kb", "v2", "bin", filepath.Base(item.Target))
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 type Composite struct {
 	Packages Pnpm
 	Binaries Binaries
 }
 
 func (c Composite) Install(items []contracts.Artifact) error {
-	if err := c.Packages.Install(items); err != nil {
+	// A binary is small and independently hash-verifiable, so install it first.
+	// If pnpm then fails, remove V2-owned binaries immediately; a later update
+	// additionally restores the pre-mutation snapshot and package lock state.
+	if err := c.Binaries.Install(items); err != nil {
 		return err
 	}
-	return c.Binaries.Install(items)
+	if err := c.Packages.Install(items); err != nil {
+		if removeErr := c.Binaries.Remove(items); removeErr != nil {
+			return fmt.Errorf("install packages: %w; remove staged binaries: %v", err, removeErr)
+		}
+		return err
+	}
+	return nil
 }
 func (c Composite) Restore() error { return c.Packages.Restore() }
 func (c Composite) Uninstall(items []contracts.Artifact) error {
 	if err := c.Packages.Uninstall(items); err != nil {
 		return err
 	}
-	for _, item := range items {
-		if item.Kind != "binary" {
-			continue
-		}
-		if err := os.Remove(filepath.Join(c.Binaries.Root, ".kb", "v2", "bin", filepath.Base(item.Target))); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-	}
-	return nil
+	return c.Binaries.Remove(items)
 }
