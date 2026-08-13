@@ -47,8 +47,8 @@ flowchart TD
 
 ### One ownership rule
 
-`ResolvedInstallPlan` owns requested components, exact artifact versions,
-companion components, config patches, binaries and the expected service graph.
+`ResolvedInstallPlan` owns requested platform/SDK/plugins, exact artifact
+versions, config patches, binaries and the expected service graph.
 `devservices.yaml` and generated runtime configuration are rendered outputs.
 A package scan validates declared artifacts; it must never decide which
 services the user received merely because a transitive dependency exposes a
@@ -60,8 +60,11 @@ The required post-condition is:
 resolved expected services == rendered devservices services == kb-dev status services
 ```
 
-An explicit, resolver-produced companion set is the only permitted exception
-to a direct user selection.
+For the current product horizon, core and official services are one platform
+bundle. A selected platform version owns their exact packages, default
+profiles and service graph. Services are therefore not independently resolved
+versions. An explicit, platform-bundle companion set is the only permitted
+exception to a direct user selection.
 
 ## Public operation model
 
@@ -76,9 +79,9 @@ doctor --fix → recovery plan → apply → verify
 
 `InstallRequest` supports the same first-class axes everywhere:
 
-- platform and SDK exact version or channel: `stable`, `canary`,
-  `experimental`;
-- core profile, services, plugins, adapters and provider preferences;
+- platform exact version or channel: `stable`, `canary`, `experimental`;
+- SDK exact version or channel, constrained by the selected platform;
+- platform-owned service profile, plugins, adapters and provider preferences;
 - explicit project/platform roots;
 - artifact source: online registry or offline fixture;
 - scenario ID for a reusable user journey.
@@ -89,15 +92,43 @@ request directly in flags or JSON. Neither may reconstruct a shell sequence.
 ## Compatibility matrix and resolver
 
 The matrix is evaluated before every network or filesystem side effect. It
-answers which combinations of platform/SDK/channel/components/binaries are
-valid, selects required companions and yields exact versions plus a service
-dependency graph. Invalid requests fail fast with the same error contract as
-runtime failures.
+answers which combinations of platform/SDK/channel/plugins/binaries are valid
+and yields exact artifacts plus the platform-owned service dependency graph.
+Core and official services ship with the selected platform release; a missing
+or inconsistent service manifest is a platform candidate defect, not a
+user-resolvable version choice. Invalid requests fail fast with the same error
+contract as runtime failures.
+
+Plugins remain independently versioned. Their manifests progressively declare
+supported platform and SDK ranges. The resolver may select an unpinned
+compatible plugin version, but it never silently changes an explicit pin:
+
+| Policy | Behaviour |
+|---|---|
+| `strict` (default for CI/agents) | Exact pins must be compatible or resolution fails. |
+| `compatible` (wizard default) | Resolver may choose only unpinned compatible versions and displays the resolved set before apply. |
+| `upgrade-safe` (explicit update only) | Resolver may advance unpinned artifacts within the defined compatibility policy; a snapshot is mandatory. |
+
+No intersecting range produces `KB_CREATE_INCOMPATIBLE_COMPONENTS` before
+download or config writes. The error names the selected versions, the manifest
+constraint that rejected them and safe alternatives. A plugin without a range
+is `unknown compatibility`, never silently universal: it needs explicit user
+policy during migration and becomes a publish-time failure for official
+plugins after the migration window.
 
 The resolver also validates graph completeness before `apply`: required
 providers, ports, dependency targets, offline artifacts and mandatory service
 metadata must all resolve. No command may claim success with an incomplete
 default configuration.
+
+The technical source of truth for configuration variables and service metadata
+remains the manifests shipped by platform components, plugins and adapters.
+V2 does not turn the wizard into a universal manifest-variable form. The
+wizard chooses product-level axes and profiles; after verified artifacts are
+available, manifest-derived required input either receives a safe default or
+returns structured `KB_CREATE_INPUT_REQUIRED` with a human hint and machine
+schema. CI/agents supply those values in `InstallRequest` and resume the same
+receipt/journal without recomputing a different flow.
 
 ## Engine, receipt and snapshots
 
@@ -193,4 +224,3 @@ V2 may replace the launcher only when all are true:
 - `docs/adr/0028-human-and-agent-frontends-share-the-engine.md`
 - `docs/adr/0031-deterministic-install-plans-and-recovery.md`
 - `docs/adr/0035-breaking-cutover-for-the-new-installer-contract.md`
-
