@@ -172,3 +172,22 @@ func TestUpdateRejectsMissingDependenciesBeforeSnapshot(t *testing.T) {
 		t.Fatalf("result = snapshot %#v, error %v", snapshot, err)
 	}
 }
+
+func TestRollbackRestoresSnapshotAndEnsuresGraph(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "before", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	if _, err := Apply(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{{ID: "gateway", State: "alive"}}, Clock: fixedClock{time.Unix(8, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := receipt.CreateSnapshot(root, time.Unix(9, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	activator := &fakeActivator{}
+	if _, err := Rollback(root, snapshot.ID, Dependencies{Artifacts: &fakeInstaller{}, Activator: activator, Status: fakeStatus{{ID: "gateway", State: "alive"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(activator.ids) != 1 || activator.ids[0] != "gateway" {
+		t.Fatalf("ensured = %#v", activator.ids)
+	}
+}

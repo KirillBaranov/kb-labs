@@ -153,6 +153,33 @@ func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, erro
 	})
 }
 
+// Rollback restores an explicit V2 snapshot, reinstalls its exact lock state,
+// and brings the receipt's recorded graph back to readiness before reporting
+// success. It never infers a target from package tags or legacy state.
+func Rollback(platformRoot, snapshotID string, deps Dependencies) (contracts.Snapshot, error) {
+	if snapshotID == "" {
+		return contracts.Snapshot{}, fmt.Errorf("rollback: snapshot ID is required")
+	}
+	if deps.Artifacts == nil || deps.Status == nil || deps.Activator == nil {
+		return contracts.Snapshot{}, fmt.Errorf("rollback: artifact installer, status provider and service activator are required")
+	}
+	snapshot, err := lifecycle.Rollback(platformRoot, snapshotID, deps.Artifacts.Restore)
+	if err != nil {
+		return snapshot, err
+	}
+	active, err := receipt.Read(platformRoot)
+	if err != nil {
+		return snapshot, fmt.Errorf("rollback: read restored receipt: %w", err)
+	}
+	if err := deps.Activator.Ensure(platformRoot, serviceIDs(active.Plan.ServiceGraph)); err != nil {
+		return snapshot, fmt.Errorf("rollback: ensure restored service graph: %w", err)
+	}
+	if _, err := verify.Run(active.Plan, deps.Status, now(deps.Clock)); err != nil {
+		return snapshot, fmt.Errorf("rollback: verify restored service graph: %w", err)
+	}
+	return snapshot, nil
+}
+
 func removeProjections(platformRoot string) error {
 	for _, relative := range []string{".kb/kb.config.jsonc", ".kb/devservices.yaml"} {
 		if err := os.Remove(filepath.Join(platformRoot, relative)); err != nil && !os.IsNotExist(err) {

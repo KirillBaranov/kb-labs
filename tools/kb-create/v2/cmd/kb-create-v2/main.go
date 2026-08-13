@@ -24,16 +24,21 @@ func main() {
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
 	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
+	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
+	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
-	os.Exit(run(*operation, *index, *input, *registry, *kbdev, os.Stdout))
+	os.Exit(run(*operation, *index, *input, *platformRoot, *snapshotID, *registry, *kbdev, os.Stdout))
 }
 
-func run(operation, indexPath, inputPath, registry, kbdev string, output *os.File) int {
-	if operation != "plan" && operation != "apply" && operation != "update" {
-		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, or update", nil))
+func run(operation, indexPath, inputPath, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
+	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" {
+		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, or rollback", nil))
 		return 2
+	}
+	if operation == "uninstall" || operation == "rollback" {
+		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
 	}
 	if indexPath == "" || inputPath == "" {
 		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and --input are required", "pass immutable release index and V2 request JSON files", nil))
@@ -84,6 +89,38 @@ func run(operation, indexPath, inputPath, registry, kbdev string, output *os.Fil
 	return 1
 }
 
+func runRecovery(operation, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
+	if platformRoot == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required", "pass the V2 platform root that owns the active receipt", nil))
+		return 2
+	}
+	correlationID := fmt.Sprintf("%s-%d", operation, time.Now().UTC().UnixNano())
+	transcript, err := logs.New(platformRoot, correlationID, nil)
+	if err != nil {
+		write(output, failure("KB_CREATE_LOG_UNAVAILABLE", "could not create local operation log", "check that the platform root is writable", err))
+		return 2
+	}
+	defer transcript.Close()
+	service := services.KBDev{Binary: kbdev}
+	deps := runtime.Dependencies{Artifacts: artifacts.Pnpm{Root: platformRoot, Registry: registry, Log: transcript}, Activator: service, Deactivator: service, Status: service, CorrelationID: correlationID}
+	if operation == "uninstall" {
+		snapshot, uninstallErr := runtime.Uninstall(platformRoot, deps)
+		if uninstallErr == nil {
+			write(output, map[string]any{"ok": true, "operation": operation, "snapshot": snapshot, "logPath": transcript.Path()})
+			return 0
+		}
+		writeRecoveryFailure(output, platformRoot, correlationID, transcript.Path(), uninstallErr)
+		return 1
+	}
+	snapshot, rollbackErr := runtime.Rollback(platformRoot, snapshotID, deps)
+	if rollbackErr == nil {
+		write(output, map[string]any{"ok": true, "operation": operation, "snapshot": snapshot, "logPath": transcript.Path()})
+		return 0
+	}
+	writeRecoveryFailure(output, platformRoot, correlationID, transcript.Path(), rollbackErr)
+	return 1
+}
+
 func write(output *os.File, value any) { _ = json.NewEncoder(output).Encode(value) }
 
 func failure(code, message, hint string, cause error) map[string]any {
@@ -99,6 +136,16 @@ func writeFailureDossier(output *os.File, plan contracts.ResolvedInstallPlan, co
 	path, dossierErr := diagnostics.Write(plan.Request.PlatformRoot, diagnostics.Dossier{CorrelationID: correlationID, Error: launcherError, PlanHash: plan.PlanHash, Stage: launcherError.Stage, LogPath: logPath}, nil)
 	if dossierErr != nil {
 		write(output, failure("KB_CREATE_DIAGNOSTIC_UNAVAILABLE", "V2 operation failed and diagnostic dossier could not be written", "inspect the local operation log", dossierErr))
+		return
+	}
+	write(output, map[string]any{"ok": false, "error": launcherError, "logPath": logPath, "diagnosticPath": path})
+}
+
+func writeRecoveryFailure(output *os.File, platformRoot, correlationID, logPath string, cause error) {
+	launcherError := &contracts.LauncherError{Code: "KB_CREATE_RECOVERY_FAILED", Stage: contracts.StageRecover, Message: "V2 recovery operation did not reach a verified state", Cause: cause.Error(), Hint: "Inspect the local log and diagnostic dossier, then retry with the named receipt or snapshot."}
+	path, dossierErr := diagnostics.Write(platformRoot, diagnostics.Dossier{CorrelationID: correlationID, Error: launcherError, Stage: launcherError.Stage, LogPath: logPath}, nil)
+	if dossierErr != nil {
+		write(output, failure("KB_CREATE_DIAGNOSTIC_UNAVAILABLE", "V2 recovery failed and diagnostic dossier could not be written", "inspect the local operation log", dossierErr))
 		return
 	}
 	write(output, map[string]any{"ok": false, "error": launcherError, "logPath": logPath, "diagnosticPath": path})
