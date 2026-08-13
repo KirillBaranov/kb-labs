@@ -141,7 +141,8 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		write(output, failure("KB_CREATE_SECRET_INPUT_INVALID", "secret input could not be stored", "use --secret-env requirement=ENV_VAR and set the environment variable", err))
 		return 2
 	}
-	artifactExecutor := artifacts.Composite{Packages: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Offline: response.Plan.Request.Source == contracts.SourceOffline, Log: transcript}, Binaries: artifacts.Binaries{Root: response.Plan.Request.PlatformRoot}}
+	offlineArtifacts := response.Plan.Request.Source == contracts.SourceOffline
+	artifactExecutor := artifacts.Composite{Packages: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Offline: offlineArtifacts, Log: transcript}, Binaries: artifacts.Binaries{Root: response.Plan.Request.PlatformRoot, Offline: offlineArtifacts}}
 	deps := runtime.Dependencies{Artifacts: artifactExecutor, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
 	if operation == "apply" {
 		receipt, applyErr := runtime.Apply(*response.Plan, deps)

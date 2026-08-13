@@ -36,6 +36,32 @@ func TestBinariesRejectsChecksumMismatch(t *testing.T) {
 	}
 }
 
+func TestBinariesOfflineUsesOnlyVerifiedLocalCache(t *testing.T) {
+	payload := []byte("cached-kb-dev")
+	sum := fmt.Sprintf("%x", sha256.Sum256(payload))
+	root := t.TempDir()
+	cache := filepath.Join(root, ".kb", "v2", "cache", "binaries")
+	if err := os.MkdirAll(cache, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, sum), payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (Binaries{Root: root, Offline: true}).Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", URL: "https://must-not-be-fetched.test/kb-dev", SHA256: sum, Target: "kb-dev"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".kb", "v2", "bin", "kb-dev")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBinariesOfflineFailsWithoutCache(t *testing.T) {
+	err := (Binaries{Root: t.TempDir(), Offline: true}).Install([]contracts.Artifact{{ID: "kb-dev", Kind: "binary", URL: "https://must-not-be-fetched.test/kb-dev", SHA256: "abc", Target: "kb-dev"}})
+	if err == nil {
+		t.Fatal("expected offline cache failure")
+	}
+}
+
 func TestCompositeRemovesBinaryWhenPackageInstallFails(t *testing.T) {
 	payload := []byte("kb-dev-binary")
 	sum := fmt.Sprintf("%x", sha256.Sum256(payload))

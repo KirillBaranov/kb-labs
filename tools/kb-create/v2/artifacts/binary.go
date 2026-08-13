@@ -14,8 +14,9 @@ import (
 // Binaries installs immutable platform tools after verifying their release
 // checksum. Files are private to the V2 platform root, never global PATH.
 type Binaries struct {
-	Root   string
-	Client *http.Client
+	Root    string
+	Offline bool
+	Client  *http.Client
 }
 
 func (b Binaries) Install(items []contracts.Artifact) error {
@@ -26,18 +27,9 @@ func (b Binaries) Install(items []contracts.Artifact) error {
 		if item.URL == "" || item.SHA256 == "" || item.Target == "" {
 			return fmt.Errorf("binary %q lacks url, hash or target", item.ID)
 		}
-		client := b.Client
-		if client == nil {
-			client = http.DefaultClient
-		}
-		response, err := client.Get(item.URL)
+		data, err := b.download(item)
 		if err != nil {
-			return fmt.Errorf("download binary %s: %w", item.ID, err)
-		}
-		data, readErr := io.ReadAll(response.Body)
-		_ = response.Body.Close()
-		if readErr != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
-			return fmt.Errorf("download binary %s: status %d: %v", item.ID, response.StatusCode, readErr)
+			return err
 		}
 		sum := fmt.Sprintf("%x", sha256.Sum256(data))
 		if sum != item.SHA256 {
@@ -55,6 +47,31 @@ func (b Binaries) Install(items []contracts.Artifact) error {
 		}
 	}
 	return nil
+}
+
+func (b Binaries) download(item contracts.Artifact) ([]byte, error) {
+	if b.Offline {
+		path := filepath.Join(b.Root, ".kb", "v2", "cache", "binaries", item.SHA256)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("offline binary %s is absent from V2 cache: %w", item.ID, err)
+		}
+		return data, nil
+	}
+	client := b.Client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	response, err := client.Get(item.URL)
+	if err != nil {
+		return nil, fmt.Errorf("download binary %s: %w", item.ID, err)
+	}
+	data, readErr := io.ReadAll(response.Body)
+	_ = response.Body.Close()
+	if readErr != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("download binary %s: status %d: %v", item.ID, response.StatusCode, readErr)
+	}
+	return data, nil
 }
 
 func (b Binaries) Remove(items []contracts.Artifact) error {
