@@ -5,6 +5,27 @@
 production installation path at cutover; it does not replace the existing
 execution engine.
 
+## Implemented vertical slice
+
+The V2 boundary is executable and covered by an offline journey test:
+
+- `catalog/` is the deliberately small immutable release index used before
+  installation. It resolves the platform bundle, declared compatibility and
+  capability providers without scanning an installation.
+- `resolve/` emits the immutable `ResolvedInstallPlan` and fails on missing or
+  ambiguous providers instead of selecting one by iteration order.
+- `render/` projects that plan into `kb.config.jsonc` and `devservices.yaml`;
+  the latter uses the existing locking/validation API.
+- `verify/` enforces `resolved graph == devservices == kb-dev status` through
+  a status adapter, equally usable in a real run and an offline journey.
+- `receipt/`, `doctor/` and `diagnostics/` establish recovery, manifest-gap
+  reporting and redacted dossiers before CLI cutover exposes the flow.
+
+This is intentionally not wired to legacy `install` yet. Connecting two
+resolvers to one production command would recreate the split-brain V2 removes.
+The cutover replaces that resolution boundary in one reviewable change while
+delegating execution to the existing engine.
+
 ## Why V2
 
 The current launcher contains valuable capabilities — a declarative action
