@@ -1,0 +1,100 @@
+package runtime
+
+import (
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/receipt"
+)
+
+type fixedClock struct{ time.Time }
+
+func (c fixedClock) Now() time.Time { return c.Time }
+
+type fakeInstaller struct {
+	artifacts []contracts.Artifact
+	err       error
+	removed   []contracts.Artifact
+	restores  int
+}
+
+func (f *fakeInstaller) Install(items []contracts.Artifact) error {
+	f.artifacts = append(f.artifacts, items...)
+	return f.err
+}
+func (f *fakeInstaller) Restore() error { f.restores++; return nil }
+func (f *fakeInstaller) Uninstall(items []contracts.Artifact) error {
+	f.removed = append(f.removed, items...)
+	return nil
+}
+
+type fakeStatus []string
+
+func (s fakeStatus) ServiceStatuses(string) ([]string, error) { return s, nil }
+
+func TestApplyCommitsReceiptOnlyAfterGraphVerification(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "123456789012345", Request: contracts.InstallRequest{PlatformRoot: root}, Artifacts: []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2.0.0"}}, ServiceGraph: contracts.ServiceGraph{PlatformVersion: "2.0.0", Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	installer := &fakeInstaller{}
+	receipt, err := Apply(plan, Dependencies{Artifacts: installer, Status: fakeStatus{"gateway"}, Clock: fixedClock{time.Unix(0, 0)}, CorrelationID: "c1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.ID != "19700101T000000Z-123456789012" || len(installer.artifacts) != 1 {
+		t.Fatalf("receipt/installer = %#v / %#v", receipt, installer)
+	}
+}
+
+func TestApplyDoesNotCommitReceiptWhenArtifactInstallFails(t *testing.T) {
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: contracts.InstallRequest{PlatformRoot: t.TempDir()}}
+	_, err := Apply(plan, Dependencies{Artifacts: &fakeInstaller{err: errors.New("registry unavailable")}, Status: fakeStatus{}})
+	if err == nil {
+		t.Fatal("expected apply failure")
+	}
+}
+
+func TestUpdateSnapshotsPreviousVerifiedReceipt(t *testing.T) {
+	root := t.TempDir()
+	previous := contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "before", Plan: contracts.ResolvedInstallPlan{PlanHash: "old"}}
+	if err := receipt.Write(root, previous); err != nil {
+		t.Fatal(err)
+	}
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "new-plan-123456", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	result, snapshot, err := Update(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{"gateway"}, Clock: fixedClock{time.Unix(4, 0)}})
+	if err != nil || snapshot.ReceiptID != "before" || result.SnapshotID != snapshot.ID {
+		t.Fatalf("result/snapshot/err = %#v / %#v / %v", result, snapshot, err)
+	}
+}
+
+func TestUninstallUsesReceiptArtifacts(t *testing.T) {
+	root := t.TempDir()
+	if err := receipt.Write(root, contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "before", Plan: contracts.ResolvedInstallPlan{PlanHash: "old", Artifacts: []contracts.Artifact{{ID: "plugin", Package: "@kb/plugin"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	installer := &fakeInstaller{}
+	if _, err := Uninstall(root, Dependencies{Artifacts: installer, Clock: fixedClock{time.Unix(5, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(installer.removed) != 1 || installer.removed[0].ID != "plugin" {
+		t.Fatalf("removed = %#v", installer.removed)
+	}
+}
+
+func TestUpdateRestoresPreviousReceiptWhenNewGraphFailsVerification(t *testing.T) {
+	root := t.TempDir()
+	if err := receipt.Write(root, contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "before", Plan: contracts.ResolvedInstallPlan{PlanHash: "old"}}); err != nil {
+		t.Fatal(err)
+	}
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "new-plan", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	installer := &fakeInstaller{}
+	_, snapshot, err := Update(plan, Dependencies{Artifacts: installer, Status: fakeStatus{}, Clock: fixedClock{time.Unix(6, 0)}})
+	if err == nil || snapshot.ID == "" || installer.restores != 1 {
+		t.Fatalf("err/snapshot/restores = %v / %#v / %d", err, snapshot, installer.restores)
+	}
+	active, readErr := receipt.Read(root)
+	if readErr != nil || active.ID != "before" {
+		t.Fatalf("receipt = %#v, %v", active, readErr)
+	}
+}
