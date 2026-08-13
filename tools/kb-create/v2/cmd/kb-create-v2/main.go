@@ -16,7 +16,9 @@ import (
 	"github.com/kb-labs/create/v2/contracts"
 	"github.com/kb-labs/create/v2/diagnostics"
 	"github.com/kb-labs/create/v2/doctor"
+	"github.com/kb-labs/create/v2/installed"
 	"github.com/kb-labs/create/v2/logs"
+	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/scenario"
 	"github.com/kb-labs/create/v2/services"
@@ -232,20 +234,28 @@ func parseComponents(value string) ([]contracts.ComponentRequest, error) {
 }
 
 func runDoctor(path, platformRoot, kbdev string, fix bool, output *os.File) int {
-	if path == "" {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--doctor-input is required", "pass manifest-derived requirements and configured presence state", nil))
-		return 2
+	var input doctor.Input
+	var err error
+	if path != "" {
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			write(output, failure("KB_CREATE_INPUT_REQUIRED", "doctor input could not be read", "supply a readable V2 doctor input JSON file", readErr))
+			return 2
+		}
+		input, err = doctor.Decode(data)
+	} else {
+		if platformRoot == "" {
+			write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required for automatic doctor", "pass the V2 platform root or a manifest-derived --doctor-input", nil))
+			return 2
+		}
+		input, err = automaticDoctorInput(platformRoot)
 	}
-	data, err := os.ReadFile(path)
 	if err != nil {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "doctor input could not be read", "supply a readable V2 doctor input JSON file", err))
+		write(output, failure("KB_CREATE_DOCTOR_INPUT_INVALID", "installed manifest diagnostics could not be prepared", "install exact V2 artifacts that ship matching V2 manifests", err))
 		return 2
 	}
-	response, err := doctor.DiagnoseJSON(data)
-	if err != nil {
-		write(output, failure("KB_CREATE_DOCTOR_INPUT_INVALID", "doctor input could not be decoded", "supply V2 manifest requirement JSON without secret values", err))
-		return 2
-	}
+	findings := doctor.Diagnose(input.Manifests, input.Configured)
+	response := doctor.Response{OK: len(findings) == 0, Findings: findings, Repair: doctor.PlanRepair(findings)}
 	if fix {
 		if platformRoot == "" {
 			write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required with --fix", "pass the V2 platform root that owns the active receipt", nil))
@@ -265,6 +275,30 @@ func runDoctor(path, platformRoot, kbdev string, fix bool, output *os.File) int 
 		return 1
 	}
 	return 0
+}
+
+func automaticDoctorInput(platformRoot string) (doctor.Input, error) {
+	active, err := receipt.Read(platformRoot)
+	if err != nil {
+		return doctor.Input{}, fmt.Errorf("read active V2 receipt: %w", err)
+	}
+	manifests, err := installed.LoadAll(platformRoot, active.Plan.Artifacts)
+	if err != nil {
+		return doctor.Input{}, err
+	}
+	paths := make([]string, 0)
+	for _, manifest := range manifests {
+		for _, requirement := range manifest.Requirements {
+			if !requirement.Secret {
+				paths = append(paths, requirement.Path)
+			}
+		}
+	}
+	configured, err := installed.ConfiguredPaths(platformRoot, paths)
+	if err != nil {
+		return doctor.Input{}, err
+	}
+	return installed.DoctorInput(platformRoot, active.Plan.Artifacts, configured)
 }
 
 func runRecovery(operation, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {

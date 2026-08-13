@@ -15,6 +15,7 @@ type Manifest struct {
 	Requirements []Requirement `json:"requirements"`
 }
 type Requirement struct {
+	ID       string `json:"id,omitempty"`
 	Path     string `json:"path"`
 	Secret   bool   `json:"secret"`
 	Required bool   `json:"required"`
@@ -44,7 +45,11 @@ func Diagnose(manifests []Manifest, configured map[string]bool) []Finding {
 	findings := make([]Finding, 0)
 	for _, manifest := range manifests {
 		for _, requirement := range manifest.Requirements {
-			if !requirement.Required || configured[requirement.Path] {
+			key := requirement.Path
+			if requirement.Secret {
+				key = requirement.ID
+			}
+			if !requirement.Required || configured[key] {
 				continue
 			}
 			code := contracts.CodeConfigRequired
