@@ -21,6 +21,7 @@ import (
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/scenario"
+	"github.com/kb-labs/create/v2/secrets"
 	"github.com/kb-labs/create/v2/services"
 	"github.com/kb-labs/create/v2/transport"
 	"github.com/kb-labs/create/v2/wizard"
@@ -38,6 +39,7 @@ func main() {
 	adapters := flag.String("adapters", "", "comma-separated adapter IDs or id@version pins")
 	policy := flag.String("policy", "strict", "compatibility policy: strict, compatible, upgrade-safe")
 	offline := flag.Bool("offline", false, "use offline artifact source")
+	secretEnv := flag.String("secret-env", "", "comma-separated requirement=ENV_VAR secret sources (never serialized)")
 	doctorInput := flag.String("doctor-input", "", "path to V2 manifest-derived doctor JSON")
 	scenarioID := flag.String("scenario", "", "built-in V2 scenario ID")
 	scenarioAnswers := flag.String("scenario-answers", "", "JSON object of V2 scenario field answers")
@@ -50,7 +52,7 @@ func main() {
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
 	direct := directRequest{PlatformRoot: *requestRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
-	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout))
+	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout))
 }
 
 type directRequest struct {
@@ -58,7 +60,7 @@ type directRequest struct {
 	Offline                                                                                               bool
 }
 
-func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, scenarioID, scenarioAnswers string, scenarioResume bool, direct directRequest, output *os.File) int {
+func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev, secretEnv string, doctorFix bool, scenarioID, scenarioAnswers string, scenarioResume bool, direct directRequest, output *os.File) int {
 	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" {
 		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, or wizard", nil))
 		return 2
@@ -121,7 +123,12 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		return 2
 	}
 	defer transcript.Close()
-	deps := runtime.Dependencies{Artifacts: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Log: transcript}, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID}
+	store := secrets.Store{PlatformRoot: response.Plan.Request.PlatformRoot}
+	if err := populateSecrets(store, secretEnv); err != nil {
+		write(output, failure("KB_CREATE_SECRET_INPUT_INVALID", "secret input could not be stored", "use --secret-env requirement=ENV_VAR and set the environment variable", err))
+		return 2
+	}
+	deps := runtime.Dependencies{Artifacts: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Log: transcript}, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
 	if operation == "apply" {
 		receipt, applyErr := runtime.Apply(*response.Plan, deps)
 		if applyErr == nil {
@@ -138,6 +145,26 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
 	return 1
+}
+
+func populateSecrets(store secrets.Store, mappings string) error {
+	if strings.TrimSpace(mappings) == "" {
+		return nil
+	}
+	for _, pair := range strings.Split(mappings, ",") {
+		name, environment, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || strings.TrimSpace(name) == "" || strings.TrimSpace(environment) == "" {
+			return fmt.Errorf("secret mapping %q must be requirement=ENV_VAR", pair)
+		}
+		value, exists := os.LookupEnv(environment)
+		if !exists || value == "" {
+			return fmt.Errorf("environment variable %q is not set", environment)
+		}
+		if err := store.Put(name, value); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func compileScenario(id, answers string, resume bool, base contracts.InstallRequest) (contracts.InstallRequest, error) {

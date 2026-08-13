@@ -9,6 +9,7 @@ import (
 
 	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/secrets"
 )
 
 func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
@@ -34,7 +35,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "", "kb-dev", false, "", "", false, directRequest{}, file)
+	code := run("plan", index, input, "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -55,13 +56,26 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	}
 }
 
+func TestPopulateSecretsReadsEnvironmentWithoutSerialization(t *testing.T) {
+	t.Setenv("KB_CREATE_TEST_SECRET", "private-value")
+	root := t.TempDir()
+	store := secrets.Store{PlatformRoot: root}
+	if err := populateSecrets(store, "openai.key=KB_CREATE_TEST_SECRET"); err != nil {
+		t.Fatal(err)
+	}
+	exists, err := store.Exists("openai.key")
+	if err != nil || !exists {
+		t.Fatalf("exists/error = %v / %v", exists, err)
+	}
+}
+
 func TestRunRequiresBothMachineInputs(t *testing.T) {
 	file, err := os.CreateTemp(t.TempDir(), "output")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -72,7 +86,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -83,7 +97,7 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -99,7 +113,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, "", "", false, directRequest{}, file); code != 1 {
+	if code := run("doctor", "", "", input, "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 1 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := file.Close(); err != nil {
@@ -133,7 +147,7 @@ func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("plan", index, "", "", "", "", "", "kb-dev", false, "", "", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
+	if code := run("plan", index, "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := output.Close(); err != nil {
@@ -159,7 +173,7 @@ func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, "", "", "", "", "", "kb-dev", false, "custom", `{"access.mode":"local"}`, false, directRequest{PlatformRoot: "/tmp/platform", Offline: true, Policy: "compatible"}, output)
+	code := run("plan", index, "", "", "", "", "", "kb-dev", "", false, "custom", `{"access.mode":"local"}`, false, directRequest{PlatformRoot: "/tmp/platform", Offline: true, Policy: "compatible"}, output)
 	if err := output.Close(); err != nil {
 		t.Fatal(err)
 	}
