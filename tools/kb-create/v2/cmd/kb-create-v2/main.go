@@ -25,22 +25,23 @@ func main() {
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
 	doctorInput := flag.String("doctor-input", "", "path to V2 manifest-derived doctor JSON")
+	doctorFix := flag.Bool("fix", false, "apply only manifest-declared safe doctor defaults")
 	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
 	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
 	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
 	flag.Parse()
-	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, os.Stdout))
+	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *doctorFix, os.Stdout))
 }
 
-func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, output *os.File) int {
+func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev string, doctorFix bool, output *os.File) int {
 	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" {
 		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, or doctor", nil))
 		return 2
 	}
 	if operation == "doctor" {
-		return runDoctor(doctorInput, output)
+		return runDoctor(doctorInput, platformRoot, kbdev, doctorFix, output)
 	}
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
@@ -94,7 +95,7 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	return 1
 }
 
-func runDoctor(path string, output *os.File) int {
+func runDoctor(path, platformRoot, kbdev string, fix bool, output *os.File) int {
 	if path == "" {
 		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--doctor-input is required", "pass manifest-derived requirements and configured presence state", nil))
 		return 2
@@ -108,6 +109,20 @@ func runDoctor(path string, output *os.File) int {
 	if err != nil {
 		write(output, failure("KB_CREATE_DOCTOR_INPUT_INVALID", "doctor input could not be decoded", "supply V2 manifest requirement JSON without secret values", err))
 		return 2
+	}
+	if fix {
+		if platformRoot == "" {
+			write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required with --fix", "pass the V2 platform root that owns the active receipt", nil))
+			return 2
+		}
+		service := services.KBDev{Binary: kbdev}
+		snapshot, fixErr := runtime.DoctorFix(platformRoot, response.Repair, runtime.Dependencies{Activator: service, Status: service})
+		if fixErr != nil {
+			writeRecoveryFailure(output, platformRoot, fmt.Sprintf("doctor-fix-%d", time.Now().UTC().UnixNano()), "", fixErr)
+			return 1
+		}
+		write(output, map[string]any{"ok": true, "operation": "doctor-fix", "findings": response.Findings, "snapshot": snapshot})
+		return 0
 	}
 	write(output, response)
 	if !response.OK {

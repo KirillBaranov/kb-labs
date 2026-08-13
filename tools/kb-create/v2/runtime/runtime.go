@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/lifecycle"
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/render"
@@ -178,6 +179,31 @@ func Rollback(platformRoot, snapshotID string, deps Dependencies) (contracts.Sna
 		return snapshot, fmt.Errorf("rollback: verify restored service graph: %w", err)
 	}
 	return snapshot, nil
+}
+
+// DoctorFix applies only manifest-declared safe defaults under a snapshot, then
+// re-ensures and verifies the receipt graph. Required user input is never
+// guessed: callers receive an error before any write occurs.
+func DoctorFix(platformRoot string, repair doctor.RepairPlan, deps Dependencies) (contracts.Snapshot, error) {
+	if len(repair.RequiredInput) != 0 {
+		return contracts.Snapshot{}, fmt.Errorf("doctor fix requires %d explicit input value(s)", len(repair.RequiredInput))
+	}
+	if deps.Status == nil || deps.Activator == nil {
+		return contracts.Snapshot{}, fmt.Errorf("doctor fix: status provider and service activator are required")
+	}
+	active, err := receipt.Read(platformRoot)
+	if err != nil {
+		return contracts.Snapshot{}, fmt.Errorf("doctor fix: read active receipt: %w", err)
+	}
+	return lifecycle.Mutate(platformRoot, now(deps.Clock), func() error {
+		if err := doctor.ApplyDefaults(platformRoot, repair); err != nil {
+			return err
+		}
+		return deps.Activator.Ensure(platformRoot, serviceIDs(active.Plan.ServiceGraph))
+	}, func() error {
+		_, err := verify.Run(active.Plan, deps.Status, now(deps.Clock))
+		return err
+	}, nil)
 }
 
 func removeProjections(platformRoot string) error {

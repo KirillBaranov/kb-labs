@@ -8,7 +8,7 @@ import (
 )
 
 func TestRepairPlanNeverAutoFixesSecretInput(t *testing.T) {
-	findings := Diagnose([]Manifest{{ID: "plugin", Requirements: []Requirement{{Path: "/plugin/mode", Required: true}, {Path: "/plugin/token", Secret: true, Required: true, Hint: "set token"}}}}, map[string]bool{})
+	findings := Diagnose([]Manifest{{ID: "plugin", Requirements: []Requirement{{Path: "/plugin/mode", Required: true, Default: []byte(`"safe"`)}, {Path: "/plugin/token", Secret: true, Required: true, Hint: "set token"}}}}, map[string]bool{})
 	plan := PlanRepair(findings)
 	if len(plan.SafeDefaults) != 1 || len(plan.RequiredInput) != 1 || plan.RequiredInput[0].Code != contracts.CodeInputRequired {
 		t.Fatalf("plan = %#v", plan)

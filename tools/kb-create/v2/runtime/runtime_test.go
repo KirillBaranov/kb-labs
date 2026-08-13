@@ -4,10 +4,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/verify"
 )
@@ -189,5 +191,29 @@ func TestRollbackRestoresSnapshotAndEnsuresGraph(t *testing.T) {
 	}
 	if len(activator.ids) != 1 || activator.ids[0] != "gateway" {
 		t.Fatalf("ensured = %#v", activator.ids)
+	}
+}
+
+func TestDoctorFixRejectsRequiredInputBeforeMutating(t *testing.T) {
+	_, err := DoctorFix(t.TempDir(), doctor.RepairPlan{RequiredInput: []doctor.Finding{{Path: "/token"}}}, Dependencies{})
+	if err == nil {
+		t.Fatal("expected required-input rejection")
+	}
+}
+
+func TestDoctorFixSnapshotsSafeDefaultAndVerifiesGraph(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, PlanHash: "doctor", Request: contracts.InstallRequest{PlatformRoot: root}, ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}}}
+	if _, err := Apply(plan, Dependencies{Artifacts: &fakeInstaller{}, Status: fakeStatus{{ID: "gateway", State: "alive"}}}); err != nil {
+		t.Fatal(err)
+	}
+	activator := &fakeActivator{}
+	snapshot, err := DoctorFix(root, doctor.RepairPlan{SafeDefaults: []doctor.Finding{{Path: "/platform/mode", Default: []byte(`"safe"`)}}}, Dependencies{Activator: activator, Status: fakeStatus{{ID: "gateway", State: "alive"}}, Clock: fixedClock{time.Unix(12, 0)}})
+	if err != nil || snapshot.ID == "" || len(activator.ids) != 1 {
+		t.Fatalf("snapshot/error/ensured = %#v / %v / %#v", snapshot, err, activator.ids)
+	}
+	data, readErr := os.ReadFile(filepath.Join(root, ".kb", "kb.config.jsonc"))
+	if readErr != nil || !strings.Contains(string(data), `"mode": "safe"`) {
+		t.Fatalf("config/error = %s / %v", data, readErr)
 	}
 }

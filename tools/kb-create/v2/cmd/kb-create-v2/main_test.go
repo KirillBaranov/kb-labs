@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/kb-labs/create/v2/catalog"
+	"github.com/kb-labs/create/v2/contracts"
 )
 
 func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
@@ -12,7 +15,15 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	index := filepath.Join(dir, "index.json")
 	input := filepath.Join(dir, "request.json")
 	output := filepath.Join(dir, "output.json")
-	if err := os.WriteFile(index, []byte(`{"channels":{"stable":"2.0.0"},"platforms":[{"id":"platform","version":"2.0.0","package":"@kb/platform","sha256":"abc","profiles":{"default":{"platformVersion":"2.0.0"}}}]}`), 0o600); err != nil {
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "abc", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseJSON, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(index, releaseJSON, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(input, []byte(`{"schema":"kb.create/v2","platformRoot":"/tmp/platform","source":"offline"}`), 0o600); err != nil {
@@ -22,7 +33,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "", "kb-dev", file)
+	code := run("plan", index, input, "", "", "", "", "kb-dev", false, file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +60,7 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -60,7 +71,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -71,7 +82,7 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", false, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -87,7 +98,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("doctor", "", "", input, "", "", "", "kb-dev", file); code != 1 {
+	if code := run("doctor", "", "", input, "", "", "", "kb-dev", false, file); code != 1 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := file.Close(); err != nil {

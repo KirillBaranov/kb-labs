@@ -4,6 +4,7 @@
 package doctor
 
 import (
+	"encoding/json"
 	"sort"
 
 	"github.com/kb-labs/create/v2/contracts"
@@ -18,13 +19,18 @@ type Requirement struct {
 	Secret   bool   `json:"secret"`
 	Required bool   `json:"required"`
 	Hint     string `json:"hint"`
+	// Default is present only when the manifest explicitly declares a safe,
+	// non-secret value. Its absence means doctor must request input instead of
+	// inventing a configuration choice.
+	Default json.RawMessage `json:"default,omitempty"`
 }
 type Finding struct {
-	Code      string `json:"code"`
-	Component string `json:"component"`
-	Path      string `json:"path"`
-	Hint      string `json:"hint"`
-	SafeFix   bool   `json:"safeFix"`
+	Code      string          `json:"code"`
+	Component string          `json:"component"`
+	Path      string          `json:"path"`
+	Hint      string          `json:"hint"`
+	SafeFix   bool            `json:"safeFix"`
+	Default   json.RawMessage `json:"default,omitempty"`
 }
 
 type RepairPlan struct {
@@ -45,7 +51,8 @@ func Diagnose(manifests []Manifest, configured map[string]bool) []Finding {
 			if requirement.Secret {
 				code = contracts.CodeInputRequired
 			}
-			findings = append(findings, Finding{Code: code, Component: manifest.ID, Path: requirement.Path, Hint: requirement.Hint, SafeFix: !requirement.Secret})
+			safeFix := !requirement.Secret && len(requirement.Default) != 0
+			findings = append(findings, Finding{Code: code, Component: manifest.ID, Path: requirement.Path, Hint: requirement.Hint, SafeFix: safeFix, Default: append(json.RawMessage(nil), requirement.Default...)})
 		}
 	}
 	sort.Slice(findings, func(i, j int) bool {

@@ -18,8 +18,8 @@ func LoadFile(path string) (Catalog, error) {
 	if err := json.Unmarshal(data, &result); err != nil {
 		return Catalog{}, fmt.Errorf("decode release index: %w", err)
 	}
-	if len(result.Platforms) == 0 {
-		return Catalog{}, fmt.Errorf("release index contains no platform bundles")
+	if err := Verify(result); err != nil {
+		return Catalog{}, fmt.Errorf("validate release index: %w", err)
 	}
 	return result, nil
 }
