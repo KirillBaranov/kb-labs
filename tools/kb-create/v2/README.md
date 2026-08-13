@@ -47,8 +47,9 @@ flowchart TD
 
 ### One ownership rule
 
-`ResolvedInstallPlan` owns requested platform/SDK/plugins, exact artifact
-versions, config patches, binaries and the expected service graph.
+`ResolvedInstallPlan` owns requested platform/SDK/plugins/adapters, exact
+artifact versions, config patches, provider bindings, binaries and the
+expected service graph.
 `devservices.yaml` and generated runtime configuration are rendered outputs.
 A package scan validates declared artifacts; it must never decide which
 services the user received merely because a transitive dependency exposes a
@@ -81,7 +82,8 @@ doctor --fix → recovery plan → apply → verify
 
 - platform exact version or channel: `stable`, `canary`, `experimental`;
 - SDK exact version or channel, constrained by the selected platform;
-- platform-owned service profile, plugins, adapters and provider preferences;
+- platform-owned service profile, plugins, independently versioned adapters
+  and explicit provider preferences;
 - explicit project/platform roots;
 - artifact source: online registry or offline fixture;
 - scenario ID for a reusable user journey.
@@ -92,16 +94,21 @@ request directly in flags or JSON. Neither may reconstruct a shell sequence.
 ## Compatibility matrix and resolver
 
 The matrix is evaluated before every network or filesystem side effect. It
-answers which combinations of platform/SDK/channel/plugins/binaries are valid
-and yields exact artifacts plus the platform-owned service dependency graph.
+answers which combinations of platform/SDK/channel/plugins/adapters/binaries
+are valid and yields exact artifacts plus the platform-owned service dependency
+graph.
 Core and official services ship with the selected platform release; a missing
 or inconsistent service manifest is a platform candidate defect, not a
 user-resolvable version choice. Invalid requests fail fast with the same error
 contract as runtime failures.
 
-Plugins remain independently versioned. Their manifests progressively declare
-supported platform and SDK ranges. The resolver may select an unpinned
-compatible plugin version, but it never silently changes an explicit pin:
+Plugins and adapters remain independently versioned. Their manifests
+progressively declare supported platform and SDK ranges. Adapters additionally
+declare provided capabilities; plugins/services declare required capabilities.
+The resolver selects exactly one compatible provider per required capability,
+honours explicit provider preferences, and rejects a missing or ambiguous
+binding before installation. It may select an unpinned compatible plugin or
+adapter version, but it never silently changes an explicit pin:
 
 | Policy | Behaviour |
 |---|---|
@@ -110,11 +117,13 @@ compatible plugin version, but it never silently changes an explicit pin:
 | `upgrade-safe` (explicit update only) | Resolver may advance unpinned artifacts within the defined compatibility policy; a snapshot is mandatory. |
 
 No intersecting range produces `KB_CREATE_INCOMPATIBLE_COMPONENTS` before
-download or config writes. The error names the selected versions, the manifest
-constraint that rejected them and safe alternatives. A plugin without a range
-is `unknown compatibility`, never silently universal: it needs explicit user
-policy during migration and becomes a publish-time failure for official
-plugins after the migration window.
+download or config writes. A missing capability produces
+`KB_CREATE_PROVIDER_UNRESOLVED`; a competing explicit binding produces
+`KB_CREATE_PROVIDER_AMBIGUOUS`. Each error names the selected versions or
+providers, the manifest constraint that rejected them and safe alternatives.
+A plugin or adapter without a range is `unknown compatibility`, never silently
+universal: it needs explicit user policy during migration and becomes a
+publish-time failure for official artifacts after the migration window.
 
 The resolver also validates graph completeness before `apply`: required
 providers, ports, dependency targets, offline artifacts and mandatory service
