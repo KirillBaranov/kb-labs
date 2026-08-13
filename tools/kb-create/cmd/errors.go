@@ -32,6 +32,7 @@ const (
 	codeDoctor               = "ERR_DOCTOR"
 	codeUninstall            = "ERR_UNINSTALL"
 	codeLogs                 = "ERR_LOGS"
+	codeRecovery             = "ERR_RECOVERY"
 )
 
 func init() {
@@ -56,6 +57,7 @@ func init() {
 		codeDoctor:               "run kb-create doctor --fix, then follow any remaining manual fix hints",
 		codeUninstall:            "verify the explicit --platform target and filesystem permissions, then retry",
 		codeLogs:                 "pass --platform <directory> for an installed platform that contains .kb/logs",
+		codeRecovery:             "choose a snapshot ID from <platform>/.kb/v2/snapshots or run kb-create update to create a new recovery point",
 	})
 }
 
@@ -90,6 +92,8 @@ func classifyError(err error) *diag.Diag {
 		code, message = codeDoctor, "Environment checks did not pass"
 	case strings.Contains(reason, "remove platform"):
 		code, message = codeUninstall, "Platform could not be removed"
+	case strings.Contains(reason, "snapshot") || strings.Contains(reason, "rollback"):
+		code, message = codeRecovery, "Platform recovery could not be completed"
 	case strings.Contains(reason, "install logs") || strings.Contains(reason, "open log"):
 		code, message = codeLogs, "Install log could not be read"
 	}
