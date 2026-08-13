@@ -5,6 +5,8 @@ package runtime
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/kb-labs/create/v2/contracts"
@@ -101,7 +103,17 @@ func Uninstall(platformRoot string, deps Dependencies) (contracts.Snapshot, erro
 		return contracts.Snapshot{}, fmt.Errorf("uninstall: read active receipt: %w", err)
 	}
 	return lifecycle.Mutate(platformRoot, now(deps.Clock), func() error {
-		return uninstaller.Uninstall(active.Plan.Artifacts)
+		if err := uninstaller.Uninstall(active.Plan.Artifacts); err != nil {
+			return err
+		}
+		// Only V2-owned projections are removed. Project roots and any user
+		// authored files remain outside this operation's authority.
+		for _, relative := range []string{".kb/kb.config.jsonc", ".kb/devservices.yaml"} {
+			if err := os.Remove(filepath.Join(platformRoot, relative)); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remove managed projection %s: %w", relative, err)
+			}
+		}
+		return receipt.Delete(platformRoot)
 	}, nil, deps.Artifacts.Restore)
 }
 

@@ -143,3 +143,13 @@ func Read(platformRoot string) (contracts.InstallReceipt, error) {
 	}
 	return result, nil
 }
+
+// Delete removes only the active V2 receipt. Snapshots are intentionally kept
+// under .kb/v2/snapshots as explicit recovery evidence.
+func Delete(platformRoot string) error {
+	err := os.Remove(Path(platformRoot))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}

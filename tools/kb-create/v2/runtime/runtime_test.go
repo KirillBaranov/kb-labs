@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -73,12 +75,30 @@ func TestUninstallUsesReceiptArtifacts(t *testing.T) {
 	if err := receipt.Write(root, contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "before", Plan: contracts.ResolvedInstallPlan{PlanHash: "old", Artifacts: []contracts.Artifact{{ID: "plugin", Package: "@kb/plugin"}}}}); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(root, ".kb"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".kb", "kb.config.jsonc"), []byte("managed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "user.txt"), []byte("user"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	installer := &fakeInstaller{}
 	if _, err := Uninstall(root, Dependencies{Artifacts: installer, Clock: fixedClock{time.Unix(5, 0)}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(installer.removed) != 1 || installer.removed[0].ID != "plugin" {
 		t.Fatalf("removed = %#v", installer.removed)
+	}
+	if _, err := receipt.Read(root); !os.IsNotExist(err) {
+		t.Fatalf("receipt must be removed, err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".kb", "kb.config.jsonc")); !os.IsNotExist(err) {
+		t.Fatalf("managed config must be removed, err = %v", err)
+	}
+	if data, _ := os.ReadFile(filepath.Join(root, "user.txt")); string(data) != "user" {
+		t.Fatalf("user file = %q", data)
 	}
 }
 
