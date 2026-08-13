@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,14 +17,14 @@ import (
 )
 
 type Runner interface {
-	Run(context.Context, string, ...string) error
+	Run(context.Context, io.Writer, string, ...string) error
 }
 
 type commandRunner struct{}
 
-func (commandRunner) Run(ctx context.Context, name string, args ...string) error {
+func (commandRunner) Run(ctx context.Context, output io.Writer, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	cmd.Stdout, cmd.Stderr = output, output
 	return cmd.Run()
 }
 
@@ -31,6 +32,10 @@ type Pnpm struct {
 	Root     string
 	Registry string
 	Runner   Runner
+	// Log receives the complete package-manager transcript. It is deliberately
+	// file-oriented: raw package-manager output must never pollute human or JSON
+	// command output.
+	Log io.Writer
 }
 
 func (p Pnpm) Install(items []contracts.Artifact) error {
@@ -79,7 +84,11 @@ func (p Pnpm) run(command string, specs ...string) error {
 	if runner == nil {
 		runner = commandRunner{}
 	}
-	if err := runner.Run(context.Background(), "pnpm", args...); err != nil {
+	log := p.Log
+	if log == nil {
+		log = io.Discard
+	}
+	if err := runner.Run(context.Background(), log, "pnpm", args...); err != nil {
 		return fmt.Errorf("pnpm %s exact artifacts: %w", command, err)
 	}
 	return nil

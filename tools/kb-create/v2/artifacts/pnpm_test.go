@@ -3,6 +3,7 @@ package artifacts
 import (
 	"context"
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 
@@ -18,7 +19,7 @@ type fakeRunner struct {
 	err   error
 }
 
-func (r *fakeRunner) Run(_ context.Context, name string, args ...string) error {
+func (r *fakeRunner) Run(_ context.Context, _ io.Writer, name string, args ...string) error {
 	r.calls = append(r.calls, call{name, args})
 	return r.err
 }
