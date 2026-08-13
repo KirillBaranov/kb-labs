@@ -4,7 +4,9 @@
 package scenario
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -164,6 +166,23 @@ func SaveState(platformRoot string, value Scenario, state State) error {
 }
 func statePath(platformRoot, id string) string {
 	return filepath.Join(platformRoot, ".kb", "v2", "scenarios", id+".json")
+}
+func StateDigest(value Scenario, state State) (string, error) {
+	copy := State{ScenarioID: state.ScenarioID, Answers: map[string]json.RawMessage{}}
+	for _, field := range value.Fields {
+		if field.Secret {
+			continue
+		}
+		if raw, ok := state.Answers[field.ID]; ok {
+			copy.Answers[field.ID] = raw
+		}
+	}
+	data, err := json.Marshal(copy)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
 }
 func Answer(value Scenario, state State, id string, raw json.RawMessage) (State, error) {
 	if state.ScenarioID != value.ID {

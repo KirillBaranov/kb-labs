@@ -12,11 +12,20 @@ import (
 // Values are resolved from two sources, in priority order:
 //
 //  1. The process environment (os.Getenv).
-//  2. A .env file loaded from rootDir (if present; silently skipped if missing).
+//  2. V2's private launcher secret store under .kb/v2 (if present).
+//  3. A .env file loaded from rootDir (if present; silently skipped if missing).
 //
 // Any reference to an undefined variable is a hard error so that services do
 // not start with silently-broken configuration.
 func expandEnv(yf *yamlFile, rootDir string) error {
+	// V2 launcher secrets are isolated from the project .env: they are written
+	// with mode 0600 under .kb/v2 and never appear in generated config,
+	// receipts, diagnostics, or the terminal. Keep .env as the documented
+	// fallback for hand-managed services.
+	launcherSecrets, err := loadDotEnv(filepath.Join(rootDir, ".kb", "v2", "secrets.env"))
+	if err != nil {
+		return fmt.Errorf("load launcher secrets: %w", err)
+	}
 	dotenv, err := loadDotEnv(filepath.Join(rootDir, ".env"))
 	if err != nil {
 		return fmt.Errorf("load .env: %w", err)
@@ -24,6 +33,9 @@ func expandEnv(yf *yamlFile, rootDir string) error {
 
 	lookup := func(key string) (string, bool) {
 		if v, ok := os.LookupEnv(key); ok {
+			return v, true
+		}
+		if v, ok := launcherSecrets[key]; ok {
 			return v, true
 		}
 		if v, ok := dotenv[key]; ok {

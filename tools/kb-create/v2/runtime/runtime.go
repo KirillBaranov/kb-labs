@@ -14,6 +14,7 @@ import (
 	"github.com/kb-labs/create/v2/lifecycle"
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/render"
+	"github.com/kb-labs/create/v2/secrets"
 	"github.com/kb-labs/create/v2/verify"
 )
 
@@ -46,6 +47,7 @@ type Dependencies struct {
 	// CorrelationID is supplied by a frontend; it is persisted verbatim in the
 	// receipt and must be safe to disclose in a diagnostic bundle.
 	CorrelationID string
+	Secrets       *secrets.Store
 }
 
 // Apply is the one V2 fresh-install operation. It deliberately has no
@@ -56,6 +58,9 @@ func Apply(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.Ins
 	}
 	if deps.Artifacts == nil || deps.Status == nil {
 		return contracts.InstallReceipt{}, fmt.Errorf("apply resolved plan: artifact installer and status provider are required")
+	}
+	if err := verifySecrets(plan, deps.Secrets); err != nil {
+		return contracts.InstallReceipt{}, err
 	}
 	if err := deps.Artifacts.Install(plan.Artifacts); err != nil {
 		return contracts.InstallReceipt{}, fmt.Errorf("apply exact artifacts: %w", err)
@@ -82,6 +87,25 @@ func Apply(plan contracts.ResolvedInstallPlan, deps Dependencies) (contracts.Ins
 		return contracts.InstallReceipt{}, fmt.Errorf("commit verified receipt: %w", err)
 	}
 	return result, nil
+}
+
+func verifySecrets(plan contracts.ResolvedInstallPlan, store *secrets.Store) error {
+	if len(plan.Request.SecretInputs) == 0 {
+		return nil
+	}
+	if store == nil {
+		return fmt.Errorf("apply resolved plan: secret store is required for declared secret inputs")
+	}
+	for _, name := range plan.Request.SecretInputs {
+		exists, err := store.Exists(name)
+		if err != nil {
+			return fmt.Errorf("check secret %s: %w", name, err)
+		}
+		if !exists {
+			return fmt.Errorf("required secret input %s is not set", name)
+		}
+	}
+	return nil
 }
 
 // Update creates a recovery snapshot before replacing the resolved artifact

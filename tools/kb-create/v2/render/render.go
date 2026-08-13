@@ -30,10 +30,11 @@ type DevservicesFile struct {
 }
 
 type Service struct {
-	Name      string   `yaml:"name,omitempty"`
-	Command   string   `yaml:"command"`
-	Port      int      `yaml:"port,omitempty"`
-	DependsOn []string `yaml:"depends_on,omitempty"`
+	Name      string            `yaml:"name,omitempty"`
+	Command   string            `yaml:"command"`
+	Port      int               `yaml:"port,omitempty"`
+	DependsOn []string          `yaml:"depends_on,omitempty"`
+	Env       map[string]string `yaml:"env,omitempty"`
 }
 
 func (file DevservicesFile) Validate() error {
@@ -71,7 +72,7 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		if service.ID == "" {
 			return Output{}, fmt.Errorf("service ID is required")
 		}
-		services[service.ID] = Service{Name: service.ID, Command: service.Command, Port: service.Port, DependsOn: service.DependsOn}
+		services[service.ID] = Service{Name: service.ID, Command: service.Command, Port: service.Port, DependsOn: service.DependsOn, Env: map[string]string{}}
 	}
 	file := DevservicesFile{Name: "kb-labs", Services: services}
 	if err := file.Validate(); err != nil {
@@ -80,6 +81,19 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 	adapters, plugins := map[string]string{}, map[string]string{}
 	extra := map[string]any{}
 	for _, patch := range plan.ConfigPatches {
+		if patch.Environment != "" {
+			for _, serviceID := range patch.Services {
+				service, exists := services[serviceID]
+				if !exists {
+					return Output{}, fmt.Errorf("secret patch %s targets unknown service %q", patch.Owner, serviceID)
+				}
+				if existing, exists := service.Env[patch.Environment]; exists && existing != "${"+patch.Environment+"}" {
+					return Output{}, fmt.Errorf("service %q has conflicting value for secret environment %q", serviceID, patch.Environment)
+				}
+				service.Env[patch.Environment] = "${" + patch.Environment + "}"
+				services[serviceID] = service
+			}
+		}
 		if len(patch.Path) > len("/platform/adapters/") && patch.Path[:len("/platform/adapters/")] == "/platform/adapters/" {
 			adapters[patch.Path[len("/platform/adapters/"):]] = patch.Value
 		}

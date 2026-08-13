@@ -104,7 +104,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if err != nil {
 		return contracts.ResolvedInstallPlan{}, err
 	}
-	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches}
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches, ReleaseDigest: source.Digest}
 	plan.PlanHash = hash(plan)
 	return plan, nil
 }
@@ -232,18 +232,24 @@ func configPatches(platform catalog.PlatformBundle, artifacts []contracts.Artifa
 	known := map[string]bool{}
 	secrets := map[string]bool{}
 	for _, requirement := range requirements {
-		if requirement.ID == "" || requirement.Path == "" {
+		if requirement.ID == "" || (!requirement.Secret && requirement.Path == "") {
 			return nil, fmt.Errorf("selected manifest has invalid configuration requirement")
 		}
 		known[requirement.ID] = true
 		secrets[requirement.ID] = requirement.Secret
 		value, supplied := request.Values[requirement.ID]
 		if requirement.Secret {
+			if requirement.Env == "" || len(requirement.Services) == 0 {
+				return nil, fmt.Errorf("secret requirement %s must declare environment variable and target services", requirement.ID)
+			}
 			if supplied {
 				return nil, launcherError(contracts.CodeInputRequired, "secret "+requirement.ID+" must be supplied through the secret store", map[string]string{"requirement": requirement.ID})
 			}
 			if requirement.Required && !contains(request.SecretInputs, requirement.ID) {
 				return nil, launcherError(contracts.CodeInputRequired, "required secret input "+requirement.ID+" is missing", map[string]string{"requirement": requirement.ID})
+			}
+			if contains(request.SecretInputs, requirement.ID) {
+				result = append(result, contracts.ConfigPatch{Owner: "manifest:" + requirement.ID, Environment: requirement.Env, Services: append([]string(nil), requirement.Services...)})
 			}
 			continue
 		}

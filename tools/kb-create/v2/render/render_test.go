@@ -3,6 +3,7 @@ package render
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/v2/contracts"
@@ -13,6 +14,19 @@ func TestBuildRejectsDuplicatePorts(t *testing.T) {
 	plan.ServiceGraph.Services = append(plan.ServiceGraph.Services, contracts.Service{ID: "duplicate", Command: "serve", Port: 4000})
 	if _, err := Build(plan); err == nil {
 		t.Fatal("expected duplicate-port validation error")
+	}
+}
+
+func TestBuildProjectsSecretAsPlaceholderOnly(t *testing.T) {
+	plan := testPlan(t.TempDir())
+	plan.ConfigPatches = []contracts.ConfigPatch{{Owner: "manifest:token", Environment: "TOKEN", Services: []string{"gateway"}}}
+	output, err := Build(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := output.Devservices.Services["gateway"].Env["TOKEN"]
+	if value != "${TOKEN}" || strings.Contains(string(output.Config), "TOKEN") {
+		t.Fatalf("secret projection = %q / %s", value, output.Config)
 	}
 }
 

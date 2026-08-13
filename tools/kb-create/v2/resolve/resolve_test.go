@@ -1,8 +1,10 @@
 package resolve
 
 import (
+	"fmt"
 	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
+	"strings"
 	"testing"
 )
 
@@ -14,6 +16,24 @@ func TestAmbiguousProviderFailsFast(t *testing.T) {
 	}
 	if value, ok := err.(*contracts.LauncherError); !ok || value.Code != contracts.CodeProviderAmbiguous {
 		t.Fatalf("%T %#v", err, err)
+	}
+}
+
+func TestPlanProjectsSecretOnlyAsEnvironmentReference(t *testing.T) {
+	source := catalog.Catalog{Digest: "release-digest", Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {Services: []contracts.Service{{ID: "gateway", Command: "serve"}}}}, Config: []catalog.ConfigRequirement{{ID: "openai.apiKey", Secret: true, Required: true, Env: "OPENAI_API_KEY", Services: []string{"gateway"}}}}}}
+	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x", SecretInputs: []string{"openai.apiKey"}}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.ReleaseDigest != "release-digest" {
+		t.Fatalf("release digest = %q", plan.ReleaseDigest)
+	}
+	if len(plan.ConfigPatches) != 2 || plan.ConfigPatches[1].Environment != "OPENAI_API_KEY" {
+		t.Fatalf("patches = %#v", plan.ConfigPatches)
+	}
+	encoded := plan.ConfigPatches[1]
+	if encoded.Value != "" || encoded.JSON != "" || strings.Contains(fmt.Sprint(plan), "OPENAI_API_KEY=") {
+		t.Fatalf("secret escaped plan: %#v", plan)
 	}
 }
 
