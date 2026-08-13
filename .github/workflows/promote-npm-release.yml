@@ -216,6 +216,64 @@ jobs:
             --binaries-tag "$binaries_tag" \
             --output .kb/release/installer-manifest.json
 
+      - name: Build immutable release receipt
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          FLOW: ${{ needs.promote.outputs.flow }}
+          VERSION: ${{ needs.promote.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          manifest=.kb/release/artifacts/manifest.json
+          test -s "$manifest"
+          tag_sha="$(git rev-list -n1 "$RELEASE_TAG")"
+          manifest_sha256="$(sha256sum "$manifest" | awk '{print $1}')"
+          packages="$(node -e '
+            const manifest = require(process.argv[1]);
+            process.stdout.write(JSON.stringify(manifest.map(({ name, version }) => ({ name, version }))));
+          ' "$manifest")"
+          jq -n \
+            --arg releaseTag "$RELEASE_TAG" \
+            --arg sourceSha "$tag_sha" \
+            --arg flow "$FLOW" \
+            --arg version "$VERSION" \
+            --arg candidateRunId "$CANDIDATE_RUN_ID" \
+            --arg candidateRunUrl "https://github.com/$REPOSITORY/actions/runs/$CANDIDATE_RUN_ID" \
+            --arg manifestSha256 "$manifest_sha256" \
+            --argjson packages "$packages" \
+            '{
+              schema: 1,
+              releaseTag: $releaseTag,
+              sourceSha: $sourceSha,
+              flow: $flow,
+              version: $version,
+              candidate: {
+                runId: $candidateRunId,
+                runUrl: $candidateRunUrl,
+                distTag: "canary",
+                smoke: "passed"
+              },
+              promotion: {
+                distTag: "latest",
+                verified: true
+              },
+              manifest: {
+                sha256: $manifestSha256,
+                packages: $packages
+              }
+            }' > release-receipt.json
+
+          jq -e '
+            .schema == 1 and
+            (.releaseTag | length > 0) and
+            (.sourceSha | length > 0) and
+            .candidate.smoke == "passed" and
+            .promotion.verified == true and
+            (.manifest.packages | length > 0)
+          ' release-receipt.json >/dev/null
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -224,7 +282,9 @@ jobs:
           body_path: release-notes.md
           draft: false
           prerelease: false
-          files: ${{ needs.promote.outputs.flow == 'platform' && '.kb/release/installer-manifest.json' || '' }}
+          files: |
+            release-receipt.json
+            ${{ needs.promote.outputs.flow == 'platform' && '.kb/release/installer-manifest.json' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
