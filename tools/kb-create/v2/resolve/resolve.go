@@ -104,7 +104,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if err != nil {
 		return contracts.ResolvedInstallPlan{}, err
 	}
-	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches, ReleaseDigest: source.Digest}
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches, ReleaseDigest: source.Digest, ScenarioStateDigest: request.ScenarioStateDigest}
 	plan.PlanHash = hash(plan)
 	return plan, nil
 }

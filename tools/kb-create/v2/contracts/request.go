@@ -64,8 +64,11 @@ type InstallRequest struct {
 	Policy              CompatibilityPolicy `json:"policy"`
 	Source              ArtifactSource      `json:"source"`
 	ScenarioID          string              `json:"scenarioId,omitempty"`
-	PlatformRoot        string              `json:"platformRoot"`
-	ProjectRoot         string              `json:"projectRoot,omitempty"`
+	// ScenarioStateDigest is a non-secret checksum of persisted scenario
+	// answers. It is provenance only: the resolver never treats it as input.
+	ScenarioStateDigest string `json:"scenarioStateDigest,omitempty"`
+	PlatformRoot        string `json:"platformRoot"`
+	ProjectRoot         string `json:"projectRoot,omitempty"`
 }
 
 func (r InstallRequest) Normalize() (InstallRequest, error) {

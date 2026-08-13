@@ -23,9 +23,13 @@ import (
 	"github.com/kb-labs/create/v2/scenario"
 	"github.com/kb-labs/create/v2/secrets"
 	"github.com/kb-labs/create/v2/services"
+	"github.com/kb-labs/create/v2/telemetry"
 	"github.com/kb-labs/create/v2/transport"
 	"github.com/kb-labs/create/v2/wizard"
 )
+
+var telemetryEndpoint string
+var telemetryConsent bool
 
 func main() {
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
@@ -50,7 +54,10 @@ func main() {
 	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
 	kbdev := flag.String("kb-dev", "kb-dev", "path to kb-dev binary")
+	telemetryURL := flag.String("telemetry-endpoint", "", "opt-in anonymous telemetry endpoint")
+	telemetryAllowed := flag.Bool("telemetry-consent", false, "allow anonymous operational telemetry")
 	flag.Parse()
+	telemetryEndpoint, telemetryConsent = *telemetryURL, *telemetryAllowed
 	direct := directRequest{PlatformRoot: *requestRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
 	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout))
 }
@@ -112,8 +119,14 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		write(output, response)
 		return 2
 	}
+	started := time.Now()
+	outcome, errorCode := "failure", "KB_CREATE_OPERATION_FAILED"
+	defer func() {
+		telemetry.Send(telemetryEndpoint, telemetryConsent, telemetry.New(operation, outcome, errorCode, string(response.Plan.Request.Platform.Channel), string(response.Plan.Request.Source), len(response.Plan.Artifacts), time.Since(started)))
+	}()
 	if operation == "plan" {
 		write(output, response)
+		outcome, errorCode = "success", ""
 		return 0
 	}
 	correlationID := fmt.Sprintf("%s-%d", operation, time.Now().UTC().UnixNano())
@@ -133,6 +146,7 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		receipt, applyErr := runtime.Apply(*response.Plan, deps)
 		if applyErr == nil {
 			write(output, map[string]any{"ok": true, "operation": operation, "receipt": receipt, "logPath": transcript.Path()})
+			outcome, errorCode = "success", ""
 			return 0
 		}
 		writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), applyErr)
@@ -141,6 +155,7 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	receipt, snapshot, updateErr := runtime.Update(*response.Plan, deps)
 	if updateErr == nil {
 		write(output, map[string]any{"ok": true, "operation": operation, "receipt": receipt, "snapshot": snapshot, "logPath": transcript.Path()})
+		outcome, errorCode = "success", ""
 		return 0
 	}
 	writeFailureDossier(output, *response.Plan, correlationID, transcript.Path(), updateErr)
@@ -194,7 +209,12 @@ func compileScenario(id, answers string, resume bool, base contracts.InstallRequ
 	if err := scenario.SaveState(base.PlatformRoot, definition, state); err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	return scenario.Compile(definition, state, base)
+	request, err := scenario.Compile(definition, state, base)
+	if err != nil {
+		return contracts.InstallRequest{}, err
+	}
+	request.ScenarioStateDigest, err = scenario.StateDigest(definition, state)
+	return request, err
 }
 
 func runWizard(indexPath, platformRoot string, output *os.File) int {
@@ -372,7 +392,7 @@ func failure(code, message, hint string, cause error) map[string]any {
 
 func writeFailureDossier(output *os.File, plan contracts.ResolvedInstallPlan, correlationID, logPath string, cause error) {
 	launcherError := &contracts.LauncherError{Code: "KB_CREATE_APPLY_FAILED", Stage: contracts.StageApply, Message: "V2 operation did not reach a verified installation", Cause: cause.Error(), Hint: "Inspect the local log and diagnostic dossier, then fix the reported prerequisite or run doctor --fix."}
-	path, dossierErr := diagnostics.Write(plan.Request.PlatformRoot, diagnostics.Dossier{CorrelationID: correlationID, Error: launcherError, PlanHash: plan.PlanHash, Stage: launcherError.Stage, LogPath: logPath}, nil)
+	path, dossierErr := diagnostics.Write(plan.Request.PlatformRoot, diagnostics.Dossier{CorrelationID: correlationID, Error: launcherError, PlanHash: plan.PlanHash, ReleaseDigest: plan.ReleaseDigest, ScenarioStateDigest: plan.ScenarioStateDigest, Stage: launcherError.Stage, LogPath: logPath}, nil)
 	if dossierErr != nil {
 		write(output, failure("KB_CREATE_DIAGNOSTIC_UNAVAILABLE", "V2 operation failed and diagnostic dossier could not be written", "inspect the local operation log", dossierErr))
 		return
