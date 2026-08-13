@@ -1,9 +1,9 @@
 # kb-create V2 — launcher contract reset
 
-**Status:** proposed implementation plan  
-**Scope:** a new launcher chain under `tools/kb-create/v2/`. V2 replaces the
-production installation path at cutover; it does not replace the existing
-execution engine.
+**Status:** active replacement implementation
+**Scope:** a self-contained launcher chain under `tools/kb-create/v2/`. V2
+does not import legacy launcher state, manifests, package manager or execution
+engine. At cutover V2 moves to the package root and legacy is removed.
 
 ## Implemented vertical slice
 
@@ -18,13 +18,14 @@ The V2 boundary is executable and covered by an offline journey test:
   the latter uses the existing locking/validation API.
 - `verify/` enforces `resolved graph == devservices == kb-dev status` through
   a status adapter, equally usable in a real run and an offline journey.
-- `receipt/`, `doctor/` and `diagnostics/` establish recovery, manifest-gap
+- `artifacts/`, `runtime/`, `receipt/`, `doctor/` and `diagnostics/` establish
+  exact artifact application, recovery, manifest-gap
   reporting and redacted dossiers before CLI cutover exposes the flow.
 
 This is intentionally not wired to legacy `install` yet. Connecting two
-resolvers to one production command would recreate the split-brain V2 removes.
-The cutover replaces that resolution boundary in one reviewable change while
-delegating execution to the existing engine.
+resolvers or lifecycle owners to one production command would recreate the
+split-brain V2 removes. Cutover replaces the legacy root rather than adapting
+V2 to legacy state.
 
 ## Why V2
 
@@ -42,8 +43,9 @@ actionable recovery path.
 
 ## Non-goals
 
-- Do not rewrite `internal/engine`. It remains the transaction executor:
-  action DAG, variables, journal, retries, rollback handlers and locks.
+- Do not import or wrap `internal/engine`, legacy manifests, legacy receipts or
+  legacy package-manager code. V2 owns application, recovery and artifact
+  boundaries directly.
 - Do not retain two production install semantics after cutover. Existing
   launcher code is a migration input and temporary compatibility boundary,
   not a permanent second source of truth.
