@@ -8,6 +8,7 @@
 import type { PermissionSpec } from "./permissions.js";
 import type { HostType } from "./host-context.js";
 import type { PluginServices } from "./platform.js";
+import type { LauncherManifestV2 } from "@kb-labs/core-platform";
 // ─── Studio V2 (Module Federation Pages) ───────────────────────────
 
 /**
@@ -683,6 +684,9 @@ export interface ManifestV3 {
 
   /** Plugin version (semver) */
   version: string;
+
+  /** Explicit V2 launcher projection; emitted into the release artifact. */
+  launcher?: LauncherManifestV2;
 
   /**
    * Config section identifier in kb.config.json

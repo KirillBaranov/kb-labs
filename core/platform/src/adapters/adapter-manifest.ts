@@ -13,6 +13,26 @@
 export type AdapterType = "core" | "extension" | "proxy";
 
 /**
+ * Pre-install projection consumed by kb-create. It is explicit because the
+ * adapter's runtime config schema cannot safely reveal where a user value is
+ * stored, which services receive a secret, or the compatible platform range.
+ */
+export interface LauncherManifestV2 {
+  platformRange?: string;
+  sdkRange?: string;
+  requirements?: Array<{
+    id: string;
+    path?: string;
+    required?: boolean;
+    secret?: boolean;
+    default?: unknown;
+    env?: string;
+    services?: string[];
+    hint?: string;
+  }>;
+}
+
+/**
  * Adapter dependency specification.
  *
  * Short form: runtime adapter token (config key in `platform.adapters`)
@@ -168,6 +188,9 @@ export interface AdapterManifest {
    * Format: semver (e.g., "1.0.0")
    */
   version: string;
+
+  /** Explicit V2 launcher projection; emitted into the release artifact. */
+  launcher?: LauncherManifestV2;
 
   /**
    * Adapter description (optional).

@@ -43,6 +43,7 @@ export type {
 
 export type {
   AdapterManifest,
+  LauncherManifestV2,
   AdapterType,
   AdapterDependency,
   AdapterExtension,

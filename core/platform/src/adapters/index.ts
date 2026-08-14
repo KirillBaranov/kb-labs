@@ -6,6 +6,7 @@
 // Adapter Manifest
 export type {
   AdapterManifest,
+  LauncherManifestV2,
   AdapterType,
   AdapterDependency,
   AdapterExtension,
