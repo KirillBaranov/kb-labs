@@ -1,0 +1,68 @@
+{
+  "channels": {
+    "stable": "$platform",
+    "canary": "$platform",
+    "experimental": "$platform"
+  },
+  "platforms": [
+    {
+      "id": "@kb-labs/core-runtime",
+      "package": "@kb-labs/core-runtime",
+      "sdkRange": "^2.0.0",
+      "requires": [
+        { "capability": "storage", "requiredBy": "platform default" },
+        { "capability": "logger", "requiredBy": "platform default" },
+        { "capability": "serviceTransport", "requiredBy": "platform default" }
+      ],
+      "profiles": {
+        "default": {
+          "services": [
+            { "id": "state-daemon" },
+            { "id": "workflow" },
+            { "id": "rest" },
+            { "id": "marketplace" },
+            { "id": "gateway" },
+            { "id": "mcp-daemon" },
+            { "id": "studio" }
+          ]
+        }
+      },
+      "members": [
+        { "id": "@kb-labs/cli-bin", "package": "@kb-labs/cli-bin" },
+        { "id": "@kb-labs/devkit", "package": "@kb-labs/devkit" },
+        { "id": "@kb-labs/core-contracts", "package": "@kb-labs/core-contracts" },
+        { "id": "@kb-labs/shared-cli-ui", "package": "@kb-labs/shared-cli-ui" },
+        { "id": "state-daemon", "package": "@kb-labs/core-state-daemon" },
+        { "id": "rest", "package": "@kb-labs/rest-api-app" },
+        { "id": "workflow", "package": "@kb-labs/workflow-daemon" },
+        { "id": "gateway", "package": "@kb-labs/gateway-app" },
+        { "id": "marketplace", "package": "@kb-labs/marketplace-app" },
+        { "id": "mcp-daemon", "package": "@kb-labs/mcp-app" },
+        { "id": "studio", "package": "@kb-labs/studio-app" }
+      ]
+    }
+  ],
+  "sdks": [
+    { "id": "@kb-labs/sdk", "package": "@kb-labs/sdk", "platformRange": "^2.0.0" }
+  ],
+  "plugins": [
+    { "id": "@kb-labs/marketplace", "package": "@kb-labs/marketplace-entry", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/mind", "package": "@kb-labs/mind-entry", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/agent", "package": "@kb-labs/agent-entry", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/review", "package": "@kb-labs/review-entry", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/commit", "package": "@kb-labs/commit-entry", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/scaffold", "package": "@kb-labs/scaffold", "platformRange": "^2.0.0" },
+    { "id": "@kb-labs/release", "package": "@kb-labs/release-manager-cli", "platformRange": "^2.0.0" }
+  ],
+  "adapters": [
+    { "id": "openai-llm", "package": "@kb-labs/adapters-openai", "platformRange": "^2.0.0", "provides": ["llm"] },
+    { "id": "disk-io-storage", "package": "@kb-labs/data-store", "platformRange": "^2.0.0", "provides": ["storage"] },
+    { "id": "pino-logger", "package": "@kb-labs/adapters-pino", "platformRange": "^2.0.0", "provides": ["logger"] },
+    { "id": "service-transport-http", "package": "@kb-labs/adapters-service-transport-http", "platformRange": "^2.0.0", "provides": ["serviceTransport"] },
+    { "id": "log-ringbuffer", "package": "@kb-labs/adapters-log-ringbuffer", "platformRange": "^2.0.0", "provides": ["logRingBuffer"] },
+    { "id": "analytics-file", "package": "@kb-labs/adapters-analytics-file", "platformRange": "^2.0.0", "provides": ["analytics"] },
+    { "id": "redis-cache", "package": "@kb-labs/adapters-redis", "platformRange": "^2.0.0", "provides": ["cache"] },
+    { "id": "state-broker", "package": "@kb-labs/adapters-state-broker", "platformRange": "^2.0.0", "provides": ["stateBroker"] },
+    { "id": "kblabs-gateway-llm", "package": "@kb-labs/adapters-kblabs-gateway", "platformRange": "^2.0.0", "provides": ["remoteLlm"] }
+  ]
+}

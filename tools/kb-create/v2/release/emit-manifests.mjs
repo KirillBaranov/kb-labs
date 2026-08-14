@@ -65,6 +65,9 @@ function projection(packageJson, runtimeManifest) {
   const requirements = launcher.requirements ?? [];
   if (!Array.isArray(requirements)) fail(`${packageJson.name} manifest.launcher.requirements must be an array`);
   for (const requirement of requirements) validateRequirement(requirement, packageJson.name);
+  const services = runtimeManifest?.schema === "kb.service/1"
+    ? [serviceProjection(packageJson, runtimeManifest)]
+    : [];
   return {
     schema: SCHEMA,
     // Runtime manifest ids are meaningful to people and scenarios. Packages
@@ -73,6 +76,22 @@ function projection(packageJson, runtimeManifest) {
     package: packageJson.name,
     version: packageJson.version,
     requirements,
+    ...(services.length > 0 ? { services } : {}),
+  };
+}
+
+function serviceProjection(packageJson, runtimeManifest) {
+  if (typeof runtimeManifest.id !== "string" || runtimeManifest.id.length === 0 || !runtimeManifest.runtime || typeof runtimeManifest.runtime.entry !== "string" || runtimeManifest.runtime.entry.length === 0 || !Number.isInteger(runtimeManifest.runtime.port)) {
+    fail(`${packageJson.name} has an incomplete kb.service/1 runtime manifest`);
+  }
+  return {
+    id: runtimeManifest.id,
+    // The generated file lives in the platform root, so this is deliberately
+    // rooted in node_modules rather than copied from a monorepo dev command.
+    command: `node ./node_modules/${packageJson.name}/${runtimeManifest.runtime.entry}`,
+    port: runtimeManifest.runtime.port,
+    dependsOn: runtimeManifest.dependsOn ?? [],
+    required: true,
   };
 }
 

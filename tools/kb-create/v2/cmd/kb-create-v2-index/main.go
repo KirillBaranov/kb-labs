@@ -18,16 +18,17 @@ func main() {
 	input := flag.String("input", "", "normalized V2 release-index export JSON")
 	output := flag.String("output", "", "sealed immutable release-index JSON")
 	manifestRoot := flag.String("manifest-root", "", "staging root containing exact V2 package manifests")
+	stageManifest := flag.String("stage-manifest", "", "exact release stage manifest.json used to hydrate artifact versions and checksums")
 	flag.Parse()
-	if err := run(*input, *output, *manifestRoot); err != nil {
+	if err := run(*input, *output, *manifestRoot, *stageManifest); err != nil {
 		_ = json.NewEncoder(os.Stderr).Encode(map[string]any{"ok": false, "error": map[string]string{"code": "KB_CREATE_RELEASE_INDEX_INVALID", "message": "could not seal V2 release index", "cause": err.Error(), "hint": "fix the normalized manifest export before publishing the release"}})
 		os.Exit(2)
 	}
 }
 
-func run(input, output, manifestRoot string) error {
-	if input == "" || output == "" || manifestRoot == "" {
-		return fmt.Errorf("--input, --output and --manifest-root are required")
+func run(input, output, manifestRoot, stageManifest string) error {
+	if input == "" || output == "" || manifestRoot == "" || stageManifest == "" {
+		return fmt.Errorf("--input, --output, --manifest-root and --stage-manifest are required")
 	}
 	data, err := os.ReadFile(input)
 	if err != nil {
@@ -36,6 +37,10 @@ func run(input, output, manifestRoot string) error {
 	var source catalog.Catalog
 	if err := json.Unmarshal(data, &source); err != nil {
 		return err
+	}
+	source, err = release.HydrateArtifacts(source, stageManifest)
+	if err != nil {
+		return fmt.Errorf("hydrate exact staged artifacts: %w", err)
 	}
 	source, err = release.EnrichWithManifests(source, manifestRoot)
 	if err != nil {

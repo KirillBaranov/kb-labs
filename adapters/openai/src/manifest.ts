@@ -24,6 +24,32 @@ export const manifest: AdapterManifest = {
       functionCalling: true,
     },
   },
+  // This is the install-time projection, deliberately separate from the
+  // runtime schema. It tells kb-create where the value is stored and which
+  // process receives a secret; doctor can therefore diagnose it after an
+  // installation without guessing from a TypeScript config shape.
+  launcher: {
+    requirements: [
+      {
+        id: "openai-api-key",
+        required: true,
+        secret: true,
+        env: "OPENAI_API_KEY",
+        services: ["gateway"],
+        hint: "Create an API key at platform.openai.com and pass it through OPENAI_API_KEY.",
+      },
+      {
+        id: "openai-model",
+        path: "/platform/adapterOptions/llm/model",
+        default: "gpt-4o",
+      },
+      {
+        id: "openai-temperature",
+        path: "/platform/adapterOptions/llm/temperature",
+        default: 0.7,
+      },
+    ],
+  },
   configSchema: {
     apiKey: {
       type: "string",

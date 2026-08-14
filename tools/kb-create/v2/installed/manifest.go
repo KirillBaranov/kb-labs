@@ -24,6 +24,7 @@ type Manifest struct {
 	Package      string               `json:"package"`
 	Version      string               `json:"version"`
 	Requirements []doctor.Requirement `json:"requirements,omitempty"`
+	Services     []contracts.Service  `json:"services,omitempty"`
 }
 
 // DoctorInput loads requirements only from the exact packages recorded in the
@@ -96,6 +97,11 @@ func Load(platformRoot string, artifact contracts.Artifact) (Manifest, error) {
 	for _, requirement := range manifest.Requirements {
 		if requirement.ID == "" || (!requirement.Secret && requirement.Path == "") || (requirement.Secret && strings.TrimSpace(requirement.ID) == "") {
 			return Manifest{}, fmt.Errorf("installed manifest %s has invalid configuration requirement", artifact.Package)
+		}
+	}
+	for _, service := range manifest.Services {
+		if service.ID == "" || strings.TrimSpace(service.Command) == "" {
+			return Manifest{}, fmt.Errorf("installed manifest %s has invalid service declaration", artifact.Package)
 		}
 	}
 	return manifest, nil
