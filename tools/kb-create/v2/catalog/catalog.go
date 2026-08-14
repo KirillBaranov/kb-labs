@@ -62,8 +62,8 @@ func Validate(source Catalog) error {
 	}
 	seen := map[string]bool{}
 	for _, platform := range source.Platforms {
-		if platform.ID == "" || platform.Version == "" || platform.Package == "" || platform.SHA256 == "" {
-			return fmt.Errorf("platform bundle must declare ID, version, package and sha256")
+		if platform.ID == "" || platform.Version == "" || platform.Package == "" || platform.SHA256 == "" || platform.Tarball == "" {
+			return fmt.Errorf("platform bundle must declare ID, version, package, tarball and sha256")
 		}
 		key := platform.ID + "@" + platform.Version
 		if seen[key] {
@@ -77,6 +77,16 @@ func Validate(source Catalog) error {
 			if binary.ID == "" || binary.OS == "" || binary.Arch == "" || binary.URL == "" || binary.SHA256 == "" || binary.Filename == "" {
 				return fmt.Errorf("platform bundle %q has incomplete binary artifact", key)
 			}
+		}
+	}
+	for _, component := range append(append([]Component(nil), source.SDKs...), source.Plugins...) {
+		if component.ID == "" || component.Version == "" || component.Package == "" || component.SHA256 == "" || component.Tarball == "" {
+			return fmt.Errorf("component must declare ID, version, package, tarball and sha256")
+		}
+	}
+	for _, adapter := range source.Adapters {
+		if adapter.ID == "" || adapter.Version == "" || adapter.Package == "" || adapter.SHA256 == "" || adapter.Tarball == "" {
+			return fmt.Errorf("adapter must declare ID, version, package, tarball and sha256")
 		}
 	}
 	return nil
@@ -140,6 +150,7 @@ type PlatformBundle struct {
 	Version  string                            `json:"version"`
 	Package  string                            `json:"package"`
 	SHA256   string                            `json:"sha256"`
+	Tarball  string                            `json:"tarball"`
 	SDKRange string                            `json:"sdkRange,omitempty"`
 	Profiles map[string]contracts.ServiceGraph `json:"profiles"`
 	Requires []Requirement                     `json:"requires,omitempty"`
@@ -163,6 +174,7 @@ type Component struct {
 	Version       string              `json:"version"`
 	Package       string              `json:"package"`
 	SHA256        string              `json:"sha256"`
+	Tarball       string              `json:"tarball"`
 	PlatformRange string              `json:"platformRange,omitempty"`
 	SDKRange      string              `json:"sdkRange,omitempty"`
 	Requires      []Requirement       `json:"requires,omitempty"`

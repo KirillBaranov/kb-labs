@@ -5,9 +5,11 @@ package artifacts
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +34,7 @@ type Pnpm struct {
 	Root     string
 	Registry string
 	Offline  bool
+	Client   *http.Client
 	Runner   Runner
 	// Log receives the complete package-manager transcript. It is deliberately
 	// file-oriented: raw package-manager output must never pollute human or JSON
@@ -43,7 +46,7 @@ func (p Pnpm) Install(items []contracts.Artifact) error {
 	if err := p.prepare(); err != nil {
 		return err
 	}
-	specs, err := specs(items)
+	specs, err := p.specs(items)
 	if err != nil {
 		return err
 	}
@@ -62,7 +65,7 @@ func (p Pnpm) Uninstall(items []contracts.Artifact) error {
 	if err := p.prepare(); err != nil {
 		return err
 	}
-	specs, err := specs(items)
+	specs, err := p.specs(items)
 	if err != nil {
 		return err
 	}
@@ -115,7 +118,7 @@ func (p Pnpm) prepare() error {
 	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
-func specs(items []contracts.Artifact) ([]string, error) {
+func (p Pnpm) specs(items []contracts.Artifact) ([]string, error) {
 	seen := make(map[string]struct{}, len(items))
 	result := make([]string, 0, len(items))
 	for _, item := range items {
@@ -126,6 +129,13 @@ func specs(items []contracts.Artifact) ([]string, error) {
 			return nil, fmt.Errorf("artifact %q must declare package and exact version", item.ID)
 		}
 		spec := item.Package + "@" + item.Version
+		if item.Tarball != "" {
+			path, err := p.tarball(item)
+			if err != nil {
+				return nil, err
+			}
+			spec = "file:" + path
+		}
 		if _, exists := seen[spec]; !exists {
 			seen[spec] = struct{}{}
 			result = append(result, spec)
@@ -133,4 +143,45 @@ func specs(items []contracts.Artifact) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+func (p Pnpm) tarball(item contracts.Artifact) (string, error) {
+	if item.SHA256 == "" {
+		return "", fmt.Errorf("artifact %q tarball requires sha256", item.ID)
+	}
+	path := filepath.Join(p.Root, ".kb", "v2", "cache", "packages", item.SHA256+".tgz")
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		if p.Offline {
+			return "", fmt.Errorf("offline package %s is absent from V2 cache", item.ID)
+		}
+		client := p.Client
+		if client == nil {
+			client = http.DefaultClient
+		}
+		response, getErr := client.Get(item.Tarball)
+		if getErr != nil {
+			return "", fmt.Errorf("download package %s: %w", item.ID, getErr)
+		}
+		data, err = io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		if err != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
+			return "", fmt.Errorf("download package %s: status %d: %v", item.ID, response.StatusCode, err)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(path+".tmp", data, 0o600); err != nil {
+			return "", err
+		}
+		if err := os.Rename(path+".tmp", path); err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	}
+	if fmt.Sprintf("%x", sha256.Sum256(data)) != item.SHA256 {
+		return "", fmt.Errorf("package %s checksum mismatch", item.ID)
+	}
+	return path, nil
 }

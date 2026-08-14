@@ -7,7 +7,7 @@ import (
 )
 
 func TestSealAndVerifyImmutableReleaseIndex(t *testing.T) {
-	source, err := Seal(Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "artifact", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}})
+	source, err := Seal(Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "artifact", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}})
 	if err != nil || source.Digest == "" || Verify(source) != nil {
 		t.Fatalf("source/error = %#v / %v", source, err)
 	}
@@ -18,7 +18,7 @@ func TestSealAndVerifyImmutableReleaseIndex(t *testing.T) {
 }
 
 func TestValidateRejectsChannelOutsideIndex(t *testing.T) {
-	_, err := Seal(Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "missing"}, Platforms: []PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "artifact", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}})
+	_, err := Seal(Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "missing"}, Platforms: []PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "artifact", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}})
 	if err == nil {
 		t.Fatal("expected absent channel target")
 	}

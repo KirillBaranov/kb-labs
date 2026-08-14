@@ -15,6 +15,7 @@ type Artifact struct {
 	Version string `json:"version"`
 	SHA256  string `json:"sha256"`
 	URL     string `json:"url,omitempty"`
+	Tarball string `json:"tarball,omitempty"`
 	Target  string `json:"target,omitempty"`
 }
 

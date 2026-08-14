@@ -38,7 +38,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 		}
 	}
 	graph.PlatformVersion, graph.Profile = platform.Version, profileName(request.ServiceProfile)
-	artifacts := []contracts.Artifact{{ID: platform.ID, Kind: "platform", Package: platform.Package, Version: platform.Version, SHA256: platform.SHA256}}
+	artifacts := []contracts.Artifact{{ID: platform.ID, Kind: "platform", Package: platform.Package, Version: platform.Version, SHA256: platform.SHA256, Tarball: platform.Tarball}}
 	for _, binary := range platform.Binaries {
 		if binary.OS == runtime.GOOS && binary.Arch == runtime.GOARCH {
 			artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.Filename})
@@ -122,7 +122,7 @@ func profileName(value string) string {
 	return value
 }
 func artifact(c catalog.Component, kind string) contracts.Artifact {
-	return contracts.Artifact{ID: c.ID, Kind: kind, Package: c.Package, Version: c.Version, SHA256: c.SHA256}
+	return contracts.Artifact{ID: c.ID, Kind: kind, Package: c.Package, Version: c.Version, SHA256: c.SHA256, Tarball: c.Tarball}
 }
 func findPlatform(items []catalog.PlatformBundle, version string) (catalog.PlatformBundle, bool) {
 	for _, v := range items {

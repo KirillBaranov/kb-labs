@@ -265,7 +265,7 @@ func TestPlatformDirMkdirFailsHardAbort(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected kb-create to fail against a read-only platform parent, got success:\n%s", out)
 	}
-	if !strings.Contains(out, "platform destination") || !strings.Contains(out, "not writable") {
+	if !strings.Contains(out, "ERR_INSTALL_WRITE") || !strings.Contains(out, "permission denied") || !strings.Contains(out, "check disk space and permissions") {
 		t.Errorf("expected actionable platform permission diagnostic, got:\n%s", out)
 	}
 	if _, statErr := os.Stat(platformDir); statErr == nil {

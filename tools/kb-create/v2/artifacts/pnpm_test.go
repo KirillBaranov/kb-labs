@@ -2,8 +2,13 @@ package artifacts
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -14,6 +19,23 @@ type call struct {
 	name string
 	args []string
 }
+
+func TestPnpmUsesVerifiedTarballInsteadOfRegistrySpec(t *testing.T) {
+	payload := []byte("package-bytes")
+	sum := fmt.Sprintf("%x", sha256.Sum256(payload))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write(payload) }))
+	defer server.Close()
+	root := t.TempDir()
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: root, Runner: runner}).Install([]contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2", SHA256: sum, Tarball: server.URL}}); err != nil {
+		t.Fatal(err)
+	}
+	want := "file:" + filepath.Join(root, ".kb", "v2", "cache", "packages", sum+".tgz")
+	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args[4:], []string{want}) {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+}
+
 type fakeRunner struct {
 	calls []call
 	err   error
