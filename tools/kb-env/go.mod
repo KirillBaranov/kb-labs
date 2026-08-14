@@ -2,7 +2,7 @@ module github.com/kb-labs/env
 
 go 1.25.0
 
-toolchain go1.25.12
+toolchain go1.25.13
 
 require (
 	github.com/kb-labs/clikit v0.0.0
