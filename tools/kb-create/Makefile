@@ -14,17 +14,17 @@ build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 	chmod +x $(BINARY)
 
-## test: run fast unit tests (skips network-bound e2e)
+## test: run the V2 launcher contract suite
 test:
-	go test -race -count=1 -short ./...
+	go test -race -count=1 ./v2/...
 
-## e2e: run full end-to-end suite (installs platform from npm — requires network)
+## e2e: run deterministic V2 end-to-end journeys
 e2e:
-	go test -v -race -count=1 -timeout 35m $(if $(E2E_RUN),-run "$(E2E_RUN)",) ./e2e/...
+	go test -v -race -count=1 -timeout 12m ./v2/journey ./v2/lifecycle
 
-## e2e-release-smoke: bounded public-artifact promotion gate
+## e2e-release-smoke: V2 offline candidate smoke contract
 e2e-release-smoke:
-	go test -v -race -count=1 -timeout 12m -run '^TestReleaseCandidateJourney$$' ./e2e/...
+	go test -v -race -count=1 -timeout 12m ./v2/journey
 
 ## cover: run tests and open coverage report in browser (skips network-bound e2e — use `make e2e` separately)
 cover:

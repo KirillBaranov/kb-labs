@@ -30,11 +30,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── 0. kb-create V2 contract matrix — deterministic and independent ───────
+  # ── 0. kb-create contract matrix — deterministic and independent ──────────
   # Kept separate from Verdaccio/Docker launcher E2E so a configuration or
   # recovery regression has a small, stable failure domain.
   launcher-v2-contracts:
-    name: kb-create V2 / ${{ matrix.shard }}
+    name: kb-create / ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -42,7 +42,7 @@ jobs:
       matrix:
         include:
           - shard: resolver-config
-            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
+            packages: . ./v2/catalog ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
           - shard: runtime-recovery
             packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
           - shard: doctor-diagnostics
@@ -60,7 +60,7 @@ jobs:
         with:
           go-version: '1.25'
           cache-dependency-path: tools/kb-create/go.sum
-      - name: Enforce autonomous V2 boundary
+      - name: Enforce autonomous launcher boundary
         run: |
           if go list -deps ${{ matrix.packages }} | grep -q '^github.com/kb-labs/create/internal/'; then
             echo 'V2 must not import legacy launcher internals.' >&2
@@ -259,16 +259,15 @@ jobs:
       - name: Run coverage
         run: pnpm coverage
 
-  # ── 5. kb-create e2e — always on main ──────────────────────────────────────
+  # ── 5. kb-create V2 artifact journey ──────────────────────────────────────
   #
-  # Runs on every push to main (no gate). Uses Verdaccio populated from the
-  # monorepo build — validates pre-publish packages that may not be on npm yet.
+  # Runs deterministic offline installation and recovery paths. Registry
+  # publication is reserved for the post-publish candidate gate.
   #
   # Setup order:
-  #   build → pack .tgz → start Verdaccio (Docker, port 4873) →
-  #   publish → run Go e2e tests with KB_REGISTRY_URL=http://localhost:4873
+  #   build → V2 sealed fixture → apply → verify → recovery
   launcher-e2e:
-    name: kb-create e2e / ${{ matrix.shard }}
+    name: kb-create / ${{ matrix.shard }}
     runs-on: ubuntu-latest
     needs: [build-tools, build]
     timeout-minutes: 60
@@ -277,32 +276,15 @@ jobs:
       fail-fast: false
       matrix:
         shard:
-          - core-a
-          - core-b
-          - journeys
-          - lifecycle
+          - offline-journey
 
     env:
-      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.ci-launcher.yml
-      COMPOSE_PROJECT_NAME: kb-e2e-launcher
-      # This job tests the freshly packed workspace in local Verdaccio. Do not
-      # fetch the public stable installer manifest (which may point at an older
-      # release than this checkout); use the embedded product manifest and the
-      # local registry packages instead.
       KB_CREATE_OFFLINE: "1"
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: pnpm/action-setup@v4
-        with: { run_install: false }
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
 
       - uses: actions/setup-go@v5
         with:
@@ -319,94 +301,17 @@ jobs:
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-
-      - name: Extract dist artifacts
-        run: tar xf dist-artifacts.tar
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Pack @kb-labs/* packages
-        run: bash e2e/scripts/pack-all.sh
-
-      - name: Validate packed package metadata
-        run: bash e2e/scripts/validate-packed-packages.sh "$GITHUB_WORKSPACE/e2e/packages"
-
-      - name: Pre-pull BuildKit image
-        run: |
-          for i in 1 2 3; do
-            docker pull moby/buildkit:buildx-stable-1 && break
-            echo "Attempt $i failed, retrying in 15s…"
-            sleep 15
-          done
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        timeout-minutes: 5
-
-      - name: Build publisher image
-        run: |
-          docker buildx build \
-            --load \
-            -t kb-e2e-ci-publisher:latest \
-            -f e2e/publisher/Dockerfile \
-            e2e/
-
-      - name: Prepare Verdaccio storage permissions
-        run: |
-          mkdir -p e2e/.verdaccio-storage
-          sudo chown -R 10001:65533 e2e/.verdaccio-storage
-
-      - name: Start Verdaccio
-        run: docker compose up -d verdaccio
-
-      - name: Wait for Verdaccio to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            if docker compose ps verdaccio | grep -q "healthy"; then
-              echo "Verdaccio healthy after $((i * 2))s"; break
-            fi
-            sleep 2
-          done
-
-      - name: Publish packages to Verdaccio
-        run: docker compose run --rm publisher
-
-      - name: Test curl installer entrypoint
-        run: bash tools/kb-create/install_test.sh
-
-      - name: Run kb-create e2e via devkit
+      - name: Run kb-create V2 offline journey via devkit
         run: |
           ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache \
             2>&1 | tee /tmp/kb-create-e2e-devkit.log; exit "${PIPESTATUS[0]}"
         env:
-          KB_REGISTRY_URL: http://localhost:4873
-          GITHUB_TOKEN: ${{ github.token }}
-          # setup-node may expose NPM_CONFIG_REGISTRY globally; keep the
-          # launcher e2e install on the local testbed registry explicitly.
-          NPM_CONFIG_REGISTRY: http://localhost:4873
           KB_DEVKIT_FAIL_LINES: 0
-          E2E_RUN: >-
-            ${{ matrix.shard == 'core-a' && '^Test(DeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply|Help|Version|SubcommandHelp|StatusMissingPlatform|DoctorNoArgs|InstallYes|FirstCommitNoChanges|FirstCommitPromptShown|Update|ReinstallIdempotent|LogsCommand|KbCliSmoke|ServicesStartStop|LLMFlagRemoved|NoLLMByDefault|DefaultKeepsAuthOn|LocalModeWritesAuthOff)$' || matrix.shard == 'core-b' && '^Test(NoPeerDepWarnings|PlatformFilesGenerated|GitignoreEntries|DemoReviewSkipsUntrackedOnly|DemoHintShownAfterZeroFindings|KbConfigShowSplitRoot|GeneratedWorkflowsUseWorkflowIdFlag|GeneratedDemoWorkflowUsesRealCommands|DemoFlagDoesNotChangeInstalledPackages|DoctorDockerCheckIsAdvisoryNotFatal|InstallScopedPlugin|InstallUnknownPluginFailsFast)$' || matrix.shard == 'journeys' && '^Test(TwoProjectsShareOnePlatformIsolated|NoPlaceholderValuesInGeneratedConfigs|SoloDeveloperJourney|LegacyProjectMigrationJourney|CIInstallJourney_PinnedPluginsServicesAndAdapters|CIInstallJourney_UnconfiguredRequiredCapabilityWarns|CIInstallJourney_ExecutesInstalledPlugin|PlatformUpdateAndUninstallPreservesUserArtifacts|AdapterSwitchJourney|KbDevRegistrySwitch_MultiProjectSharedPlatform)$' || '^Test(Lifecycle_InstallSwapRollback|PlatformDirMkdirFailsHardAbort|UninstallRetryThenHardFail)$' }}
 
       - name: Upload kb-create e2e log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: kb-create-e2e-log-${{ github.run_id }}
+          name: kb-create-v2-e2e-log-${{ github.run_id }}
           path: /tmp/kb-create-e2e-devkit.log
           retention-days: 14
-
-      - name: Stop Verdaccio
-        if: always()
-        run: docker compose down --volumes --remove-orphans || true
-
-      - name: Restore Verdaccio storage ownership for cache save
-        if: always()
-        run: |
-          if [ -d e2e/.verdaccio-storage ]; then
-            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
-          fi

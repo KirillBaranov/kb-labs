@@ -663,11 +663,11 @@ tasks:
       outputs:
         - "coverage.out"
 
-  # e2e: Playwright domain suites + Go binary integration tests.
+  # e2e: Playwright domain suites + deterministic Go launcher journeys.
   # Playwright: kb-devkit run e2e --packages @kb-labs/e2e-workflows (one domain)
   #             kb-devkit run e2e --affected                         (changed only)
   #             kb-devkit run e2e                                    (all)
-  # Go:         only kb-create has a real suite; others are no-ops for uniformity.
+  # Go:         kb-create owns a V2 offline journey suite; others are no-ops.
   # CLI handler tests — fast, no daemon required.
   # Run: kb-devkit run test:cli
   # Run affected only: kb-devkit run test:cli --affected
@@ -710,7 +710,7 @@ tasks:
         - "go.mod"
         - "go.sum"
         - "Makefile"
-        - "internal/manifest/manifest.json"
+        - "v2/**"
       outputs: []
 
 # ──────────────────────────────────────────────────────────────────────────────
