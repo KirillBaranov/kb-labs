@@ -105,6 +105,12 @@ jobs:
       - name: Build (topological order)
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
 
+      # This belongs to the release workflow: it projects each built runtime
+      # manifest into a JSON-only launcher sidecar before `pnpm pack`. The
+      # release plugin keeps doing exactly one thing — producing tarballs.
+      - name: Emit V2 launcher manifests into built packages
+        run: node tools/kb-create/v2/release/emit-manifests.mjs .
+
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
 
