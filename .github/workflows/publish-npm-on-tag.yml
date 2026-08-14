@@ -114,6 +114,21 @@ jobs:
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
 
+      - name: Add independently released SDK to platform index input
+        if: startsWith(github.ref_name, 'platform-v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_version="$(node -p 'require("./sdk/sdk/package.json").version')"
+          mkdir -p .kb/release/index-artifacts
+          npm pack "@kb-labs/sdk@${sdk_version}" --pack-destination .kb/release/index-artifacts >/dev/null
+          sdk_tarball="$(find .kb/release/index-artifacts -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "$sdk_tarball"
+          node tools/kb-create/v2/release/prepare-index-stage.mjs \
+            --stage-manifest .kb/release/artifacts/manifest.json \
+            --sdk-tarball "$sdk_tarball" \
+            --output .kb/release/index-artifacts
+
       # The release plugin owns only exact tarballs. The launcher contract is
       # a workflow gate: inspect those bytes after staging, before anything is
       # uploaded or published. A missing/mismatched V2 package manifest is a
@@ -122,9 +137,9 @@ jobs:
         if: startsWith(github.ref_name, 'platform-v')
         run: |
           go run ./v2/cmd/kb-create-v2-stage-manifests \
-            --stage-manifest .kb/release/artifacts/manifest.json \
+            --stage-manifest ../../.kb/release/index-artifacts/manifest.json \
             --topology ./v2/release/platform-topology.json \
-            --output .kb/release/v2-manifests
+            --output ../../.kb/release/v2-manifests
         working-directory: tools/kb-create
 
       # Topology is reviewed source; versions, tarball names, checksums,
@@ -136,9 +151,9 @@ jobs:
         run: |
           go run ./v2/cmd/kb-create-v2-index \
             --input ./v2/release/platform-topology.json \
-            --stage-manifest .kb/release/artifacts/manifest.json \
-            --manifest-root .kb/release/v2-manifests \
-            --output .kb/release/artifacts/release-index.draft.json
+            --stage-manifest ../../.kb/release/index-artifacts/manifest.json \
+            --manifest-root ../../.kb/release/v2-manifests \
+            --output ../../.kb/release/artifacts/release-index.draft.json
         working-directory: tools/kb-create
 
       - name: Archive built workspace output for delivery
@@ -160,6 +175,14 @@ jobs:
           path: .kb/release/artifacts/
           # Promotion is a separate manual workflow; retain the exact staged
           # manifest/tarballs long enough for a human gate and investigation.
+          retention-days: 30
+
+      - name: Archive platform index inputs
+        if: startsWith(github.ref_name, 'platform-v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-create-index-input
+          path: .kb/release/index-artifacts/
           retention-days: 30
 
   deliver-candidate:
@@ -202,6 +225,12 @@ jobs:
           name: release-artifacts
           path: .kb/release/artifacts/
 
+      - uses: actions/download-artifact@v4
+        if: startsWith(github.ref_name, 'platform-v')
+        with:
+          name: kb-create-index-input
+          path: .kb/release/index-artifacts/
+
       - name: Restore built workspace output
         run: tar -xzf .kb/release/artifacts/workspace-dist.tar.gz -C .
 
@@ -218,9 +247,9 @@ jobs:
         if: startsWith(github.ref_name, 'platform-v')
         run: |
           go run ./v2/cmd/kb-create-v2-bind-registry \
-            --input .kb/release/artifacts/release-index.draft.json \
-            --stage-manifest .kb/release/artifacts/manifest.json \
-            --output .kb/release/artifacts/release-index.json
+            --input ../../.kb/release/artifacts/release-index.draft.json \
+            --stage-manifest ../../.kb/release/index-artifacts/manifest.json \
+            --output ../../.kb/release/artifacts/release-index.json
         working-directory: tools/kb-create
 
       - name: Archive installable V2 release-index
