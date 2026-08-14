@@ -161,6 +161,17 @@ export {
   type SafeValidationResult,
 } from "@kb-labs/shared-command-kit";
 
+// Re-export job definition helpers from shared-command-kit — same
+// PluginContextV3 + composable-hook pattern as CLI commands, so handlers
+// scheduled via manifest `cron.schedules` can reuse `usePlatform()` et al.
+export {
+  defineJob,
+  type JobHandler,
+  type JobDefinition,
+  type JobInput,
+  type DefinedJob,
+} from "@kb-labs/shared-command-kit";
+
 // Re-export platform adapter types from core-platform
 export type {
   ILLM,
@@ -201,6 +212,10 @@ export type {
   BulkResult,
   IKVStore,
   SetOpts,
+  // Artifact storage contract (for job/command outputs — reports, snapshots, ...)
+  IArtifacts,
+  ArtifactMeta,
+  ArtifactWriteOptions,
   // Service transport adapter contract (for adapter authors)
   IServiceTransport,
   ServiceConnectionInfo,
