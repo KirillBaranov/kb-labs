@@ -56,7 +56,7 @@ describe('event functions', () => {
     it('filters by since (epoch ms lower bound)', async () => {
       await addEvent({ subjectType: 'project', subjectId: 'prj_1', kind: 'note', text: 'old' });
       const cutoff = Date.now() + 1;
-      await new Promise((r) => setTimeout(r, 2));
+      await new Promise((r) => { setTimeout(r, 2); });
       await addEvent({ subjectType: 'project', subjectId: 'prj_1', kind: 'note', text: 'new' });
 
       const recent = await listEvents({ since: cutoff });
@@ -65,7 +65,7 @@ describe('event functions', () => {
 
     it('sorts newest first', async () => {
       const first = await addEvent({ subjectType: 'project', subjectId: 'prj_1', kind: 'note', text: 'first' });
-      await new Promise((r) => setTimeout(r, 2));
+      await new Promise((r) => { setTimeout(r, 2); });
       const second = await addEvent({ subjectType: 'project', subjectId: 'prj_1', kind: 'note', text: 'second' });
 
       const events = await listEvents({ subjectId: 'prj_1' });

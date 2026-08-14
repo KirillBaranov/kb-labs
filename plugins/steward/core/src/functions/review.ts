@@ -83,7 +83,7 @@ export async function checkIntegrity(): Promise<IntegrityReport> {
     for (const name of collectionNames) {
       const prev = previousCounts[name] ?? 0;
       const curr = counts[name] ?? 0;
-      if (prev > 0 && curr < prev * 0.8) suspiciousDrops.push(name);
+      if (prev > 0 && curr < prev * 0.8) {suspiciousDrops.push(name);}
     }
   }
 

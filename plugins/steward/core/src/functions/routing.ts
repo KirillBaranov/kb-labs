@@ -41,7 +41,7 @@ export async function whoToContact(input: WhoToContactInput): Promise<ContactCan
 
     for (const member of matching) {
       const person = await docs.findById<Person>(COLLECTIONS.people, member.personId);
-      if (person) candidates.push({ person, source: 'project', priority: member.priority });
+      if (person) {candidates.push({ person, source: 'project', priority: member.priority });}
     }
   }
 

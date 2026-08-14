@@ -11,8 +11,8 @@ import { getDb } from '../db.js';
 import { appendEvent } from './event.js';
 
 export function isStale(c: Commitment, now = Date.now()): boolean {
-  if (c.status !== 'open') return false;
-  if (c.snoozedUntil && c.snoozedUntil > now) return false;
+  if (c.status !== 'open') {return false;}
+  if (c.snoozedUntil && c.snoozedUntil > now) {return false;}
   const dueAt = c.remindAt ?? c.createdAt + c.staleAfterDays * 24 * 60 * 60 * 1000;
   return dueAt < now;
 }
@@ -79,7 +79,7 @@ export async function commitmentDrop(input: CommitmentDropInput): Promise<Commit
 export async function commitmentSnooze(input: CommitmentSnoozeInput): Promise<Commitment | null> {
   const docs = await getDb();
   const before = await docs.findById<Commitment>(COLLECTIONS.commitments, input.id);
-  if (!before) return null;
+  if (!before) {return null;}
 
   const updated = await docs.updateById<Commitment>(COLLECTIONS.commitments, input.id, {
     $set: { snoozedUntil: input.until },

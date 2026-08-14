@@ -96,7 +96,7 @@ describe('commitment functions', () => {
 
     it('sorts newest first', async () => {
       const first = await addCommitment({ text: 'First', staleAfterDays: 14 });
-      await new Promise((r) => setTimeout(r, 2));
+      await new Promise((r) => { setTimeout(r, 2); });
       const second = await addCommitment({ text: 'Second', staleAfterDays: 14 });
 
       const all = await listCommitments({ staleOnly: false });

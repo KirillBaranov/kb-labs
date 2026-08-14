@@ -20,7 +20,7 @@ export async function getDb(): Promise<IDocumentDatabase> {
 let ensured = false;
 
 async function ensureCollections(docs: IDocumentDatabase): Promise<void> {
-  if (ensured) return;
+  if (ensured) {return;}
   await Promise.all([
     docs.ensureCollection(COLLECTIONS.projects, {
       indexes: [{ path: 'name' }, { path: 'status' }],

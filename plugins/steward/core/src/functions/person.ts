@@ -64,7 +64,7 @@ export async function updatePerson(input: UpdatePersonInput): Promise<Person | n
 export async function getPerson(idOrName: string): Promise<Person | null> {
   const docs = await getDb();
   const byId = await docs.findById<Person>(COLLECTIONS.people, idOrName);
-  if (byId) return byId;
+  if (byId) {return byId;}
   const [byName] = await docs.find<Person>(COLLECTIONS.people, { name: { $eq: idOrName } });
   return byName ?? null;
 }

@@ -30,7 +30,7 @@ export async function addProject(input: AddProjectInput): Promise<Project> {
 export async function updateProject(input: UpdateProjectInput): Promise<Project | null> {
   const docs = await getDb();
   const before = await docs.findById<Project>(COLLECTIONS.projects, input.id);
-  if (!before) return null;
+  if (!before) {return null;}
 
   const updated = await docs.updateById<Project>(COLLECTIONS.projects, input.id, {
     $set: {
@@ -73,7 +73,7 @@ export async function getProject(idOrName: string): Promise<ProjectCard | null> 
     const [byName] = await docs.find<Project>(COLLECTIONS.projects, { name: { $eq: idOrName } });
     project = byName ?? null;
   }
-  if (!project) return null;
+  if (!project) {return null;}
 
   const [resources, members] = await Promise.all([
     docs.find<Resource>(COLLECTIONS.resources, { projectId: { $eq: project.id } }),
