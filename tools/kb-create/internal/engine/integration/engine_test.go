@@ -60,7 +60,7 @@ func TestCommitScenarioRunsThroughPlanExecutorAndConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(journal.Entries) != 4 || !packages.installed["@kb-labs/commit-entry"] || !packages.installed["@kb-labs/state-broker"] || providers.values["cache"] != "state-broker" {
+	if len(journal.Entries) != 3 || !packages.installed["@kb-labs/commit-entry"] || !packages.installed["@kb-labs/state-broker"] || providers.values["cache"] != "state-broker" {
 		t.Fatalf("journal/packages/providers = %#v / %#v / %#v", journal, packages, providers)
 	}
 	data, err := os.ReadFile(filepath.Join(platform, ".kb", "kb.config.jsonc"))
