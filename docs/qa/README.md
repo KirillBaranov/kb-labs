@@ -3,6 +3,15 @@
 Manual scenario testing — the source of truth for what a real user can do in the system.
 Forms the basis for automated e2e tests and pre-release regression checks.
 
+> **Launcher cutover:** PC-001, S-001 and S-023–S-025 are the maintained V2
+> launcher acceptance cases. They use a sealed release index, request/plan,
+> receipt and snapshot operations. Older scenario files that mention
+> positional `kb-create`, `marketplace.lock`, `kb.config.json`, `validate`,
+> `install-service` or `swap` are historical product/design records, not
+> executable V2 launcher instructions. Their feature intent remains useful;
+> migrate their command-level steps before treating them as release gates.
+> See [QA and E2E strategy](TESTING-STRATEGY.md).
+
 ## How to use
 
 ### Manual run (pre-release)
@@ -37,8 +46,8 @@ Forms the basis for automated e2e tests and pre-release regression checks.
 |---|---|---|---|---|
 | [S-001](scenarios/S-001-solo-install-first-run.md) | Solo — Install & First Run | solo-developer | P0 | e2e-done |
 | [S-023](scenarios/S-023-platform-update.md) | Platform — Update | solo-developer | P0 | e2e-done |
-| [S-024](scenarios/S-024-platform-rollback.md) | Platform — Rollback | solo-developer | P1 | manual |
-| [S-025](scenarios/S-025-diagnose-broken-setup.md) | Platform — Diagnose broken setup | solo-developer | P1 | manual |
+| [S-024](scenarios/S-024-platform-rollback.md) | Platform — Rollback | solo-developer | P1 | e2e-done |
+| [S-025](scenarios/S-025-diagnose-broken-setup.md) | Platform — Diagnose broken setup | solo-developer | P1 | e2e-done |
 
 ### Workflows
 | ID | Title | Persona | Priority | Automation |

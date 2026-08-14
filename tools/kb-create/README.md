@@ -22,9 +22,9 @@ The V2 boundary is executable and covered by an offline journey test:
   `v2/diagnostics/` establish
   exact artifact application, recovery, manifest-gap
   reporting and redacted dossiers for the public CLI.
-- the root `kb-create` binary provides `plan`,
-  `apply`, `update`, `uninstall`, explicit `rollback`, and manifest-aware
-  `doctor` all use V2 contracts and emit one JSON envelope.
+- the root `kb-create` binary provides `plan`, `apply`, `update`, `uninstall`,
+  explicit `rollback`, manifest-aware `doctor`, and `wizard`; all use V2
+  contracts and emit one JSON envelope.
 
 There is no legacy `install` path. `kb-create apply` is the only installation
 operation; it accepts the same request whether it came from CI, an agent,
@@ -142,10 +142,10 @@ exception to a direct user selection.
 All transports compile to the same request and invoke the same operations:
 
 ```text
-plan → apply → status → verify
+plan → apply → receipt → verify
 update → snapshot → apply → verify | rollback
-uninstall → plan → apply → verify
-doctor --fix → recovery plan → apply → verify
+uninstall → snapshot → apply → verify
+doctor --fix → safe recovery → verify
 ```
 
 `InstallRequest` supports the same first-class axes everywhere:
@@ -250,8 +250,8 @@ After a verified apply, V2 writes an immutable receipt containing:
 - snapshot parent/ID and active channel/version axes.
 
 Before update or uninstall, V2 creates a snapshot of receipt, generated
-configuration, service graph, managed locks and resolved artifacts. Failed
-verification restores that snapshot; `rollback --to <snapshot>` is explicit
+configuration, service graph, managed state and resolved artifacts. Failed
+verification restores that snapshot; `rollback --snapshot <snapshot>` is explicit
 and uses the same engine/recovery model.
 
 ## Errors, logs and diagnostics

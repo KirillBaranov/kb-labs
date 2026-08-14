@@ -1,54 +1,28 @@
 ---
 id: S-024
-title: Platform — Rollback
+title: Platform — rollback to a V2 snapshot
 persona: solo-developer
 priority: P1
-automation: manual
-e2e: —
+automation: e2e-done
+e2e: tools/kb-create/v2/runtime/runtime_test.go; tools/kb-create/v2/lifecycle/lifecycle_test.go
 ---
 
 ## Goal
-After a bad update, developer rolls back to previous platform version and services restore to working state.
 
-## Prerequisites
-- [ ] Platform updated at least once (previous release exists)
-- [ ] `kb-create rollback` command available
-
----
+Restore a known V2 snapshot after a bad update without recalculating an old
+plan or manually editing generated configuration.
 
 ## Steps
 
-### Phase 1 — Trigger bad state (simulate)
+| # | Action | Expected |
+|---|---|---|
+| 1 | Apply a verified update and record its previous snapshot ID | Snapshot is immutable and associated with the platform root |
+| 2 | `kb-create rollback --platform-root "$PLATFORM_ROOT" --snapshot SNAPSHOT_ID` | JSON result includes the restored snapshot and log path |
+| 3 | Inspect receipt, `kb.config.jsonc`, `devservices.yaml` and `kb-dev status --json` | All agree with the restored service graph |
+| 4 | Request a missing/unknown snapshot | Non-zero structured recovery error with a hint; active install remains unchanged |
+| 5 | Run `kb-create doctor --platform-root "$PLATFORM_ROOT"` | Any remaining manifest requirement is reported explicitly |
 
-| # | Action | Expected | Actual | Status |
-|---|--------|----------|--------|--------|
-| 1 | `kb-create releases` | Shows available releases (current + previous) | | ⬜ |
-| 2 | Note current release ID | | | ⬜ |
+## Pass criteria
 
-### Phase 2 — Rollback
-
-| # | Action | Expected | Actual | Status |
-|---|--------|----------|--------|--------|
-| 3 | `kb-create rollback` | Activates previous release | | ⬜ |
-| 4 | Output shows which release was restored | Clear confirmation | | ⬜ |
-| 5 | `kb-dev restart` | Services restart on rolled-back release | | ⬜ |
-| 6 | `curl http://localhost:4000/health` | Services healthy | | ⬜ |
-
-### Phase 3 — Verify
-
-| # | Action | Expected | Actual | Status |
-|---|--------|----------|--------|--------|
-| 7 | `kb-create status` | Shows previous version | | ⬜ |
-| 8 | `kb commit commit --dry-run` | Works on rolled-back version | | ⬜ |
-
-### Phase 4 — Re-roll forward
-
-| # | Action | Expected | Actual | Status |
-|---|--------|----------|--------|--------|
-| 9 | `kb-create update --yes` | Re-applies latest | | ⬜ |
-
----
-
-## Result
-## Bugs
-## Notes
+Rollback is receipt/snapshot based, preserves secrets, and never uses an
+ambiguous “latest previous release” heuristic.

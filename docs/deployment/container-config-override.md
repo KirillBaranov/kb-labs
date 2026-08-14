@@ -1,5 +1,10 @@
 # Production composition contract
 
+> **Historical container-delivery proposal.** It references pre-V2 launcher
+> commands (`deployment export`, `provision`) that are not public operations
+> today. The active installer contract is the sealed release index described
+> in [the launcher lifecycle](../guides/installation-flow.md).
+
 KB Labs release images contain service code only. They never include a default
 `kb.config.json`, `marketplace.lock`, adapter package, or fallback composition.
 A release image started directly fails before launching the service.

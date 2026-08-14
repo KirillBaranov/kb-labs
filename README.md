@@ -63,14 +63,13 @@ decisions; the workflow executes and records the repeatable work.
 
 ```bash
 curl -fsSL https://kblabs.ru/install.sh | sh
-kb-create --demo
+kb-create --help
 ```
 
-Or bootstrap a project directly:
-
-```bash
-kb-create my-project
-```
+`kb-create` is a deterministic launcher: a release supplies a sealed index,
+then a wizard, CI request or agent resolves and applies one compatible plan.
+It has no `--demo` or positional-project install path. See the guide for the
+human and non-interactive flows.
 
 → [Installation guide](https://kblabs.ru/en/install)
 

@@ -14,21 +14,25 @@ recreate the compatibility drift we are removing.
 
 ## Decision
 
-Every released package declares `kb.manifest` in its `package.json`. kb-create
-resolves that module from an exact local package artifact or exact registry
-package spec, normalizes plugin/service/adapter schemas into one catalog, and
-uses the result for requirements, capabilities, and adapter configuration
-defaults. The embedded kb-create manifest remains only the bootstrap/product
-catalog for stable IDs, defaults, and package selection.
+Each package selected by a platform topology declares the launcher projection
+needed for its role. The release workflow emits `kb-create.manifest.json` from
+the built package and stages that file with the exact tarball. `kb-create`
+uses only this staged/published projection to normalize package identity,
+requirements, capabilities, adapter configuration defaults and service
+metadata. The small release topology retains only stable IDs and product
+selection; it is not a duplicate configuration catalog.
 
 ## Consequences
 
 Changing a package's technical contract changes installer input at the package
-boundary. Separate releases remain possible. A package without a valid
-manifest fails resolution instead of silently receiving guessed compatibility.
+boundary. Separate releases remain possible. A selected package without a
+valid emitted manifest fails index sealing instead of silently receiving
+guessed compatibility.
 
 ## Implementation
 
-See `internal/engine/catalog/resolve.go`, `registry.go`, `cache.go`, and
-`bootstrap.go`. Package identity, version, manifest digest, and source path are
-retained for deterministic planning and diagnostics.
+See `tools/kb-create/v2/release/emit-manifests.mjs`,
+`tools/kb-create/v2/release/manifests.go` and
+`tools/kb-create/v2/catalog/`. Package identity, version, manifest digest and
+source path are retained by the sealed release index for deterministic planning
+and diagnostics.
