@@ -1,66 +1,36 @@
-# KB Labs Plugin System Documentation Standard
+# KB Labs documentation map
 
-> **This document is a project-specific copy of the KB Labs Documentation Standard.**  
-> See [Main Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md) for the complete ecosystem standard.
+This directory documents the current product and its architectural record.
+Executable code, release workflows and tests prevail if a document conflicts
+with them; amend the document in the same change that changes the contract.
 
-This document defines the documentation standards for **KB Labs Plugin System**. This project follows the [KB Labs Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md) with the following project-specific customizations:
+## Start here
 
-## Project-Specific Customizations
+- [Launcher lifecycle](guides/installation-flow.md) — public V2 install,
+  update, recovery, diagnostics and ownership model.
+- [Release process](RELEASE-PROCESS.md) — SDK/platform/binary order, candidate
+  gates, promotion and failure handling.
+- [QA and E2E strategy](qa/TESTING-STRATEGY.md) — test shard ownership and
+  release evidence.
+- [QA scenarios](qa/README.md) — maintained acceptance journeys and their
+  automated evidence.
 
-KB Labs Plugin System provides the sandboxed plugin execution infrastructure. Documentation should focus on:
+## Architecture and decisions
 
-- Plugin manifest format (V3) and contract types
-- Runtime context structure (`PluginContextV3`) and available APIs
-- Execution backends and their trade-offs (in-process vs subprocess vs worker-pool)
-- Plugin development workflow and testing
+- `architecture/` — current cross-cutting architecture guides.
+- `adr/` — accepted decisions. ADRs retain their historical context; their
+  implementation references must point at the active code path.
+- `plans/` — proposals and historical work plans. A plan is not a public
+  contract until it is reflected in implementation and a current guide.
 
-## Project Documentation Structure
+## Documentation rules
 
-```
-docs/
-├── DOCUMENTATION.md       # This standard (REQUIRED)
-└── adr/                   # Architecture Decision Records
-    ├── 0000-template.md   # ADR template
-    └── *.md               # ADR files
-```
-
-## Required Documentation
-
-This project requires:
-
-- [x] `README.md` in root with all required sections
-- [x] `CONTRIBUTING.md` in root with development guidelines
-- [x] `docs/DOCUMENTATION.md` (this file)
-- [x] `docs/adr/0000-template.md` (ADR template exists)
-- [x] `LICENSE` in root
-
-## ADR Requirements
-
-All ADRs must follow the format defined in the [main standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md#architecture-decision-records-adr) with:
-
-- Required metadata: Date, Status, Deciders, Last Reviewed, Tags
-- Minimum 1 tag, maximum 5 tags
-- Tags from approved list
-- See main standard `docs/templates/ADR.template.md` for template
-
-## Cross-Linking
-
-This project links to:
-
-**Dependencies:**
-- [@kb-labs/core-platform](https://github.com/KirillBaranov/kb-labs-core) — Platform adapters
-- [@kb-labs/core-ipc](https://github.com/KirillBaranov/kb-labs-core) — IPC transport
-
-**Used By:**
-- [kb-labs-cli](https://github.com/KirillBaranov/kb-labs-cli) — CLI plugin execution
-- [kb-labs-rest-api](https://github.com/KirillBaranov/kb-labs-rest-api) — REST plugin mounting
-- [kb-labs-workflow](https://github.com/KirillBaranov/kb-labs-workflow) — Workflow step execution
-
-**Ecosystem:**
-- [KB Labs](https://github.com/kb-labs-team/kb-labs) — Main ecosystem repository
-
----
-
-**Last Updated:** 2026-02-24
-**Standard Version:** 1.0 (following KB Labs ecosystem standard)  
-**See Main Standard:** [KB Labs Documentation Standard](https://github.com/kb-labs-team/kb-labs/blob/main/docs/DOCUMENTATION.md)
+1. Public commands and file names must be verified against current `--help`
+   and tests. Do not document a planned or removed command as supported.
+2. Launcher documentation uses V2 terms: sealed release index, request, plan,
+   receipt, snapshot and manifest-derived configuration.
+3. Keep secrets out of examples, logs, acceptance records and docs. Use
+   environment-variable references instead.
+4. Mark preserved proposals and superseded flows as historical at the top of
+   the file; do not silently let them masquerade as release instructions.
+5. Release/QA documentation links every gate to its owning workflow or test.

@@ -1,5 +1,11 @@
 # Delivery — declarative rollouts with `kb-deploy apply`
 
+> **Historical design — not a supported V2 launcher workflow.** The described
+> `kb-create install-service`, `swap` and `releases` commands were removed in
+> the breaking launcher cutover. Do not use this walkthrough for a current
+> release; use [the V2 release process](../RELEASE-PROCESS.md) and its sealed
+> platform index instead.
+
 A 15-minute walkthrough covering the declarative delivery plane introduced in
 [ADR-0014](../adr/0014-declarative-delivery-and-fleet-distribution.md).
 

@@ -1,73 +1,41 @@
 ---
 id: PC-001
 area: platform-core
-title: Clean install from scratch
+title: Clean V2 install from released artifacts
 priority: P0
-env: fresh machine (no KB Labs)
+env: clean machine or isolated platform root
 ---
 
 ## Goal
 
-A developer installs KB Labs on a clean machine, creates a project, and has a working
-`kb` CLI with all core commands available — without any prior KB Labs knowledge.
+Verify the published launcher can turn the released, sealed V2 index into a
+verified platform installation. This is not a source-tree or cache-assisted
+test.
 
 ## Environment
 
-- [ ] No `kb-create`, `kb-dev`, `kb` in PATH
-- [ ] Node.js 20+ installed (`node --version`)
-- [ ] `git` installed
-- [ ] Internet access
-- [ ] Empty working directory
-
----
+- [ ] Released `kb-create` binary in `PATH`
+- [ ] Node and pnpm supported by the release
+- [ ] Empty `PLATFORM_ROOT` and no pre-existing `node_modules` below it
+- [ ] Downloaded `release-index.json` from the candidate or stable release
+- [ ] `kb-dev` supplied by the release (or an explicit test double only in CI)
 
 ## Steps
 
-### Phase 1 — Install kb-create
-
 | # | Action | Expected |
-|---|--------|----------|
-| 1 | `curl -fsSL https://kblabs.ru/install.sh \| sh` | Installer runs without errors, prints success message |
-| 2 | Open a new terminal (or `source ~/.zshrc`) | — |
-| 3 | `kb-create --version` | Prints version (e.g. `2.94.0`), no error |
-| 4 | `kb-dev --version` | Prints version |
-| 5 | `which kb-create kb-dev` | Both resolve to paths under `~/.local/bin` or similar |
-
-### Phase 2 — Create project
-
-| # | Action | Expected |
-|---|--------|----------|
-| 6 | `kb-create my-project --yes` | Directory `my-project/` created, no errors in output |
-| 7 | `cd my-project` | — |
-| 8 | `ls .kb/` | Contains `kb.config.json`, `marketplace.lock` |
-| 9 | `cat .kb/kb.config.json` | Valid JSON, no placeholder values like `"YOUR_KEY"` |
-| 10 | `cat .kb/marketplace.lock` | Valid JSON with at least one entry |
-
-### Phase 3 — Verify CLI
-
-| # | Action | Expected |
-|---|--------|----------|
-| 11 | `kb --help` | Lists available commands, no `Unknown command` or stack trace |
-| 12 | `kb --version` | Prints version matching `kb-create --version` |
-| 13 | `kb-create status` | Lists platform components with versions, all healthy |
-| 14 | `kb-create doctor` | All checks pass (8/8 or similar), no ❌ |
-
-### Phase 4 — Second project (isolation)
-
-| # | Action | Expected |
-|---|--------|----------|
-| 15 | `cd .. && kb-create second-project --yes` | Creates successfully without touching `my-project/` |
-| 16 | `cd second-project && kb --help` | Same commands available |
-| 17 | Changes in `second-project/.kb/` do not affect `my-project/` | Configs are independent |
-
----
+|---|---|---|
+| 1 | `kb-create --version` | Prints launcher version without a stack trace |
+| 2 | `kb-create wizard --index release-index.json --request-platform-root "$PLATFORM_ROOT" > request.json` | Wizard offers only compatible selections and emits one V2 request |
+| 3 | `kb-create plan --index release-index.json --input request.json` | JSON response has `ok: true`, exact artifacts and a service graph; nothing is written under the root |
+| 4 | `kb-create apply --index release-index.json --input request.json` | One verified application; output includes `receipt` and `logPath` |
+| 5 | Inspect `$PLATFORM_ROOT/.kb/kb.config.jsonc` and `$PLATFORM_ROOT/.kb/devservices.yaml` | Both exist, parse, and match the selected profile and service graph |
+| 6 | `kb-create doctor --platform-root "$PLATFORM_ROOT"` | JSON response is `ok: true`, or names each missing manifest requirement and its hint |
+| 7 | `kb-dev status --json` | The services equal the receipt/devservices graph |
+| 8 | Repeat `plan` with the same input | Identical plan hash/artifacts; no package or config mutation |
 
 ## Pass criteria
 
-All steps ✅. No error output, no stack traces, no placeholder values in config.
-
-## Notes
-
-- Run against published binary, not `go build` dev build
-- Use a real terminal after install (not the same shell — PATH won't be updated)
-- If testing on CI: use Docker image with only Node + curl pre-installed
+No artifact is selected from ambient `node_modules`; configuration and service
+metadata come from the published manifests. Any failure has a stable error
+code, a hint, a transcript under `.kb/logs/`, and a redacted diagnostic dossier
+under `.kb/diagnostics/`.

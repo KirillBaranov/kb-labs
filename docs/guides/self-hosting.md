@@ -1,5 +1,12 @@
 # Self-hosting KB Labs
 
+> **Historical delivery design — not a V2 launcher interface.** Commands such
+> as `kb-create deployment export`, `validate` and `provision` are not exposed
+> by the current public `kb-create`. Use the sealed-index workflow in
+> [Installation / Update / Uninstall Flow](installation-flow.md) for a
+> supported host installation. This document remains as design context for a
+> future container-delivery implementation.
+
 KB Labs' cloud delivery path is published container images. You do not need the
 monorepo to run the platform.
 

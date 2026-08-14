@@ -1,72 +1,43 @@
 # KB Labs release process
 
-KB Labs is released through three independent streams. They share the
-repository and version family, but they do not publish the same artifacts.
+KB Labs has independent SDK, platform and binary streams. A release is only promotable when its immutable artifacts, launcher index and required smoke are all verified; publishing a tag is not itself a stable release.
 
-| Stream | Tag | Artifacts | Entry point |
+| Stream | Tag | Publishes | Required order |
 | --- | --- | --- | --- |
-| SDK | `sdk-vX.Y.Z` | SDK packages and their dependencies to npm | `.github/workflows/publish-npm-on-tag.yml` |
-| Platform | `platform-vX.Y.Z` | Platform packages and adapters to npm | `.github/workflows/publish-npm-on-tag.yml` |
-| Binaries | `vX.Y.Z-binaries` | Go tools (`kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor`) plus checksums to GitHub Releases | `.github/workflows/release-binaries.yml` |
+| SDK | `sdk-vX.Y.Z` | SDK npm tarballs with V2 launcher manifests | first when SDK changes |
+| Platform | `platform-vX.Y.Z` | platform, services, adapters and sealed V2 release index | after required SDK candidate |
+| Binaries | `vX.Y.Z-binaries` | `kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor` and checksums | when Go tools changed |
 
-## SDK and platform releases
+## Candidate gates
 
-The release manager prepares a lockstep package release, commits the version
-and changelogs, and creates the stream tag. The tag workflow then:
+The tag workflow is the source of release evidence. For a platform candidate it:
 
-1. validates that the tag points to a commit reachable from `main`;
-2. builds packages in topological order;
-3. stages immutable npm tarballs;
-4. publishes those tarballs to npm and verifies them against the registry;
-5. creates the GitHub Release;
-6. runs the post-publish `kb-create` smoke test.
+1. builds in topological order and stages immutable npm tarballs;
+2. emits the V2 package manifests from those actual build outputs;
+3. composes the platform topology with the exact SDK artifact already fetched from npm;
+4. seals a `kb.create.release-index/v2` and publishes the tarballs;
+5. downloads the public npm bytes again and verifies every recorded SHA-256;
+6. runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered.
 
-The local preparation commands are:
+The candidate smoke is deliberately a bounded installer/package/config gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
 
-```bash
-pnpm release:sdk:prepare       # SDK stream
-pnpm release:platform:prepare  # Platform stream
-```
+## Promotion checklist
 
-These commands build and validate the workspace, update package versions and
-changelogs, and create the corresponding tag. npm delivery is performed by
-GitHub Actions after the tag is pushed; credentials are not needed locally.
+1. Confirm the SDK candidate is published if the platform index references a new SDK version.
+2. Confirm the platform candidate's stage, npm delivery, index binding and launcher smoke are successful. Do not promote a failed, pending or skipped required check.
+3. Run the promotion workflow for the candidate tag.
+4. Confirm it attaches `release-index.json` to the platform GitHub Release.
+5. Confirm the `installer-stable` release's `channel.json` points to that index URL and its SHA-256.
+6. Perform the stable clean-install acceptance run using the released binary and stable index pointer; retain its log/dossier with the release evidence.
 
-The two npm streams are intentionally separate. A platform release is not a
-binary release and must not be used as the source of Go binary assets.
+The stable pointer is mutable convenience metadata. The fetched index remains immutable and hash-verified by the consumer.
 
-## Binary releases
+## Failure handling
 
-The binary workflow is triggered by a tag ending in `-binaries`, for example
-`v2.111.0-binaries`. GoReleaser publishes OS/architecture-specific files and
-`checksums.txt` to that GitHub Release. The `kb-create` installer resolves the
-newest release with the `-binaries` suffix, downloads the matching asset, and
-verifies its SHA-256 checksum before installing it.
+- **Index sealing fails:** a selected package is missing a valid V2 manifest or the manifest contradicts the platform topology. Fix the package contract; do not hand-edit the index.
+- **Registry binding fails:** npm did not serve the tarball bytes staged for the candidate. Treat this as a delivery failure, not a retryable installer warning.
+- **Launcher smoke fails:** inspect its `.kb/logs/` and diagnostic dossier. Fix the resolver, manifest or generated config; do not relax the smoke.
+- **A service suite fails:** use the owning E2E shard and its scenario report. Do not make the candidate smoke start every service to mask shard ownership.
+- **Stable install fails:** freeze promotion, retain the immutable index and dossier, then repair and publish a new candidate. Never overwrite a released index.
 
-This suffix is part of the runtime contract. Do not resolve installer binaries
-through GitHub's generic `/releases/latest` endpoint: the latest release may be
-a package-only `sdk-*` or `platform-*` release with no binary assets.
-
-## Recommended order
-
-For a complete versioned rollout:
-
-1. publish the SDK stream when SDK packages changed;
-2. publish the platform stream when platform packages changed;
-3. publish the `-binaries` stream when Go tools changed or when the platform
-   manifest expects new binary versions;
-4. wait for the npm delivery and post-publish smoke checks for the relevant
-   stream.
-
-The binary stream can be published independently. Its tag must remain a
-`-binaries` tag so installers and self-update logic continue to select it
-correctly.
-
-## Troubleshooting a release
-
-- npm packages missing: inspect the `Stage` and `Deliver to npm` jobs in the
-  tag workflow.
-- `kb-create` cannot install `kb-dev`: inspect the latest `*-binaries` GitHub
-  Release and confirm it contains the platform asset and `checksums.txt`.
-- post-publish smoke fails after npm delivery: inspect the `kb-create` e2e log;
-  npm publication may already be complete even when the final smoke job fails.
+Local preparation (`pnpm release:sdk:prepare` or `pnpm release:platform:prepare`) prepares version/changelog/tag state. npm delivery and index verification happen only in GitHub Actions.
