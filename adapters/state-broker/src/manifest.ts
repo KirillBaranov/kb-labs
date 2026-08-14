@@ -19,6 +19,10 @@ export const manifest: AdapterManifest = {
       sortedSets: true,
     },
   },
+  launcher: { requirements: [
+    { id: "state-broker-url", path: "/platform/adapterOptions/cache/url", default: "http://localhost:7777" },
+    { id: "state-broker-namespace", path: "/platform/adapterOptions/cache/namespace", default: "kb:" },
+  ] },
   configSchema: {
     url: {
       type: "string",

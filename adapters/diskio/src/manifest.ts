@@ -16,6 +16,9 @@ export const manifest: AdapterManifest = {
       metadata: true,
     },
   },
+  launcher: { requirements: [
+    { id: "storage-base-dir", path: "/platform/adapterOptions/storage/baseDir", default: "process.cwd()" },
+  ] },
   configSchema: {
     baseDir: {
       type: "string",

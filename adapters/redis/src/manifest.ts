@@ -25,6 +25,11 @@ export const manifest: AdapterManifest = {
       atomic: true,
     },
   },
+  launcher: { requirements: [
+    { id: "redis-host", path: "/platform/adapterOptions/cache/host", default: "localhost" },
+    { id: "redis-port", path: "/platform/adapterOptions/cache/port", default: 6379 },
+    { id: "redis-key-prefix", path: "/platform/adapterOptions/cache/keyPrefix", default: "kb:" },
+  ] },
   configSchema: {
     host: {
       type: "string",

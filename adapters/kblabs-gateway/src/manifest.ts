@@ -18,6 +18,13 @@ export const manifest: AdapterManifest = {
       autoTokenRefresh: true,
     },
   },
+  launcher: { requirements: [
+    { id: "kblabs-gateway-url", path: "/platform/adapterOptions/llm/gatewayURL", default: "https://api.kblabs.ru" },
+    { id: "kblabs-default-model", path: "/platform/adapterOptions/llm/defaultModel", default: "small" },
+    { id: "kblabs-api-key", secret: true, env: "KB_LABS_API_KEY", services: ["gateway"] },
+    { id: "kblabs-client-id", secret: true, env: "KB_LABS_CLIENT_ID", services: ["gateway"] },
+    { id: "kblabs-client-secret", secret: true, env: "KB_LABS_CLIENT_SECRET", services: ["gateway"] },
+  ] },
   configSchema: {
     gatewayURL: {
       type: "string",

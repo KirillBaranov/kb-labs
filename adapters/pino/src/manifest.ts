@@ -24,6 +24,11 @@ export const manifest: AdapterManifest = {
   capabilities: {
     streaming: true,
   },
+  launcher: { requirements: [
+    { id: "logger-level", path: "/platform/adapterOptions/logger/level", default: "info" },
+    { id: "logger-pretty", path: "/platform/adapterOptions/logger/pretty", default: false },
+    { id: "logger-streaming", path: "/platform/adapterOptions/logger/streaming", default: { enabled: false, bufferSize: 1000, bufferMaxAge: 3600000 } },
+  ] },
   configSchema: {
     level: {
       type: "string",

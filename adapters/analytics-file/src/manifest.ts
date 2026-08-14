@@ -30,6 +30,10 @@ export const manifest: AdapterManifest = {
       stats: true,
     },
   },
+  launcher: { requirements: [
+    { id: "analytics-base-dir", path: "/platform/adapterOptions/analytics/baseDir", default: ".kb/analytics/buffer" },
+    { id: "analytics-filename-pattern", path: "/platform/adapterOptions/analytics/filenamePattern", default: "events-YYYYMMDD" },
+  ] },
   configSchema: {
     baseDir: {
       type: "string",

@@ -167,8 +167,8 @@ export class KBLabsGatewayLLM implements ILLM {
 
   constructor(config: KBLabsGatewayLLMConfig = {}) {
     this.gatewayURL = config.gatewayURL ?? DEFAULT_GATEWAY_URL;
-    this.kbClientId = config.kbClientId;
-    this.kbClientSecret = config.kbClientSecret;
+    this.kbClientId = config.kbClientId ?? process.env.KB_LABS_CLIENT_ID;
+    this.kbClientSecret = config.kbClientSecret ?? process.env.KB_LABS_CLIENT_SECRET;
     this.defaultModel = config.defaultModel ?? "small";
     this.defaultMaxTokens = config.defaultMaxTokens ?? DEFAULT_MAX_TOKENS;
 
