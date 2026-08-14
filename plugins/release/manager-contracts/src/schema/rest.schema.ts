@@ -87,6 +87,8 @@ export const ReleasePlanSchema = z.object({
   rollbackEnabled: z.boolean(),
   channel: ReleaseChannelSchema,
   createdAt: z.string().datetime(),
+  /** Named flow this plan was computed for; persisted so later steps know which flow's tags to use. */
+  flow: z.string().optional(),
 });
 
 export type ReleasePlan = z.infer<typeof ReleasePlanSchema>;
@@ -171,6 +173,8 @@ export type ChangelogResponse = z.infer<typeof ChangelogResponseSchema>;
 
 export const GenerateChangelogRequestSchema = z.object({
   scope: z.string(),
+  /** Named release flow; its configured tag pattern selects the baseline. */
+  flow: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   template: z.string().optional(),

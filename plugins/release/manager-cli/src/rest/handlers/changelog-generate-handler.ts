@@ -4,7 +4,7 @@
  * Writes: .kb/release/plans/{scope}/current/changelog.md
  */
 
-import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3, rethrowForRest } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3, rethrowForRest, useConfig } from '@kb-labs/sdk';
 import type {
   GenerateChangelogRequest,
   GenerateChangelogResponse,
@@ -18,6 +18,7 @@ import {
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 import { RELEASE_CACHE_PREFIX } from '@kb-labs/release-manager-contracts';
 import { scopeToDir } from '../../shared/utils';
+import { buildReleaseTag, type ReleaseConfig } from '@kb-labs/release-manager-core';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ async function generateWithLLM(
   gitCwd: string,
   locale: 'en' | 'ru',
   scope: string,
+  range: { from?: string; to?: string; tagGlob?: string },
 ): Promise<GenerateResult> {
   try {
     ctx.platform?.logger?.info?.('Starting LLM changelog generation', {
@@ -45,7 +47,7 @@ async function generateWithLLM(
       repoRoot,
       gitCwd,
       packages,
-      range: { from: undefined, to: 'HEAD' },
+      range,
       changelog: { template: 'corporate-ai', locale },
       platform: {
         llm: ctx.platform.llm,
@@ -78,6 +80,7 @@ async function resolveMarkdown(
   locale: 'en' | 'ru',
   useLLMFlag: boolean,
   scope: string,
+  range: { from?: string; to?: string; tagGlob?: string },
 ): Promise<GenerateResult> {
   if (!useLLMFlag) {
     ctx.platform?.logger?.info?.('Using simple changelog (LLM disabled by user)', { scope });
@@ -89,7 +92,7 @@ async function resolveMarkdown(
     ctx.platform?.logger?.warn?.('LLM service not available, falling back to simple changelog', { scope });
     return { markdown: generateSimpleChangelog(packages, 'en'), commitsCount: 0, usedLLM: false };
   }
-  return generateWithLLM(ctx, packages, repoRoot, gitCwd, locale, scope);
+  return generateWithLLM(ctx, packages, repoRoot, gitCwd, locale, scope, range);
 }
 
 async function resolveGitCwd(packages: ChangelogPackageInfo[], repoRoot: string): Promise<string> {
@@ -127,6 +130,10 @@ export default defineHandler({
       );
       throw new Error(`Release plan not found for scope "${scope}". Generate plan first.`);
     }
+    // Studio normally regenerates from the persisted plan, while API callers
+    // may override its flow explicitly. Either way, stay on the same tag
+    // family that produced the plan rather than guessing across all tags.
+    const flow = input.body?.flow ?? plan.flow;
 
     const packages: ChangelogPackageInfo[] = plan.packages.map(pkg => ({
       name: pkg.name,
@@ -140,6 +147,12 @@ export default defineHandler({
 
     const localeRaw = input.body?.locale;
     const locale: 'en' | 'ru' = localeRaw === 'ru' ? 'ru' : 'en';
+    const config = await useConfig<ReleaseConfig>() ?? {};
+    const range = {
+      from: input.body?.from,
+      to: input.body?.to ?? 'HEAD',
+      tagGlob: flow ? buildReleaseTag(flow, '*', config.flows?.[flow]?.tagPattern) : undefined,
+    };
 
     const { markdown, commitsCount, usedLLM } = await resolveMarkdown(
       ctx,
@@ -149,6 +162,7 @@ export default defineHandler({
       locale,
       input.body?.useLLM ?? true,
       scope,
+      range,
     );
 
     const scopeDir = `${repoRoot}/.kb/release/plans/${scopeDirName}/current`;
