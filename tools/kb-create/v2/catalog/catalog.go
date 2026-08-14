@@ -17,13 +17,14 @@ import (
 const Schema = "kb.create.release-index/v2"
 
 type Catalog struct {
-	Schema    string                       `json:"schema"`
-	Digest    string                       `json:"digest"`
-	Channels  map[contracts.Channel]string `json:"channels"`
-	Platforms []PlatformBundle             `json:"platforms"`
-	SDKs      []Component                  `json:"sdks"`
-	Plugins   []Component                  `json:"plugins"`
-	Adapters  []Adapter                    `json:"adapters"`
+	Schema      string                       `json:"schema"`
+	Digest      string                       `json:"digest"`
+	Channels    map[contracts.Channel]string `json:"channels"`
+	SDKChannels map[contracts.Channel]string `json:"sdkChannels,omitempty"`
+	Platforms   []PlatformBundle             `json:"platforms"`
+	SDKs        []Component                  `json:"sdks"`
+	Plugins     []Component                  `json:"plugins"`
+	Adapters    []Adapter                    `json:"adapters"`
 }
 
 // Seal normalizes a release index and records the SHA-256 digest of its
@@ -58,6 +59,14 @@ func Validate(source Catalog) error {
 		}
 		if _, ok := findPlatform(source.Platforms, version); !ok {
 			return fmt.Errorf("channel %q points to absent platform version %q", channel, version)
+		}
+	}
+	for channel, version := range source.SDKChannels {
+		if channel != contracts.ChannelStable && channel != contracts.ChannelCanary && channel != contracts.ChannelExperimental {
+			return fmt.Errorf("unsupported SDK release channel %q", channel)
+		}
+		if _, ok := findComponentVersion(source.SDKs, version); !ok {
+			return fmt.Errorf("SDK channel %q points to absent SDK version %q", channel, version)
 		}
 	}
 	seen := map[string]bool{}
@@ -146,6 +155,15 @@ func findPlatform(values []PlatformBundle, version string) (PlatformBundle, bool
 		}
 	}
 	return PlatformBundle{}, false
+}
+
+func findComponentVersion(values []Component, version string) (Component, bool) {
+	for _, value := range values {
+		if value.Version == version {
+			return value, true
+		}
+	}
+	return Component{}, false
 }
 
 // PlatformBundle is released atomically: core, official services, defaults and

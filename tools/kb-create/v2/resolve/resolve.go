@@ -50,7 +50,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if request.SDK.Version != "" || request.SDK.Channel != "" {
 		sdkVersion := request.SDK.Version
 		if sdkVersion == "" {
-			sdkVersion = source.Channels[request.SDK.Channel]
+			sdkVersion = source.SDKChannels[request.SDK.Channel]
 		}
 		sdk, found := findComponentVersion(source.SDKs, sdkVersion)
 		if !found {
