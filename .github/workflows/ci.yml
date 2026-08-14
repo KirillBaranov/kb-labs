@@ -30,6 +30,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── 0. kb-create V2 contract matrix — deterministic and independent ───────
+  # Kept separate from Verdaccio/Docker launcher E2E so a configuration or
+  # recovery regression has a small, stable failure domain.
+  launcher-v2-contracts:
+    name: kb-create V2 / ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: resolver-config
+            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
+          - shard: runtime-recovery
+            packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
+          - shard: doctor-diagnostics
+            packages: ./v2/doctor ./v2/diagnostics ./v2/installed
+          - shard: offline-journey
+            packages: ./v2/journey ./v2/services ./v2/verify
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: tools/kb-create
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: tools/kb-create/go.sum
+      - name: Enforce autonomous V2 boundary
+        run: |
+          if go list -deps ${{ matrix.packages }} | grep -q '^github.com/kb-labs/create/internal/'; then
+            echo 'V2 must not import legacy launcher internals.' >&2
+            exit 1
+          fi
+      - name: Run deterministic V2 contract shard
+        run: go test -race -count=1 ${{ matrix.packages }}
+
   # ── 1. Build Go tools (host Linux binary) ────────────────────────────────────
   # Single host build — used by every downstream job via artifact restore.
   # All quality checks (lint/test/e2e) are driven through kb-devkit so the

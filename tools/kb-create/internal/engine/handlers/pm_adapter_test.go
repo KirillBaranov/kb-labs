@@ -10,13 +10,17 @@ import (
 type fakePM struct {
 	installed []pm.InstalledPackage
 	added     []string
+	calls     int
 }
 
 func (f *fakePM) Name() string        { return "fake" }
 func (f *fakePM) RegistryURL() string { return "" }
 func (f *fakePM) Install(_ string, packages []string, progress chan<- pm.Progress) error {
+	f.calls++
 	f.added = append(f.added, packages...)
-	progress <- pm.Progress{Package: packages[0], Done: true}
+	if len(packages) > 0 {
+		progress <- pm.Progress{Package: packages[0], Done: true}
+	}
 	close(progress)
 	return nil
 }
@@ -40,5 +44,17 @@ func TestPMAdapterBridgesInstallAndInstalled(t *testing.T) {
 	}
 	if len(manager.added) != 1 || manager.added[0] != "@kb-labs/other@latest" {
 		t.Fatalf("added = %#v", manager.added)
+	}
+}
+
+func TestPMAdapterInstallsBatchInOnePackageManagerCall(t *testing.T) {
+	manager := &fakePM{}
+	adapter := &PMAdapter{Manager: manager, Dir: t.TempDir()}
+	packages := []string{"@kb-labs/one@1.0.0", "@kb-labs/two@1.0.0"}
+	if err := adapter.InstallMany(context.Background(), packages); err != nil {
+		t.Fatal(err)
+	}
+	if manager.calls != 1 || len(manager.added) != 2 || manager.added[0] != packages[0] || manager.added[1] != packages[1] {
+		t.Fatalf("calls/packages = %d / %#v", manager.calls, manager.added)
 	}
 }

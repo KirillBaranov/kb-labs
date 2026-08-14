@@ -12,6 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/clikit/diag"
+	"github.com/kb-labs/clikit/result"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
@@ -57,6 +59,9 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	defer tc.Flush()
 
 	checks := buildChecks(platformDir)
+	if outputMode() != result.ModeHuman {
+		return renderDoctorMachine(cmd, checks)
+	}
 
 	out.Section("Environment Doctor")
 	printChecks(out, checks)
@@ -145,6 +150,22 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	}
 	out.Warn(fmt.Sprintf("%d/%d checks passing (%d fixed, %d still failing)", total-remaining, total, fixed, remaining))
 	return fmt.Errorf("some checks could not be repaired automatically")
+}
+
+func renderDoctorMachine(cmd *cobra.Command, checks []doctorCheck) error {
+	payload := make([]map[string]any, 0, len(checks))
+	failed := make([]string, 0)
+	for _, check := range checks {
+		payload = append(payload, map[string]any{"name": check.Name, "ok": check.OK, "advisory": check.Soft, "details": check.Details, "fixHint": check.FixHint})
+		if !check.OK && !check.Soft {
+			failed = append(failed, check.Name)
+		}
+	}
+	if len(failed) > 0 {
+		return diag.New(codeDoctor, "Environment checks did not pass", diag.WithReason("failed checks: "+strings.Join(failed, ", ")), diag.WithMeta(map[string]any{"checks": payload, "fixAvailable": doctorFixFlag}))
+	}
+	emit(cmd, result.Success("Environment checks passed", map[string]any{"checks": payload}), outputMode())
+	return nil
 }
 
 // buildChecks constructs all doctor checks with their fix closures.

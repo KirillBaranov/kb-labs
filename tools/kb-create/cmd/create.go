@@ -100,6 +100,9 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if flagDevManifest != "" {
 		return runDeclarativeCreateFromManifest(cmd, projectRoot, platformRoot)
 	}
+	if err := ensureToolchain(true, pm.Detect().Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
 	intent := flagIntent
 	if intent == "" {
 		intent = "explore"
@@ -145,21 +148,23 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("compile declarative create plan: %s", protocolErr.Message)
 	}
 	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
-	if _, err := executeFlowPlan(compiled); err != nil {
+	log, err := logger.NewFileOnly(compiled.PlatformRoot)
+	if err != nil {
+		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	if _, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled)); err != nil {
 		return err
 	}
 	declarativeIntent := declarativeManifest.IntentByID(intent)
 	if declarativeIntent == nil {
 		return fmt.Errorf("declarative manifest has no intent %q", intent)
 	}
-	log, err := logger.NewFileOnly(compiled.PlatformRoot)
-	if err != nil {
-		return fmt.Errorf("create declarative install log: %w", err)
-	}
 	packageActions := 0
 	for _, action := range compiled.Actions {
 		if action.Kind == engineplan.ActionInstallPackage {
-			packageActions++
+			packageActions += len(actionPackages(action))
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
@@ -174,7 +179,6 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:                         flagDemo,
 		AllowIncompatibleLegacyMigration: true,
 	}, declarativeManifest)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return finalizeErr
 	}
@@ -249,12 +253,14 @@ func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, servi
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
 		}
-		kind, id := manifestComponent(action.Inputs["component"])
-		switch kind {
-		case "plugin":
-			plugins = append(plugins, id)
-		case "service":
-			services = append(services, id)
+		for _, component := range actionComponents(action) {
+			kind, id := manifestComponent(component)
+			switch kind {
+			case "plugin":
+				plugins = append(plugins, id)
+			case "service":
+				services = append(services, id)
+			}
 		}
 	}
 	sort.Strings(plugins)

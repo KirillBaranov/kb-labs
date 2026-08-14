@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/kb-labs/create/internal/toolchain"
 )
@@ -159,6 +160,8 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 	}
 
 	done := make(chan struct{}, 2)
+	var output strings.Builder
+	var outputMu sync.Mutex
 	pipe := func(r interface{ Read([]byte) (int, error) }) {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
@@ -167,6 +170,10 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 				*ignoredBuilds = true
 			}
 			if strings.TrimSpace(line) != "" {
+				outputMu.Lock()
+				output.WriteString(line)
+				output.WriteByte('\n')
+				outputMu.Unlock()
 				progress <- Progress{Line: line}
 			}
 		}
@@ -177,7 +184,22 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 	<-done
 	<-done
 
-	return cmd.Wait()
+	err = cmd.Wait()
+	if err == nil {
+		return nil
+	}
+	outputMu.Lock()
+	tail := commandTail(output.String(), 12)
+	outputMu.Unlock()
+	return &CommandError{Command: "pnpm " + strings.Join(args, " "), Output: tail, Cause: err}
+}
+
+func commandTail(output string, limit int) string {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) > limit {
+		lines = lines[len(lines)-limit:]
+	}
+	return strings.Join(lines, "\n")
 }
 
 // approveBuilds runs `pnpm approve-builds --all` headlessly in dir, allowing

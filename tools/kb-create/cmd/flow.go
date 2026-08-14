@@ -19,6 +19,7 @@ import (
 	"github.com/kb-labs/create/internal/engine/scenario"
 	engineui "github.com/kb-labs/create/internal/engine/ui"
 	terminalui "github.com/kb-labs/create/internal/engine/ui/terminal"
+	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/spf13/cobra"
@@ -68,7 +69,16 @@ var flowRunCmd = &cobra.Command{
 		}
 		printHumanPlanSummary(cmd.OutOrStdout(), compiled)
 		if flowApply && !flowPlanOnly {
-			journal, err := executeFlowPlan(compiled)
+			if err := ensureToolchain(true, pm.Detect().Name()); err != nil {
+				return fmt.Errorf("toolchain preflight failed: %w", err)
+			}
+			log, err := logger.NewFileOnly(compiled.PlatformRoot)
+			if err != nil {
+				return fmt.Errorf("create flow install log: %w", err)
+			}
+			rememberRunLog(log)
+			defer func() { _ = log.Close() }()
+			journal, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled))
 			if err != nil {
 				return err
 			}
@@ -108,9 +118,7 @@ func printHumanPlanSummary(out io.Writer, compiled engineplan.InstallPlan) {
 	for _, action := range compiled.Actions {
 		switch action.Kind {
 		case engineplan.ActionInstallPackage:
-			if pkg := action.Inputs["package"]; pkg != "" {
-				packages = append(packages, pkg)
-			}
+			packages = append(packages, actionPackages(action)...)
 		case engineplan.ActionBindProvider:
 			if capability := action.Inputs["capability"]; capability != "" {
 				providers = append(providers, capability+" → "+action.Inputs["provider"])
@@ -119,24 +127,49 @@ func printHumanPlanSummary(out io.Writer, compiled engineplan.InstallPlan) {
 	}
 	sort.Strings(packages)
 	sort.Strings(providers)
-	fmt.Fprintln(out, "\nInstallation plan")
-	fmt.Fprintf(out, "  Packages: %d\n", len(packages))
-	for _, pkg := range packages {
-		fmt.Fprintf(out, "    • %s\n", pkg)
+	fmt.Fprintln(out, "\nPlan")
+	fmt.Fprintf(out, "  %d packages", len(packages))
+	if len(packages) > 0 {
+		fmt.Fprintf(out, " · %s", summarizePackages(packages, 3))
 	}
+	fmt.Fprintln(out)
 	if len(providers) > 0 {
-		fmt.Fprintln(out, "  Providers:")
-		for _, provider := range providers {
-			fmt.Fprintf(out, "    • %s\n", provider)
-		}
+		fmt.Fprintf(out, "  %d provider bindings · %s\n", len(providers), strings.Join(providers, ", "))
 	}
 	if len(compiled.Assembly.Outputs) > 0 {
 		outputs := make([]string, 0, len(compiled.Assembly.Outputs))
 		for _, output := range compiled.Assembly.Outputs {
 			outputs = append(outputs, string(output.Root)+"/"+output.Path)
 		}
-		fmt.Fprintf(out, "  Config outputs: %s\n", strings.Join(outputs, ", "))
+		fmt.Fprintf(out, "  Generates · %s\n", strings.Join(outputs, ", "))
 	}
+}
+
+func actionPackages(action engineplan.PlanAction) []string {
+	if packages := action.Inputs["packages"]; packages != "" {
+		return strings.Split(packages, "\n")
+	}
+	if pkg := action.Inputs["package"]; pkg != "" {
+		return []string{pkg}
+	}
+	return nil
+}
+
+func actionComponents(action engineplan.PlanAction) []string {
+	if components := action.Inputs["components"]; components != "" {
+		return strings.Split(components, "\n")
+	}
+	if component := action.Inputs["component"]; component != "" {
+		return []string{component}
+	}
+	return nil
+}
+
+func summarizePackages(packages []string, limit int) string {
+	if len(packages) <= limit {
+		return strings.Join(packages, ", ")
+	}
+	return strings.Join(packages[:limit], ", ") + fmt.Sprintf(" and %d more", len(packages)-limit)
 }
 
 // writeDeclarativeInstallState persists install state after a compiled plan
@@ -178,16 +211,17 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan, source *manif
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
 		}
-		component := action.Inputs["component"]
-		kind, id := manifestComponent(component)
-		switch kind {
-		case "plugin":
-			if !containsString(cfg.SelectedPlugins, id) {
-				cfg.SelectedPlugins = append(cfg.SelectedPlugins, id)
-			}
-		case "service":
-			if !containsString(cfg.SelectedServices, id) {
-				cfg.SelectedServices = append(cfg.SelectedServices, id)
+		for _, component := range actionComponents(action) {
+			kind, id := manifestComponent(component)
+			switch kind {
+			case "plugin":
+				if !containsString(cfg.SelectedPlugins, id) {
+					cfg.SelectedPlugins = append(cfg.SelectedPlugins, id)
+				}
+			case "service":
+				if !containsString(cfg.SelectedServices, id) {
+					cfg.SelectedServices = append(cfg.SelectedServices, id)
+				}
 			}
 		}
 	}
@@ -215,11 +249,13 @@ func containsString(values []string, want string) bool {
 	return false
 }
 
-func executeFlowPlan(compiled engineplan.InstallPlan) (executor.Journal, error) {
+func executeFlowPlan(compiled engineplan.InstallPlan, progress func(pm.Progress), emit func(executor.Event)) (executor.Journal, error) {
 	return engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: pm.Detect(),
 		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
+		Progress:       progress,
+		Emit:           emit,
 	})
 }
 

@@ -87,7 +87,11 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if err := preflightCompatibility(&axes, manifestSource, pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}), flagInstallForceCompat, out); err != nil {
+	manager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
+	if err := ensureToolchain(true, manager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
+	if err := preflightCompatibility(&axes, manifestSource, manager, flagInstallForceCompat, out); err != nil {
 		return err
 	}
 	platformOverrides := manifest.ApplyAxisResolution(manifestSource, axes)
@@ -172,23 +176,24 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("compile declarative install plan: %w", err)
 	}
-	if err := ensureToolchain(true, pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}).Name()); err != nil {
-		return fmt.Errorf("toolchain preflight failed: %w", err)
-	}
 	out.Info(fmt.Sprintf("Installing %s declaratively", describeSelection(plugins, services)))
 	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
-	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}),
-		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
-		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "install.lock"),
-		Rollback:       true,
-	})
-	if err != nil {
-		return fmt.Errorf("declarative installation failed: %w", err)
-	}
 	log, err := logger.NewFileOnly(platformDir)
 	if err != nil {
 		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: manager,
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "install.lock"),
+		Rollback:       true,
+		Progress:       logPackageManagerProgress(log),
+		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+	})
+	if err != nil {
+		return fmt.Errorf("declarative installation failed: %w", err)
 	}
 	selectedPlugins := make([]string, 0, len(canonicalPlugins))
 	selectedServices := make([]string, 0, len(canonicalServices))
@@ -201,7 +206,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 			selectedServices = append(selectedServices, id)
 		}
 	}
-	result, finalizeErr := (&installer.Installer{PM: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}), Log: log}).FinalizeDeclarative(&installer.Selection{
+	result, finalizeErr := (&installer.Installer{PM: manager, Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir:                      platformDir,
 		ProjectCWD:                       projectDir,
 		Plugins:                          selectedPlugins,
@@ -211,7 +216,6 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		Adapters:                         adapters,
 		AllowIncompatibleLegacyMigration: true,
 	}, manifestSource)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return fmt.Errorf("finalize declarative installation: %w", finalizeErr)
 	}

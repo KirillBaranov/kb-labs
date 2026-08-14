@@ -23,6 +23,8 @@ type Options struct {
 	LockPath       string
 	DryRun         bool
 	Rollback       bool
+	Progress       func(pm.Progress)
+	Emit           func(executor.Event)
 }
 
 func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (executor.Journal, error) {
@@ -47,7 +49,7 @@ func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (exe
 		manager = pm.Detect()
 	}
 	registry := handlers.Registry(handlers.RegistryOptions{
-		Packages:  &handlers.PMAdapter{Manager: manager, Dir: compiled.PlatformRoot},
+		Packages:  &handlers.PMAdapter{Manager: manager, Dir: compiled.PlatformRoot, Progress: options.Progress},
 		Providers: handlers.FileProviderBinder{Root: filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "providers")},
 		Assembly:  compiled.Assembly,
 		Roots: engineconfig.Roots{
@@ -59,6 +61,7 @@ func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (exe
 	return executor.Run(ctx, compiled, registry, executor.Options{
 		DryRun:            options.DryRun,
 		RollbackOnFailure: options.Rollback,
+		Emit:              options.Emit,
 		Store:             executor.FileJournalStore{Dir: options.JournalDir},
 		Lock:              executor.FileLock{Path: options.LockPath},
 	})

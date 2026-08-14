@@ -1,0 +1,1 @@
+{"schema":"kb.create.scenario/v2","id":"release","title":"Release automation","plugins":["release"]}

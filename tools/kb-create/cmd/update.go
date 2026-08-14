@@ -65,11 +65,15 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		SDK:      stickyAxis(sdkChannelFlag, current.Source.SDKChannel),
 		Platform: stickyAxis(platformChannelFlag, current.Source.PlatformChannel),
 	}
+	manager := pm.Detect(pm.DetectOptions{Registry: registry})
+	if err := ensureToolchain(true, manager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
 	manifestNow, err := manifest.LoadDefault()
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
-	if err := preflightCompatibility(&axes, manifestNow, pm.Detect(pm.DetectOptions{Registry: registry}), forceCompat, out); err != nil {
+	if err := preflightCompatibility(&axes, manifestNow, manager, forceCompat, out); err != nil {
 		return err
 	}
 	platformOverrides := manifest.ApplyAxisResolution(manifestNow, axes)
@@ -130,18 +134,22 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		out.Warn("Cancelled.")
 		return nil
 	}
-	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(pm.DetectOptions{Registry: registry}),
-		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
-		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "update.lock"),
-		Rollback:       true,
-	})
-	if err != nil {
-		return fmt.Errorf("declarative update failed: %w", err)
-	}
 	log, err := logger.NewFileOnly(platformDir)
 	if err != nil {
 		return fmt.Errorf("create declarative update log: %w", err)
+	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: manager,
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "update.lock"),
+		Rollback:       true,
+		Progress:       logPackageManagerProgress(log),
+		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+	})
+	if err != nil {
+		return fmt.Errorf("declarative update failed: %w", err)
 	}
 	_, finalizeErr := (&installer.Installer{Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir: platformDir,
@@ -150,7 +158,6 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		Services:    append([]string(nil), current.SelectedServices...),
 		Binaries:    intentBinaries(current.ScenarioID, manifestNow),
 	}, manifestNow)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return finalizeErr
 	}
