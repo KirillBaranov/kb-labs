@@ -30,7 +30,7 @@ test('glob matching accepts zero or more directories for **', () => {
 });
 
 test('zone runner is carried into the shared E2E plan', () => {
-  const plan = buildPlan(parseNameStatus('M\ttools/kb-create/internal/manifest/manifest.json\n'), zones);
+  const plan = buildPlan(parseNameStatus('M\ttools/kb-create/v2/release/platform-topology.json\n'), zones);
   assert.deepEqual(plan.selected.map(({ zone, runner, suites }) => ({ zone, runner, suites })), [
     { zone: 'launcher', runner: 'launcher', suites: ['e2e-kb-create'] },
   ]);

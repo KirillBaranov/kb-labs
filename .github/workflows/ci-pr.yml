@@ -419,13 +419,12 @@ jobs:
         if: steps.gate-result.outputs.run == 'true'
         run: |
           packages=$(node -e '
-            const manifest = require("./tools/kb-create/internal/manifest/manifest.json");
+            const manifest = require("./tools/kb-create/v2/release/platform-topology.json");
             const names = [
-              ...(manifest.core ?? []).map((item) => item.name),
-              ...(manifest.services ?? []).map((item) => item.pkg),
-              ...(manifest.services ?? []).map((item) => item.plugin),
-              ...(manifest.adapters ?? []).map((item) => item.name),
-              ...(manifest.plugins ?? []).map((item) => item.pkg),
+              ...manifest.platforms.flatMap((item) => [item.package, ...(item.members ?? []).map((member) => member.package)]),
+              ...(manifest.sdks ?? []).map((item) => item.package),
+              ...(manifest.adapters ?? []).map((item) => item.package),
+              ...(manifest.plugins ?? []).map((item) => item.package),
             ].filter(Boolean);
             process.stdout.write([...new Set(names)].join(","));
           ')
