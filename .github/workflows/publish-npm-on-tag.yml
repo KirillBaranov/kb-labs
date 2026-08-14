@@ -108,6 +108,17 @@ jobs:
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
 
+      # The release plugin owns only exact tarballs. The launcher contract is
+      # a workflow gate: inspect those bytes after staging, before anything is
+      # uploaded or published. A missing/mismatched V2 package manifest is a
+      # candidate defect, never a reason for kb-create to guess configuration.
+      - name: Materialize and verify V2 package manifests
+        run: |
+          go run ./v2/cmd/kb-create-v2-stage-manifests \
+            --stage-manifest .kb/release/artifacts/manifest.json \
+            --output .kb/release/v2-manifests
+        working-directory: tools/kb-create
+
       - name: Archive built workspace output for delivery
         shell: bash
         run: |
