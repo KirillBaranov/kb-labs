@@ -62,6 +62,16 @@ const validateName = (kind: 'collection' | 'export', name: string): void => {
   }
 };
 
+/**
+ * Manifest plugin ids are scoped npm package names (`@kb-labs/steward`),
+ * but the composed storage name reaches the adapter as a SQL identifier
+ * (sqlite table name) — `@` and `/` aren't legal there. Sanitize only the
+ * segment used for storage names; `pluginId` itself keeps its readable
+ * form everywhere else (ACL lookups, error messages).
+ */
+const sanitizeForIdentifier = (pluginId: string): string =>
+  pluginId.replace(/[^a-zA-Z0-9_]/g, '_');
+
 interface CollectionAcl {
   /** Plugin owns this collection — full CRUD. */
   ownedBy: 'self';
@@ -88,12 +98,13 @@ function compileDocumentAcl(
   perm: NonNullable<NonNullable<PermissionSpec['platform']>['database']>['document'],
 ): { acl: Map<string, Acl>; allowDDL: boolean } {
   const acl = new Map<string, Acl>();
+  const storagePluginId = sanitizeForIdentifier(pluginId);
   for (const own of perm?.owns ?? []) {
     validateName('collection', own);
     if (acl.has(own)) {
       throw new PermissionError(`Collection '${own}' declared twice in owns for plugin '${pluginId}'`);
     }
-    acl.set(own, { ownedBy: 'self', storageName: `${pluginId}${NAMESPACE_SEPARATOR}${own}` });
+    acl.set(own, { ownedBy: 'self', storageName: `${storagePluginId}${NAMESPACE_SEPARATOR}${own}` });
   }
   for (const grant of perm?.access ?? []) {
     validateName('collection', grant.collection);
@@ -113,7 +124,7 @@ function compileDocumentAcl(
     acl.set(grant.collection, {
       ownedBy: 'other',
       ops: new Set(grant.ops),
-      storageName: `${grant.owner}${NAMESPACE_SEPARATOR}${grant.collection}`,
+      storageName: `${sanitizeForIdentifier(grant.owner)}${NAMESPACE_SEPARATOR}${grant.collection}`,
     });
   }
   return { acl, allowDDL: perm?.ddl?.ownCollections === true };
