@@ -54,6 +54,23 @@ func TestMaterializeManifestsRejectsTamperedTarball(t *testing.T) {
 	}
 }
 
+func TestMaterializeManifestsOnlyRequiresTopologyPackages(t *testing.T) {
+	dir := t.TempDir()
+	writeTarball(t, filepath.Join(dir, "selected.tgz"), "package/kb-create.manifest.json", `{"schema":"kb.create.artifact-manifest/v2","id":"selected","package":"@kb/selected","version":"1.2.3"}`)
+	writeTarball(t, filepath.Join(dir, "unrelated.tgz"), "package/package.json", `{}`)
+	stage := filepath.Join(dir, "manifest.json")
+	selectedHash := tarballSHA256(t, filepath.Join(dir, "selected.tgz"))
+	unrelatedHash := tarballSHA256(t, filepath.Join(dir, "unrelated.tgz"))
+	data := `[{"name":"@kb/selected","version":"1.2.3","tarball":"selected.tgz","sha256":"` + selectedHash + `"},{"name":"@kb/unrelated","version":"1.2.3","tarball":"unrelated.tgz","sha256":"` + unrelatedHash + `"}]`
+	if err := os.WriteFile(stage, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := MaterializeManifests(stage, filepath.Join(dir, "out"), "@kb/selected")
+	if err != nil || len(artifacts) != 1 || artifacts[0].Name != "@kb/selected" {
+		t.Fatalf("artifacts/error = %#v / %v", artifacts, err)
+	}
+}
+
 func tarballSHA256(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)

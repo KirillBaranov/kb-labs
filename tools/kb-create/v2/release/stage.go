@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/kb-labs/create/v2/installed"
@@ -27,7 +28,7 @@ type StagedArtifact struct {
 // MaterializeManifests extracts only the V2 launcher manifest from each exact
 // staged tarball. It never consults a workspace checkout, so the release index
 // describes the bytes that were actually published rather than a later build.
-func MaterializeManifests(stageManifest, outputRoot string) ([]StagedArtifact, error) {
+func MaterializeManifests(stageManifest, outputRoot string, requiredPackages ...string) ([]StagedArtifact, error) {
 	data, err := os.ReadFile(stageManifest)
 	if err != nil {
 		return nil, fmt.Errorf("read staged artifact manifest: %w", err)
@@ -38,6 +39,31 @@ func MaterializeManifests(stageManifest, outputRoot string) ([]StagedArtifact, e
 	}
 	if len(artifacts) == 0 {
 		return nil, fmt.Errorf("staged artifact manifest is empty")
+	}
+	if len(requiredPackages) > 0 {
+		required := make(map[string]bool, len(requiredPackages))
+		for _, pkg := range requiredPackages {
+			if pkg == "" {
+				return nil, fmt.Errorf("required launcher package is empty")
+			}
+			required[pkg] = true
+		}
+		selected := make([]StagedArtifact, 0, len(required))
+		for _, artifact := range artifacts {
+			if required[artifact.Name] {
+				selected = append(selected, artifact)
+				delete(required, artifact.Name)
+			}
+		}
+		if len(required) > 0 {
+			missing := make([]string, 0, len(required))
+			for pkg := range required {
+				missing = append(missing, pkg)
+			}
+			sort.Strings(missing)
+			return nil, fmt.Errorf("launcher topology packages were not staged: %s", strings.Join(missing, ", "))
+		}
+		artifacts = selected
 	}
 	seen := make(map[string]struct{}, len(artifacts))
 	stageDir := filepath.Dir(stageManifest)

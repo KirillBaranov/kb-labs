@@ -17,6 +17,14 @@ func TestBuildRejectsDuplicatePorts(t *testing.T) {
 	}
 }
 
+func TestBuildRejectsUnknownServiceDependency(t *testing.T) {
+	plan := testPlan(t.TempDir())
+	plan.ServiceGraph.Services[0].DependsOn = []string{"missing"}
+	if _, err := Build(plan); err == nil || !strings.Contains(err.Error(), "unknown service") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestBuildProjectsSecretAsPlaceholderOnly(t *testing.T) {
 	plan := testPlan(t.TempDir())
 	plan.ConfigPatches = []contracts.ConfigPatch{{Owner: "manifest:token", Environment: "TOKEN", Services: []string{"gateway"}}}

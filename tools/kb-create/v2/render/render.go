@@ -59,6 +59,14 @@ func (file DevservicesFile) Validate() error {
 			return fmt.Errorf("services %q and %q both claim port %d", owner, id, service.Port)
 		}
 		ports[service.Port] = id
+		for _, dependency := range service.DependsOn {
+			if dependency == id {
+				return fmt.Errorf("service %q cannot depend on itself", id)
+			}
+			if _, exists := file.Services[dependency]; !exists {
+				return fmt.Errorf("service %q depends on unknown service %q", id, dependency)
+			}
+		}
 	}
 	return nil
 }

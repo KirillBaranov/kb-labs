@@ -29,7 +29,6 @@
       },
       "members": [
         { "id": "@kb-labs/cli-bin", "package": "@kb-labs/cli-bin" },
-        { "id": "@kb-labs/devkit", "package": "@kb-labs/devkit" },
         { "id": "@kb-labs/core-contracts", "package": "@kb-labs/core-contracts" },
         { "id": "@kb-labs/shared-cli-ui", "package": "@kb-labs/shared-cli-ui" },
         { "id": "state-daemon", "package": "@kb-labs/core-state-daemon" },

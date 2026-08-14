@@ -122,6 +122,7 @@ jobs:
         run: |
           go run ./v2/cmd/kb-create-v2-stage-manifests \
             --stage-manifest .kb/release/artifacts/manifest.json \
+            --topology ./v2/release/platform-topology.json \
             --output .kb/release/v2-manifests
         working-directory: tools/kb-create
 
