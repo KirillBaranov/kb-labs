@@ -87,6 +87,8 @@ export const ReleasePlanSchema = z.object({
   rollbackEnabled: z.boolean(),
   channel: ReleaseChannelSchema,
   createdAt: z.string().datetime(),
+  /** Named flow this plan was computed for; persisted so later steps know which flow's tags to use. */
+  flow: z.string().optional(),
 });
 
 export type ReleasePlan = z.infer<typeof ReleasePlanSchema>;
