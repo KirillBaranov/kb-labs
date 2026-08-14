@@ -13,10 +13,12 @@ export async function resolveGitRange(options: {
   from?: string;
   to?: string;
   sinceTag?: string;
+  /** Glob for tags produced by the active release flow, e.g. `platform-v*`. */
+  tagGlob?: string;
   autoUnshallow?: boolean;
   requireSignedTags?: boolean;
 }): Promise<GitRange> {
-  const { cwd, from, to = 'HEAD', sinceTag, autoUnshallow, requireSignedTags } = options;
+  const { cwd, from, to = 'HEAD', sinceTag, tagGlob, autoUnshallow, requireSignedTags } = options;
   
   const git = simpleGit(cwd);
   
@@ -27,7 +29,8 @@ export async function resolveGitRange(options: {
   
   // Resolve 'from' ref
   // For first release (no tags), use first commit instead of HEAD~1
-  const lastTag = await findLastTag(git, requireSignedTags);
+  // An explicit boundary always wins over automatic tag discovery.
+  const lastTag = sinceTag || from ? null : await findLastTag(git, requireSignedTags, tagGlob);
   const fromRef = sinceTag || from || lastTag || await findFirstCommit(git);
   const toRef = to;
 
@@ -57,22 +60,23 @@ async function findFirstCommit(git: ReturnType<typeof simpleGit>): Promise<strin
  */
 export async function findLastTag(
   git: ReturnType<typeof simpleGit>,
-  requireSigned?: boolean
+  requireSigned?: boolean,
+  tagGlob?: string,
 ): Promise<string | null> {
   try {
-    const tags = await git.tags();
-    
-    // Filter signed tags if required
-    const candidateTags = requireSigned
-      ? await filterSignedTags(git, tags.all)
-      : tags.all;
-    
-    // Find most recent tag (sorted by version or date)
-    const recentTag = candidateTags
-      .sort()
-      .reverse()[0];
-    
-    return recentTag || null;
+    // `git describe` finds the nearest tag reachable from HEAD. Unlike a
+    // lexical sort of `git tag`, this neither crosses into another flow nor
+    // picks an old tag merely because its name sorts later.
+    const args = ['describe', '--tags', '--abbrev=0'];
+    if (tagGlob) { args.push('--match', tagGlob); }
+    args.push('HEAD');
+    const recentTag = (await git.raw(args)).trim();
+
+    if (!recentTag) { return null; }
+    if (!requireSigned) { return recentTag; }
+
+    const signed = await filterSignedTags(git, [recentTag]);
+    return signed[0] ?? null;
   } catch (error) {
     // No tags or error, return null
     return null;
@@ -184,5 +188,4 @@ export function parseGitUrl(url: string): {
   
   return { host, owner, repo };
 }
-
 

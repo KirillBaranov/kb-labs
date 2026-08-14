@@ -171,6 +171,8 @@ export type ChangelogResponse = z.infer<typeof ChangelogResponseSchema>;
 
 export const GenerateChangelogRequestSchema = z.object({
   scope: z.string(),
+  /** Named release flow; its configured tag pattern selects the baseline. */
+  flow: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   template: z.string().optional(),

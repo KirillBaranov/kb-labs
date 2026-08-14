@@ -122,7 +122,13 @@ export default defineCommand({
       loader.update({ text: 'Generating changelog...' });
       const llm = useLLM();
       const generator = createChangelogGenerator(config, llm ?? undefined);
-      const markdown = await generator.generate(plan, { repoRoot, gitCwd, config });
+      const markdown = await generator.generate(plan, {
+        repoRoot,
+        gitCwd,
+        config,
+        flow: flags.flow,
+        range: { from: flags.from, to: flags.to, sinceTag: flags['since-tag'] },
+      });
 
       const format = flags.format || config.changelog?.format || 'both';
       const outputDir = join(repoRoot, '.kb', 'release');
