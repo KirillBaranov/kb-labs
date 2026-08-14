@@ -1,683 +1,333 @@
-# kb-create
+# kb-create — deterministic launcher
 
-> **One-command installer for the KB Labs platform.** Download, configure and launch the full KB Labs stack in seconds — no manual setup required.
+**Status:** the only launcher implementation. The previous installer, its
+state, command dispatcher and compatibility paths have been removed. The
+implementation packages remain under `v2/` temporarily to preserve a clear
+Go import boundary; the public binary is `tools/kb-create/kb-create`.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
-[![KB Labs Platform](https://img.shields.io/badge/KB_Labs-Platform-blue.svg)](https://github.com/kb-labs)
-[![Release](https://img.shields.io/github/v/release/kb-labs-team/kb-labs)](https://github.com/kb-labs-team/kb-labs/releases)
+## Implemented vertical slice
 
-## Overview
+The V2 boundary is executable and covered by an offline journey test:
 
-`kb-create` is a standalone Go binary that installs and manages the KB Labs platform on your machine. It is completely independent — no Node.js, no existing KB Labs installation required to run it.
+- `catalog/` is the deliberately small immutable release index used before
+  installation. It resolves the platform bundle, declared compatibility and
+  capability providers without scanning an installation.
+- `resolve/` emits the immutable `ResolvedInstallPlan` and fails on missing or
+  ambiguous providers instead of selecting one by iteration order.
+- `render/` projects that plan into `kb.config.jsonc` and `devservices.yaml`,
+  with V2-owned validation and atomic writes.
+- `verify/` enforces `resolved graph == devservices == kb-dev status` through
+  a status adapter, equally usable in a real run and an offline journey.
+- `v2/artifacts/`, `v2/runtime/`, `v2/receipt/`, `v2/doctor/` and
+  `v2/diagnostics/` establish
+  exact artifact application, recovery, manifest-gap
+  reporting and redacted dossiers for the public CLI.
+- the root `kb-create` binary provides `plan`, `apply`, `update`, `uninstall`,
+  explicit `rollback`, manifest-aware `doctor`, and `wizard`; all use V2
+  contracts and emit one JSON envelope.
 
-**Key features:**
-- ✅ **Interactive TUI wizard** — pick services and plugins with checkboxes
-- ✅ **Silent mode** — `--yes` for CI/scripted environments
-- ✅ **Isolated platform directory** — platform lives separately from your project
-- ✅ **CWD binding** — all CLI calls and artifacts are scoped to your project folder
-- ✅ **Update with diff** — see exactly what changes before applying
-- ✅ **Install logs** — every run is logged, follow with `--follow`
-- ✅ **Environment doctor** — `kb-create doctor` checks PATH, tooling, and network
-- ✅ **pnpm-first** — uses pnpm if available, falls back to npm
-- ✅ **Project detection** — auto-detects language, package manager, frameworks, monorepo layout
-- ✅ **Claude Code onboarding** — installs platform-aware skills and a managed `CLAUDE.md` section so AI agents understand your KB Labs project from day one
+There is no legacy `install` path. `kb-create apply` is the only installation
+operation; it accepts the same request whether it came from CI, an agent,
+scenario, or the wizard.
 
-## Quick Start
+`apply` and `update` require an immutable release index and request. Recovery
+operations deliberately require only `--platform-root` (and a snapshot for
+rollback), so they recover the verified V2 receipt rather than recalculating a
+new plan. Raw package-manager transcript is private under `.kb/logs/`; failed
+operations add a redacted dossier under `.kb/diagnostics/`.
 
-### Install kb-create
+CI and agents may pass the request file unchanged, or use direct flags such
+as `--request-platform-root`, `--platform-version`/`--platform-channel`,
+`--sdk-version`, `--plugins id@version,...`, `--adapters id@version,...`,
+`--service-profile`, `--policy`, and `--offline`. Both forms normalize into
+the same `InstallRequest` before resolution; flags never build a separate
+shell-level install sequence.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh
+For a human, `kb-create wizard --index release-index.json
+--request-platform-root /path/to/platform` asks only for product axes and
+returns the same JSON request on stdout. It does not apply anything or own a
+second resolver; feed that request into `plan` or `apply` to continue.
+
+## Scenarios
+
+`scenario/` is the reusable journey layer. A V2 scenario declares only
+product axes (profile/plugins/adapters), validated fields, and either a
+manifest requirement ID or a provider capability. It has no shell actions,
+package specs, arbitrary file writes, or `devservices.yaml` patches.
+
+Use `--scenario <id> --scenario-answers '{"field":"value"}'` with direct
+request flags. The scenario compiles into the same `InstallRequest`; resolver
+accepts each value only when the selected platform/plugin/adapter manifest
+declares that requirement and JSON Pointer. Secret fields become secret-store
+references and cannot have a scenario default. The migrated built-ins are
+`commit`, `custom`, `explore`, `plugin-author`, and `release`.
+
+Release automation creates the index with `go run ./v2/cmd/kb-create-v2-index --input
+manifest-export.json --manifest-root staging-root --output release-index.json`.
+The command reads the exact V2 manifests staged with each artifact and replaces
+any hand-authored config projection; missing/mismatched manifests fail the
+release. It then rejects an index whose channel points outside its platform
+set and seals the canonical payload with a digest. `kb-create` verifies that
+digest before resolving.
+
+Secret input uses `--secret-env requirement.id=ENV_VAR`, so CI/agents pass a
+reference to process environment rather than secret text through argv/JSON.
+V2 stores the value only in `.kb/v2/secrets.env` (0600); generated config,
+receipt, scenario state, logs, diagnostics and telemetry retain only the
+manifest requirement or `${ENV_VAR}` placeholder. `kb-dev` reads this private
+store when it expands the rendered service environment.
+
+The platform bundle can also declare an OS/architecture-specific `kb-dev`
+binary asset. V2 verifies its SHA-256 and installs it in `.kb/v2/bin`; a CLI
+`--kb-dev` is an explicit development override, not a release dependency.
+
+## Why this launcher
+
+The previous launcher split installation ownership between separate command
+paths and a scan of the final `node_modules` tree. This launcher makes one
+promise: a user, CI job and agent ask for the same installation;
+the launcher resolves the same compatible artifacts, applies the same action
+DAG, renders the same service graph, and either verifies it or fails with an
+actionable recovery path.
+
+## Non-goals
+
+- Do not import or wrap `internal/engine`, legacy manifests, legacy receipts or
+  legacy package-manager code. V2 owns application, recovery and artifact
+  boundaries directly.
+- Do not retain a compatibility installation path or recover legacy state.
+- Do not make network E2E the primary correctness proof. Most V2 coverage
+  runs against deterministic offline artifact fixtures; real npm is reserved
+  for candidate smoke.
+
+## Target architecture
+
+```mermaid
+flowchart TD
+  A["Wizard / CI flags / agent protocol / scenario"] --> B["InstallRequest"]
+  B --> C["Compatibility matrix + resolver"]
+  C --> D["ResolvedInstallPlan"]
+  D --> E["V2 runtime: apply, journal, rollback"]
+  E --> F["InstallReceipt + immutable snapshot"]
+  F --> G["Render config + service graph"]
+  G --> H["Verify artifacts, kb-dev status, readiness"]
+  H --> I["Success or LauncherError + diagnostic bundle"]
+  F --> J["doctor --fix / update / uninstall / rollback"]
 ```
 
-This downloads the correct binary for your OS/arch and places it in `~/.local/bin/kb-create`.
+### One ownership rule
 
-Install a specific version:
+`ResolvedInstallPlan` owns requested platform/SDK/plugins/adapters, exact
+artifact versions, config patches, provider bindings, binaries and the
+expected service graph.
+`devservices.yaml` and generated runtime configuration are rendered outputs.
+A package scan validates declared artifacts; it must never decide which
+services the user received merely because a transitive dependency exposes a
+manifest.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh -s -- --version v0.2.1
+The required post-condition is:
+
+```text
+resolved expected services == rendered devservices services == kb-dev status services
 ```
 
-`install.sh` verifies SHA-256 checksums against the release `checksums.txt` before installing.
-For pre-releases (for example `v0.2.0-beta.1`) always pass `--version`.
+For the current product horizon, core and official services are one platform
+bundle. A selected platform version owns their exact packages, default
+profiles and service graph. Services are therefore not independently resolved
+versions. An explicit, platform-bundle companion set is the only permitted
+exception to a direct user selection.
 
-### Create a project
+## Public operation model
 
-```bash
-kb-create my-project
+All transports compile to the same request and invoke the same operations:
+
+```text
+plan → apply → receipt → verify
+update → snapshot → apply → verify | rollback
+uninstall → snapshot → apply → verify
+doctor --fix → safe recovery → verify
 ```
 
-The wizard doesn't start by asking which services/plugins/adapters you
-want — that's KB Labs' internal taxonomy, not something a first-time user
-should need to know. Instead it asks **what you're here to do**, and only
-walks you through the specific setup that scenario actually needs:
-
-1. Platform directory + project directory (pre-filled with sane defaults)
-2. **What are you here to do?** — pick one:
-   - **Prepare my commits** — creates a reviewable commit plan without
-     writing git history
-   - **Prepare a release** — installs only the `release` plugin and plans
-     versions without publishing
-   - **Create my own command** — a working local dev loop (`scaffold`, REST +
-     gateway, `kb-dev`), no AI setup in the way
-   - **Advanced: choose components myself** — the full manual picker (services,
-     plugins, adapter roles, tools), for anyone who wants full control
-3. Confirm & install
-
-AI outcomes ask for an explicit OpenAI or Anthropic key. The KB Labs shared
-gateway (50 free calls per device) is currently unavailable while its
-infrastructure is being repaired, so it is intentionally hidden from the
-provider picker. Re-enable it by changing the centralized feature switch in
-`internal/wizard/free_gateway.go` when the service is healthy.
-
-### Silent install with defaults
-
-```bash
-kb-create my-project --yes
-```
-
-Installs the same footprint as the "Just look around" option, without any
-prompts. Pick a different scenario non-interactively with `--intent`:
-
-```bash
-kb-create my-project --yes --intent=release
-kb-create my-project --yes --intent=plugin-author
-kb-create my-project --yes --intent=ai-review
-```
-
-`--intent=custom` isn't valid with `--yes` — custom picking needs either the
-interactive wizard or [`kb-create install --plugins/--services`](#kb-create-install)
-for scripted arbitrary selection.
-
-## How It Works
-
-```
-kb-create my-project
-        │
-        ▼
-   Interactive wizard
-   ─────────────────────────────────────────────────
-   Platform dir:  ~/kb-platform
-   Project cwd:   ~/projects/my-project
-
-   What are you here to do?
-   ◉ Just look around
-   ○ Automate releases
-   ○ Write my own plugin
-   ○ Add AI review to my repo
-   ○ Choose exactly what I need
-   ─────────────────────────────────────────────────
-        │
-        ▼
-   (only the steps that scenario needs — e.g. an npm token
-   prompt for "Automate releases", an LLM-provider choice for
-   "Add AI review" — skippable, with a doc link either way)
-        │
-        ▼
-   npm/pnpm install @kb-labs/* packages
-   into ~/kb-platform/node_modules/
-        │
-        ▼
-   Write ~/kb-platform/.kb/kb.config.json
-   { "platform": "~/kb-platform", "cwd": "~/projects/my-project" }
-        │
-        ▼
-   ✅ Done — next steps + docs links specific to what you picked
-```
-
-New declarative scenarios are described by scenario manifests and compiled by
-the flow engine, not added as imperative installer branches. The current
-launcher exposes the migration path explicitly with `--engine` while the
-legacy command remains available during cutover. See the engine plan and
-[ADR-0026](../../docs/adr/0026-scoped-plugin-install-and-adapter-role-validation.md)
-for the CI-facing scoped install contract.
-
-### Declarative flow engine
-
-The engine is shared by Human and Agent modes. Human mode renders the same
-pages and validation in the terminal UI; Agent mode uses JSON, while CI uses
-deterministic direct install requests without scenarios:
-
-```bash
-kb-create my-project --engine
-kb-create agent scenarios
-kb-create agent inspect --scenario commit
-kb-create agent plan --scenario commit --project-root ./my-project --platform-root ~/.kb
-kb-create agent apply --scenario commit --project-root ./my-project --platform-root ~/.kb
-```
-
-Technical compatibility is resolved from each package's declared `kb.manifest`,
-not duplicated in the launcher. Agent plans can overlay local artifacts with
-`--package-dir`, or exact released package specs with `--package`; use
-`--manifest-cache` to persist normalized manifest metadata.
-
-### Platform vs Project separation
-
-The platform (node_modules) lives in one place; your project files live elsewhere. The KB Labs CLI reads `.kb/kb.config.json` and `chdir`s into `cwd` before executing any command — so all artifacts, logs and outputs land in your project folder.
-
-```
-~/kb-platform/          ← platform installation
-  node_modules/
-  package.json
-  .kb/
-    kb.config.json      ← cwd binding lives here
-    logs/               ← install logs
-
-~/projects/my-project/  ← your project
-  .kb/                  ← runtime artifacts (created by platform)
-```
-
-## Commands
-
-### `kb-create [project-dir]`
-
-Default command. Launches the interactive wizard (or silent install with `--yes`).
-
-```bash
-kb-create my-project
-kb-create my-project --yes
-kb-create my-project --platform ~/custom/platform/path
-```
-
-| Flag | Description |
-|------|-------------|
-| `-y, --yes` | Skip wizard, install with defaults |
-| `--platform <dir>` | Override default platform directory |
-| `--demo` | Install demo plugins and run pipeline on your code |
-| `--skip-claude` | Do not install Claude Code skills or `CLAUDE.md` section |
-| `--no-claude-md` | Install Claude Code skills only; skip the `CLAUDE.md` merge |
-| `--dev-manifest <path>` | Install from local packages via pnpm pack pre-step (see [Dev Mode](#dev-mode)) |
-| `--registry <url>` | Use custom npm registry (e.g. `http://localhost:4873` for local verdaccio) |
-
-### `kb-create install`
-
-Non-interactive, **scoped** install — installs exactly the plugins/services you name, no wizard, no default footprint beyond the platform baseline (core packages + always-installed baseline adapters). Built for CI, where you want e.g. just the `release` plugin without gateway/workflow/marketplace.
-
-```bash
-kb-create install --plugins=release --platform ./ci-platform
-kb-create install --plugins=release,commit --services=rest --platform ./ci-platform
-```
-
-Every plugin/service ID is validated against the manifest catalog **before any network action** — an unknown ID fails fast with the list of valid IDs.
-
-**Version pinning** — append `@version` to any ID:
-
-```bash
-kb-create install --plugins=release@0.2.0 --services=rest@1.4.0 --platform ./ci-platform
-```
-
-Omit the version to install `@latest`. Plugin and service version maps are independent (an ID like `marketplace` can exist in both catalogs).
-
-**Adapter configuration** — wire a role to a specific package with `--adapters "role=pkg[@version]"`:
-
-```bash
-kb-create install --plugins=release \
-  --adapters "cache=@kb-labs/adapters-redis@0.3.0" \
-  --platform ./ci-platform
-```
-
-Role names are validated against the platform's canonical capability list (`ADAPTER_REGISTRY_KEYS`) before any install action — an unknown role fails fast, listing the valid roles. Most common roles already have a default wired from the manifest catalog (`llm`, `storage`, `logger`, `logRingBuffer`, `analytics`, `serviceTransport`). For `cache`, the declarative scenarios offer the built-in StateBroker adapter (no Redis server required) or Redis when you need a shared external cache. If a plugin declares a required capability with nothing backing it, planning fails before package installation.
-
-| Flag | Description |
-|------|-------------|
-| `--plugins <ids>` | Comma-separated plugin IDs to install, each optionally `@version` |
-| `--services <ids>` | Comma-separated service IDs to install, each optionally `@version` |
-| `--adapters <pairs>` | Comma-separated `role=pkg[@version]` pairs |
-| `--platform <dir>` | Platform directory (required) |
-| `--registry <url>` | Use a custom npm registry |
-
-See also the reusable `.github/actions/kb-create-install` composite GitHub Action, which wraps this command (binary download + flags) into a single workflow step.
-
-### `kb-create update`
-
-Compares the current manifest against the installed snapshot. Shows a diff, asks for confirmation, then applies updates. After the platform is updated, also re-applies Claude Code assets from the just-refreshed devkit (skills + the managed `CLAUDE.md` section). Use `--skip-claude` or `--no-claude-md` to opt out — same semantics as on install.
-
-```bash
-kb-create update
-kb-create update --platform ~/kb-platform
-kb-create update --skip-claude            # platform only, leave .claude/ alone
-```
-
-**Example output:**
-```
-[INFO] Checking for updates...
-
-[INFO] Update plan
-[INFO] Add:
-  ● @kb-labs/new-plugin
-[INFO] Update:
-  ● @kb-labs/cli-bin
-[INFO] Remove:
-  ● @kb-labs/old-package
-
-Apply updates? [Y/n]
-```
-
-### `kb-create status`
-
-Shows what is currently installed and the platform configuration.
-
-```bash
-kb-create status
-kb-create status --platform ~/kb-platform
-```
-
-**Example output:**
-```
-[INFO] Installation Status
-  Platform:  ~/kb-platform
-  Project:   ~/projects/my-project
-  PM:        pnpm
-  Installed: 2026-02-25 10:00
-  Manifest:  1.0.0
-
-[INFO] Core packages
-    ● @kb-labs/cli-bin
-    ● @kb-labs/sdk
-
-[INFO] Services
-    ● rest       REST API daemon (port 5050)
-    ● workflow   Workflow engine (port 7778)
-
-[INFO] Plugins
-    ● mind       AI-powered code search (RAG)
-```
-
-### `kb-create logs`
-
-Prints the most recent install log.
-
-```bash
-kb-create logs                       # print last log
-kb-create logs --follow              # stream in real time (like tail -f)
-kb-create logs --platform ~/kb-platform
-```
-
-### `kb-create doctor`
-
-Runs environment diagnostics used by installer/runtime.
-
-```bash
-kb-create doctor
-```
-
-Checks:
-- `PATH` contains `~/.local/bin`
-- `node`
-- `git`
-- `docker`
-- network reachability to `github.com`
-
-## Claude Code Onboarding
-
-`kb-create` installs a curated set of Claude Code skills and an opt-in managed
-section of `CLAUDE.md` directly into your project, so AI agents (Claude Code,
-Cursor with the same `.claude/` discovery, etc.) understand the platform from
-the first command.
-
-### What gets installed
-
-Files are written into the **project** directory (the folder where you actually
-work), not into the platform directory:
-
-```
-<project>/
-├── CLAUDE.md                              ← managed section between markers
-└── .claude/
-    ├── .kb-labs.json                      ← state file (versions, sha256, timestamps)
-    └── skills/
-        ├── kb-labs-quickstart/SKILL.md
-        ├── kb-labs-create-plugin/SKILL.md
-        ├── kb-labs-create-product/SKILL.md
-        ├── kb-labs-troubleshoot/SKILL.md
-        ├── kb-labs-explore/SKILL.md
-        └── kb-labs-update/SKILL.md
-```
-
-The skill catalogue and the `CLAUDE.md` snippet are shipped by
-`@kb-labs/devkit` (the internal toolkit pulled in as a dependency of the
-platform). `kb-create` reads them from
-`<platform>/node_modules/@kb-labs/devkit/assets/claude/` after the platform is
-installed and copies them into your project.
-
-### Skill namespace
-
-Claude Code uses a flat `.claude/skills/` layout, so namespacing is done via
-the directory-name prefix `kb-labs-`. Anything without that prefix is treated
-as user-authored and is **never** touched by `kb-create` — including on update
-and uninstall.
-
-### `CLAUDE.md` merge behaviour
-
-`kb-create` is conservative with `CLAUDE.md`. It distinguishes three cases:
-
-| Case | Action |
+`InstallRequest` supports the same first-class axes everywhere:
+
+- platform exact version or channel: `stable`, `canary`, `experimental`;
+- SDK exact version or channel, constrained by the selected platform;
+- platform-owned service profile, plugins, independently versioned adapters
+  and explicit provider preferences;
+- explicit project/platform roots;
+- artifact source: online registry or offline fixture;
+- scenario ID for a reusable user journey.
+
+Wizard selects valid options from the resolver. CI and agents can submit the
+request directly in flags or JSON. Neither may reconstruct a shell sequence.
+
+## Compatibility matrix and resolver
+
+The matrix is evaluated before every network or filesystem side effect. It
+answers which combinations of platform/SDK/channel/plugins/adapters/binaries
+are valid and yields exact artifacts plus the platform-owned service dependency
+graph.
+Core and official services ship with the selected platform release; a missing
+or inconsistent service manifest is a platform candidate defect, not a
+user-resolvable version choice. Invalid requests fail fast with the same error
+contract as runtime failures.
+
+Plugins and adapters remain independently versioned. Their manifests
+progressively declare supported platform and SDK ranges. Adapters additionally
+declare provided capabilities; plugins/services declare required capabilities.
+The resolver selects exactly one compatible provider per required capability,
+honours explicit provider preferences, and rejects a missing or ambiguous
+binding before installation. It may select an unpinned compatible plugin or
+adapter version, but it never silently changes an explicit pin:
+
+| Policy | Behaviour |
 |---|---|
-| No `CLAUDE.md` exists | Create it with a header and the managed section. |
-| `CLAUDE.md` exists with our markers | Replace just the marked block in place — surrounding content is untouched. |
-| `CLAUDE.md` exists without our markers | Ask `[Y/n/v(iew)]` before appending. With `--yes` the section is appended at the end. |
+| `strict` (default for CI/agents) | Exact pins must be compatible or resolution fails. |
+| `compatible` (wizard default) | Resolver may choose only unpinned compatible versions and displays the resolved set before apply. |
+| `upgrade-safe` (explicit update only) | Resolver may advance unpinned artifacts within the defined compatibility policy; a snapshot is mandatory. |
 
-The managed section is delimited by HTML comments containing the version, so
-that future updates can replace it deterministically:
+No intersecting range produces `KB_CREATE_INCOMPATIBLE_COMPONENTS` before
+download or config writes. A missing capability produces
+`KB_CREATE_PROVIDER_UNRESOLVED`; a competing explicit binding produces
+`KB_CREATE_PROVIDER_AMBIGUOUS`. Each error names the selected versions or
+providers, the manifest constraint that rejected them and safe alternatives.
+A plugin or adapter without a range is `unknown compatibility`, never silently
+universal: it needs explicit user policy during migration and becomes a
+publish-time failure for official artifacts after the migration window.
 
-```markdown
-<!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
-...
-<!-- END: KB Labs (managed) -->
+The resolver also validates graph completeness before `apply`: required
+providers, ports, dependency targets, offline artifacts and mandatory service
+metadata must all resolve. No command may claim success with an incomplete
+default configuration.
+
+The technical source of truth for configuration variables and service metadata
+remains the manifests shipped by platform components, plugins and adapters.
+V2 does not turn the wizard into a universal manifest-variable form. The
+wizard chooses product-level axes and profiles; after verified artifacts are
+available, manifest-derived required input either receives a safe default or
+returns structured `KB_CREATE_INPUT_REQUIRED` with a human hint and machine
+schema. CI/agents supply those values in `InstallRequest` and resume the same
+receipt/journal without recomputing a different flow.
+
+### Doctor is manifest-aware configuration diagnosis
+
+`doctor` loads the active receipt, resolves the installed package manifests
+for every selected platform component, plugin and adapter, and compares their
+declared requirements with the effective generated configuration. It reports
+missing values, invalid values, unresolved capabilities and stale bindings as
+structured findings — never by treating an absent default as a later runtime
+failure.
+
+For each finding it records the manifest owner, config path/key, whether the
+value is secret, expected schema/constraint, safe current-state summary and a
+recovery action. Secret values are never printed, bundled or sent through
+telemetry; the only permitted state is `set`, `missing` or `invalid`.
+
+```text
+KB_CREATE_CONFIG_REQUIRED
+Owner: @kb-labs/plugin-x@4.1.0
+Requirement: adapters.llm.apiKey (secret)
+Current state: missing
+Hint: kb-create doctor --fix --input adapters.llm.apiKey
 ```
 
-### State tracking
+`doctor --fix` must not invent a secret or silently choose between competing
+providers. It may render safe manifest defaults, restore a receipt/snapshot,
+rebuild derived config and ask a human/agent for required input through the
+same `InstallRequest` schema. The subsequent engine run verifies the repaired
+configuration, service graph and readiness before updating the receipt.
 
-Every install/update writes `.claude/.kb-labs.json` with the devkit version,
-timestamps, and a sha256 of every installed skill body. The next `kb-create
-update` uses this state to classify skills as added/updated/unchanged and to
-detect drift even when version strings did not change (useful when developing
-against a `link:` devkit).
+## Engine, receipt and snapshots
 
-### Lifecycle
+The V2 runtime receives the resolved action DAG and is responsible for
+variables, step-level errors, retry policy, journal, lock and rollback.
 
-| Command | Effect on Claude assets |
-|---|---|
-| `kb-create my-project` | Install skills + create/append managed `CLAUDE.md` section. Honours `--skip-claude` and `--no-claude-md`. |
-| `kb-create update` | Re-resolve devkit assets and apply diffs (added / updated / removed skills, refreshed managed section). Same flags. |
-| `kb-create uninstall` | Remove every `kb-labs-*` skill, strip the managed section. If `kb-create` originally created `CLAUDE.md` itself and nothing else of substance is left, the file is removed; otherwise only the managed section is stripped and user content is preserved. |
+After a verified apply, V2 writes an immutable receipt containing:
 
-### Failure model
+- normalized request and resolved artifacts (including hashes);
+- expected service graph and hashes of generated configuration;
+- engine journal/correlation ID and verification evidence;
+- snapshot parent/ID and active channel/version axes.
 
-Claude asset operations are **never fatal** to the rest of `kb-create`. If the
-devkit assets directory cannot be found, the manifest is invalid, or any skill
-copy fails, the launcher logs a warning and continues — the platform install,
-update, or uninstall itself always proceeds.
+Before update or uninstall, V2 creates a snapshot of receipt, generated
+configuration, service graph, managed state and resolved artifacts. Failed
+verification restores that snapshot; `rollback --snapshot <snapshot>` is explicit
+and uses the same engine/recovery model.
 
-### Opting out
+## Errors, logs and diagnostics
 
-| Goal | Flag |
-|---|---|
-| Don't touch `.claude/` or `CLAUDE.md` at all | `--skip-claude` |
-| Install skills but don't merge `CLAUDE.md` | `--no-claude-md` |
+Every operation uses one redacted `LauncherError` contract:
 
-These flags work on both `kb-create` (install) and `kb-create update`.
-
-## Installation
-
-### curl | sh (recommended)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/kb-labs-team/kb-labs/main/tools/kb-create/install.sh | sh
+```text
+code, stage(resolve|apply|verify|recover), retryable,
+message, safe cause, hint, correlation ID, safe details
 ```
 
-Installs to `~/.local/bin/kb-create`. No `sudo` needed.
-
-### Manual download
-
-Download the correct binary from [GitHub Releases](https://github.com/kb-labs-team/kb-labs/releases/latest):
-
-| Platform | Binary |
-|----------|--------|
-| macOS Apple Silicon | `kb-create-darwin-arm64` |
-| macOS Intel | `kb-create-darwin-amd64` |
-| Linux x86_64 | `kb-create-linux-amd64` |
-| Linux ARM64 | `kb-create-linux-arm64` |
-
-```bash
-# Example for macOS Apple Silicon
-curl -fsSL https://github.com/kb-labs-team/kb-labs/releases/latest/download/kb-create-darwin-arm64 \
-  -o ~/.local/bin/kb-create
-chmod +x ~/.local/bin/kb-create
-```
-
-### Build from source
-
-```bash
-git clone https://github.com/kb-labs-team/kb-labs
-cd kb-labs-create
-go build -o kb-create .
-```
-
-Requires Go 1.21+.
-
-## Dev Mode
-
-When developing KB Labs itself you need to test the installer against local package builds — without publishing to npm on every change. There are two approaches:
-
-### Option A — Local verdaccio registry (recommended)
-
-The cleanest approach. Spins up a local npm registry, publishes all `@kb-labs/*` packages to it, then installs from there. Fully prod-equivalent — no localPath, no symlinks.
-
-```bash
-# 1. Start local registry (once)
-kb-dev start verdaccio
-
-# 2. Publish all @kb-labs/* packages to it (after every change)
-./scripts/publish-local.sh
-
-# 3. Install using local registry
-kb-create /tmp/my-project --yes \
-    --registry http://localhost:4873 \
-    --platform /tmp/kb-test-platform
-```
-
-Verdaccio proxies unknown packages to the real npm registry, so transitive external dependencies resolve automatically. `@kb-labs/*` packages are served from local storage only.
-
-### Option B — dev-manifest with pnpm pack
-
-For quick testing of a handful of packages without a full publish. `kb-create` runs `pnpm pack` on each `localPath` directory, producing self-contained tarballs, then installs those. This correctly handles `workspace:*` and `link:` refs inside the packages.
-
-```json
-{
-  "version": "3.0.0",
-  "registryUrl": "https://registry.npmjs.org",
-  "core": [
-    { "name": "@kb-labs/cli-bin", "localPath": "/Users/you/kb-labs-workspace/platform/kb-labs-cli/packages/cli-bin" },
-    { "name": "@kb-labs/sdk" }
-  ],
-  "services": [
-    { "id": "rest", "pkg": "@kb-labs/rest-api-app", "description": "REST API (port 5050)", "default": true,
-      "localPath": "/Users/you/kb-labs-workspace/platform/kb-labs-rest-api/apps/rest-api" }
-  ],
-  "binaries": [
-    { "id": "kb-dev", "name": "kb-dev", "description": "Service manager",
-      "localPath": "/Users/you/kb-labs-workspace/infra/kb-labs-dev/kb-dev" }
-  ]
-}
-```
-
-```bash
-# 1. Copy example and fill in paths
-cp dev-manifest.json.example dev-manifest.json
-
-# 2. Install
-kb-create /tmp/my-project --yes \
-    --dev-manifest ./dev-manifest.json \
-    --platform /tmp/kb-test-platform
-```
-
-The pack pre-step only runs when `--dev-manifest` is passed — prod mode is unchanged. The real `dev-manifest.json` is gitignored (machine-specific paths). Commit only `dev-manifest.json.example`.
-
-For binaries: `localPath` copies the binary directly instead of downloading from GitHub Releases.
-
-## Manifest
-
-The list of installable packages is defined in [`internal/manifest/manifest.json`](internal/manifest/manifest.json) and embedded into the binary at build time. To update the package list, edit that file and rebuild.
-
-**Structure:**
-
-```json
-{
-  "version": "1.0.0",
-  "registryUrl": "https://registry.npmjs.org",
-  "core": [
-    { "name": "@kb-labs/cli-bin" }
-  ],
-  "services": [
-    { "id": "rest", "pkg": "@kb-labs/rest-api", "description": "...", "default": true }
-  ],
-  "plugins": [
-    { "id": "mind", "pkg": "@kb-labs/mind", "description": "...", "default": true }
-  ]
-}
-```
-
-**Extensibility:** `manifest.Loader` supports a fallback chain — Remote URL → Local override file → Embedded JSON. When a remote registry endpoint is available, set `LoadOptions.RemoteURL` to always fetch the latest manifest without rebuilding the binary.
-
-## Architecture
-
-```
-kb-labs-create/
-├── main.go                        ← entrypoint, injects build-time version
-├── manifest.json                  ← canonical package list (see internal/manifest/)
-├── cmd/
-│   ├── root.go                    ← cobra root, --version, Execute()
-│   ├── create.go                  ← default command: wizard → install → claude assets
-│   ├── update.go                  ← diff → confirm → npm update → claude assets
-│   ├── uninstall.go               ← strip claude assets → remove platform
-│   ├── status.go                  ← read config, pretty-print
-│   ├── logs.go                    ← cat / tail -f install log
-│   ├── doctor.go                  ← environment diagnostics
-│   ├── output.go                  ← unified CLI output styles
-│   └── claude_io.go               ← stdPrompter + printClaudeSummary helper
-└── internal/
-    ├── detect/
-    │   ├── detect.go              ← ProjectProfile types, Detect() orchestrator, Summary()
-    │   ├── lang.go                ← language detection (11 languages, file-existence table)
-    │   ├── pm.go                  ← package manager detection (lockfile-first priority)
-    │   ├── monorepo.go            ← monorepo detection (pnpm/npm/yarn/cargo/lerna/turbo/nx)
-    │   ├── packages.go            ← workspace glob expansion + per-package scanning
-    │   ├── commands.go            ← command extraction (Node/Go/Rust/Python/Java/Makefile)
-    │   ├── framework.go           ← framework detection (config files + dependency scanning)
-    │   └── detect_test.go         ← 34 tests covering all detectors
-    ├── manifest/
-    │   ├── types.go               ← Manifest, Package, Component, Binary structs + PackageSpec() methods
-    │   ├── types_test.go          ← unit tests for PackageSpec / CorePackageSpecs / dev-manifest round-trip
-    │   └── loader.go              ← Load() with fallback chain + //go:embed
-    ├── pm/
-    │   ├── pm.go                  ← PackageManager interface + Detect()
-    │   ├── npm.go                 ← NpmManager
-    │   └── pnpm.go                ← PnpmManager
-    ├── wizard/
-    │   └── wizard.go              ← Bubble Tea TUI (3-stage: dirs → options → confirm)
-    ├── installer/
-    │   └── installer.go           ← Install(), Diff(), Update()
-    ├── config/
-    │   └── config.go              ← Read/Write versioned PlatformConfig
-    ├── claude/
-    │   ├── claude.go              ← Install/Update/Uninstall public API + Options/Result/Logger/Prompter
-    │   ├── manifest.go            ← Manifest type + ReadManifest validation
-    │   ├── source.go              ← ResolveAssetsDir(platformDir, projectDir)
-    │   ├── skills.go              ← copySkills (sha256 diff) + removeKbLabsSkills (prefix-guarded)
-    │   ├── claudemd.go            ← mergeClaudeMd 3-case logic + stripClaudeMd
-    │   ├── state.go               ← .claude/.kb-labs.json read/write/remove
-    │   ├── errors.go              ← ErrAssetsNotFound / ErrInvalidManifest sentinels
-    │   └── claude_test.go         ← 14 unit tests covering install/update/uninstall + edge cases
-    └── logger/
-        └── logger.go              ← io.MultiWriter(stderr + file)
-```
-
-### Extension points
-
-| Point | How to extend |
-|-------|--------------|
-| **New packages/services/plugins** | Edit `internal/manifest/manifest.json`, rebuild |
-| **Dev mode — verdaccio** | `kb-dev start verdaccio` + `./scripts/publish-local.sh` + `--registry http://localhost:4873` |
-| **Dev mode — local packs** | Copy `dev-manifest.json.example` → `dev-manifest.json`, set `localPath` fields, pass `--dev-manifest` |
-| **Remote manifest** | Set `manifest.LoadOptions.RemoteURL` — fallback to embedded if unreachable |
-| **New package manager** | Implement `pm.PackageManager` interface, add to `pm.Detect()` |
-| **New language/framework** | Add entry to data-driven table in `detect/lang.go` or `detect/framework.go` |
-| **Config migrations** | Increment `configVersion`, add case in `config.Read()` |
-| **Wizard steps** | Add a new `stage` const and handler in `wizard.go` |
-| **New Claude skill** | Add a directory under `infra/kb-labs-devkit/assets/claude/skills/kb-labs-<id>/SKILL.md` and an entry in `assets/claude/manifest.json`. `kb-create` will pick it up on next install/update. |
-| **Claude state schema** | Bump `stateSchemaVersion` in `internal/claude/state.go` and add a migration in `ReadState`. |
-
-## FAQ
-
-### Q: Do I need Node.js installed?
-
-**A:** Yes — `kb-create` itself is a Go binary with no Node.js dependency, but it installs `@kb-labs/*` npm packages, so Node.js and npm (or pnpm) must be available on the system.
-
-### Q: Where should I install the platform?
-
-**A:** Anywhere you like — `~/kb-platform` is the default. The platform directory is independent from your project. You can have one platform installation shared across multiple projects (each with its own `cwd` binding), or a dedicated installation per project.
-
-### Q: Can I run kb-create in CI?
-
-**A:** Yes:
-```bash
-kb-create /workspace/my-project --yes --platform /opt/kb-platform
-```
-
-### Q: How do I update the platform later?
-
-**A:**
-```bash
-kb-create update --platform ~/kb-platform
-```
-
-### Q: What if pnpm is not installed?
-
-**A:** `kb-create` automatically falls back to npm. To use pnpm, install it first:
-```bash
-npm install -g pnpm
-```
-
-### Q: Can I customise what gets installed?
-
-**A:** Yes — in wizard mode, use space to toggle any service or plugin. In silent mode, all items marked `"default": true` in the manifest are installed. For fine-grained control, edit the manifest and rebuild.
-
-### Q: I don't use Claude Code — will `kb-create` still touch my repo with skills?
-
-**A:** Yes by default, but the skills only live under `.claude/skills/kb-labs-*` and a marked section of `CLAUDE.md`. Both are inert for any tool that does not look at them. If you still want to opt out:
-
-```bash
-kb-create my-project --skip-claude        # no .claude/, no CLAUDE.md merge
-kb-create my-project --no-claude-md       # skills only, leave CLAUDE.md alone
-```
-
-The same flags apply to `kb-create update`.
-
-### Q: I already have a `CLAUDE.md` with my own instructions — will `kb-create` overwrite it?
-
-**A:** No. `kb-create` looks for HTML markers `<!-- BEGIN: KB Labs ... -->` / `<!-- END: KB Labs ... -->` and only ever touches the content between them. If you have a `CLAUDE.md` without those markers, it asks `[Y/n/v(iew)]` before appending the managed section, and even then it appends rather than replaces. With `--yes` the section is appended at the end, leaving your content untouched at the top.
-
-### Q: How do I remove just the Claude skills without uninstalling the platform?
-
-**A:** Currently the cleanest path is `kb-create my-project --skip-claude` (a future install/update with this flag will leave `.claude/` as-is) plus manually deleting `.claude/skills/kb-labs-*` and the marked section. A dedicated `kb-create claude uninstall` subcommand is on the roadmap.
-
-### Q: The binary shows version `dev` — is that normal?
-
-**A:** Only when built with `go build .` directly. Official releases from GitHub have proper version strings injected by goreleaser via `-ldflags`. Check with `kb-create --version`.
-
-## Development
-
-```bash
-# Clone
-git clone https://github.com/kb-labs-team/kb-labs
-cd kb-labs-create
-
-# Install dependencies
-go mod download
-
-# Build
-go build -o kb-create .
-
-# Run tests
-go test ./...
-
-# Vet
-go vet ./...
-
-# Build for all platforms (requires goreleaser)
-goreleaser build --snapshot --clean
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-## Support & Resources
-
-- **Issues**: [Report bugs →](https://github.com/kb-labs-team/kb-labs/issues)
-- **Discussions**: [Ask questions →](https://github.com/kb-labs/discussions)
-- **KB Labs Platform**: [Main repository →](https://github.com/kb-labs)
-
-## License
-
-MIT — see [LICENSE](LICENSE) for details.
+The error is rendered for humans, returned through `--json` and agent
+protocol, persisted in the journal/receipt, and consumed by `doctor --fix`.
+
+Each invocation writes a full local log. A failure additionally writes a
+redacted dossier under `.kb/diagnostics/<correlation-id>/` with resolved plan,
+receipt/snapshot metadata, engine journal, package-manager output, toolchain,
+config hashes, service graph and `kb-dev status`. The CLI prints one recovery
+command and the bundle path so users can attach it to an issue without manual
+terminal reconstruction.
+
+## Opt-in anonymous telemetry
+
+With explicit consent only, V2 emits a small, non-blocking anonymous outcome
+event: operation, stage, error code, duration, OS/architecture, selected
+component count and channel. It never sends paths, repository/project names,
+environment values, package-manager output, logs, tokens or the diagnostic
+bundle. Offline/no-consent operation is behaviorally identical and telemetry
+failure never changes the installation result.
+
+## Test strategy: shard by contract and resources
+
+| Shard | Source | Assertion | Network |
+|---|---|---|---|
+| `resolver-contract` | matrix + fixture catalog | request resolves/rejects with an explicit reason and exact graph | none |
+| `config-contract` | resolved plan | graph renders valid config, no unexpected/missing service, ports/dependencies valid | none |
+| `engine-recovery` | fake package/binary adapters | journal, partial failure, retry, rollback and doctor recovery | none |
+| `doctor-manifest-contract` | manifests + effective-config fixtures | required/default/secret fields, provider bindings and repair-plan generation | none |
+| `launcher-journey` | offline tarball/binary fixtures | fresh, explicit, rerun, update, uninstall and rollback | none |
+| `service-profile` | isolated fixture per profile | `kb-dev status` equals receipt graph; required services meet readiness | fixture/local |
+| `release-smoke` | exact npm canary + released binaries | default fresh install and required runtime contract | real npm only |
+
+Each shard owns a distinct HOME, platform/project roots, port allocation and
+artifact namespace. Shards are never organised by test filename; they are
+organised by the mutable resources and contract they own.
+
+## Release gates
+
+The launcher may be released only when all are true:
+
+1. Default fresh install, explicit CI request, scenario/wizard and agent use
+   the same resolved request/engine path.
+2. `create`, `update`, `uninstall`, manifest-aware `doctor --fix` and rollback
+   operate on receipts/snapshots, not legacy per-command state.
+3. Default and every supported service profile pass the graph/config/status
+   contract; required defaults pass readiness.
+4. Offline matrix is deterministic; post-publish smoke passes the exact
+   candidate artifacts.
+5. Every failure emits a redacted diagnostic bundle and actionable error.
+
+## Delivery sequence
+
+1. Define V2 contracts and fixture catalog: request, matrix, resolved plan,
+   receipt, snapshot and `LauncherError` schemas.
+2. Complete the V2 runtime's resolved-plan application, journal and receipt
+   events; it owns execution semantics rather than adapting old state.
+3. Implement config/service graph renderer and verifier, then make offline
+   config-contract tests authoritative.
+4. Implement V2 fresh/default and explicit CI path, followed by wizard and
+   agent adapters.
+5. Add update/uninstall/doctor/rollback over snapshots and recovery plans.
+6. Add redacted dossiers and consent-gated telemetry.
+7. Run the full matrix before publishing the single production path.
+
+## Existing decisions this completes
+
+- `docs/adr/0028-human-and-agent-frontends-share-the-engine.md`
+- `docs/adr/0031-deterministic-install-plans-and-recovery.md`
+- `docs/adr/0035-breaking-cutover-for-the-new-installer-contract.md`
