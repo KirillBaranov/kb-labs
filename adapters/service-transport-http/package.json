@@ -46,5 +46,8 @@
   "peerDependencies": {
     "@kb-labs/sdk": "workspace:^"
   },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
   "sideEffects": false
 }
