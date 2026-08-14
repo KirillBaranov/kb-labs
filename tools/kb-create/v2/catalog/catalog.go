@@ -78,6 +78,11 @@ func Validate(source Catalog) error {
 				return fmt.Errorf("platform bundle %q has incomplete binary artifact", key)
 			}
 		}
+		for _, member := range platform.Members {
+			if member.ID == "" || member.Version == "" || member.Package == "" || member.SHA256 == "" || member.Tarball == "" {
+				return fmt.Errorf("platform bundle %q has incomplete member artifact", key)
+			}
+		}
 	}
 	for _, component := range append(append([]Component(nil), source.SDKs...), source.Plugins...) {
 		if component.ID == "" || component.Version == "" || component.Package == "" || component.SHA256 == "" || component.Tarball == "" {
@@ -156,6 +161,7 @@ type PlatformBundle struct {
 	Requires []Requirement                     `json:"requires,omitempty"`
 	Config   []ConfigRequirement               `json:"config,omitempty"`
 	Binaries []Binary                          `json:"binaries,omitempty"`
+	Members  []Component                       `json:"members,omitempty"`
 }
 
 // Binary is release-owned tooling required by a platform bundle. URLs and

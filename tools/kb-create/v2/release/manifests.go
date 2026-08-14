@@ -29,6 +29,13 @@ func EnrichWithManifests(source catalog.Catalog, manifestRoot string) (catalog.C
 		if err != nil {
 			return catalog.Catalog{}, err
 		}
+		for j := range item.Members {
+			member := &item.Members[j]
+			member.Config, err = configFor(manifestRoot, member.ID, member.Package, member.Version)
+			if err != nil {
+				return catalog.Catalog{}, err
+			}
+		}
 	}
 	for i := range source.SDKs {
 		item := &source.SDKs[i]

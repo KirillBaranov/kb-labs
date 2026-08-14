@@ -39,6 +39,9 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	}
 	graph.PlatformVersion, graph.Profile = platform.Version, profileName(request.ServiceProfile)
 	artifacts := []contracts.Artifact{{ID: platform.ID, Kind: "platform", Package: platform.Package, Version: platform.Version, SHA256: platform.SHA256, Tarball: platform.Tarball}}
+	for _, member := range platform.Members {
+		artifacts = append(artifacts, artifact(member, "platform-member"))
+	}
 	for _, binary := range platform.Binaries {
 		if binary.OS == runtime.GOOS && binary.Arch == runtime.GOARCH {
 			artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.Filename})
@@ -223,6 +226,9 @@ func configPatches(platform catalog.PlatformBundle, artifacts []contracts.Artifa
 		}
 	}
 	requirements := append([]catalog.ConfigRequirement(nil), platform.Config...)
+	for _, member := range platform.Members {
+		requirements = append(requirements, member.Config...)
+	}
 	for _, artifact := range artifacts {
 		for _, component := range append(append([]catalog.Component(nil), source.Plugins...), source.SDKs...) {
 			if component.ID == artifact.ID && component.Version == artifact.Version {
