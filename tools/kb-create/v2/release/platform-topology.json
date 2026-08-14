@@ -4,6 +4,9 @@
     "canary": "$platform",
     "experimental": "$platform"
   },
+  "sdkChannels": {
+    "stable": "$sdk"
+  },
   "platforms": [
     {
       "id": "@kb-labs/core-runtime",

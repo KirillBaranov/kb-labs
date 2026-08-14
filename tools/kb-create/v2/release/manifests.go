@@ -84,6 +84,15 @@ func HydrateArtifacts(source catalog.Catalog, stageManifest string) (catalog.Cat
 		}
 		source.Channels[channel] = source.Platforms[0].Version
 	}
+	for channel, version := range source.SDKChannels {
+		if version != "$sdk" {
+			continue
+		}
+		if len(source.SDKs) != 1 {
+			return catalog.Catalog{}, fmt.Errorf("SDK channel %q uses $sdk but topology declares %d SDKs", channel, len(source.SDKs))
+		}
+		source.SDKChannels[channel] = source.SDKs[0].Version
+	}
 	return source, nil
 }
 

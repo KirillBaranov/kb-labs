@@ -39,3 +39,20 @@ func TestHydrateArtifactsRejectsTopologyPackageOutsideStage(t *testing.T) {
 		t.Fatal("expected missing staged package rejection")
 	}
 }
+
+func TestHydrateArtifactsResolvesIndependentSDKChannel(t *testing.T) {
+	dir := t.TempDir()
+	stage := filepath.Join(dir, "stage.json")
+	if err := os.WriteFile(stage, []byte(`[{"name":"@kb/platform","version":"2.3.4","tarball":"platform.tgz","sha256":"platform"},{"name":"@kb/sdk","version":"1.4.0","tarball":"sdk.tgz","sha256":"sdk"}]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	value, err := HydrateArtifacts(catalog.Catalog{
+		Channels:    map[contracts.Channel]string{contracts.ChannelStable: "$platform"},
+		SDKChannels: map[contracts.Channel]string{contracts.ChannelStable: "$sdk"},
+		Platforms:   []catalog.PlatformBundle{{ID: "platform", Package: "@kb/platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}},
+		SDKs:        []catalog.Component{{ID: "sdk", Package: "@kb/sdk"}},
+	}, stage)
+	if err != nil || value.SDKChannels[contracts.ChannelStable] != "1.4.0" {
+		t.Fatalf("value/error = %#v / %v", value.SDKChannels, err)
+	}
+}
