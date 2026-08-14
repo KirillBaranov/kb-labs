@@ -119,6 +119,7 @@ jobs:
       # uploaded or published. A missing/mismatched V2 package manifest is a
       # candidate defect, never a reason for kb-create to guess configuration.
       - name: Materialize and verify V2 package manifests
+        if: startsWith(github.ref_name, 'platform-v')
         run: |
           go run ./v2/cmd/kb-create-v2-stage-manifests \
             --stage-manifest .kb/release/artifacts/manifest.json \
@@ -131,6 +132,7 @@ jobs:
       # staged artifacts. This is a draft index: registry URLs are rebound
       # only after candidate publication proves npm serves these same bytes.
       - name: Seal V2 release-index from staged artifacts
+        if: startsWith(github.ref_name, 'platform-v')
         run: |
           go run ./v2/cmd/kb-create-v2-index \
             --input ./v2/release/platform-topology.json \
@@ -213,6 +215,7 @@ jobs:
       # selected tarball and refuse the release unless it matches the staged
       # SHA-256 before publishing the installable index.
       - name: Bind public V2 release-index to candidate npm bytes
+        if: startsWith(github.ref_name, 'platform-v')
         run: |
           go run ./v2/cmd/kb-create-v2-bind-registry \
             --input .kb/release/artifacts/release-index.draft.json \
@@ -221,6 +224,7 @@ jobs:
         working-directory: tools/kb-create
 
       - name: Archive installable V2 release-index
+        if: startsWith(github.ref_name, 'platform-v')
         uses: actions/upload-artifact@v4
         with:
           name: kb-create-release-index
@@ -239,6 +243,7 @@ jobs:
   # registry — a pre-publish smoke would install the previous release.
   launcher-smoke:
     name: kb-create post-publish smoke
+    if: startsWith(github.ref_name, 'platform-v')
     runs-on: ubuntu-latest
     needs: deliver-candidate
     timeout-minutes: 20

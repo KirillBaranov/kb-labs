@@ -63,7 +63,7 @@ jobs:
             .status == "completed" and
             .conclusion == "success" and
             ([.jobs[] | select(.name == "Deliver candidate to npm") | .conclusion] | . == ["success"]) and
-            ([.jobs[] | select(.name == "kb-create post-publish smoke") | .conclusion] | . == ["success"])
+            ($tag | startswith("platform-") | not or ([.jobs[] | select(.name == "kb-create post-publish smoke") | .conclusion] | . == ["success"]))
           ' <<<"$run_json" >/dev/null || {
             echo "::error::Candidate run ${CANDIDATE_RUN_ID} is not a successful canary+smoke run for ${RELEASE_TAG}"
             gh run view "$CANDIDATE_RUN_ID" --json status,conclusion,workflowName,jobs
@@ -99,6 +99,7 @@ jobs:
           path: .kb/release/artifacts/
 
       - name: Download the verified V2 release-index
+        if: steps.release.outputs.flow == 'platform'
         uses: actions/download-artifact@v4
         with:
           name: kb-create-release-index
