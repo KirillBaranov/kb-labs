@@ -64,6 +64,8 @@ export default defineHandler({
               success: report.result?.ok || false,
               stage: report.stage,
               error: report.result?.errors?.[0],
+              channel: report.plan?.channel,
+              flow: report.plan?.flow,
             });
           } catch {
             // Skip invalid/incomplete releases

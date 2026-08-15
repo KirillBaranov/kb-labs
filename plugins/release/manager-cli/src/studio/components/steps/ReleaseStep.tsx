@@ -13,13 +13,14 @@ import {
   UIResult,
   UIAccordion,
   UITag,
+  UIBadge,
   UIPopconfirm,
   UIDivider,
   UIMessage,
   UIIcon,
   UISkeleton,
 } from '@kb-labs/sdk/studio';
-import { useData, useMutateData } from '@kb-labs/sdk/studio';
+import { useData, useMutateData, useTheme } from '@kb-labs/sdk/studio';
 import type {
   PlanResponse,
   GetChecksResponse,
@@ -48,6 +49,7 @@ interface ReleaseStepProps {
 }
 
 export function ReleaseStep({ selectedScope, onReleaseComplete }: ReleaseStepProps) {
+  const { antdToken: token } = useTheme();
   const [otp, setOtp] = React.useState('');
   const [otpError, setOtpError] = React.useState('');
   const [checks, setChecks] = React.useState<PreCheck[]>([]);
@@ -159,11 +161,17 @@ export function ReleaseStep({ selectedScope, onReleaseComplete }: ReleaseStepPro
 
   const getCheckStatusIcon = (status: CheckStatus) => {
     switch (status) {
-      case 'running': return <UIIcon name="LoadingOutlined" style={{ color: '#1890ff' }} />;
-      case 'success': return <UIIcon name="CheckCircleOutlined" style={{ color: '#52c41a' }} />;
-      case 'error': return <UIIcon name="CloseCircleOutlined" style={{ color: '#ff4d4f' }} />;
-      default: return <UIIcon name="SafetyCertificateOutlined" style={{ color: '#8c8c8c' }} />;
+      case 'running': return <UIIcon name="LoadingOutlined" style={{ color: token.colorPrimary }} />;
+      case 'success': return <UIIcon name="CheckCircleOutlined" style={{ color: token.colorSuccess }} />;
+      case 'error': return <UIIcon name="CloseCircleOutlined" style={{ color: token.colorError }} />;
+      default: return <UIIcon name="SafetyCertificateOutlined" style={{ color: token.colorTextTertiary }} />;
     }
+  };
+
+  const checkCardStatus = (status: CheckStatus): 'default' | 'success' | 'error' => {
+    if (status === 'success') { return 'success'; }
+    if (status === 'error') { return 'error'; }
+    return 'default';
   };
 
   if (releaseComplete) {
@@ -199,10 +207,9 @@ export function ReleaseStep({ selectedScope, onReleaseComplete }: ReleaseStepPro
       <UICard
         title={
           <UISpace>
-            <UIIcon name="BuildOutlined" />
             <span>Pre-release Checks</span>
-            {allChecksPassed && <UITag color="success">All Passed</UITag>}
-            {anyCheckFailed && <UITag color="error">Failed</UITag>}
+            {allChecksPassed && <UIBadge variant="success">All Passed</UIBadge>}
+            {anyCheckFailed && <UIBadge variant="error">Failed</UIBadge>}
           </UISpace>
         }
         style={{ marginBottom: 16 }}
@@ -213,40 +220,31 @@ export function ReleaseStep({ selectedScope, onReleaseComplete }: ReleaseStepPro
             <UITypographyText type="secondary">No checks configured in kb.config.json release.checks</UITypographyText>
           )}
           {checks.map((check) => (
-            <div
-              key={check.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                background: check.status === 'error' ? '#fff2f0' : check.status === 'success' ? '#f6ffed' : '#fafafa',
-                borderRadius: 8,
-                border: `1px solid ${check.status === 'error' ? '#ffccc7' : check.status === 'success' ? '#b7eb8f' : '#d9d9d9'}`,
-              }}
-            >
-              <UISpace>
-                {getCheckStatusIcon(check.status)}
-                <div>
-                  <UISpace>
-                    <UITypographyText strong>{check.name}</UITypographyText>
-                    {check.optional && <UITag>optional</UITag>}
-                  </UISpace>
-                  {check.error && (
-                    <div style={{ marginTop: 4 }}>
-                      <pre style={{
-                        margin: 0, padding: '8px 12px', fontSize: 11, lineHeight: 1.5,
-                        color: '#cf1322', background: '#fff1f0', borderRadius: 4,
-                        maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                      }}>
-                        {check.error}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              </UISpace>
-              {check.duration && <UITag>{(check.duration / 1000).toFixed(1)}s</UITag>}
-            </div>
+            <UICard key={check.id} size="small" status={checkCardStatus(check.status)}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <UISpace>
+                  {getCheckStatusIcon(check.status)}
+                  <div>
+                    <UISpace>
+                      <UITypographyText strong>{check.name}</UITypographyText>
+                      {check.optional && <UITag>optional</UITag>}
+                    </UISpace>
+                    {check.error && (
+                      <div style={{ marginTop: 4 }}>
+                        <pre style={{
+                          margin: 0, padding: '8px 12px', fontSize: 11, lineHeight: 1.5,
+                          color: token.colorError, background: token.colorErrorBg, borderRadius: token.borderRadiusSM,
+                          maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        }}>
+                          {check.error}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </UISpace>
+                {check.duration && <UITag>{(check.duration / 1000).toFixed(1)}s</UITag>}
+              </div>
+            </UICard>
           ))}
           <div style={{ display: 'flex', gap: 8 }}>
             <UIButton
@@ -265,14 +263,7 @@ export function ReleaseStep({ selectedScope, onReleaseComplete }: ReleaseStepPro
         </UISpace>
       </UICard>
 
-      <UICard
-        title={
-          <UISpace>
-            <UIIcon name="LockOutlined" />
-            <span>npm Publish</span>
-          </UISpace>
-        }
-      >
+      <UICard title="npm Publish">
         {!allChecksPassed && (
           <UIAlert
             message="Complete pre-release checks first"

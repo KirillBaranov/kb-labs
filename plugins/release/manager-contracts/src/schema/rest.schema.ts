@@ -313,6 +313,10 @@ export const ReleaseHistoryItemSchema = z.object({
   success: z.boolean(),
   stage: ReleaseStageSchema,
   error: z.string().optional(),
+  /** Release track this entry published on. Absent on releases recorded before this field existed. */
+  channel: ReleaseChannelSchema.optional(),
+  /** Named release flow this entry was computed for. */
+  flow: z.string().optional(),
 });
 
 export type ReleaseHistoryItem = z.infer<typeof ReleaseHistoryItemSchema>;
