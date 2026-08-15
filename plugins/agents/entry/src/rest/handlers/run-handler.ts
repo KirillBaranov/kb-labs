@@ -178,7 +178,7 @@ export default defineHandler({
     ctx.platform.logger.info(`[run-handler] Starting run ${runId} for task: ${body.task}`);
 
     // Create user turn with task/question
-    await sessionManager.createUserTurn(sessionId, body.task, runId);
+    const userTurn = await sessionManager.createUserTurn(sessionId, body.task, runId, body.clientId);
 
     // Track run started
     await analytics?.track(AGENT_ANALYTICS_EVENTS.RUN_STARTED, {
@@ -229,26 +229,30 @@ export default defineHandler({
         tier: body.tier ?? 'medium',
         tokenBudget: agentsConfig?.tokenBudget,
         onEvent: (event) => {
-          // Broadcast to all WebSocket listeners (assigns seq)
-          const seqEvent = RunManager.broadcast(runId, event);
-
-          // Persist event with seq + runId + sessionId in metadata to session storage
+          // Persist FIRST, broadcast only once that's confirmed — deltas are
+          // computed from what was actually written, so a WS listener can
+          // never observe turn state that isn't safely on disk yet. This
+          // ordering (previously reversed: broadcast raced ahead of persist)
+          // was the root cause of the WS stream silently lagging one event
+          // behind the true state.
           void sessionManager.addEvent(finalSessionId, {
-            ...seqEvent,
+            ...event,
             sessionId: finalSessionId,
             runId,
             metadata: {
-              ...seqEvent.metadata,
+              ...event.metadata,
               sessionId: finalSessionId,
               runId,
               workingDir,
             },
+          }).then((deltas) => {
+            RunManager.broadcastSessionDeltas(finalSessionId, deltas);
           });
         },
       });
 
-    // Register run (pass sessionManager and sessionId so session-level WS listeners receive events)
-    const run = await RunManager.register(runId, body.task, agent, sessionManager, finalSessionId);
+    // Register run (session-level WS listeners are registered separately via addSessionListener)
+    const run = await RunManager.register(runId, body.task, agent, sessionManager);
     await RunManager.updateStatus(runId, 'running');
 
     // Start execution in background (don't await)
@@ -274,6 +278,24 @@ export default defineHandler({
           durationMs,
           summary: result.summary,
           error: result.error,
+        });
+
+        // The terminal WS signal fires from here — the run's own completion
+        // handler, which has definitive success/summary/duration — rather
+        // than being derived reactively from an agent:end event on the WS
+        // side. Carries the final assistant turn (if this run produced one)
+        // so the client has a guaranteed-fresh terminal state without
+        // depending on delta message ordering.
+        const finalTurns = await sessionManager.getTurns(finalSessionId);
+        const finalTurn = finalTurns.find((t) => t.type === 'assistant' && t.metadata.runId === runId);
+        const seq = await sessionManager.getCurrentSessionSeq(finalSessionId);
+        RunManager.broadcastRunCompleted(finalSessionId, {
+          runId,
+          success: result.success,
+          summary: result.summary,
+          durationMs,
+          seq,
+          turn: finalTurn,
         });
 
         // Track completion
@@ -303,6 +325,15 @@ export default defineHandler({
           error: errorMsg,
         });
 
+        const seq = await sessionManager.getCurrentSessionSeq(finalSessionId);
+        RunManager.broadcastRunCompleted(finalSessionId, {
+          runId,
+          success: false,
+          summary: errorMsg,
+          durationMs,
+          seq,
+        });
+
         // Track failure
         await analytics?.track(AGENT_ANALYTICS_EVENTS.RUN_FAILED, {
           runId,
@@ -324,6 +355,7 @@ export default defineHandler({
       eventsPath,
       status: 'started',
       startedAt: run.startedAt,
+      userTurn,
     };
     } catch (err) {
       rethrowForRest(err);

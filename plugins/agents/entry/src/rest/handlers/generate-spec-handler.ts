@@ -74,7 +74,6 @@ export default defineHandler({
         `Generate spec for plan ${plan.id}`,
         undefined,
         sessionManager,
-        sessionId,
       );
       await RunManager.updateStatus(runId, 'running');
 
@@ -102,14 +101,17 @@ export default defineHandler({
       const specPromise = (async () => {
         const configOnEvent = (event: AgentEvent) => {
           traceWriter.trace(event as unknown as DetailedTraceEntry);
-          const seqEvent = RunManager.broadcast(runId, event);
+          // Persist first, broadcast only once confirmed — see run-handler.ts's onEvent for why.
           void sessionManager.addEvent(sessionId, {
-            ...seqEvent,
+            ...event,
             sessionId,
             runId,
-          } as unknown as AgentEvent);
+          } as unknown as AgentEvent).then((deltas) => {
+            RunManager.broadcastSessionDeltas(sessionId, deltas);
+          });
         };
 
+        const specStartTime = Date.now();
         try {
           const result = await specHandler.execute(plan, {
             workingDir,
@@ -125,6 +127,14 @@ export default defineHandler({
             summary: result.summary,
             error: result.success ? undefined : result.summary,
           });
+          const seq = await sessionManager.getCurrentSessionSeq(sessionId);
+          RunManager.broadcastRunCompleted(sessionId, {
+            runId,
+            success: result.success,
+            summary: result.summary,
+            durationMs: Date.now() - specStartTime,
+            seq,
+          });
           return result;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -132,6 +142,14 @@ export default defineHandler({
             completedAt: new Date().toISOString(),
             summary: message,
             error: message,
+          });
+          const seq = await sessionManager.getCurrentSessionSeq(sessionId);
+          RunManager.broadcastRunCompleted(sessionId, {
+            runId,
+            success: false,
+            summary: message,
+            durationMs: Date.now() - specStartTime,
+            seq,
           });
           throw error;
         } finally {
