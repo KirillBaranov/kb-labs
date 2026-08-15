@@ -12,7 +12,7 @@ Developer publishes their plugin to the KB Labs marketplace registry so other us
 
 ## Prerequisites
 - [ ] Plugin built and working locally (S-013 passed)
-- [ ] `kb-deploy` or `kb marketplace publish` available
+- [ ] `kb-deploy` or `kb hub publish` available
 - [ ] Marketplace registry credentials / access token
 
 ---
@@ -32,7 +32,7 @@ Developer publishes their plugin to the KB Labs marketplace registry so other us
 
 | # | Action | Expected | Actual | Status |
 |---|--------|----------|--------|--------|
-| 5 | `kb marketplace publish` (or `pnpm publish` to registry) | Upload succeeds, version live | | ⬜ |
+| 5 | `kb hub publish` (or `pnpm publish` to registry) | Upload succeeds, version live | | ⬜ |
 | 6 | Output shows published version + registry URL | Confirmation with link | | ⬜ |
 | 7 | `kb marketplace plugins list` on a different machine | New plugin visible in registry | | ⬜ |
 

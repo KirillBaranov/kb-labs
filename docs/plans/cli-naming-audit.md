@@ -31,7 +31,7 @@
 | `impact`          | @kb-labs/impact-core              | check · packages · docs                                                                                        | Change impact analysis |
 | `infra-worker`    | @kb-labs/infra-worker-core        | prepare · capture-snapshot · restore-snapshot                                                                  | Environment provisioning |
 | `marketplace`     | @kb-labs/marketplace-entry        | install · uninstall · update · sync · plugins:list/enable/disable/link/unlink/doctor/refresh                   | Plugin management |
-| `marketplace`     | @kb-labs/marketplace-registry-entry | ~~publish · share · yank · deprecate~~ **← BLOCKED by namespace ownership**                                  | Plugin publishing (author tools) |
+| `hub`             | @kb-labs/marketplace-registry-entry | publish · share · yank · deprecate                                                                             | Plugin publishing (author tools) |
 | `mind`            | @kb-labs/mind-entry               | init · verify · rag-index · rag-query · sync:add/update/delete/list/status                                    | RAG / semantic code search |
 | `policy`          | @kb-labs/policy-core              | detect · check · rules · snapshot                                                                              | Policy enforcement |
 | `qa`              | @kb-labs/qa-entry                 | run · check · stats · gate · history · trends · regressions · baseline:update/status/diff                     | Build/test quality metrics |
@@ -210,7 +210,7 @@ Ordered by impact and effort.
 
 | # | What | Problem | Proposed fix |
 |---|------|---------|--------------|
-| R1 | `marketplace-registry-entry` blocked | P1: namespace collision | Move to new top-level group |
+| R1 | `marketplace-registry-entry` blocked | P1: namespace collision | ✅ Fixed — moved to `hub` top-level group |
 | R2 | `infra-worker` kebab at top level | P4 + P5 | Rename namespace |
 
 ### 🟡 Should fix (confusing for users and future authors)

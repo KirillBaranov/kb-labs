@@ -56,21 +56,21 @@ pnpm kb marketplace install @kb-labs/marketplace-registry-entry
 ## Commands
 
 ```bash
-kb marketplace publish                  # publish current plugin to registry
-kb marketplace share --with user123     # share private plugin with a user
-kb marketplace share --link             # generate shareable link
-kb marketplace yank --version 1.2.3    # yank a broken version
-kb marketplace deprecate --message "Use @kb-labs/new-plugin instead"
+kb hub publish                  # publish current plugin to registry
+kb hub share --with user123     # share private plugin with a user
+kb hub share --link             # generate shareable link
+kb hub yank --version 1.2.3    # yank a broken version
+kb hub deprecate --message "Use @kb-labs/new-plugin instead"
 ```
 
 **Full command reference**
 
 | Command | Description |
 |---------|-------------|
-| `kb marketplace publish` | Publish plugin to KB Labs Registry |
-| `kb marketplace share` | Share a private plugin |
-| `kb marketplace yank` | Yank a specific version |
-| `kb marketplace deprecate` | Deprecate a package |
+| `kb hub publish` | Publish plugin to KB Labs Registry |
+| `kb hub share` | Share a private plugin |
+| `kb hub yank` | Yank a specific version |
+| `kb hub deprecate` | Deprecate a package |
 
 ---
 

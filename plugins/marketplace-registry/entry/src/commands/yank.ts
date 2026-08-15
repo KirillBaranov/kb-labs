@@ -17,7 +17,7 @@ export default defineCommand<unknown, CLIInput<YankFlags>, unknown>({
       const t0 = Date.now();
 
       if (!pkg || !version) {
-        validationError(ctx, 'Package spec and version are required', 'Usage: kb marketplace yank kb:handle/name <version>', flags.json);
+        validationError(ctx, 'Package spec and version are required', 'Usage: kb hub yank kb:handle/name <version>', flags.json);
         return { ok: false, error: 'Package spec and version are required' };
       }
 
