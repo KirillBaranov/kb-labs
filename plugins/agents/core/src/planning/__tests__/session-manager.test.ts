@@ -117,3 +117,113 @@ describe('SessionManager — session-scoped sequence cursor', () => {
     expect(turnA.sequence).not.toBe(turnB.sequence);
   });
 });
+
+function toolStart(sessionId: string, runId: string, agentId: string, toolCallId: string, timestamp: string): AgentEvent {
+  return {
+    type: 'tool:start',
+    timestamp,
+    sessionId,
+    runId,
+    agentId,
+    toolCallId,
+    data: { toolName: 'fs:read', input: { path: 'a.ts' } },
+  } as AgentEvent;
+}
+
+function toolEnd(sessionId: string, runId: string, agentId: string, toolCallId: string, timestamp: string): AgentEvent {
+  return {
+    type: 'tool:end',
+    timestamp,
+    sessionId,
+    runId,
+    agentId,
+    toolCallId,
+    data: { toolName: 'fs:read', success: true, output: 'contents', durationMs: 5 },
+  } as AgentEvent;
+}
+
+describe('SessionManager — processEventAndUpdateTurn deltas', () => {
+  it('returns { turn, deltas: [turn:created] } for the first event of a new turn', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+
+    const result = await manager.processEventAndUpdateTurn(
+      sessionId,
+      { ...agentStart(sessionId, 'run-1', 'agent-1', 't0'), sessionSeq: 1 },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.turn.status).toBe('streaming');
+    expect(result!.deltas).toHaveLength(1);
+    expect(result!.deltas[0]).toMatchObject({ kind: 'turn:created', seq: 1 });
+    // turn:created must NOT carry steps — those arrive via their own deltas.
+    expect((result!.deltas[0] as { turn: { steps: unknown[] } }).turn.steps).toEqual([]);
+  });
+
+  it('returns turn:step:appended for a subsequent tool:start on the same turn, not another turn:created', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+
+    await manager.processEventAndUpdateTurn(sessionId, { ...agentStart(sessionId, 'run-1', 'agent-1', 't0'), sessionSeq: 1 });
+    const result = await manager.processEventAndUpdateTurn(
+      sessionId,
+      { ...toolStart(sessionId, 'run-1', 'agent-1', 'call-1', 't1'), sessionSeq: 2 },
+    );
+
+    expect(result!.deltas).toHaveLength(1);
+    expect(result!.deltas[0]).toMatchObject({ kind: 'turn:step:appended', seq: 2 });
+  });
+
+  it('returns turn:step:updated (not appended) when tool:end mutates the existing pending step in place', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+
+    await manager.processEventAndUpdateTurn(sessionId, { ...agentStart(sessionId, 'run-1', 'agent-1', 't0'), sessionSeq: 1 });
+    await manager.processEventAndUpdateTurn(sessionId, { ...toolStart(sessionId, 'run-1', 'agent-1', 'call-1', 't1'), sessionSeq: 2 });
+    const result = await manager.processEventAndUpdateTurn(
+      sessionId,
+      { ...toolEnd(sessionId, 'run-1', 'agent-1', 'call-1', 't2'), sessionSeq: 3 },
+    );
+
+    expect(result!.deltas).toHaveLength(1);
+    expect(result!.deltas[0]).toMatchObject({ kind: 'turn:step:updated', seq: 3 });
+  });
+
+  it('returns null for an event that maps to no turn (assembler produced nothing)', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+
+    // A tool:start with no preceding agent:start has no active turn to attach to.
+    const result = await manager.processEventAndUpdateTurn(
+      sessionId,
+      { ...toolStart(sessionId, 'run-1', 'agent-1', 'call-1', 't0'), sessionSeq: 1 },
+    );
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('SessionManager — getProjection', () => {
+  it('reflects both user and assistant turns, paired with the current sessionSeq cursor', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+
+    await manager.createUserTurn(sessionId, 'hello', 'run-1');
+    await manager.addEvent(sessionId, agentStart(sessionId, 'run-1', 'agent-1', 't0'));
+
+    const projection = await manager.getProjection(sessionId);
+    expect(projection.turns.map((t) => t.type).sort()).toEqual(['assistant', 'user']);
+    expect(projection.seq).toBe(1); // one event persisted via addEvent
+  });
+
+  it('agrees with getConversationSnapshot on which turns exist (same underlying getTurns call)', async () => {
+    const { manager } = await makeManager();
+    const { id: sessionId } = await manager.createSession({ mode: 'execute', task: 't', agentId: 'mind-assistant' });
+    await manager.createUserTurn(sessionId, 'hello', 'run-1');
+
+    const projection = await manager.getProjection(sessionId);
+    const snapshot = await manager.getConversationSnapshot(sessionId);
+
+    expect(projection.turns).toHaveLength(snapshot.completedTurns.length + snapshot.activeTurns.length);
+  });
+});

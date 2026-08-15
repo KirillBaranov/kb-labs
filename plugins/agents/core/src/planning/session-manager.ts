@@ -4,9 +4,10 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import type { AgentSession, AgentSessionInfo, AgentMode, AgentEvent, Turn, FileChangeSummary } from '@kb-labs/agent-contracts';
+import type { AgentSession, AgentSessionInfo, AgentMode, AgentEvent, Turn, TurnDelta, FileChangeSummary } from '@kb-labs/agent-contracts';
 import { SessionArtifactStore } from '@kb-labs/agent-store';
 import { TurnAssembler } from './turn-assembler.js';
+import { diffTurn } from './turn-diff.js';
 
 /**
  * Extended session with agentId for storage
@@ -331,33 +332,47 @@ export class SessionManager {
    * and is exactly equal to it for sessions already written under this
    * per-session scheme, so it's a safe bootstrap either way.
    */
-  private async getNextSessionSeq(sessionId: string): Promise<number> {
-    if (!this.sessionSeqCounters.has(sessionId)) {
-      let lineCount = 0;
-      try {
-        const content = await fs.readFile(this.getEventsPath(sessionId), 'utf-8');
-        lineCount = content.split('\n').filter((l) => l.trim()).length;
-      } catch {
-        // File doesn't exist yet - start from 0
-      }
-      this.sessionSeqCounters.set(sessionId, lineCount);
+  private async ensureSessionSeqBootstrapped(sessionId: string): Promise<void> {
+    if (this.sessionSeqCounters.has(sessionId)) { return; }
+    let lineCount = 0;
+    try {
+      const content = await fs.readFile(this.getEventsPath(sessionId), 'utf-8');
+      lineCount = content.split('\n').filter((l) => l.trim()).length;
+    } catch {
+      // File doesn't exist yet - start from 0
     }
+    this.sessionSeqCounters.set(sessionId, lineCount);
+  }
 
+  private async getNextSessionSeq(sessionId: string): Promise<number> {
+    await this.ensureSessionSeqBootstrapped(sessionId);
     const next = this.sessionSeqCounters.get(sessionId)! + 1;
     this.sessionSeqCounters.set(sessionId, next);
     return next;
   }
 
   /**
+   * Current session-wide cursor value WITHOUT advancing it. Used for the
+   * cold-start snapshot and gap-recovery projection, both of which need to
+   * hand the client a `seq` to resume from without consuming one.
+   */
+  async getCurrentSessionSeq(sessionId: string): Promise<number> {
+    await this.ensureSessionSeqBootstrapped(sessionId);
+    return this.sessionSeqCounters.get(sessionId)!;
+  }
+
+  /**
    * Add event to session (append-only, race-condition safe).
-   * Assigns per-run sessionSeq for ordering within each run.
-   * Also processes event to update turn snapshots.
+   * Assigns the session-wide monotonic sessionSeq.
+   * Also processes the event to update turn snapshots, returning whatever
+   * TurnDelta[] that produced (empty if the event didn't touch a turn) so
+   * callers can broadcast them once persistence is confirmed.
    *
    * Events for the same session are serialized via eventQueues so that
    * concurrent fire-and-forget callers (void addEvent(...)) don't cause
    * tool:end to be processed before tool:start in TurnAssembler.
    */
-  async addEvent(sessionId: string, event: AgentEvent): Promise<void> {
+  async addEvent(sessionId: string, event: AgentEvent): Promise<TurnDelta[]> {
     const prev = this.eventQueues.get(sessionId) ?? Promise.resolve();
     // Chain this event after prev, but store a "silenced" tail that always resolves
     // (never rejects and holds no references to prior chain links after completion).
@@ -368,7 +383,7 @@ export class SessionManager {
     return next;
   }
 
-  private async _addEventInternal(sessionId: string, event: AgentEvent): Promise<void> {
+  private async _addEventInternal(sessionId: string, event: AgentEvent): Promise<TurnDelta[]> {
     const sessionDir = this.getSessionDir(sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
     await this.artifactStore.ensureSessionArtifacts(sessionId);
@@ -379,7 +394,8 @@ export class SessionManager {
     await fs.appendFile(this.artifactStore.getArtifactPath(sessionId, 'trace.ndjson'), line, 'utf-8');
 
     // Process event and update turn snapshot
-    await this.processEventAndUpdateTurn(sessionId, { ...event, sessionSeq });
+    const result = await this.processEventAndUpdateTurn(sessionId, { ...event, sessionSeq });
+    return result?.deltas ?? [];
   }
 
   /**
@@ -893,7 +909,7 @@ export class SessionManager {
    * Create user turn with task/question
    * Called when user submits a task to agent
    */
-  async createUserTurn(sessionId: string, task: string, runId: string): Promise<Turn> {
+  async createUserTurn(sessionId: string, task: string, runId: string, clientId?: string): Promise<Turn> {
     const sequence = await this.reserveNextTurnSequence(sessionId);
     const timestamp = new Date().toISOString();
 
@@ -915,6 +931,7 @@ export class SessionManager {
       ],
       metadata: {
         agentId: 'user',
+        ...(clientId ? { clientId } : {}),
       },
     };
 
@@ -944,26 +961,69 @@ export class SessionManager {
   }
 
   /**
-   * Process event and update turn snapshot
-   * Returns updated turn if changed, null otherwise
+   * Process event, update the turn projection, and compute the deltas this
+   * mutation produced (relative to the turn's state just before this
+   * event). Returns null when the event didn't touch any turn, or touched
+   * one without producing any externally-observable change.
+   *
+   * The "before" snapshot is captured from the assembler's live (in-place
+   * mutated) turn reference BEFORE processEventAsync runs — the assembler
+   * mutates the same object, so this is the only point at which a
+   * pre-mutation snapshot is available.
+   *
+   * Deliberately resolves the CURRENT turn via peekTurn rather than trusting
+   * processEventAsync's own return value: the assembler treats "just
+   * created, no steps yet" (a bare agent:start with nothing else to report)
+   * as "not updated" and returns null for it — but the turn WAS created as
+   * a side effect (added to activeTurns), which is itself diff-worthy: it's
+   * the only point `turn:created` can ever fire from. Without this, the
+   * turn is silently created in memory but never persisted or broadcast,
+   * and every later event sees `before !== null` (peekTurn already finds
+   * it), so `turn:created` never fires at all.
    */
-  async processEventAndUpdateTurn(sessionId: string, event: AgentEvent): Promise<Turn | null> {
-    // Pass sequence generator to assembler
-    const turn = await this.assembler.processEventAsync(event, async (sid) => {
+  async processEventAndUpdateTurn(
+    sessionId: string,
+    event: AgentEvent,
+  ): Promise<{ turn: Turn; deltas: TurnDelta[] } | null> {
+    const turnId = this.assembler.getTurnIdForEvent(event);
+    if (!turnId) { return null; }
+
+    const liveBefore = this.assembler.peekTurn(turnId);
+    const before: Turn | null = liveBefore ? structuredClone(liveBefore) : null;
+
+    const returnedTurn = await this.assembler.processEventAsync(event, async (sid) => {
       return this.reserveNextTurnSequence(sid);
     });
+    const turn = returnedTurn ?? this.assembler.peekTurn(turnId);
+    if (!turn) { return null; }
 
-    if (turn) {
-      // Stamp runId on the turn so fileChanges can be associated by runId later
-      if (event.runId && turn.type === 'assistant' && !turn.metadata.runId) {
-        turn.metadata.runId = event.runId;
-      }
-
-      await this.storeTurnSnapshot(sessionId, turn);
-      return turn;
+    // Stamp runId once, at turn creation (before === null), so it's already
+    // part of the turn:created delta's embedded turn rather than showing up
+    // as a separate turn:metadata patch on whatever event happens next.
+    if (event.runId && turn.type === 'assistant' && !turn.metadata.runId) {
+      turn.metadata.runId = event.runId;
     }
 
-    return null;
+    const seq = event.sessionSeq ?? await this.getCurrentSessionSeq(sessionId);
+    const deltas = diffTurn(before, turn, seq);
+    if (deltas.length === 0) { return null; }
+
+    await this.storeTurnSnapshot(sessionId, turn);
+    return { turn, deltas };
+  }
+
+  /**
+   * Current projection of a session: its full turn list plus the seq cursor
+   * it reflects. Used for the cold-start snapshot AND as the gap-recovery
+   * resume payload (see ADR note in the sync design doc) — both send the
+   * same shape, just at different points in the connection lifecycle.
+   */
+  async getProjection(sessionId: string): Promise<{ turns: Turn[]; seq: number }> {
+    const [turns, seq] = await Promise.all([
+      this.getTurns(sessionId),
+      this.getCurrentSessionSeq(sessionId),
+    ]);
+    return { turns, seq };
   }
 
   /**
