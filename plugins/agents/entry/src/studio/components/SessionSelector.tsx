@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { useData, UISelect, UIButton, UISpace, UITypographyText, UISpin, UITooltip, UIIcon, useUITheme } from '@kb-labs/sdk/studio';
+import { useData, UIDropdown, UIButton, UITypographyText, UISpin, UITooltip, UIIcon, useUITheme } from '@kb-labs/sdk/studio';
 import type { AgentSessionInfo } from '@kb-labs/agent-contracts';
 
 interface SessionSelectorProps {
@@ -38,58 +38,62 @@ export function SessionSelector({
   );
 
   const sessions = sessionsData?.sessions ?? [];
+  const current = sessions.find((s) => s.id === currentSessionId);
+  const label = current ? (current.name || current.task || 'Untitled') : 'New chat';
 
-  const handleSessionSelect = (sessionId: string) => {
-    const session = sessions.find((s) => s.id === sessionId);
-    if (session) {
-      onSessionChange(sessionId, session);
-    }
-  };
+  const items = isLoading
+    ? [{ key: 'loading', label: <UISpin size="small" />, disabled: true }]
+    : sessions.length === 0
+    ? [{ key: 'empty', label: <UITypographyText type="secondary">No sessions yet</UITypographyText>, disabled: true }]
+    : sessions.map((session) => ({
+        key: session.id,
+        label: (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, minWidth: 220 }}>
+            <UITypographyText ellipsis style={{ maxWidth: 190 }}>
+              {session.name || session.task || 'Untitled'}
+            </UITypographyText>
+            <UITypographyText type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+              {formatRelativeTime(session.lastActivityAt)}
+            </UITypographyText>
+          </div>
+        ),
+        onClick: () => onSessionChange(session.id, session),
+      }));
 
   return (
-    <UISpace size="small" style={{ width: '100%' }}>
-      <UIIcon name="HistoryOutlined" style={{ color: token.colorTextTertiary }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <UIDropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+        <button
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 10px',
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 999,
+            background: token.colorBgContainer,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 13,
+            color: token.colorText,
+            maxWidth: 220,
+          }}
+        >
+          <UIIcon name="HistoryOutlined" style={{ fontSize: 12, color: token.colorTextTertiary, flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+          <UIIcon name="DownOutlined" style={{ fontSize: 9, color: token.colorTextTertiary, flexShrink: 0 }} />
+        </button>
+      </UIDropdown>
 
-      <UISelect
-        style={{ flex: 1, minWidth: 200 }}
-        placeholder="New chat"
-        value={currentSessionId ?? undefined}
-        onChange={(v) => handleSessionSelect(v as string)}
-        loading={isLoading}
-        allowClear
-        onClear={onNewChat}
-        notFoundContent={
-          isLoading ? (
-            <UISpin size="small" />
-          ) : (
-            <UITypographyText type="secondary">No sessions yet</UITypographyText>
-          )
-        }
-        optionLabelProp="label"
-        options={sessions.map((session) => ({
-          value: session.id,
-          label: session.name || session.task || 'Untitled',
-          lastActivityAt: session.lastActivityAt,
-        }))}
-        optionRender={(option) => (
-          <UISpace style={{ width: '100%', justifyContent: 'space-between' }}>
-            <UITypographyText ellipsis style={{ maxWidth: 180 }}>
-              {option.label}
-            </UITypographyText>
-            <UITypographyText type="secondary" style={{ fontSize: 11 }}>
-              {formatRelativeTime(option.data.lastActivityAt)}
-            </UITypographyText>
-          </UISpace>
-        )}
-      />
-
-      <UITooltip title="New Chat">
+      <UITooltip title="New chat">
         <UIButton
+          shape="circle"
+          size="small"
           variant="primary"
-          icon={<UIIcon name="PlusOutlined" />}
+          icon={<UIIcon name="PlusOutlined" style={{ fontSize: 12 }} />}
           onClick={onNewChat}
         />
       </UITooltip>
-    </UISpace>
+    </div>
   );
 }

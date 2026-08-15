@@ -50,9 +50,17 @@ export function ConversationView({ turns, isLoading, isError, onRetry, sessionId
 
   if (turns.length === 0) {
     return (
-      <UIFlex justify="center" align="center" style={{ minHeight: 240 }}>
-        <UITypographyText type="secondary" style={{ fontSize: 14 }}>Ask anything to get started</UITypographyText>
-      </UIFlex>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, gap: 10 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: '50%',
+          background: token.colorFillTertiary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <UIIcon name="RobotOutlined" style={{ fontSize: 18, color: token.colorTextSecondary }} />
+        </div>
+        <UITypographyText style={{ fontSize: 15, fontWeight: 500 }}>What are we working on?</UITypographyText>
+        <UITypographyText type="secondary" style={{ fontSize: 13 }}>Ask anything to get started</UITypographyText>
+      </div>
     );
   }
 
@@ -71,12 +79,12 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
   if (turn.type === 'user') {
     const text = turn.steps.find((s) => s.type === 'text');
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <span style={{
-          maxWidth: '68%',
+          maxWidth: '70%',
           background: token.colorFillTertiary,
-          borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 3px ${token.borderRadiusLG}px`,
-          padding: '10px 16px',
+          borderRadius: token.borderRadiusLG,
+          padding: '9px 14px',
           fontSize: 14,
           lineHeight: 1.55,
           color: token.colorText,
@@ -85,14 +93,6 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
         }}>
           {text?.type === 'text' ? text.content : ''}
         </span>
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: token.colorFillSecondary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <UIIcon name="UserOutlined" style={{ fontSize: 13, color: token.colorTextSecondary }} />
-        </div>
       </div>
     );
   }
@@ -113,69 +113,58 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
     (s) => s.type !== 'text' && !(s.type === 'tool_use' && (s as ToolUseStep).toolName === 'report'),
   );
 
-  const hasActions = actionSteps.length > 0 || (isStreaming && textSteps.every((s) => isInternalProgressText(s.content ?? '')));
+  const hasActions = actionSteps.length > 0;
+  const showThinkingLoader = isStreaming && actionSteps.length === 0
+    && textSteps.every((s) => isInternalProgressText(s.content ?? ''));
   const answerContent = reportAnswer ?? null;
   const fileChanges = turn.metadata?.fileChanges;
   const runId = turn.metadata?.runId;
   const showFileChanges = !isStreaming && fileChanges && fileChanges.length > 0 && !!sessionId && !!runId;
 
-  const timelineStyle: React.CSSProperties = {
+  const sectionStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
-    borderLeft: `2px solid ${token.colorBorderSecondary}`,
-    paddingLeft: 12,
-    gap: 6,
-    marginLeft: 6,
   };
 
+  const statusLabel = isStreaming ? 'Running' : turn.status === 'failed' ? 'Failed' : null;
+  const statusColor = isStreaming ? token.colorPrimary : token.colorError;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Assistant header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: '50%',
-          background: token.colorFillSecondary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <UIIcon name="RobotOutlined" style={{ fontSize: 12, color: token.colorTextSecondary }} />
-        </div>
-        <UITypographyText type="secondary" style={{ fontSize: 12 }}>Agent</UITypographyText>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <UITypographyText type="secondary" style={{ fontSize: 12, fontWeight: 500 }}>Agent</UITypographyText>
         <UITypographyText type="secondary" style={{ fontSize: 11 }}>· {formatRelativeTime(turn.startedAt)}</UITypographyText>
-        {isStreaming && <UITag color="processing" style={{ fontSize: 11, lineHeight: '18px' }}>Running</UITag>}
-        {turn.status === 'failed' && <UITag color="error" style={{ fontSize: 11, lineHeight: '18px' }}>Failed</UITag>}
+        {statusLabel && (
+          <UITypographyText style={{ fontSize: 11, color: statusColor }}>· {statusLabel}</UITypographyText>
+        )}
       </div>
 
       {/* Actions group */}
       {hasActions && (
-        <div style={timelineStyle}>
+        <div style={sectionStyle}>
           <ToolGroup steps={actionSteps} isStreaming={isStreaming} token={token} />
         </div>
       )}
+      {!hasActions && showThinkingLoader && <ThinkingRow token={token} />}
 
       {/* Final answer */}
       {answerContent && (
-        <div style={timelineStyle}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <StepDot color={token.colorPrimary} />
-            <UIMarkdownViewer content={answerContent} style={{ flex: 1 }} />
-          </div>
+        <div style={sectionStyle}>
+          <UIMarkdownViewer content={answerContent} style={{ padding: 0 }} />
         </div>
       )}
       {!answerContent && visibleTextSteps.map((step) => (
         step.type === 'text' && step.content?.trim() ? (
-          <div key={step.id} style={timelineStyle}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <StepDot color={token.colorPrimary} />
-              <UIMarkdownViewer content={step.content} style={{ flex: 1 }} />
-            </div>
+          <div key={step.id} style={sectionStyle}>
+            <UIMarkdownViewer content={step.content} style={{ padding: 0 }} />
           </div>
         ) : null
       ))}
 
       {/* File changes */}
       {showFileChanges && (
-        <div style={timelineStyle}>
+        <div style={sectionStyle}>
           <FileChangesBlock
             sessionId={sessionId!}
             runId={runId!}
@@ -260,36 +249,38 @@ function ToolGroup({ steps, isStreaming, token }: { steps: TurnStep[]; isStreami
               token={token}
             />
           ))}
-          {isStreaming && steps.length === 0 && <ThinkingRow token={token} />}
         </div>
       )}
     </div>
   );
 }
 
-// ---------- StepDot ----------
-
-function StepDot({ color, pulse }: { color: string; pulse?: boolean }) {
-  return (
-    <span style={{
-      flexShrink: 0,
-      width: 8,
-      height: 8,
-      marginTop: 6,
-      borderRadius: '50%',
-      background: color,
-      opacity: pulse ? 0.6 : 1,
-    }} />
-  );
-}
-
 // ---------- ThinkingRow ----------
 
+const THINKING_WORDS = [
+  'Thinking', 'Pondering', 'Reasoning', 'Mulling', 'Puzzling',
+  'Cogitating', 'Percolating', 'Ruminating', 'Noodling', 'Working',
+];
+
 function ThinkingRow({ token }: { token: Token }) {
+  const [word, setWord] = useState(
+    () => THINKING_WORDS[Math.floor(Math.random() * THINKING_WORDS.length)],
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWord((prev) => {
+        const options = THINKING_WORDS.filter((w) => w !== prev);
+        return options[Math.floor(Math.random() * options.length)];
+      });
+    }, 2200);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <UIIcon name="LoadingOutlined" style={{ fontSize: 11, color: token.colorTextTertiary }} />
-      <UITypographyText type="secondary" style={{ fontSize: 13 }}>Thinking...</UITypographyText>
+      <UITypographyText type="secondary" style={{ fontSize: 13 }}>{word}...</UITypographyText>
     </div>
   );
 }
@@ -302,12 +293,7 @@ function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean
       const content = step.content?.trim() ?? '';
       if (isNoisyThinking(content)) { return null; }
       return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <StepDot color={token.colorWarning} pulse={isStreaming} />
-          <div style={{ flex: 1 }}>
-            <UIMarkdownViewer content={content} style={{ fontSize: 13, opacity: 0.8 }} />
-          </div>
-        </div>
+        <UIMarkdownViewer content={content} style={{ fontSize: 13, color: token.colorTextSecondary, padding: 0 }} />
       );
     }
 
@@ -439,7 +425,7 @@ function ToolRow({ step, isStreaming, token }: { step: ToolUseStep; isStreaming:
             <span style={{ fontSize: 11, color: token.colorTextTertiary }}>{step.durationMs}ms</span>
           )}
           {canExpand && (
-            <span style={{ fontSize: 11, color: token.colorTextTertiary }}>{open ? '▲' : '▼'}</span>
+            <UIIcon name={open ? 'UpOutlined' : 'DownOutlined'} style={{ fontSize: 9, color: token.colorTextTertiary }} />
           )}
         </button>
 
@@ -533,7 +519,7 @@ function ToolDetails({ step, hasDiff, hasOutput, token }: { step: ToolUseStep; h
     if (isFailed) {
       return <pre style={{ ...codePreStyle, background: token.colorErrorBg, color: token.colorError }}>{outputStr}</pre>;
     }
-    return <UIMarkdownViewer content={outputStr} style={{ fontSize: 12 }} />;
+    return <UIMarkdownViewer content={outputStr} style={{ fontSize: 12, padding: 0 }} />;
   }
   return null;
 }

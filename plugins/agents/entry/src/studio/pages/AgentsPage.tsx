@@ -2,8 +2,8 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   useData, useMutateData, useWebSocket,
-  UIInputTextArea, UIButton, UISpace, UIMessage, UICard,
-  UISelect, UISwitch, UITypographyText, UIIcon, useUITheme,
+  UIInputTextArea, UIButton, UIMessage,
+  UISegmented, UISwitch, UIPopover, UITypographyText, UIIcon, useUITheme,
 } from '@kb-labs/sdk/studio';
 import type { WebSocketStatus } from '@kb-labs/sdk/studio';
 import { SessionSelector } from '../components/SessionSelector';
@@ -63,15 +63,15 @@ function ConnectionBadge({
 
   if (status === 'connecting') {
     return (
-      <UISpace size={4}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <UIIcon name="LoadingOutlined" style={{ fontSize: 12, color: token.colorTextTertiary }} />
         <UITypographyText type="secondary" style={{ fontSize: 12 }}>Connecting...</UITypographyText>
-      </UISpace>
+      </span>
     );
   }
 
   return (
-    <UISpace size={4}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <UIIcon name="DisconnectOutlined" style={{ fontSize: 12, color: token.colorError }} />
       <UIButton
         variant="link"
@@ -81,8 +81,83 @@ function ConnectionBadge({
       >
         Reconnect
       </UIButton>
-    </UISpace>
+    </span>
   );
+}
+
+// ---------- ComposerSettings ----------
+
+function ComposerSettings({
+  responseMode,
+  setResponseMode,
+  tier,
+  setTier,
+  enableEscalation,
+  setEnableEscalation,
+  disabled,
+  token,
+}: {
+  responseMode: AgentResponseMode;
+  setResponseMode: (v: AgentResponseMode) => void;
+  tier: 'small' | 'medium' | 'large';
+  setTier: (v: 'small' | 'medium' | 'large') => void;
+  enableEscalation: boolean;
+  setEnableEscalation: (v: boolean) => void;
+  disabled: boolean;
+  token: ReturnType<typeof useUITheme>['token'];
+}) {
+  return (
+    <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 14, padding: 4 }}>
+      <div>
+        <UITypographyText type="secondary" style={{ fontSize: 11, fontWeight: 500 }}>RESPONSE</UITypographyText>
+        <UISegmented
+          block
+          size="small"
+          value={responseMode}
+          onChange={(v) => setResponseMode(v as AgentResponseMode)}
+          disabled={disabled}
+          style={{ marginTop: 6 }}
+          options={[
+            { value: 'auto', label: 'Auto' },
+            { value: 'brief', label: 'Brief' },
+            { value: 'deep', label: 'Deep' },
+          ]}
+        />
+      </div>
+      <div>
+        <UITypographyText type="secondary" style={{ fontSize: 11, fontWeight: 500 }}>MODEL TIER</UITypographyText>
+        <UISegmented
+          block
+          size="small"
+          value={tier}
+          onChange={(v) => setTier(v as 'small' | 'medium' | 'large')}
+          disabled={disabled}
+          style={{ marginTop: 6 }}
+          options={[
+            { value: 'small', label: 'Small' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'large', label: 'Large' },
+          ]}
+        />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <UITypographyText style={{ fontSize: 13 }}>Auto escalate</UITypographyText>
+        <UISwitch
+          checked={enableEscalation}
+          onChange={setEnableEscalation}
+          disabled={disabled || tier === 'large'}
+          size="small"
+        />
+      </div>
+      <UITypographyText type="secondary" style={{ fontSize: 11, borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 8 }}>
+        Escalates to a larger model when the task needs it.
+      </UITypographyText>
+    </div>
+  );
+}
+
+function tierLabel(tier: 'small' | 'medium' | 'large'): string {
+  return tier === 'small' ? 'Small' : tier === 'large' ? 'Large' : 'Medium';
 }
 
 // ---------- AgentsPage ----------
@@ -143,7 +218,6 @@ function AgentsPage() {
           const all = [...data.payload.completedTurns, ...data.payload.activeTurns]
             .sort((a, b) => a.sequence - b.sequence);
           setWsTurns(all);
-          setOptimisticUserTurns([]);
           break;
         }
         case 'turn:snapshot': {
@@ -162,7 +236,6 @@ function AgentsPage() {
         case 'run:completed': {
           const { success, summary } = data.payload;
           setRunStatus(success ? 'completed' : 'failed');
-          setOptimisticUserTurns([]);
           void refetchTurns();
           console.log('[AgentsPage] Run completed:', summary);
           break;
@@ -213,10 +286,17 @@ function AgentsPage() {
     setTask('');
     setRunStatus('running');
 
+    const knownSequences = [
+      ...(sessionTurnsData?.turns ?? []).map((t) => t.sequence),
+      ...wsTurns.map((t) => t.sequence),
+      ...optimisticUserTurns.map((t) => t.sequence),
+    ];
+    const nextSequence = (knownSequences.length ? Math.max(...knownSequences) : 0) + 0.5;
+
     const optimisticTurn: Turn = {
       id: `optimistic-user-${Date.now()}`,
       type: 'user',
-      sequence: 9999,
+      sequence: nextSequence,
       startedAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
       status: 'completed',
@@ -243,11 +323,6 @@ function AgentsPage() {
       }
 
       setCurrentRunId(response.runId);
-
-      // If WS already connected, clear optimistic after short delay as a safety net
-      if (ws.isConnected) {
-        setTimeout(() => setOptimisticUserTurns([]), 500);
-      }
     } catch (error) {
       setOptimisticUserTurns((prev) => prev.filter((t) => t.id !== optimisticTurn.id));
       setRunStatus('failed');
@@ -255,7 +330,8 @@ function AgentsPage() {
     }
   }, [
     task, agentId, currentSessionId, tier, enableEscalation,
-    responseMode, agentMode, setSearchParams, startRunMutation, ws,
+    responseMode, agentMode, setSearchParams, startRunMutation,
+    sessionTurnsData, wsTurns, optimisticUserTurns,
   ]);
 
   const handleStop = useCallback(async () => {
@@ -285,11 +361,13 @@ function AgentsPage() {
     const restTurns = sessionTurnsData?.turns ?? [];
     const merged = new Map<string, Turn>();
 
-    if (wsTurns.length === 0) {
-      for (const t of restTurns) { merged.set(t.id, t); }
-    } else {
-      for (const t of restTurns) { merged.set(t.id, t); }
-      for (const t of wsTurns) { merged.set(t.id, t); }
+    for (const t of restTurns) { merged.set(t.id, t); }
+    for (const t of wsTurns) {
+      const existing = merged.get(t.id);
+      // A REST refetch (after run:completed) is authoritative; don't let a stale
+      // "streaming" WS snapshot resurrect a turn that's already been finalized.
+      if (existing && existing.status !== 'streaming' && t.status === 'streaming') { continue; }
+      merged.set(t.id, t);
     }
 
     const serverUserTexts = new Set(
@@ -335,163 +413,176 @@ function AgentsPage() {
   })();
 
   const isLoading = isSwitchingSession || (turnsFetching && turns.length === 0 && !!currentSessionId);
+  const canSend = !!task.trim() && !startRunMutation.isLoading;
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-    <UICard
-      title={
-        <UISpace>
-          <UIIcon name="RobotOutlined" />
-          <span>Agent</span>
-        </UISpace>
-      }
-      extra={
+    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: token.colorBgContainer }}>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px',
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <UIIcon name="RobotOutlined" style={{ fontSize: 15, color: token.colorTextSecondary }} />
+          <UITypographyText strong style={{ fontSize: 14 }}>Agent</UITypographyText>
+        </div>
         <SessionSelector
           currentSessionId={currentSessionId}
           onSessionChange={handleSessionChange}
           onNewChat={handleNewChat}
         />
-      }
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-      styles={{
-        body: {
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden',
-        },
-      }}
-    >
-      <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto' }}>
-        <ConversationView
-          turns={turnsWithThinkingLoader}
-          isLoading={isLoading}
-          isError={turnsError}
-          onRetry={() => void refetchTurns()}
-          sessionId={currentSessionId}
-        />
       </div>
 
-      <div
-        style={{
-          borderTop: `1px solid ${token.colorBorderSecondary}`,
-          padding: '12px 16px',
-          background: token.colorBgContainer,
-        }}
-      >
-        <div
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          style={{
-            border: `1px solid ${
-              inputFocused
-                ? (agentMode === 'execute' ? token.colorError : token.colorPrimary)
-                : (agentMode === 'plan' ? token.colorPrimary : token.colorBorder)
-            }`,
-            borderRadius: token.borderRadiusLG,
-            background: token.colorBgContainer,
-            boxShadow: inputFocused
-              ? `0 0 0 2px ${agentMode === 'execute' ? token.colorErrorBg : token.colorPrimaryBg}`
-              : 'none',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-            overflow: 'hidden',
-          }}
-        >
-          <UIInputTextArea
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message..."
-            autoSize={{ minRows: 2, maxRows: 8 }}
-            disabled={isRunning}
-            variant="borderless"
-            style={{ resize: 'none', padding: '10px 12px 4px', border: 'none', boxShadow: 'none', outline: 'none' }}
+      {/* Conversation */}
+      <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', width: '100%' }}>
+          <ConversationView
+            turns={turnsWithThinkingLoader}
+            isLoading={isLoading}
+            isError={turnsError}
+            onRetry={() => void refetchTurns()}
+            sessionId={currentSessionId}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 8px' }}>
-            <UISpace size={6}>
-              <ConnectionBadge
-                status={ws.status}
-                sessionId={currentSessionId}
-                onReconnect={() => ws.connect()}
-              />
-              <UISelect
-                value={agentMode}
-                onChange={(v) => setAgentMode(v as 'execute' | 'plan')}
-                disabled={isRunning}
-                size="small"
-                variant="borderless"
-                style={{ width: 110 }}
-                options={[
-                  { value: 'execute', label: 'Execute' },
-                  { value: 'plan', label: 'Plan' },
-                ]}
-              />
-              <UISelect
-                value={responseMode}
-                onChange={(v) => setResponseMode(v as AgentResponseMode)}
-                disabled={isRunning}
-                size="small"
-                variant="borderless"
-                style={{ width: 80 }}
-                options={[
-                  { value: 'auto', label: 'Auto' },
-                  { value: 'brief', label: 'Brief' },
-                  { value: 'deep', label: 'Deep' },
-                ]}
-              />
-              <UISelect
-                value={tier}
-                onChange={(v) => setTier(v as 'small' | 'medium' | 'large')}
-                disabled={isRunning}
-                size="small"
-                variant="borderless"
-                style={{ width: 100 }}
-                options={[
-                  { value: 'small', label: 'Small' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'large', label: 'Large' },
-                ]}
-              />
-              <UISpace size={4} align="center">
-                <UISwitch
-                  checked={enableEscalation}
-                  onChange={setEnableEscalation}
-                  disabled={isRunning || tier === 'large'}
+        </div>
+      </div>
+
+      {/* Composer */}
+      <div style={{ padding: '0 20px 18px', flexShrink: 0 }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', width: '100%' }}>
+          <div
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            style={{
+              border: `1px solid ${inputFocused ? token.colorPrimary : token.colorBorderSecondary}`,
+              borderRadius: 20,
+              background: token.colorBgContainer,
+              boxShadow: inputFocused
+                ? `0 0 0 3px ${token.colorPrimaryBg}`
+                : '0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
+              overflow: 'hidden',
+            }}
+          >
+            <UIInputTextArea
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message the agent..."
+              autoSize={{ minRows: 1, maxRows: 8 }}
+              disabled={isRunning}
+              variant="borderless"
+              style={{ resize: 'none', padding: '14px 16px 6px', border: 'none', boxShadow: 'none', outline: 'none', fontSize: 14 }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px 10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <UISegmented
                   size="small"
+                  value={agentMode}
+                  onChange={(v) => setAgentMode(v as 'execute' | 'plan')}
+                  disabled={isRunning}
+                  options={[
+                    { value: 'execute', label: 'Execute' },
+                    { value: 'plan', label: 'Plan' },
+                  ]}
                 />
-                <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                  Auto escalate
-                </UITypographyText>
-              </UISpace>
-            </UISpace>
-            <div>
-              {isRunning ? (
-                <UIButton
-                  danger
-                  size="small"
-                  icon={stopMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="StopOutlined" />}
-                  onClick={handleStop}
-                  disabled={stopMutation.isLoading}
+                <UIPopover
+                  trigger="click"
+                  placement="topLeft"
+                  content={
+                    <ComposerSettings
+                      responseMode={responseMode}
+                      setResponseMode={setResponseMode}
+                      tier={tier}
+                      setTier={setTier}
+                      enableEscalation={enableEscalation}
+                      setEnableEscalation={setEnableEscalation}
+                      disabled={isRunning}
+                      token={token}
+                    />
+                  }
                 >
-                  Stop
-                </UIButton>
-              ) : (
-                <UIButton
-                  variant="primary"
-                  size="small"
-                  icon={startRunMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="SendOutlined" />}
-                  onClick={handleStart}
-                  disabled={!task.trim() || startRunMutation.isLoading}
-                >
-                  Send
-                </UIButton>
-              )}
+                  <button
+                    disabled={isRunning}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '3px 10px',
+                      border: `1px solid ${token.colorBorderSecondary}`,
+                      borderRadius: 999,
+                      background: 'transparent',
+                      cursor: isRunning ? 'default' : 'pointer',
+                      opacity: isRunning ? 0.6 : 1,
+                      fontFamily: 'inherit',
+                      fontSize: 12,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    <UIIcon name="ControlOutlined" style={{ fontSize: 11 }} />
+                    <span>{tierLabel(tier)}</span>
+                    {enableEscalation && <span style={{ color: token.colorTextTertiary }}>· Auto</span>}
+                  </button>
+                </UIPopover>
+                <ConnectionBadge
+                  status={ws.status}
+                  sessionId={currentSessionId}
+                  onReconnect={() => ws.connect()}
+                />
+              </div>
+              <div>
+                {isRunning ? (
+                  <button
+                    onClick={handleStop}
+                    disabled={stopMutation.isLoading}
+                    title="Stop"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: token.colorError,
+                      color: token.colorTextLightSolid,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: stopMutation.isLoading ? 'default' : 'pointer',
+                    }}
+                  >
+                    <UIIcon name={stopMutation.isLoading ? 'LoadingOutlined' : 'StopOutlined'} style={{ fontSize: 13, color: 'inherit' }} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStart}
+                    disabled={!canSend}
+                    title="Send"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: canSend ? token.colorText : token.colorFillTertiary,
+                      color: canSend ? token.colorBgContainer : token.colorTextQuaternary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: canSend ? 'pointer' : 'default',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <UIIcon name={startRunMutation.isLoading ? 'LoadingOutlined' : 'ArrowUpOutlined'} style={{ fontSize: 13, color: 'inherit' }} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </UICard>
     </div>
   );
 }
