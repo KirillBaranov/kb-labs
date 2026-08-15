@@ -8,6 +8,10 @@ import {
 import type { WebSocketStatus } from '@kb-labs/sdk/studio';
 import { SessionSelector } from '../components/SessionSelector';
 import { ConversationView } from '../components/ConversationView';
+import {
+  createInitialState, loadProjection, setTurn, advanceSeq, applyDelta, reconcileOptimistic,
+  type TurnReducerState,
+} from '../turn-reducer';
 import type { AgentSessionInfo, Turn, AgentResponseMode, ServerMessage } from '@kb-labs/agent-contracts';
 
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
@@ -20,11 +24,13 @@ interface RunRequest {
   enableEscalation: boolean;
   responseMode: AgentResponseMode;
   mode?: 'execute' | 'plan';
+  clientId: string;
 }
 
 interface RunResponse {
   runId: string;
   sessionId: string;
+  userTurn: Turn;
 }
 
 interface StopRequest {
@@ -177,8 +183,16 @@ function AgentsPage() {
   const [task, setTask] = useState('');
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus>('idle');
-  const [optimisticUserTurns, setOptimisticUserTurns] = useState<Turn[]>([]);
-  const [wsTurns, setWsTurns] = useState<Turn[]>([]);
+  // Optimistic user turns, keyed by the client-generated clientId that the
+  // server echoes back on the real turn — reconciled by id, not by fuzzy
+  // text-matching (which could misfire on duplicate/similar messages).
+  const [optimisticTurns, setOptimisticTurns] = useState<Map<string, Turn>>(new Map());
+  const [reducerState, setReducerState] = useState<TurnReducerState>(createInitialState());
+  // Whether conversation:snapshot has been received for the CURRENT session —
+  // gates whether we still show the REST-fetched history (pre-WS-connect) or
+  // the reducer's live projection. There is no merge between the two: once
+  // the snapshot lands, it's authoritative and REST data is never consulted again.
+  const [hasSnapshot, setHasSnapshot] = useState(false);
   const [responseMode, setResponseMode] = useState<AgentResponseMode>('auto');
   const [tier, setTier] = useState<'small' | 'medium' | 'large'>('medium');
   const [enableEscalation, setEnableEscalation] = useState(true);
@@ -215,28 +229,29 @@ function AgentsPage() {
     onMessage: (data) => {
       switch (data.type) {
         case 'conversation:snapshot': {
-          const all = [...data.payload.completedTurns, ...data.payload.activeTurns]
-            .sort((a, b) => a.sequence - b.sequence);
-          setWsTurns(all);
+          const { completedTurns, activeTurns, seq } = data.payload;
+          const allTurns = [...completedTurns, ...activeTurns];
+          setReducerState(loadProjection(allTurns, seq));
+          setHasSnapshot(true);
+          // A reconnect (or a second tab) may deliver a snapshot that already
+          // contains a turn this tab sent optimistically — drop it by clientId.
+          setOptimisticTurns((prev) => reconcileOptimistic(prev, allTurns));
           break;
         }
-        case 'turn:snapshot': {
-          const { turn } = data.payload;
-          setWsTurns((prev) => {
-            const idx = prev.findIndex((t) => t.id === turn.id);
-            if (idx >= 0) {
-              const next = [...prev];
-              next[idx] = turn;
-              return next;
-            }
-            return [...prev, turn].sort((a, b) => a.sequence - b.sequence);
+        case 'turn:delta': {
+          const { delta } = data.payload;
+          setReducerState((prev) => {
+            const result = applyDelta(prev, delta);
+            // A real gap (seq skipped ahead) would ideally trigger a resync —
+            // wired up once the resume path exists (see AGENTS-page follow-up).
+            return result.state;
           });
           break;
         }
         case 'run:completed': {
-          const { success, summary } = data.payload;
+          const { success, summary, seq, turn } = data.payload;
           setRunStatus(success ? 'completed' : 'failed');
-          void refetchTurns();
+          setReducerState((prev) => advanceSeq(turn ? setTurn(prev, turn) : prev, seq));
           console.log('[AgentsPage] Run completed:', summary);
           break;
         }
@@ -255,7 +270,7 @@ function AgentsPage() {
     if (el) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [wsTurns.length, optimisticUserTurns.length]);
+  }, [reducerState.turnsById.size, optimisticTurns.size]);
 
   const handleSessionChange = useCallback((sessionId: string, _session: AgentSessionInfo) => {
     setCurrentSessionId(sessionId);
@@ -263,8 +278,9 @@ function AgentsPage() {
     setSearchParams({ session: sessionId }, { replace: true });
     setCurrentRunId(null);
     setRunStatus('idle');
-    setOptimisticUserTurns([]);
-    setWsTurns([]);
+    setOptimisticTurns(new Map());
+    setReducerState(createInitialState());
+    setHasSnapshot(false);
     ws.clear();
   }, [ws, setSearchParams]);
 
@@ -274,8 +290,9 @@ function AgentsPage() {
     setSearchParams({}, { replace: true });
     setCurrentRunId(null);
     setRunStatus('idle');
-    setOptimisticUserTurns([]);
-    setWsTurns([]);
+    setOptimisticTurns(new Map());
+    setReducerState(createInitialState());
+    setHasSnapshot(false);
     ws.clear();
   }, [ws, setSearchParams]);
 
@@ -286,24 +303,18 @@ function AgentsPage() {
     setTask('');
     setRunStatus('running');
 
-    const knownSequences = [
-      ...(sessionTurnsData?.turns ?? []).map((t) => t.sequence),
-      ...wsTurns.map((t) => t.sequence),
-      ...optimisticUserTurns.map((t) => t.sequence),
-    ];
-    const nextSequence = (knownSequences.length ? Math.max(...knownSequences) : 0) + 0.5;
-
+    const clientId = crypto.randomUUID();
     const optimisticTurn: Turn = {
-      id: `optimistic-user-${Date.now()}`,
+      id: `optimistic-${clientId}`,
       type: 'user',
-      sequence: nextSequence,
+      sequence: Number.MAX_SAFE_INTEGER,
       startedAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
       status: 'completed',
       steps: [{ type: 'text', id: 'opt-1', timestamp: new Date().toISOString(), content: userMessage, role: 'user' }],
-      metadata: { agentId: 'user' },
+      metadata: { agentId: 'user', clientId },
     };
-    setOptimisticUserTurns((prev) => [...prev, optimisticTurn]);
+    setOptimisticTurns((prev) => new Map(prev).set(clientId, optimisticTurn));
 
     try {
       const response = await startRunMutation.mutateAsync({
@@ -314,6 +325,7 @@ function AgentsPage() {
         enableEscalation,
         responseMode,
         mode: agentMode,
+        clientId,
       });
 
       if (!currentSessionId) {
@@ -323,15 +335,30 @@ function AgentsPage() {
       }
 
       setCurrentRunId(response.runId);
+
+      // The real user turn is already known from the REST response — reconcile
+      // immediately by id, no need to wait on a WS round-trip. User turns never
+      // get a turn:delta (createUserTurn writes directly to turns.json, outside
+      // the event log the delta pipeline is derived from), so this is the only
+      // reconciliation path for them.
+      setReducerState((prev) => setTurn(prev, response.userTurn));
+      setOptimisticTurns((prev) => {
+        const next = new Map(prev);
+        next.delete(clientId);
+        return next;
+      });
     } catch (error) {
-      setOptimisticUserTurns((prev) => prev.filter((t) => t.id !== optimisticTurn.id));
+      setOptimisticTurns((prev) => {
+        const next = new Map(prev);
+        next.delete(clientId);
+        return next;
+      });
       setRunStatus('failed');
       UIMessage.error(`Failed to start: ${error instanceof Error ? error.message : String(error)}`);
     }
   }, [
     task, agentId, currentSessionId, tier, enableEscalation,
     responseMode, agentMode, setSearchParams, startRunMutation,
-    sessionTurnsData, wsTurns, optimisticUserTurns,
   ]);
 
   const handleStop = useCallback(async () => {
@@ -358,30 +385,14 @@ function AgentsPage() {
   const turns = (() => {
     if (isSwitchingSession) { return []; }
 
-    const restTurns = sessionTurnsData?.turns ?? [];
-    const merged = new Map<string, Turn>();
+    // No merge, no LWW: before the WS snapshot arrives, show REST history;
+    // once it lands, the reducer's projection is authoritative and alone —
+    // REST data is never consulted again for this session.
+    const base: Turn[] = hasSnapshot
+      ? [...reducerState.turnsById.values()]
+      : (sessionTurnsData?.turns ?? []);
 
-    for (const t of restTurns) { merged.set(t.id, t); }
-    for (const t of wsTurns) {
-      const existing = merged.get(t.id);
-      // A REST refetch (after run:completed) is authoritative; don't let a stale
-      // "streaming" WS snapshot resurrect a turn that's already been finalized.
-      if (existing && existing.status !== 'streaming' && t.status === 'streaming') { continue; }
-      merged.set(t.id, t);
-    }
-
-    const serverUserTexts = new Set(
-      [...merged.values()]
-        .filter((t) => t.type === 'user')
-        .flatMap((t) => t.steps.filter((s) => s.type === 'text').map((s) => s.content?.trim()))
-        .filter(Boolean),
-    );
-    for (const t of optimisticUserTurns) {
-      const text = t.steps.find((s) => s.type === 'text')?.content?.trim();
-      if (text && !serverUserTexts.has(text)) { merged.set(t.id, t); }
-    }
-
-    return [...merged.values()].sort(compareTurns);
+    return [...base, ...optimisticTurns.values()].sort(compareTurns);
   })();
 
   const turnsWithThinkingLoader: Turn[] = (() => {
