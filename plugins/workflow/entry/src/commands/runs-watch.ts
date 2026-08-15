@@ -20,6 +20,8 @@ const STATUS_ICON: Record<string, string> = {
   queued: '○',
   cancelled: '⊘',
   waiting_approval: '⏳',
+  waiting_child: '⏳',
+  interrupted: '‖',
 };
 
 export default defineCommand<unknown, CLIInput<RunsWatchFlags>, unknown>({

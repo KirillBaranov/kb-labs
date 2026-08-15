@@ -3,12 +3,16 @@ import type {
   WorkflowRun,
   WorkflowSpec,
   JobRun,
+  StepRun,
   ExpressionContext,
 } from '@kb-labs/workflow-contracts'
 import { evaluateExpression, resolveExpression } from '@kb-labs/workflow-contracts'
 import {
   EVENT_NAMES,
   WORKFLOW_REDIS_CHANNEL,
+  IllegalStateTransitionError,
+  isTerminal,
+  assertTransition,
   type WorkflowEventName,
 } from '@kb-labs/workflow-constants'
 import type { ICache, IEventBus, ILogger, IAnalytics, ISnapshotManager, Unsubscribe } from '@kb-labs/core-platform'
@@ -163,16 +167,24 @@ export class WorkflowEngine {
 
   async cancelRun(runId: string): Promise<void> {
     const run = await this.getRun(runId)
-
-    if (!run || ['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(run.status)) {
+    if (!run) {
       return
     }
 
-    await this.stateStore.updateRun(runId, (draft) => {
-      draft.status = 'cancelled'
-      draft.finishedAt = new Date().toISOString()
-      return draft
-    })
+    try {
+      await this.stateStore.transitionRun(runId, 'cancelled', (draft) => {
+        draft.finishedAt = new Date().toISOString()
+      })
+    } catch (error) {
+      // Already terminal (or otherwise unreachable from its current status)
+      // — a no-op, same as the old up-front status check, except the check
+      // now happens inside the lock against the live record instead of
+      // racing a stale read taken before it.
+      if (error instanceof IllegalStateTransitionError) {
+        return
+      }
+      throw error
+    }
 
     // Track workflow cancellation
     this.analytics?.track('workflow.run.cancelled', {
@@ -333,8 +345,7 @@ export class WorkflowEngine {
     }
 
     // Update job status to failed
-    await this.stateStore.updateJob(runId, jobId, (draft) => {
-      draft.status = 'failed'
+    await this.stateStore.transitionJob(runId, jobId, 'failed', (draft) => {
       draft.error = {
         message: error.message,
         stack: error.stack,
@@ -400,12 +411,22 @@ export class WorkflowEngine {
 
       // Re-queue job after backoff
       setTimeout(async () => {
-        await this.stateStore.updateJob(runId, jobId, (draft) => {
-          draft.status = 'queued'
-          draft.error = undefined
-          draft.startedAt = undefined
-          draft.finishedAt = undefined
-        })
+        try {
+          await this.stateStore.transitionJob(runId, jobId, 'queued', (draft) => {
+            draft.error = undefined
+            draft.startedAt = undefined
+            draft.finishedAt = undefined
+          })
+        } catch (transitionError) {
+          // The job moved on from 'failed' during the backoff wait (e.g. its
+          // run was cancelled) — the retry is stale, drop it instead of
+          // crashing this detached timer callback with an unhandled rejection.
+          if (transitionError instanceof IllegalStateTransitionError) {
+            this.logger.info('Dropping stale job retry: job is no longer failed', { runId, jobId })
+            return
+          }
+          throw transitionError
+        }
 
         // Re-enqueue in scheduler
         const updatedRun = await this.stateStore.getRun(runId)
@@ -442,8 +463,7 @@ export class WorkflowEngine {
     const released = await this.stateStore.releaseBlockedJobs(runId, failedJobName)
     for (const downstreamJob of released) {
       const now = new Date().toISOString()
-      await this.stateStore.updateJob(runId, downstreamJob.id, (draft) => {
-        draft.status = 'cancelled'
+      await this.stateStore.transitionJob(runId, downstreamJob.id, 'cancelled', (draft) => {
         draft.blocked = false
         draft.finishedAt = now
         draft.error = { message: reason, timestamp: now }
@@ -469,8 +489,7 @@ export class WorkflowEngine {
    * Interrupted jobs will be retried on next daemon startup.
    */
   async markJobInterrupted(runId: string, jobId: string): Promise<void> {
-    await this.stateStore.updateJob(runId, jobId, (draft) => {
-      draft.status = 'interrupted'
+    await this.stateStore.transitionJob(runId, jobId, 'interrupted', (draft) => {
       draft.finishedAt = new Date().toISOString()
     })
 
@@ -481,12 +500,16 @@ export class WorkflowEngine {
    * Mark job as started (running).
    */
   async markJobStarted(runId: string, jobId: string): Promise<void> {
-    await this.stateStore.updateJob(runId, jobId, (draft) => {
-      draft.status = 'running'
+    await this.stateStore.transitionJob(runId, jobId, 'running', (draft) => {
       draft.startedAt = new Date().toISOString()
     })
 
-    // Promote run status to 'running' when first job starts
+    // Promote run status to 'running' when first job starts. Deliberately
+    // NOT `transitionRun` here: this is an opportunistic "if still queued,
+    // promote" check, not an assertion that the run must currently be
+    // 'queued' — the run may already be 'running' (a later job in the same
+    // run starting) or, more rarely, something else entirely, and both
+    // should stay a silent no-op rather than throw.
     await this.stateStore.updateRun(runId, (draft) => {
       if (draft.status === 'queued') {
         draft.status = 'running'
@@ -525,8 +548,7 @@ export class WorkflowEngine {
     const startTime = job?.startedAt ? new Date(job.startedAt).getTime() : Date.now()
     const duration = Date.now() - startTime
 
-    await this.stateStore.updateJob(runId, jobId, (draft) => {
-      draft.status = 'success'
+    await this.stateStore.transitionJob(runId, jobId, 'success', (draft) => {
       draft.finishedAt = new Date().toISOString()
     })
 
@@ -596,8 +618,7 @@ export class WorkflowEngine {
   /** Mark a job as skipped (success) and release any jobs blocked on it. */
   private async skipJob(runId: string, job: JobRun): Promise<void> {
     const now = new Date().toISOString()
-    await this.stateStore.updateJob(runId, job.id, (draft) => {
-      draft.status = 'success'
+    await this.stateStore.transitionJob(runId, job.id, 'success', (draft) => {
       draft.startedAt = now
       draft.finishedAt = now
     })
@@ -628,17 +649,22 @@ export class WorkflowEngine {
     // Check status of all jobs
     const allSuccess = run.jobs.every((j) => j.status === 'success')
     const anyFailed = run.jobs.some((j) => j.status === 'failed')
-    const anyRunning = run.jobs.some((j) => j.status === 'running' || j.status === 'queued')
+    // A job that isn't terminal yet still needs an executor to finish it —
+    // including 'interrupted'/'waiting_approval'/'waiting_child' jobs, which
+    // are legitimately parked and NOT the same as "done". The previous check
+    // here only looked at 'running'/'queued', so a run with one job parked
+    // (e.g. waiting on human approval) and another job that just failed
+    // would be finalized as 'failed' out from under the parked job — the
+    // exact bug class this rework closes at the run level.
+    const anyNonTerminal = run.jobs.some((j) => !isTerminal(j.status, 'job'))
 
-    // If any job is still running/queued, run is not complete
-    if (anyRunning) {
+    if (anyNonTerminal) {
       return
     }
 
     // Update run status based on job outcomes
     if (allSuccess) {
-      const updated = await this.stateStore.updateRun(runId, (draft) => {
-        draft.status = 'success'
+      const updated = await this.stateStore.transitionRun(runId, 'success', (draft) => {
         draft.finishedAt = new Date().toISOString()
         draft.result = {
           ...(draft.result ?? { status: 'success' }),
@@ -672,8 +698,7 @@ export class WorkflowEngine {
       // /runs/:id, Studio, e2e) can show *why* the run failed without digging
       // into per-job records.
       const failedJob = run.jobs.find((j) => j.status === 'failed')
-      const updated = await this.stateStore.updateRun(runId, (draft) => {
-        draft.status = 'failed'
+      const updated = await this.stateStore.transitionRun(runId, 'failed', (draft) => {
         draft.finishedAt = new Date().toISOString()
         if (failedJob?.error) {
           draft.result = {
@@ -714,8 +739,7 @@ export class WorkflowEngine {
    * Mark step as started (running).
    */
   async markStepStarted(runId: string, jobId: string, stepId: string): Promise<void> {
-    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'running'
+    await this.stateStore.transitionStep(runId, jobId, stepId, 'running', (draft) => {
       draft.startedAt = new Date().toISOString()
     })
 
@@ -738,8 +762,7 @@ export class WorkflowEngine {
     stepId: string,
     output?: unknown,
   ): Promise<void> {
-    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'success'
+    await this.stateStore.transitionStep(runId, jobId, stepId, 'success', (draft) => {
       draft.finishedAt = new Date().toISOString()
       if (output !== undefined) {
         draft.outputs = output as Record<string, unknown>
@@ -767,8 +790,7 @@ export class WorkflowEngine {
     error: Error,
     outputs?: Record<string, unknown>,
   ): Promise<void> {
-    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'failed'
+    await this.stateStore.transitionStep(runId, jobId, stepId, 'failed', (draft) => {
       draft.finishedAt = new Date().toISOString()
       draft.error = {
         message: error.message,
@@ -791,14 +813,33 @@ export class WorkflowEngine {
   /**
    * Mark step as waiting for human approval.
    */
+  /**
+   * Park a step waiting for human approval — and park its parent job with
+   * it, in the SAME atomic write (one `transitionJob` call touching both the
+   * job's own status and its nested step). Two separate writes (step then
+   * job) would leave a window where a reader could observe step=waiting but
+   * job=running; going through one call closes that window entirely, not
+   * just narrows it.
+   *
+   * The job-level `waiting_approval` status is what makes the daemon-restart
+   * exemption in `cleanupStaleRuns` structural: that force-fail loop only
+   * ever touches `running`/`queued` jobs, so a parked job is never in its
+   * blast radius — no bespoke "is this job actually abandoned or just
+   * waiting on a human" check needed there.
+   */
   async markStepWaitingApproval(
     runId: string,
     jobId: string,
     stepId: string,
   ): Promise<void> {
-    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'waiting_approval'
-      draft.startedAt = draft.startedAt ?? new Date().toISOString()
+    await this.stateStore.transitionJob(runId, jobId, 'waiting_approval', (jobDraft) => {
+      const step = jobDraft.steps.find((s) => s.id === stepId)
+      if (!step) {
+        return
+      }
+      assertTransition('step', step.status, 'waiting_approval')
+      step.status = 'waiting_approval'
+      step.startedAt = step.startedAt ?? new Date().toISOString()
     })
 
     await this.events.publish({
@@ -811,8 +852,10 @@ export class WorkflowEngine {
   }
 
   /**
-   * Park a step while its child workflow runs. The worker returns after this
-   * transition, so parent workflows never consume the pool needed by children.
+   * Park a step (and its parent job — see `markStepWaitingApproval`'s
+   * docblock for why job+step move together in one write) while its child
+   * workflow runs. The worker returns after this transition, so parent
+   * workflows never consume the pool needed by children.
    */
   async markStepWaitingChild(
     runId: string,
@@ -820,10 +863,15 @@ export class WorkflowEngine {
     stepId: string,
     childRunId: string,
   ): Promise<void> {
-    await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'waiting_child'
-      draft.startedAt ??= new Date().toISOString()
-      draft.metadata = { ...(draft.metadata ?? {}), childRunId }
+    await this.stateStore.transitionJob(runId, jobId, 'waiting_child', (jobDraft) => {
+      const step = jobDraft.steps.find((s) => s.id === stepId)
+      if (!step) {
+        return
+      }
+      assertTransition('step', step.status, 'waiting_child')
+      step.status = 'waiting_child'
+      step.startedAt ??= new Date().toISOString()
+      step.metadata = { ...(step.metadata ?? {}), childRunId }
     })
 
     await this.events.publish({
@@ -837,8 +885,7 @@ export class WorkflowEngine {
 
   /** Re-queue a parked parent job after its child workflow reaches a terminal state. */
   async resumeJob(runId: string, jobId: string): Promise<void> {
-    const job = await this.stateStore.updateJob(runId, jobId, (draft) => {
-      draft.status = 'queued'
+    const job = await this.stateStore.transitionJob(runId, jobId, 'queued', (draft) => {
       draft.finishedAt = undefined
     })
     if (job) {
@@ -850,6 +897,12 @@ export class WorkflowEngine {
    * Resolve a pending approval — approve or reject.
    * On approve: marks step as success with approval outputs.
    * On reject: marks step as failed with rejection error.
+   *
+   * Resolves the step AND un-parks the job (`waiting_approval` → `queued`)
+   * in one atomic write — same reasoning as `markStepWaitingApproval` — then
+   * re-enqueues the job. This re-enqueue is what actually resumes execution:
+   * with approval no longer polled in-process (the worker parks and returns
+   * instead of waiting), nothing else will ever pick this job back up.
    */
   async resolveApproval(
     runId: string,
@@ -859,43 +912,62 @@ export class WorkflowEngine {
     data?: Record<string, unknown>,
     comment?: string,
   ): Promise<void> {
-    if (action === 'approve') {
-      await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-        draft.status = 'success'
-        draft.finishedAt = new Date().toISOString()
-        draft.outputs = {
-          approved: true,
-          action,
-          ...(comment ? { comment } : {}),
-          ...(data ?? {}),
-        }
-      })
-
-      this.logger.info('Approval granted', { runId, jobId, stepId, comment })
-    } else {
-      await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-        draft.status = 'failed'
-        draft.finishedAt = new Date().toISOString()
-        draft.error = {
-          message: comment || 'Approval rejected',
-          code: 'APPROVAL_REJECTED',
-        }
-        draft.outputs = {
-          approved: false,
-          action,
-          ...(comment ? { comment } : {}),
-          ...(data ?? {}),
-        }
-      })
-
-      this.logger.info('Approval rejected', { runId, jobId, stepId, comment })
+    // Guard against a stale approval: after markStepWaitingApproval parks the
+    // job, `cleanupStaleRuns` never force-fails it (that's the whole point of
+    // this rework) — but the run can still legitimately go terminal out from
+    // under a pending approval via a plain `cancelRun` (which doesn't cascade
+    // into cancelling this run's own in-flight jobs/steps). Without this
+    // check, a human clicking an approval link open in a stale tab could
+    // resolve a step whose run was already cancelled — resurrecting a dead
+    // run's job into 'queued' and re-enqueuing it. `transitionJob` below
+    // would also reject an already-terminal *job* on its own (its transition
+    // table has no outgoing edges from a terminal state), but it has no way
+    // to see the *run's* status — only this pre-check does.
+    const run = await this.stateStore.getRun(runId)
+    const existingJob = run?.jobs.find((j) => j.id === jobId)
+    if (!run || !existingJob) {
+      throw new Error(`Cannot resolve approval: run or job not found (runId=${runId}, jobId=${jobId})`)
     }
+    if (isTerminal(run.status, 'run') || isTerminal(existingJob.status, 'job')) {
+      throw new IllegalStateTransitionError('job', existingJob.status, 'queued', {
+        reason: `run.status=${run.status}`,
+      })
+    }
+
+    const stepStatus: StepRun['status'] = action === 'approve' ? 'success' : 'failed'
+    const outputs = {
+      approved: action === 'approve',
+      action,
+      ...(comment ? { comment } : {}),
+      ...(data ?? {}),
+    }
+
+    const job = await this.stateStore.transitionJob(runId, jobId, 'queued', (jobDraft) => {
+      const step = jobDraft.steps.find((s) => s.id === stepId)
+      if (!step) {
+        return
+      }
+      assertTransition('step', step.status, stepStatus)
+      step.status = stepStatus
+      step.finishedAt = new Date().toISOString()
+      step.outputs = outputs
+      if (action === 'reject') {
+        step.error = { message: comment || 'Approval rejected', code: 'APPROVAL_REJECTED' }
+      }
+      jobDraft.finishedAt = undefined
+    })
+
+    this.logger.info(action === 'approve' ? 'Approval granted' : 'Approval rejected', { runId, jobId, stepId, comment })
 
     await this.events.publish({
       type: EVENT_NAMES.step.updated,
       runId,
       payload: { jobId, stepId, action },
     })
+
+    if (job) {
+      await this.scheduler.enqueueJob(runId, job, job.priority ?? 'normal')
+    }
   }
 
   /**
@@ -913,9 +985,12 @@ export class WorkflowEngine {
   }
 
   /**
-   * Mark stale running/queued runs as failed on daemon startup.
-   * Runs that were in-flight when the daemon crashed are unrecoverable —
-   * their executor process is gone, so we mark them failed immediately.
+   * Mark stale running/queued jobs as failed on daemon startup — their
+   * executor process is gone, so they're unrecoverable. The run itself is
+   * only finalized as 'failed' if nothing else could still complete it;
+   * a run with one abandoned job and one job legitimately parked on a human
+   * approval or a child workflow stays 'running' (only the abandoned job is
+   * failed) until the parked one resolves.
    */
   async cleanupStaleRuns(): Promise<void> {
     const runIds = await this.stateStore.getAllRunIds()
@@ -934,12 +1009,19 @@ export class WorkflowEngine {
         const run = await this.stateStore.getRun(runId)
         if (!run) { return }
         if (run.status !== 'running' && run.status !== 'queued') { return }
-        // A parked parent and its child are durable orchestration state, not a
-        // lost executor. Keep queued children intact; running children are
-        // turned into resumable interruptions below.
-        if (run.jobs.some((job) => job.steps.some((step) => step.status === 'waiting_child'))) {
-          return
-        }
+        // NOTE on what changed here vs. what stayed: the old code had a
+        // bespoke early-return scanning this run's OWN steps for
+        // `waiting_child` before ever looking at job statuses. That's gone —
+        // a job whose step is waiting_approval/waiting_child now carries
+        // that status itself (see markStepWaitingApproval/markStepWaitingChild),
+        // so the force-fail loop below already skips it structurally, just by
+        // virtue of not being 'running'/'queued'. No special-cased `if` needed.
+        //
+        // `protectedChildRunIds` below is a DIFFERENT, still-needed concern:
+        // it protects a CHILD run's OWN in-flight jobs (not the parent's
+        // parked step) — if this run IS someone's child and its jobs were
+        // running when the daemon died, they're durable orchestration state
+        // too and get a resumable 'interrupted' instead of a hard 'failed'.
         if (protectedChildRunIds.has(run.id)) {
           const hasRunningJob = run.jobs.some((job) => job.status === 'running')
           if (hasRunningJob) {
@@ -962,15 +1044,43 @@ export class WorkflowEngine {
           return
         }
 
-        await this.stateStore.updateRun(runId, (draft) => {
-          draft.status = 'failed'
+        // A job legitimately parked (waiting_approval/waiting_child) keeps
+        // the run alive even if some OTHER job in the same run really was
+        // abandoned by the crashed daemon — finalizing the whole run here
+        // would recreate this rework's original bug shape (run=failed while
+        // a step is still waiting_approval), just one level up. Only the
+        // genuinely abandoned jobs get failed; the run itself is only
+        // finalized if nothing is left that could still bring it home.
+        const hasParkedJob = run.jobs.some((job) => job.status === 'waiting_approval' || job.status === 'waiting_child')
+        const abandonedJobIds = run.jobs
+          .filter((job) => job.status === 'running' || job.status === 'queued')
+          .map((job) => job.id)
+
+        if (abandonedJobIds.length === 0) {
+          return
+        }
+
+        if (hasParkedJob) {
+          await this.stateStore.updateRun(runId, (draft) => {
+            for (const job of draft.jobs) {
+              if (abandonedJobIds.includes(job.id)) {
+                job.status = 'failed'
+                job.error = { message: 'Daemon restarted — run was abandoned' }
+                job.finishedAt = now
+              }
+            }
+          })
+          count++
+          return
+        }
+
+        await this.stateStore.transitionRun(runId, 'failed', (draft) => {
           draft.finishedAt = now
           if (draft.startedAt) {
             draft.durationMs = new Date(now).getTime() - new Date(draft.startedAt).getTime()
           }
-          // Mark any still-active jobs as failed too
           for (const job of draft.jobs) {
-            if (job.status === 'running' || job.status === 'queued') {
+            if (abandonedJobIds.includes(job.id)) {
               job.status = 'failed'
               job.error = { message: 'Daemon restarted — run was abandoned' }
               job.finishedAt = now
@@ -1007,8 +1117,7 @@ export class WorkflowEngine {
           interruptedJobs.map(async job => {
             this.logger.info('Resuming interrupted job', { runId, jobId: job.id })
 
-            await this.stateStore.updateJob(runId, job.id, (draft) => {
-              draft.status = 'queued'
+            await this.stateStore.transitionJob(runId, job.id, 'queued', (draft) => {
               draft.startedAt = undefined
               draft.finishedAt = undefined
             })
@@ -1079,9 +1188,8 @@ export class WorkflowEngine {
     status: WorkflowRun['status'],
     context: Partial<RunContext> = {},
   ): Promise<WorkflowRun | null> {
-    const updated = await this.stateStore.updateRun(runId, (run) => {
+    const updated = await this.stateStore.transitionRun(runId, status, (run) => {
       const now = new Date().toISOString()
-      run.status = status
       run.finishedAt = now
       run.durationMs = computeDurationMs(run.startedAt ?? run.queuedAt, now)
       if (context.jobs) {

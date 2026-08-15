@@ -11,10 +11,15 @@ const STATUS_VARIANTS: Partial<Record<WorkflowLikeStatus, 'info' | 'success' | '
   cancelled: 'warning',
   skipped: 'info',
   waiting_approval: 'warning',
+  // Jobs (not just steps) can now carry this status too — a job parked while
+  // its step invokes a nested workflow.
+  waiting_child: 'warning',
+  interrupted: 'warning',
 }
 
 const STATUS_LABELS: Partial<Record<WorkflowLikeStatus, string>> = {
   waiting_approval: 'WAITING APPROVAL',
+  waiting_child: 'WAITING FOR CHILD',
 }
 
 export function WorkflowStatusBadge({ status }: { status: WorkflowLikeStatus }) {

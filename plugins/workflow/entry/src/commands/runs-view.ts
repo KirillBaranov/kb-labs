@@ -26,6 +26,10 @@ const STEP_ICON: Record<string, string> = {
   queued: '○',
   cancelled: '⊘',
   waiting_approval: '…',
+  // Jobs can carry this status too now (parked while a step invokes a
+  // nested workflow), not just steps — same lookup table serves both.
+  waiting_child: '…',
+  interrupted: '‖',
   skipped: '⊙',
 };
 

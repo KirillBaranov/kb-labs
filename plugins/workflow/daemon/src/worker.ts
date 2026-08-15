@@ -11,6 +11,7 @@ import type { WorkflowEngine } from "@kb-labs/workflow-engine";
 import type { WorkflowService } from "@kb-labs/workflow-engine";
 import type { IEntityRegistry } from "@kb-labs/core-registry";
 import { logDiagnosticEvent } from "@kb-labs/core-platform";
+import { isTerminal } from "@kb-labs/workflow-constants";
 import type {
   ILogger,
   IAnalytics,
@@ -123,8 +124,15 @@ export async function createWorkflowWorker(
   // Track running jobs for graceful shutdown
   const runningJobs = new Map<string, Promise<void>>();
 
-  // In-memory lock to prevent duplicate job processing from concurrent worker loops.
-  // zrangebyscore+zrem is not atomic, so multiple workers can dequeue the same entry.
+  // In-process guard against double-processing the same (runId, jobId) job
+  // when the queue happens to hold more than one entry for it at once (e.g.
+  // a stale entry still in the queue racing a fresh retry/gate-restart
+  // re-enqueue for the same job). This is a coarser guard than "don't
+  // dequeue the same queue entry twice" — that race is now closed by the
+  // lock inside Scheduler.dequeueFromPriority, which makes each entry
+  // dequeue-once regardless of process count. This Set only needs to matter
+  // *within* this process, since `concurrency` worker loops below poll
+  // concurrently and could otherwise both pick up an entry for the same job.
   const claimedJobs = new Set<string>();
 
   // ExecutionBackend from platform — unified across all hosts (CLI, REST API, workflow)
@@ -243,8 +251,7 @@ export async function createWorkflowWorker(
 
     const jobKey = `${run.id}:${job.id}`;
 
-    // Guard against duplicate processing from concurrent worker loops.
-    // zrangebyscore+zrem is not atomic — multiple loops can dequeue the same entry.
+    // See claimedJobs' declaration above for what this does and doesn't guard.
     if (claimedJobs.has(jobKey)) {
       return true; // Another loop already claimed this job
     }
@@ -434,6 +441,24 @@ export async function createWorkflowWorker(
             break;
           }
 
+          // A job marked terminal by something else (another daemon instance's
+          // cleanupStaleRuns, a concurrent markJobFailed) must stop this loop
+          // from continuing to execute steps and, critically, from calling
+          // markJobCompleted/markJobFailed again at the end — that call would
+          // try to overwrite an already-terminal status, which the state
+          // machine now rejects, but by then it's better to never attempt it.
+          // This is the direct fix for "job marked failed but still executing":
+          // previously only run.status was ever re-checked here.
+          const freshJob = freshRun?.jobs.find((j) => j.id === job.id);
+          if (freshJob && isTerminal(freshJob.status, "job")) {
+            jobLogger.warn("[worker] Job already in a terminal state — aborting in-process execution", {
+              runId: run.id,
+              jobId: job.id,
+              status: freshJob.status,
+            });
+            return;
+          }
+
           const exprCtx: ExpressionContext = {
             env: freshRun?.env ?? {},
             trigger: freshRun?.trigger ?? { type: "manual" },
@@ -611,6 +636,15 @@ export async function createWorkflowWorker(
           });
 
           // --- Handle builtin:approval ---
+          // Parks the step (and its parent job, atomically — see
+          // markStepWaitingApproval) and returns from the worker job, same
+          // pattern as nested workflow invocation below. This used to poll
+          // in-process instead (a `while` loop sleeping 2s at a time),
+          // which held this worker slot for the entire wait — with a
+          // bounded pool (`concurrency`, default 5), enough concurrent
+          // approvals starved every other job in the daemon, approval or
+          // not. Parking releases the slot immediately; `resolveApproval`
+          // re-enqueues the job once a human acts on it.
           if (step.spec.uses === "builtin:approval") {
             if (step.status === "failed") {
               // Already rejected (daemon restarted after resolution) — let gate route.
@@ -623,19 +657,13 @@ export async function createWorkflowWorker(
             if (step.status !== "waiting_approval") {
               await engine.markStepWaitingApproval(run.id, job.id, step.id);
             }
-            const approvalResult = await waitForApproval(
-              engine,
-              run.id,
-              job.id,
-              step,
-              interpolatedWith as Record<string, unknown> | undefined,
-              () => stopRequested,
-              stepLogger,
-            );
-            if (approvalResult === "interrupted") {
-              return;
-            }
-            continue; // Outputs already set by resolveApproval
+            stepLogger.info("[approval] Step parked awaiting human decision — releasing worker slot", {
+              runId: run.id,
+              jobId: job.id,
+              stepId: step.id,
+              stepName: step.name,
+            });
+            return;
           }
 
           // --- Handle nested workflow invocation ---
@@ -1193,106 +1221,6 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-/**
- * Poll until an approval step is resolved or a stop signal is received.
- * Returns 'done' when the approval is granted or rejected, 'interrupted' on shutdown.
- */
-async function waitForApproval(
-  engine: WorkflowEngine,
-  runId: string,
-  jobId: string,
-  step: Pick<StepRun, "id" | "name">,
-  interpolatedWith: Record<string, unknown> | undefined,
-  isStopRequested: () => boolean,
-  stepLogger: ILogger,
-): Promise<"done" | "interrupted"> {
-  const approvalTimeoutMs = interpolatedWith?.["timeoutMs"];
-  if (!approvalTimeoutMs) {
-    stepLogger.warn(
-      "[approval] No timeout configured — approval may wait indefinitely",
-      {
-        runId,
-        jobId,
-        stepId: step.id,
-        stepName: step.name,
-      },
-    );
-  }
-
-  stepLogger.info("[approval] Waiting for approval", {
-    runId,
-    jobId,
-    stepId: step.id,
-    stepName: step.name,
-    context: interpolatedWith,
-  });
-
-  const approvalStartMs = Date.now();
-  let pollCount = 0;
-
-  while (!isStopRequested()) {
-    await sleep(2000);
-    pollCount++;
-    const currentRun = await engine.getRun(runId);
-
-    // If the run is cancelled, treat it as an interruption — do NOT proceed as
-    // if the approval was granted. A cancelled run must never bypass human gates.
-    if (currentRun?.status === "cancelled") {
-      stepLogger.info(
-        "[approval] Run cancelled — treating as interrupted, NOT approved",
-        {
-          runId,
-          stepId: step.id,
-          stepName: step.name,
-          waitedMs: Date.now() - approvalStartMs,
-        },
-      );
-      return "interrupted";
-    }
-
-    const currentJob = currentRun?.jobs.find((j) => j.id === jobId);
-    const currentStep = currentJob?.steps.find((s) => s.id === step.id);
-
-    if (!currentStep || currentStep.status === "success") {
-      stepLogger.info("[approval] Approval granted", {
-        runId,
-        stepId: step.id,
-        stepName: step.name,
-        waitedMs: Date.now() - approvalStartMs,
-      });
-      break;
-    }
-
-    if (currentStep.status === "failed") {
-      // Approval was rejected — break so the following builtin:gate step can route.
-      stepLogger.info("[approval] Approval rejected", {
-        runId,
-        stepId: step.id,
-        stepName: step.name,
-        waitedMs: Date.now() - approvalStartMs,
-      });
-      break;
-    }
-
-    if (pollCount % 10 === 0) {
-      stepLogger.info("[approval] Still waiting for approval", {
-        runId,
-        stepId: step.id,
-        stepName: step.name,
-        waitedMs: Date.now() - approvalStartMs,
-        pollCount,
-      });
-    }
-  }
-
-  if (isStopRequested()) {
-    stepLogger.info("Approval wait interrupted by shutdown", {
-      stepId: step.id,
-    });
-    return "interrupted";
-  }
-  return "done";
-}
 
 type GateRestartDecision = Extract<GateDecision, { action: "restart" }>;
 type GateSkipDecision = Extract<GateDecision, { action: "skip" }>;
@@ -1338,8 +1266,7 @@ async function applyGateSkip(
     if (s.spec.id === skipTo || s.id === skipTo) {
       break;
     } // stop at target (inclusive — don't skip it)
-    await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
-      draft.status = "success";
+    await stateStore.transitionStep(run.id, job.id, s.id, "success", (draft) => {
       draft.outputs = { skipped: true };
       draft.startedAt = new Date().toISOString();
       draft.finishedAt = new Date().toISOString();
@@ -1448,21 +1375,24 @@ async function applyGateRestart(
       // dependencies outside the reset set already completed and stay satisfied.
       const pending = (rj.needs ?? []).filter((n) => resetNames.has(n));
       for (const s of rj.steps) {
-        await stateStore.updateStep(run.id, rj.id, s.id, (draft) => {
-          draft.status = "queued";
+        // allowReset: a gate restart can reset steps that already succeeded
+        // (redoing prior work after rework feedback) — that's a deliberate
+        // bulk reset, not a normal forward transition.
+        await stateStore.transitionStep(run.id, rj.id, s.id, "queued", (draft) => {
           draft.startedAt = undefined;
           draft.finishedAt = undefined;
           draft.error = undefined;
           draft.outputs = undefined;
-        });
+        }, { allowReset: true });
       }
-      await stateStore.updateJob(run.id, rj.id, (draft) => {
-        draft.status = "queued";
+      // allowReset: same reasoning — a previously succeeded/cancelled job
+      // can be reset back to queued for a re-run.
+      await stateStore.transitionJob(run.id, rj.id, "queued", (draft) => {
         draft.startedAt = undefined;
         draft.finishedAt = undefined;
         draft.pendingDependencies = [...pending];
         draft.blocked = pending.length > 0;
-      });
+      }, { allowReset: true });
     }
 
     const refreshed = await engine.getRun(run.id);
@@ -1492,18 +1422,21 @@ async function applyGateRestart(
       foundTarget = true;
     }
     if (foundTarget) {
-      await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
-        draft.status = "queued";
+      // allowReset: same as the cross-job case — resetting an already-
+      // succeeded step back to queued for a restart iteration.
+      await stateStore.transitionStep(run.id, job.id, s.id, "queued", (draft) => {
         draft.startedAt = undefined;
         draft.finishedAt = undefined;
         draft.error = undefined;
         draft.outputs = undefined;
-      });
+      }, { allowReset: true });
     }
   }
 
-  await stateStore.updateJob(run.id, job.id, (draft) => {
-    draft.status = "queued";
+  // The job itself is still 'running' at this point (this is happening
+  // inside its own in-flight step loop) — running -> queued is an ordinary
+  // legal transition, no reset needed.
+  await stateStore.transitionJob(run.id, job.id, "queued", (draft) => {
     draft.startedAt = undefined;
     draft.finishedAt = undefined;
   });

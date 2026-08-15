@@ -2,6 +2,7 @@ import type { JobRun, WorkflowRun } from '@kb-labs/workflow-contracts'
 import type { JobPriority } from '@kb-labs/workflow-constants'
 import type { ICache } from '@kb-labs/core-platform'
 import type { EngineLogger } from './types'
+import { withLock } from './lock'
 
 export interface JobQueueEntry {
   id: string
@@ -119,32 +120,44 @@ export class Scheduler {
     })
   }
 
+  /**
+   * The read (`zrangebyscore`) and the remove (`zrem`) below are two
+   * separate cache round-trips, not one atomic op — without the lock, two
+   * daemon instances racing this method could both read the same top entry
+   * before either removes it, and both would go on to execute the same job
+   * (the daemon runs multiple instances in production, so this is a live
+   * bug, not a theoretical one). `withLock` serializes dequeues against this
+   * one priority queue across every process sharing the same cache backend,
+   * the same way `StateStore.updateRun` serializes writes to one run.
+   */
   private async dequeueFromPriority(priority: JobPriority): Promise<JobQueueEntry | null> {
-    const now = Date.now()
     const key = `kb:jobqueue:${priority}`
-    const results = await this.cache.zrangebyscore(
-      key,
-      0,
-      now + this.lookAheadMs,
-    )
+    return withLock(this.cache, `kb:lock:queue:${priority}`, async () => {
+      const now = Date.now()
+      const results = await this.cache.zrangebyscore(
+        key,
+        0,
+        now + this.lookAheadMs,
+      )
 
-    // Handle LIMIT manually - take only first result
-    if (results.length === 0) {
-      return null
-    }
+      // Handle LIMIT manually - take only first result
+      if (results.length === 0) {
+        return null
+      }
 
-    const raw = results[0]
-    if (typeof raw !== 'string') {
-      return null
-    }
-    try {
-      const entry = JSON.parse(raw) as JobQueueEntry
-      await this.cache.zrem(key, raw)
-      return entry
-    } catch (error) {
-      this.logger.error('Failed to parse job queue entry', error instanceof Error ? error : undefined)
-      return null
-    }
+      const raw = results[0]
+      if (typeof raw !== 'string') {
+        return null
+      }
+      try {
+        const entry = JSON.parse(raw) as JobQueueEntry
+        await this.cache.zrem(key, raw)
+        return entry
+      } catch (error) {
+        this.logger.error('Failed to parse job queue entry', error instanceof Error ? error : undefined)
+        return null
+      }
+    })
   }
 
   getDefaultPriority(): JobPriority {

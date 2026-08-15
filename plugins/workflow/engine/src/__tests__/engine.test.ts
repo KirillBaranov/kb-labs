@@ -868,4 +868,177 @@ describe('WorkflowEngine', () => {
       );
     });
   });
+
+  describe('cleanupStaleRuns — daemon restart with an outstanding approval', () => {
+    const approvalSpec: WorkflowSpec = {
+      name: 'Approval Workflow',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        main: {
+          runsOn: 'local',
+          steps: [
+            { name: 'Approve', uses: 'builtin:approval', with: { message: 'Approve?' } },
+          ],
+        },
+      },
+    };
+
+    it('regression: does not force-fail a job parked on waiting_approval — ' +
+      'this is the exact bug this rework closes. Before the fix, a job whose ' +
+      'step was `waiting_approval` still had job.status === \'running\' (no ' +
+      'job-level parked status existed), so cleanupStaleRuns\'s force-fail ' +
+      'loop (which only exempted `waiting_child`, never `waiting_approval`) ' +
+      'matched it and marked the job — and by extension the run — `failed`, ' +
+      'while the step itself stayed `waiting_approval` forever: a job/step ' +
+      'status combination that made no sense and could never resolve. This ' +
+      'is deterministic on every daemon restart with an open approval, not a ' +
+      'rare race.', async () => {
+      const run = await engine.createRun({ spec: approvalSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      const step = job.steps[0]!;
+
+      await engine.markJobStarted(run.id, job.id);
+      await engine.markStepWaitingApproval(run.id, job.id, step.id);
+
+      // Sanity: confirm the parked state actually landed before simulating a
+      // restart, so this test would fail loudly if markStepWaitingApproval's
+      // own atomic job+step write ever regressed.
+      const parked = await engine.getRun(run.id);
+      expect(parked!.jobs[0]!.status).toBe('waiting_approval');
+      expect(parked!.jobs[0]!.steps[0]!.status).toBe('waiting_approval');
+      expect(parked!.status).toBe('running');
+
+      // Simulate what actually happens on daemon restart: bootstrap calls
+      // cleanupStaleRuns() before anything else touches this run.
+      await engine.cleanupStaleRuns();
+
+      const afterRestart = await engine.getRun(run.id);
+      expect(afterRestart!.status).toBe('running');
+      expect(afterRestart!.jobs[0]!.status).toBe('waiting_approval');
+      expect(afterRestart!.jobs[0]!.steps[0]!.status).toBe('waiting_approval');
+    });
+
+    it('boundary: the parked-job exemption covers waiting_approval/waiting_child ' +
+      'only — a job already resolved back to \'queued\' (approved, but no worker ' +
+      'picked it up again yet) is NOT specially protected and gets force-failed ' +
+      'on restart the same as any other queued job. This is unchanged, ' +
+      'pre-existing behavior (queued jobs were already in cleanupStaleRuns\'s ' +
+      'force-fail condition before this rework) — documented here so the ' +
+      'exemption\'s exact boundary is explicit rather than assumed.', async () => {
+      const run = await engine.createRun({ spec: approvalSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      const step = job.steps[0]!;
+
+      await engine.markJobStarted(run.id, job.id);
+      await engine.markStepWaitingApproval(run.id, job.id, step.id);
+      await engine.resolveApproval(run.id, job.id, step.id, 'approve');
+
+      await engine.cleanupStaleRuns();
+
+      const afterRestart = await engine.getRun(run.id);
+      expect(afterRestart!.status).toBe('failed');
+      expect(afterRestart!.jobs[0]!.status).toBe('failed');
+      // The force-fail loop only touches job.status, not the nested step —
+      // the already-resolved step's own status is untouched.
+      expect(afterRestart!.jobs[0]!.steps[0]!.status).toBe('success');
+    });
+
+    it('still fails a genuinely abandoned job (no approval involved) on restart', async () => {
+      const plainSpec: WorkflowSpec = {
+        name: 'Plain Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          main: {
+            runsOn: 'local',
+            steps: [{ name: 'Step 1', uses: 'builtin:shell', with: { run: 'echo hi' } }],
+          },
+        },
+      };
+      const run = await engine.createRun({ spec: plainSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      await engine.markJobStarted(run.id, job.id); // job now 'running', executor about to "crash"
+
+      await engine.cleanupStaleRuns();
+
+      const afterRestart = await engine.getRun(run.id);
+      expect(afterRestart!.status).toBe('failed');
+      expect(afterRestart!.jobs[0]!.status).toBe('failed');
+    });
+  });
+
+  describe('resolveApproval guards against a stale/reopened approval', () => {
+    const approvalSpec: WorkflowSpec = {
+      name: 'Approval Workflow',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        main: {
+          runsOn: 'local',
+          steps: [
+            { name: 'Approve', uses: 'builtin:approval', with: { message: 'Approve?' } },
+          ],
+        },
+      },
+    };
+
+    it('regression: rejects resolving an approval whose run was cancelled while it ' +
+      'was pending. cancelRun only sets run.status — it does not cascade into ' +
+      'cancelling this run\'s own in-flight jobs/steps, so without this check a ' +
+      'human with a stale approval link open (or a delayed webhook replay) could ' +
+      'resolve the step and resurrect a dead run\'s job back into \'queued\', ' +
+      're-enqueuing work for a run nothing should still be executing.', async () => {
+      const run = await engine.createRun({ spec: approvalSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      const step = job.steps[0]!;
+
+      await engine.markJobStarted(run.id, job.id);
+      await engine.markStepWaitingApproval(run.id, job.id, step.id);
+      await engine.cancelRun(run.id);
+
+      // Sanity: cancelRun really did leave the job/step parked, untouched.
+      const cancelled = await engine.getRun(run.id);
+      expect(cancelled!.status).toBe('cancelled');
+      expect(cancelled!.jobs[0]!.status).toBe('waiting_approval');
+      expect(cancelled!.jobs[0]!.steps[0]!.status).toBe('waiting_approval');
+
+      await expect(engine.resolveApproval(run.id, job.id, step.id, 'approve'))
+        .rejects.toThrow(/Illegal job status transition/);
+
+      // The step must NOT have been resolved, and the job must NOT have been
+      // re-queued — both would resurrect a cancelled run's execution.
+      const afterAttempt = await engine.getRun(run.id);
+      expect(afterAttempt!.jobs[0]!.status).toBe('waiting_approval');
+      expect(afterAttempt!.jobs[0]!.steps[0]!.status).toBe('waiting_approval');
+    });
+
+    it('rejects resolving an approval on a job that is already terminal', async () => {
+      const run = await engine.createRun({ spec: approvalSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      const step = job.steps[0]!;
+
+      await engine.markJobStarted(run.id, job.id);
+      await engine.markStepWaitingApproval(run.id, job.id, step.id);
+      await engine.getStateStore().transitionJob(run.id, job.id, 'failed');
+
+      await expect(engine.resolveApproval(run.id, job.id, step.id, 'approve'))
+        .rejects.toThrow(/Illegal job status transition/);
+    });
+
+    it('still resolves normally when neither run nor job is terminal', async () => {
+      const run = await engine.createRun({ spec: approvalSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      const step = job.steps[0]!;
+
+      await engine.markJobStarted(run.id, job.id);
+      await engine.markStepWaitingApproval(run.id, job.id, step.id);
+
+      await expect(engine.resolveApproval(run.id, job.id, step.id, 'approve')).resolves.not.toThrow();
+
+      const resolved = await engine.getRun(run.id);
+      expect(resolved!.jobs[0]!.status).toBe('queued');
+      expect(resolved!.jobs[0]!.steps[0]!.status).toBe('success');
+    });
+  });
 });
