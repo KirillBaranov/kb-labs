@@ -56,12 +56,12 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Reject tags outside main
+      - name: Reject tags outside master
         run: |
           set -euo pipefail
-          git fetch origin main --no-tags
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::Release tags must point to a commit already reachable from main."
+          git fetch origin master --no-tags
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Release tags must point to a commit already reachable from master."
             echo "::error::Tag: $GITHUB_REF_NAME; commit: $GITHUB_SHA"
             exit 1
           fi

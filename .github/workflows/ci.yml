@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     # Skip workflow on changes that cannot affect lint / type-check / tests.
     # Sites code is intentionally NOT ignored here — it's part of the
     # monorepo and is type-checked / linted by CI even though it deploys

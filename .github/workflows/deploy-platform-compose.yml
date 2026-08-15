@@ -21,7 +21,7 @@ on:
       ref:
         description: Git ref containing the Dockerfiles and compose definition
         required: true
-        default: main
+        default: master
         type: string
       deploy:
         description: Pull images and restart the remote Compose stack

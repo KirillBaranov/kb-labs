@@ -8,11 +8,11 @@
 #   name: Deploy to staging
 #   on:
 #     push:
-#       branches: [main]
+#       branches: [master]
 #       paths: ['.kb/deploy/**']
 #   jobs:
 #     call:
-#       uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+#       uses: kb-labs-team/kb-labs/.github/workflows/kb-deploy-apply.yml@master
 #       with:
 #         manifest: .kb/deploy/deploy.yaml
 #         environment: staging
