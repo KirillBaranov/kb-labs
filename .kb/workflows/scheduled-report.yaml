@@ -1,0 +1,25 @@
+# Scheduled report — runs on a cron schedule.
+# This workflow runs daily and generates a project health summary.
+# Docs: https://docs.kblabs.ru/workflows
+name: scheduled-report
+version: 1.0.0
+description: "Daily project health check (cron)"
+on:
+  schedule:
+    cron: "0 9 * * 1-5"
+  manual: true
+
+jobs:
+  report:
+    runsOn: local
+    steps:
+      - name: Git summary
+        id: git
+        run: |
+          echo "## Commits (last 24h)"
+          git log --oneline --since="24 hours ago" || echo "No recent commits"
+      - name: Dependency check
+        run: pnpm outdated || true
+        continueOnError: true
+      - name: Disk usage
+        run: du -sh node_modules/ dist/ 2>/dev/null || echo "N/A"

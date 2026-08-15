@@ -1,0 +1,30 @@
+# Healthcheck — verify your project builds and passes tests.
+# Run:  kb workflow run --workflow-id healthcheck
+# Docs: https://docs.kblabs.ru/workflows
+name: healthcheck
+version: 1.0.0
+description: "Build, lint, and test your project"
+on:
+  manual: true
+
+jobs:
+  check:
+    runsOn: local
+    steps:
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+          else
+            echo "No package.json — dependency installation skipped"
+          fi
+      - name: Build
+        run: |
+          if [ -f package.json ]; then pnpm run build --if-present; else echo "No package.json — build skipped"; fi
+      - name: Lint
+        run: |
+          if [ -f package.json ]; then pnpm run lint --if-present; else echo "No package.json — lint skipped"; fi
+        continueOnError: true
+      - name: Test
+        run: |
+          if [ -f package.json ]; then pnpm run test --if-present; else echo "No package.json — tests skipped"; fi
