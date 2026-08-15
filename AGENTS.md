@@ -1,124 +1,33 @@
-# KB Labs Monorepo
+# KB Labs workspace
 
-> Single monorepo for the KB Labs platform — open-source AI/infra control plane for developers.
+## Non-negotiable rules
 
-## Quick Start
+- Keep dependency direction: `core` → `sdk`/`shared`/`core/plugin-*` → `cli`/`adapters` → `plugins` → `studio`.
+- Internal dependencies use `workspace:*` only; never use `link:` or pinned internal versions.
+- Treat every directory in `plugins/` as a plugin. Plugin pages use only `@kb-labs/sdk` and contracts, not Studio internals.
+- Use `ILogger`/`ICache` from `@kb-labs/core-platform`; use `platform.logger` for a no-op logger. Do not use `as any`, `@ts-ignore`, duplicate types, or stub files to hide a problem.
+- Do not alter `devservices.yaml` port assignments, `devkit.yaml` categories/presets, or `pnpm-workspace.yaml` globs without a task-specific reason.
+- Do not push or amend commits unless the user explicitly asks.
 
-```bash
-pnpm install          # one lockfile, ~20 seconds
-pnpm build            # kb-devkit run build (topological order)
-pnpm check            # lint + type-check + test
-kb-dev start          # start all services (gateway, rest-api, workflow, etc.)
-```
+## Work safely
 
-## Structure
+- Search before changing unfamiliar code. Prefer `rg`; use `pnpm kb mind ask --text "…" --agent` when semantic discovery is useful, but do not make it a mandatory gate for a small, well-scoped edit.
+- Build in dependency order: `kb-devkit run build` (or `pnpm build`). For incremental verification use `kb-devkit run build --affected`. Never use `pnpm -r run build`.
+- Start local services through `kb-dev`; do not invoke service entry points with `node`. The repository hook requires `--config <path>` and `--net-offset <N>` for `start`, `restart`, and `ensure`. Runtime config under `.kb/` is machine-local and may be absent in a fresh checkout.
+- A bug fix needs a focused regression test when a practical test boundary exists. Do not add a test merely to satisfy a rule when the change is configuration or documentation only.
 
-```
-core/              → Foundation: types, runtime, config, discovery, registry, plugin-system
-sdk/               → Public API for plugin authors
-cli/               → CLI framework (kb command)
-shared/            → Utilities: cli-ui, http, testing, command-kit
-plugins/           → ALL optional functionality (duck typing rule)
-  mind/            → RAG, embeddings, vector search
-  agents/          → Autonomous agents, MCP
-  workflow/        → Workflow engine + daemon :7778
-  gateway/         → API gateway :4000 (required for any HTTP service)
-  rest-api/        → Main API :5050
-  marketplace/     → Entity marketplace :5070
-  state/           → State daemon :7777
-  commit/          → AI commits
-  review/          → AI code review
-  release/, quality/, qa/, impact/, policy/, infra-worker/, devlink/
-  host-agent/      → Remote workspace agent
-adapters/          → Interface implementations (llm-openai, logging-pino, storage-*, etc.)
-infra/devkit/      → Build configs: tsconfig, eslint presets
-studio/            → Web UI (SPA + ui-kit + hooks)
-tools/             → Go binaries: kb-devkit, kb-dev, kb-create
-sites/             → Product website
-templates/         → Plugin/product starter templates
-```
+## Useful locations
 
-## Dependency Rules
+- Cross-cutting ADRs: `docs/adr/`; module ADRs: `<module>/docs/adr/`.
+- Managed KB Labs skills: `.claude/skills/kb-labs-*/` — do not edit manually.
+- Task-specific Claude guidance: `.claude/skills/*.md` is versioned with the repository; keep per-user Claude state outside this directory.
 
-```
-Layer 0:  core/
-Layer 1:  sdk/  shared/  core/plugin-*
-Layer 2:  cli/  adapters/
-Layer 3:  plugins/
-Layer 4:  studio/
-```
-
-Dependencies flow **strictly downward**. Never import from a higher layer.
-
-## Key Conventions
-
-### Dependencies
-- **All internal deps use `workspace:*`** — never `link:`, never pinned versions
-- pnpm resolves `workspace:*` locally; replaces with `^version` on `pnpm publish`
-- No DevLink, no mode switching, no submodules
-
-### Building
-- Use `kb-devkit run build` (or `pnpm build`) — respects topological order
-- Use `kb-devkit run build --affected` for incremental builds
-- After building CLI plugins: `pnpm kb marketplace plugins refresh`
-
-### Plugin = Duck Typing
-Everything in `plugins/` is a plugin. If it uses SDK, registers commands, has a manifest — it's a plugin.
-Some have daemons (HTTP ports) — that's an implementation detail, not an architectural boundary.
-
-### Services
-- `kb-dev start` — starts all services via Go binary
-- Services with HTTP require `gateway` plugin (auth, routing)
-- Ports: gateway :4000, rest-api :5050, workflow :7778, marketplace :5070, state :7777
-
-### Config Files — DO NOT MODIFY
-- `devservices.yaml` — port assignments (change scripts, not ports)
-- `devkit.yaml` — task runner config (categories, presets)
-- `pnpm-workspace.yaml` — workspace package globs
-
-### Code Style
-- Always use `ILogger`/`ICache` from `@kb-labs/core-platform`
-- Use `platform.logger` for noop logger instances
-- Never use `as any`, `@ts-ignore`, or duplicate types — fix root causes
-- Never create stub/mock files as workarounds
-
-### Git
-- Never `git push` without explicit permission
-- Never amend commits — create new ones
-- Build with `kb-devkit` build-order, NOT `pnpm -r` (DTS ordering matters)
-
-## Documentation
-
-- Cross-cutting ADRs: `docs/adr/`
-- Module-specific ADRs: `<module>/docs/adr/`
-- ADR template: `docs/templates/adr-template.md`
-
-## Common Tasks
+## Common commands
 
 ```bash
-# Search code semantically
-pnpm kb mind search --text "your question" --agent
-
-# Run specific plugin tests
-pnpm --filter @kb-labs/mind-engine test
-
-# Type-check one package
-pnpm --filter @kb-labs/core-types type-check
-
-# Build affected packages only
+pnpm build
+pnpm check
 kb-devkit run build --affected
-
-# Check workspace health
-kb-devkit health
-
-# Install a marketplace entity
-pnpm kb marketplace install <entity>
+pnpm --filter <package> test
+kb-dev status
 ```
-
-## Anti-Patterns
-
-- **DO NOT** use `pnpm -r run build` — use `kb-devkit run build` (respects build order)
-- **DO NOT** add `link:` dependencies — always `workspace:*`
-- **DO NOT** import Studio internals from plugin pages — only `@kb-labs/sdk` + contracts
-- **DO NOT** run services with `node ./path` — use `kb-dev start`
-- **DO NOT** modify ports in `devservices.yaml` — fix the scripts instead

@@ -1,142 +1,24 @@
 ---
 name: tool-kb-devkit
-description: kb-devkit Go binary — build/lint/test orchestrator with content-addressable caching
+description: kb-devkit workspace orchestration: build, affected checks, health, and Docker bundle generation.
 globs:
   - "tools/kb-devkit/**"
   - "devkit.yaml"
 ---
 
-# kb-devkit — Workspace Orchestrator
+# kb-devkit
 
-Go binary for workspace orchestration: task execution with content-addressable caching, quality checks, config sync.
-
-## Task Execution
+Use this tool for workspace-wide work; it preserves package build order and cache.
 
 ```bash
-kb-devkit run build                          # build all (topological order, cached)
-kb-devkit run build --affected               # only changed + downstream
-kb-devkit run build lint test                 # multiple tasks
-kb-devkit run build --packages @kb-labs/core-types,@kb-labs/sdk
-kb-devkit run build --no-cache               # bypass cache
-kb-devkit run build --live                   # stream output (concurrency=1)
-kb-devkit run build --concurrency 4          # limit parallelism
-kb-devkit run build --json                   # JSON output
+kb-devkit run build
+kb-devkit run build --affected
+kb-devkit run build lint type-check test --affected
+kb-devkit health
+kb-devkit bundle <package> --docker
 ```
 
-### How Caching Works
-
-1. Hash all input files matching `inputs:` globs → SHA256 key
-2. Cache hit → restore outputs in ~1ms, mark `cached`
-3. Cache miss → run command → store outputs → write manifest
-4. Cache location: `.kb/devkit/`
-5. Each task has independent cache: `(taskName, package, inputHash)`
-
-### --affected Detection
-
-Uses `affected.strategy` from `devkit.yaml`:
-- `git` — `git diff --name-only HEAD` from root (our default)
-- `submodules` — walks `.gitmodules` (legacy, not used anymore)
-- `command` — custom script
-
-After finding changed packages, BFS expands through reverse dep graph.
-
-## Quality Checks
-
-```bash
-kb-devkit check                    # check all packages against presets
-kb-devkit check --package @kb-labs/core-types
-kb-devkit check --json
-
-kb-devkit fix                      # auto-fix violations
-kb-devkit fix --dry-run            # preview fixes
-kb-devkit fix --safe               # deterministic fixes only
-kb-devkit fix --scaffold           # create missing files
-```
-
-## Workspace Health
-
-```bash
-kb-devkit stats                    # health score A–F, issue counts
-kb-devkit stats --json
-kb-devkit status                   # package table: name, category, issues
-kb-devkit status --json
-```
-
-## Config Sync
-
-```bash
-kb-devkit sync --check             # report drift
-kb-devkit sync --dry-run           # preview changes
-kb-devkit sync                     # apply
-```
-
-## Bundle (Docker build context pruning)
-
-```bash
-kb-devkit bundle @kb-labs/docs-site                          # minimal pnpm workspace slice
-kb-devkit bundle sites/web/apps/docs                         # by relative path
-kb-devkit bundle @kb-labs/docs-site --out /tmp/ctx           # custom output dir
-kb-devkit bundle @kb-labs/docs-site --docker                 # json/ + full/ for two-stage Docker
-kb-devkit bundle @kb-labs/sdk --include-sources              # also copy source files
-kb-devkit bundle @kb-labs/docs-site --json                   # JSON output
-```
-
-Equivalent to `turbo prune --scope=<pkg>`. Resolves the full transitive `workspace:*` closure (dependencies + devDependencies + peerDependencies) and emits:
-
-- `pnpm-workspace.yaml` — pruned: only closure packages, exact paths (no globs)
-- `<pkg>/package.json` — all needed `package.json` files with relative paths preserved
-- `package.json` + `pnpm-lock.yaml` — from root (full lockfile; pnpm ignores unused importers)
-
-Default output: `.kb/bundle/<pkg-slug>/`
-
-`--docker` splits into two subdirs for Docker layer caching:
-- `json/` — package.json files only → layer 1: `pnpm install --frozen-lockfile --filter <pkg>...`
-- `full/` — full sources of all closure packages → layer 2: `pnpm --filter <pkg> run build`
-
-## Other Commands
-
-```bash
-kb-devkit init                     # create starter devkit.yaml
-kb-devkit watch --json             # stream violations on file save (JSONL)
-kb-devkit gate                     # pre-commit gate (staged files only)
-kb-devkit doctor --json            # environment diagnostics
-```
-
-## Configuration (devkit.yaml)
-
-```yaml
-schemaVersion: 2
-extends: [builtin:kb-labs]        # built-in pack with KB Labs presets
-
-workspace:
-  packageManager: pnpm
-  categories:
-    ts-lib:
-      match: ["core/*", "sdk/*", "cli/*", "shared/*", "plugins/*/*", ...]
-      preset: node-lib
-    ts-app:
-      match: ["plugins/*/daemon", "plugins/*/server", ...]
-      preset: node-app
-    go-binary:
-      match: ["tools/kb-dev", "tools/kb-devkit", "tools/kb-create"]
-      preset: go-binary
-
-affected:
-  strategy: git                    # single repo, no submodules
-
-tasks:
-  build:
-    - categories: [ts-lib, ts-app]
-      command: tsup
-      inputs: ["src/**", "tsup.config.ts", "tsconfig*.json"]
-      outputs: ["dist/**"]
-      deps: ["^build"]             # deps' build first
-```
-
-## Important
-
-- **Always use `kb-devkit run build`** — never `pnpm -r run build` (DTS ordering)
-- **`--affected` uses `git` strategy** — no submodules anymore
-- Content-addressable cache: same file content across packages stored once
-- `deps: ["^build"]` means "build my dependencies first"
-- `deps: ["build"]` means "build myself first (for test after build)"
+- Never replace it with `pnpm -r run build`; declaration files can be built in the wrong order.
+- `--affected` starts from Git changes and includes reverse dependants. Use a package-level command when the task is deliberately isolated.
+- Use `--no-cache` only when diagnosing cache behavior; use `--json` when another program consumes the output.
+- `devkit.yaml` categories and presets are shared build policy. Extend explicit task/check entries only when the task requires it.
