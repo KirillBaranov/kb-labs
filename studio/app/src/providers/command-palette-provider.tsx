@@ -9,8 +9,12 @@ import { UIMessage } from '@kb-labs/studio-ui-kit';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDataSources } from './data-sources-provider';
 import { useSettings } from './settings-provider';
+import { useRegistryV2 } from './registry-v2-provider';
 import { getCommands, saveRecentCommand, getRecentCommands } from '@/utils/commands';
 import { KBQuickSearch, type SearchableItem } from '@/components/ui';
+
+/** Route params (e.g. `/p/workflows/runs/:runId`) can't be navigated to directly. */
+const HAS_ROUTE_PARAM = /:[^/]+/;
 
 interface CommandPaletteContextValue {
   /** Open command palette */
@@ -37,6 +41,22 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     [queryClient],
   );
   const sources = useDataSources();
+  const { registry } = useRegistryV2();
+
+  // Plugin pages contributed via Module Federation (Studio V2)
+  const pluginItems = React.useMemo<SearchableItem[]>(() => {
+    return registry.plugins.flatMap((plugin) =>
+      plugin.pages
+        .filter((page) => !HAS_ROUTE_PARAM.test(page.route))
+        .map((page) => ({
+          id: `plugin-${plugin.pluginId}-${page.id}`,
+          title: page.title,
+          description: plugin.displayName ?? plugin.pluginId,
+          category: 'plugin' as const,
+          path: page.route,
+        }))
+    );
+  }, [registry]);
 
   // Commands configuration
   const allCommands = React.useMemo(
@@ -114,14 +134,19 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
       return (cmdB?.priority ?? 0) - (cmdA?.priority ?? 0);
     });
 
-    return [...sortedRecent, ...sortedOthers];
-  }, [allCommands]);
+    return [...sortedRecent, ...sortedOthers, ...pluginItems];
+  }, [allCommands, pluginItems]);
 
   // Handle command execution
   const handleNavigate = React.useCallback(
     (path: string) => {
       const command = allCommands.find((cmd) => cmd.path === path);
-      if (!command) {return;}
+      if (!command) {
+        // Plugin-contributed page: no static command entry, navigate directly.
+        if (path) {navigate(path);}
+        setIsOpen(false);
+        return;
+      }
 
       // Save to recent
       saveRecentCommand(command.id);

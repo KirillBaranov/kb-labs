@@ -22,14 +22,19 @@ export interface KBQuickSearchProps {
 }
 
 const CATEGORY_CONFIG = {
-  page:       { icon: FileText,   color: '#1890ff', label: 'Page' },
-  navigation: { icon: Navigation, color: '#13c2c2', label: 'Navigation' },
-  action:     { icon: Zap,        color: '#fa8c16', label: 'Action' },
-  plugin:     { icon: Box,        color: '#52c41a', label: 'Plugin' },
-  widget:     { icon: Activity,   color: '#722ed1', label: 'Widget' },
-  workflow:   { icon: BarChart,   color: '#faad14', label: 'Workflow' },
-  setting:    { icon: Settings,   color: '#8c8c8c', label: 'Setting' },
+  page:       { icon: FileText,   color: 'var(--info)',         label: 'Page' },
+  navigation: { icon: Navigation, color: 'var(--link)',         label: 'Navigation' },
+  action:     { icon: Zap,        color: 'var(--warning)',      label: 'Action' },
+  plugin:     { icon: Box,        color: 'var(--success)',      label: 'Plugin' },
+  widget:     { icon: Activity,   color: 'var(--info)',         label: 'Widget' },
+  workflow:   { icon: BarChart,   color: 'var(--warning)',      label: 'Workflow' },
+  setting:    { icon: Settings,   color: 'var(--text-tertiary)', label: 'Setting' },
 } as const;
+
+// Section order when grouping results by category
+const CATEGORY_ORDER: (keyof typeof CATEGORY_CONFIG)[] = [
+  'navigation', 'plugin', 'page', 'widget', 'workflow', 'action', 'setting',
+];
 
 export function KBQuickSearch({
   open,
@@ -53,6 +58,18 @@ export function KBQuickSearch({
       })
       .slice(0, 10);
   }, [items, searchQuery]);
+
+  const groupedItems = React.useMemo(() => {
+    const groups = new Map<string, { item: SearchableItem; index: number }[]>();
+    filteredItems.forEach((item, index) => {
+      const entries = groups.get(item.category) ?? [];
+      entries.push({ item, index });
+      groups.set(item.category, entries);
+    });
+    return CATEGORY_ORDER
+      .filter((category) => groups.has(category))
+      .map((category) => ({ category, entries: groups.get(category)! }));
+  }, [filteredItems]);
 
   React.useEffect(() => { setSelectedIndex(0); }, [filteredItems]);
 
@@ -98,6 +115,7 @@ export function KBQuickSearch({
       width={600}
       centered
       closable={false}
+      className={styles.modal}
       styles={{ body: { padding: 0 } }}
     >
       <div className={styles.searchWrap}>
@@ -105,12 +123,8 @@ export function KBQuickSearch({
           ref={inputRef}
           size="large"
           placeholder={placeholder}
-          prefix={<Search size={18} style={{ color: '#8c8c8c' }} />}
-          suffix={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <kbd>ESC</kbd>
-            </div>
-          }
+          prefix={<Search size={18} style={{ color: 'var(--text-tertiary)' }} />}
+          suffix={<kbd className={styles.escHint}>ESC</kbd>}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -122,65 +136,67 @@ export function KBQuickSearch({
         {filteredItems.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No results found"
+            description={`No results for "${searchQuery}"`}
             className={styles.emptyState}
           />
         ) : (
-          <List
-            dataSource={filteredItems}
-            renderItem={(item, index) => {
-              const config = CATEGORY_CONFIG[item.category];
-              const Icon = config.icon;
-              const isSelected = index === selectedIndex;
+          groupedItems.map(({ category, entries }) => (
+            <div key={category} className={styles.section}>
+              <div className={styles.sectionHeader}>{CATEGORY_CONFIG[category].label}</div>
+              <List
+                dataSource={entries}
+                renderItem={({ item, index }) => {
+                  const config = CATEGORY_CONFIG[item.category];
+                  const Icon = config.icon;
+                  const isSelected = index === selectedIndex;
 
-              return (
-                <List.Item
-                  key={item.id}
-                  onClick={() => handleItemClick(item)}
-                  className={`${styles.resultItem} ${isSelected ? styles.selected : ''}`}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <div
-                        className={styles.categoryIcon}
-                        style={{ backgroundColor: `${config.color}15` }}
-                      >
-                        {item.icon || <Icon size={16} color={config.color} />}
-                      </div>
-                    }
-                    title={
-                      <div className={styles.itemTitle}>
-                        <span>{item.title}</span>
-                        {item.badge && (
-                          <Badge
-                            count={item.badge}
-                            style={{ backgroundColor: config.color, fontSize: 11, height: 18, lineHeight: '18px' }}
-                          />
-                        )}
-                      </div>
-                    }
-                    description={
-                      <div className={styles.itemDesc}>
-                        <span style={{ fontSize: 11, color: config.color }}>{config.label}</span>
-                        {item.description && (
-                          <>
-                            <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                            <span style={{ fontSize: 12 }}>{item.description}</span>
-                          </>
-                        )}
-                      </div>
-                    }
-                  />
-                  {isSelected && (
-                    <div className={styles.enterHint}>
-                      <kbd>↵</kbd>
-                    </div>
-                  )}
-                </List.Item>
-              );
-            }}
-          />
+                  return (
+                    <List.Item
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      className={`${styles.resultItem} ${isSelected ? styles.selected : ''}`}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <div
+                            className={styles.categoryIcon}
+                            style={{ backgroundColor: `color-mix(in srgb, ${config.color} 15%, transparent)` }}
+                          >
+                            {item.icon || <Icon size={16} color={config.color} />}
+                          </div>
+                        }
+                        title={
+                          <div className={styles.itemTitle}>
+                            <span>{item.title}</span>
+                            {item.badge && (
+                              <Badge
+                                count={item.badge}
+                                className={styles.itemBadge}
+                                style={{ backgroundColor: config.color }}
+                              />
+                            )}
+                          </div>
+                        }
+                        description={
+                          item.description && (
+                            <div className={styles.itemDesc}>
+                              <span className={styles.itemDescText}>{item.description}</span>
+                            </div>
+                          )
+                        }
+                      />
+                      {isSelected && (
+                        <div className={styles.enterHint}>
+                          <kbd>↵</kbd>
+                        </div>
+                      )}
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+          ))
         )}
       </div>
 
