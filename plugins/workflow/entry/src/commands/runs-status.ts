@@ -13,6 +13,8 @@ const STEP_ICON: Record<string, string> = {
   queued: '○',
   cancelled: '⊘',
   waiting_approval: '…',
+  waiting_child: '…',
+  interrupted: '‖',
   skipped: '⊙',
 };
 

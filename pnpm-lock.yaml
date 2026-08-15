@@ -5323,6 +5323,9 @@ importers:
       '@kb-labs/shared-http':
         specifier: workspace:*
         version: link:../../../shared/http
+      '@kb-labs/workflow-constants':
+        specifier: workspace:*
+        version: link:../constants
       '@kb-labs/workflow-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -7048,6 +7051,9 @@ importers:
       '@kb-labs/rest-api-contracts':
         specifier: workspace:*
         version: link:../../services/rest-api/contracts
+      '@kb-labs/workflow-constants':
+        specifier: workspace:*
+        version: link:../../plugins/workflow/constants
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.97.0(react@19.2.5)

@@ -1,5 +1,8 @@
 const RUN_STATES = ['queued', 'running', 'success', 'failed', 'cancelled', 'skipped', 'dlq'] as const
-const JOB_STATES = ['queued', 'running', 'success', 'failed', 'cancelled', 'skipped', 'interrupted'] as const
+const JOB_STATES = [
+  'queued', 'running', 'success', 'failed', 'cancelled', 'skipped', 'interrupted',
+  'waiting_approval', 'waiting_child',
+] as const
 const STEP_STATES = [...RUN_STATES, 'waiting_approval', 'waiting_child'] as const
 const JOB_PRIORITIES = ['high', 'normal', 'low'] as const
 
@@ -9,6 +12,18 @@ export type RunState = (typeof RUN_STATES)[number]
 export type JobState = (typeof JOB_STATES)[number]
 export type StepState = (typeof STEP_STATES)[number]
 export type JobPriority = (typeof JOB_PRIORITIES)[number]
+
+export {
+  RUN_TRANSITIONS,
+  JOB_TRANSITIONS,
+  STEP_TRANSITIONS,
+  isTerminal,
+  isParked,
+  isActive,
+  assertTransition,
+  IllegalStateTransitionError,
+} from './state-machine'
+export type { EntityKind, AssertTransitionOptions } from './state-machine'
 
 export const EVENT_NAMES = {
   run: {

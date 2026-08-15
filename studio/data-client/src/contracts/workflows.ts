@@ -1,4 +1,11 @@
-export type WorkflowStatus = 'queued' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped' | 'waiting_approval';
+import type { JobState, RunState, StepState } from '@kb-labs/workflow-constants';
+
+// Source of truth for these literals is `@kb-labs/workflow-constants` — do not
+// hand-roll this union again. Run/job/step status enums differ (e.g. jobs and
+// steps can be `waiting_approval`/`waiting_child`, runs cannot); this union
+// stays permissive across all three levels since `WorkflowStatus` is used for
+// all three `.status` fields below.
+export type WorkflowStatus = RunState | JobState | StepState;
 
 export interface StepRun {
   id: string;

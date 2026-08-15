@@ -68,6 +68,19 @@ function buildEngine(runId: string, jobId: string, steps: ReturnType<typeof make
       mutator(s);
     }),
     updateJob: vi.fn(async () => {}),
+    // Matches worker.ts's applyGateSkip/applyGateRestart, which now go
+    // through transitionStep/transitionJob instead of raw updateStep/
+    // updateJob. This fake doesn't validate transition legality (that's
+    // StateStore's job, covered by its own unit tests) — it just applies
+    // the status + mutator, same as the updateStep/updateJob fakes above.
+    transitionStep: vi.fn(async (_r: string, _j: string, stepId: string, to: string, mutate?: (d: any) => void) => {
+      const s = steps.find(x => x.id === stepId);
+      if (!s) {return null;}
+      s.status = to;
+      mutate?.(s);
+      return s;
+    }),
+    transitionJob: vi.fn(async () => null),
   };
 
   const run: any = {
