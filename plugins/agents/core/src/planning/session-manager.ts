@@ -25,6 +25,44 @@ export interface ConversationTurn {
   timestamp: string;
 }
 
+/**
+ * Shared, process-wide state that MUST outlive any single SessionManager
+ * instance. Callers (run-handler.ts, CLI commands, generate-spec-handler.ts)
+ * each construct their own `new SessionManager(workingDir)` per request/call
+ * — there is no one long-lived instance per session. If the session-scoped
+ * seq counter or write-ordering queues were plain instance fields, two
+ * SessionManager instances processing the SAME session concurrently (e.g.
+ * two runs whose persistence windows overlap) would each bootstrap their
+ * own counter from a stale snapshot of events.ndjson and could hand out
+ * COLLIDING seq values — which the client trusts strictly for ordering and
+ * gap detection, so a collision means a real turn update gets silently
+ * dropped as an "already seen" duplicate.
+ * Stored on globalThis (same pattern as RunManager) so it also survives
+ * tsup bundling multiple entry points into separate module scopes that
+ * still run in the same Node process.
+ */
+interface SharedSessionManagerState {
+  sessionSeqCounters: Map<string, number>;
+  turnSeqCounters: Map<string, number>;
+  writeQueues: Map<string, Promise<void>>;
+  eventQueues: Map<string, Promise<void>>;
+}
+
+const SHARED_STATE_KEY = '__kb_agent_session_manager_shared_state__';
+
+function getSharedState(): SharedSessionManagerState {
+  const g = globalThis as Record<string, unknown>;
+  if (!g[SHARED_STATE_KEY]) {
+    g[SHARED_STATE_KEY] = {
+      sessionSeqCounters: new Map<string, number>(),
+      turnSeqCounters: new Map<string, number>(),
+      writeQueues: new Map<string, Promise<void>>(),
+      eventQueues: new Map<string, Promise<void>>(),
+    } satisfies SharedSessionManagerState;
+  }
+  return g[SHARED_STATE_KEY] as SharedSessionManagerState;
+}
+
 interface RunTraceArtifacts {
   facts: string[];
   findings: string[];
@@ -59,24 +97,30 @@ export class SessionManager {
   private workingDir: string;
   private readonly artifactStore: SessionArtifactStore;
 
-  /** In-memory cache of per-run sequence counters (initialized lazily from NDJSON) */
-  private runSeqCounters = new Map<string, number>();
-  /** In-memory cache of turn sequence counters per session (for turns.json). */
-  private turnSeqCounters = new Map<string, number>();
+  /**
+   * In-memory cache of the per-session monotonic event sequence counter
+   * (initialized lazily from NDJSON line count). Backed by shared
+   * process-wide state — see SharedSessionManagerState's doc comment for
+   * why this must NOT be a plain instance field.
+   */
+  private get sessionSeqCounters(): Map<string, number> { return getSharedState().sessionSeqCounters; }
+  /** In-memory cache of turn sequence counters per session (for turns.json). Shared — see sessionSeqCounters. */
+  private get turnSeqCounters(): Map<string, number> { return getSharedState().turnSeqCounters; }
 
   /** Turn assembler for creating turn snapshots from events */
   private assembler = new TurnAssembler();
 
-  /** Write queue per session to prevent concurrent write race conditions */
-  private writeQueues = new Map<string, Promise<void>>();
+  /** Write queue per session to prevent concurrent write race conditions. Shared — see sessionSeqCounters. */
+  private get writeQueues(): Map<string, Promise<void>> { return getSharedState().writeQueues; }
 
   /**
    * Serialized event-processing queue per session.
    * Ensures addEvent calls for the same session are processed in arrival order
    * even when the caller fires them concurrently with void (fire-and-forget).
    * This prevents tool:end being processed by TurnAssembler before tool:start.
+   * Shared — see sessionSeqCounters.
    */
-  private eventQueues = new Map<string, Promise<void>>();
+  private get eventQueues(): Map<string, Promise<void>> { return getSharedState().eventQueues; }
   /** Write queue per session for artifact projection updates */
   private artifactWriteQueues = new Map<string, Promise<void>>();
   /** Write queue per session for KPI baseline updates */
@@ -272,36 +316,35 @@ export class SessionManager {
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
-   * Get next per-run sessionSeq for a specific run within a session.
-   * Each run has independent sequence counters starting from 1.
-   * Lazily initialized: reads NDJSON on first call to find max existing sessionSeq for this runId,
-   * then uses in-memory counter for subsequent calls.
+   * Get the next seq for a session — monotonic across the WHOLE session
+   * (every run, every turn), not scoped to a single run. This is the one
+   * cursor the WS protocol and REST resume/gap-recovery paths rely on;
+   * it must be a single, ever-increasing number per session for "seq > N"
+   * comparisons to mean anything.
+   *
+   * Lazily initialized from the NDJSON LINE COUNT, not the max embedded
+   * `sessionSeq` value. Old sessions were written under the previous
+   * per-run scheme, where two different runs both start their own
+   * `sessionSeq` at 1 — so the max embedded value can be far smaller than
+   * the true number of events and would hand out colliding seq numbers
+   * for old sessions. Line count is always >= any embedded per-run value
+   * and is exactly equal to it for sessions already written under this
+   * per-session scheme, so it's a safe bootstrap either way.
    */
-  private async getNextSessionSeq(sessionId: string, runId: string): Promise<number> {
-    const key = `${sessionId}:${runId}`;
-
-    if (!this.runSeqCounters.has(key)) {
-      let maxSeq = 0;
+  private async getNextSessionSeq(sessionId: string): Promise<number> {
+    if (!this.sessionSeqCounters.has(sessionId)) {
+      let lineCount = 0;
       try {
         const content = await fs.readFile(this.getEventsPath(sessionId), 'utf-8');
-        const lines = content.split('\n').filter((l) => l.trim());
-        for (const line of lines) {
-          try {
-            const evt = JSON.parse(line);
-            // Only count events from this specific runId
-            if (evt.runId === runId && evt.sessionSeq != null && evt.sessionSeq > maxSeq) {
-              maxSeq = evt.sessionSeq;
-            }
-          } catch { /* skip malformed */ }
-        }
+        lineCount = content.split('\n').filter((l) => l.trim()).length;
       } catch {
         // File doesn't exist yet - start from 0
       }
-      this.runSeqCounters.set(key, maxSeq);
+      this.sessionSeqCounters.set(sessionId, lineCount);
     }
 
-    const next = this.runSeqCounters.get(key)! + 1;
-    this.runSeqCounters.set(key, next);
+    const next = this.sessionSeqCounters.get(sessionId)! + 1;
+    this.sessionSeqCounters.set(sessionId, next);
     return next;
   }
 
@@ -330,8 +373,7 @@ export class SessionManager {
     await fs.mkdir(sessionDir, { recursive: true });
     await this.artifactStore.ensureSessionArtifacts(sessionId);
 
-    const runId = event.runId || 'unknown';
-    const sessionSeq = await this.getNextSessionSeq(sessionId, runId);
+    const sessionSeq = await this.getNextSessionSeq(sessionId);
     const line = JSON.stringify({ ...event, sessionSeq }) + '\n';
     await fs.appendFile(this.getEventsPath(sessionId), line, 'utf-8');
     await fs.appendFile(this.artifactStore.getArtifactPath(sessionId, 'trace.ndjson'), line, 'utf-8');
