@@ -11,6 +11,18 @@ pnpm check            # lint + type-check + test
 kb-dev start          # start all services (gateway, rest-api, workflow, etc.)
 ```
 
+## Which `kb` binary to run
+
+Three different things answer to "kb" on this machine — do not mix them up:
+
+| Command       | What it runs                                                              | When to use |
+| ------------- | --------------------------------------------------------------------------- | ----------- |
+| `kb ...`      | **Prod.** Global binary in `~/.local/bin` (installed/updated only by `kb-create`), points at the installed platform, NOT this repo. | Use the stable, already-released platform/services/plugins — e.g. writing/pushing real commits, running release steps, anything that should behave exactly as it does for a normal user. Never for developing `kb-labs-workspace` itself. |
+| `pnpm kb ...` | **Dev.** Runs `node ./cli/bin/dist/bin.js` via the root `package.json` script — always this workspace's local build. | Developing new functionality, testing changes not yet released, working locally against the code you're editing. Fine in docs/scripts. Note: `pnpm run` echoes `$ node ...` before output and prints `ELIFECYCLE ...` on failure — both pollute `--json` output and confuse parsers. Use `pnpm -s kb ...` to suppress. |
+| `dev-kb ...`  | **Dev.** Local `~/.zshrc` shell function — `node` invoked directly against this workspace's `cli/bin/dist/bin.js`, no pnpm wrapper. | Same cases as `pnpm kb`, preferred when scripting, piping `--json`, or checking exit codes — zero extra output around the CLI's own result. |
+
+Rule of thumb: **dev = testing/building something that isn't stable/released yet; prod = using what's already stable and shipped** (e.g. committing real work, running a release). `~/.local/bin` is prod-owned territory — never symlink or copy a locally built binary there (see the 2026-08-12 incident: dev links planted there rotted when `/tmp` got reclaimed). For local development work, always reach for `pnpm kb` / `dev-kb` instead.
+
 ## Structure
 
 ```
