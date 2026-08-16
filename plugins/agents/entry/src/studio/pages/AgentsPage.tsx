@@ -46,10 +46,11 @@ function compareTurns(a: Turn, b: Turn): number {
   return a.startedAt.localeCompare(b.startedAt);
 }
 
-function buildAgentWsUrl(sessionId: string): string {
+function buildAgentWsUrl(sessionId: string, afterSeq?: number | null): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
-  return `${protocol}//${host}/api/v1/ws/plugins/agents/session/${sessionId}`;
+  const base = `${protocol}//${host}/api/v1/ws/plugins/agents/session/${sessionId}`;
+  return afterSeq != null ? `${base}?afterSeq=${afterSeq}` : base;
 }
 
 // ---------- ConnectionBadge ----------
@@ -193,6 +194,12 @@ function AgentsPage() {
   // the reducer's live projection. There is no merge between the two: once
   // the snapshot lands, it's authoritative and REST data is never consulted again.
   const [hasSnapshot, setHasSnapshot] = useState(false);
+  // Set when the reducer detects a seq gap (a delta arrived skipping ahead of
+  // lastSeq+1 — e.g. a missed WS message). Changing this changes wsUrl, which
+  // useWebSocket treats as a URL change and reconnects automatically; the
+  // fresh connection's conversation:snapshot then reloads the full projection,
+  // recovering from whatever was missed. Reset back to null once that snapshot lands.
+  const [resumeAfterSeq, setResumeAfterSeq] = useState<number | null>(null);
   const [responseMode, setResponseMode] = useState<AgentResponseMode>('auto');
   const [tier, setTier] = useState<'small' | 'medium' | 'large'>('medium');
   const [enableEscalation, setEnableEscalation] = useState(true);
@@ -200,7 +207,7 @@ function AgentsPage() {
   const [inputFocused, setInputFocused] = useState(false);
 
   const agentId = 'mind-assistant';
-  const wsUrl = currentSessionId ? buildAgentWsUrl(currentSessionId) : null;
+  const wsUrl = currentSessionId ? buildAgentWsUrl(currentSessionId, resumeAfterSeq) : null;
 
   const startRunMutation = useMutateData<RunRequest, RunResponse>('/v1/plugins/agents/run', 'POST');
   const stopMutation = useMutateData<StopRequest, unknown>(
@@ -233,6 +240,10 @@ function AgentsPage() {
           const allTurns = [...completedTurns, ...activeTurns];
           setReducerState(loadProjection(allTurns, seq));
           setHasSnapshot(true);
+          // Whatever gap prompted this reconnect (if any) is now resolved —
+          // clear it so future reconnects go through the normal cold-connect
+          // path instead of resending a now-stale afterSeq query param.
+          setResumeAfterSeq(null);
           // A reconnect (or a second tab) may deliver a snapshot that already
           // contains a turn this tab sent optimistically — drop it by clientId.
           setOptimisticTurns((prev) => reconcileOptimistic(prev, allTurns));
@@ -242,8 +253,14 @@ function AgentsPage() {
           const { delta } = data.payload;
           setReducerState((prev) => {
             const result = applyDelta(prev, delta);
-            // A real gap (seq skipped ahead) would ideally trigger a resync —
-            // wired up once the resume path exists (see AGENTS-page follow-up).
+            if (result.status === 'gap') {
+              // Missed at least one delta (seq skipped ahead of lastSeq+1) —
+              // force a reconnect so the fresh conversation:snapshot recovers
+              // whatever was missed. Uses the seq we knew about BEFORE this
+              // delta, not the delta's own seq, so the server can tell (from
+              // its logs) exactly which range was skipped.
+              setResumeAfterSeq(prev.lastSeq);
+            }
             return result.state;
           });
           break;
@@ -281,6 +298,7 @@ function AgentsPage() {
     setOptimisticTurns(new Map());
     setReducerState(createInitialState());
     setHasSnapshot(false);
+    setResumeAfterSeq(null);
     ws.clear();
   }, [ws, setSearchParams]);
 
@@ -293,6 +311,7 @@ function AgentsPage() {
     setOptimisticTurns(new Map());
     setReducerState(createInitialState());
     setHasSnapshot(false);
+    setResumeAfterSeq(null);
     ws.clear();
   }, [ws, setSearchParams]);
 

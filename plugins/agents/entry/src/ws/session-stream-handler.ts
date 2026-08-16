@@ -45,7 +45,14 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
 
   handler: {
     async onConnect(ctx: PluginContextV3, sender: TypedSender<ServerMessage>) {
-      const sessionId = (ctx.hostContext as { params?: { sessionId?: string } }).params?.sessionId;
+      const hostContext = ctx.hostContext as { params?: { sessionId?: string }; query?: Record<string, string> };
+      const sessionId = hostContext.params?.sessionId;
+      // Present on resume/gap-recovery reconnects (see AgentsPage.tsx's turn-reducer
+      // 'gap' handling). Not used to filter the response — see getProjection's doc
+      // comment for why resume always re-sends the full projection rather than a
+      // replayed delta range — but accepted and logged so a resume is distinguishable
+      // from a cold connect in server logs.
+      const afterSeq = hostContext.query?.afterSeq ? Number(hostContext.query.afterSeq) : undefined;
 
       if (!sessionId) {
         await sender.send({
@@ -57,7 +64,11 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
         return;
       }
 
-      ctx.platform.logger.info(`[session-ws] Client connected to session ${sessionId}`);
+      ctx.platform.logger.info(
+        afterSeq != null
+          ? `[session-ws] Client connected to session ${sessionId} (resume after seq ${afterSeq})`
+          : `[session-ws] Client connected to session ${sessionId}`
+      );
 
       const sessionManager = new SessionManager(ctx.cwd);
 
@@ -73,7 +84,8 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
         throw err;
       }
 
-      // Send conversation:snapshot (full current projection) as the cold-start baseline.
+      // Send conversation:snapshot (full current projection) as the baseline —
+      // both for a cold connect AND a resume/gap-recovery reconnect alike.
       try {
         const { turns, seq } = await sessionManager.getProjection(sessionId);
         const completedTurns = turns.filter((t) => t.status !== 'streaming');
