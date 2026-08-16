@@ -1,11 +1,17 @@
 /**
  * History changelog handler - Get specific changelog from history
  *
- * Reads: .kb/release/history/{scope}/{id}/changelog.md
+ * Reads: .kb/release/history/{scope}/{id}/report.json
+ *
+ * The changelog is never persisted as a standalone changelog.md — it's
+ * embedded in the release report at result.changelog. It's legitimately
+ * absent for some releases (e.g. canary channel skips changelog generation
+ * — see pipeline.ts), in which case we return an empty string rather than
+ * throwing; the caller distinguishes "no changelog" from "release not found".
  */
 
 import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
-import type { HistoryChangelogResponse } from '@kb-labs/release-manager-contracts';
+import type { HistoryChangelogResponse, ReleaseReport } from '@kb-labs/release-manager-contracts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { scopeToDir } from '../../shared/utils';
@@ -22,14 +28,15 @@ export default defineHandler({
     const repoRoot = await findRepoRoot(cwd);
 
     const scopeDir = scopeToDir(scope);
-    const changelogPath = join(repoRoot, '.kb/release/history', scopeDir, id, 'changelog.md');
+    const reportPath = join(repoRoot, '.kb/release/history', scopeDir, id, 'report.json');
 
     try {
-      const markdown = await readFile(changelogPath, 'utf-8');
+      const reportRaw = await readFile(reportPath, 'utf-8');
+      const report: ReleaseReport = JSON.parse(reportRaw);
 
       return {
         id,
-        markdown,
+        markdown: report.result?.changelog ?? '',
         scope,
       };
     } catch (error) {

@@ -19,8 +19,9 @@ import {
   UISpace,
   UIIcon,
   UIMarkdownViewer,
+  UITable,
 } from '@kb-labs/sdk/studio';
-import { useData } from '@kb-labs/sdk/studio';
+import { useData, useTheme } from '@kb-labs/sdk/studio';
 import type { HistoryResponse, HistoryReportResponse, HistoryPlanResponse, HistoryChangelogResponse } from '@kb-labs/release-manager-contracts';
 
 interface HistoryTabProps {
@@ -31,6 +32,54 @@ interface HistoryDetailPanelProps {
   releaseId: string;
   releaseScope: string;
 }
+
+const PLAN_PACKAGE_COLUMNS = [
+  {
+    title: 'Package',
+    dataIndex: 'name',
+    key: 'name',
+    ellipsis: true,
+  },
+  {
+    title: 'Current',
+    dataIndex: 'currentVersion',
+    key: 'currentVersion',
+    width: 180,
+    ellipsis: true,
+    render: (version: string) => version ? (
+      <UITag color="blue" title={version} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {version}
+      </UITag>
+    ) : '-',
+  },
+  {
+    title: 'Next',
+    dataIndex: 'nextVersion',
+    key: 'nextVersion',
+    width: 180,
+    ellipsis: true,
+    render: (version: string) => version ? (
+      <UITag color="green" title={version} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {version}
+      </UITag>
+    ) : '-',
+  },
+  {
+    title: 'Bump',
+    dataIndex: 'bump',
+    key: 'bump',
+    width: 90,
+  },
+  {
+    title: 'Reason',
+    dataIndex: 'reason',
+    key: 'reason',
+    ellipsis: true,
+    render: (reason: string) => (
+      <UITypographyText type="secondary" style={{ fontSize: 12 }}>{reason || '-'}</UITypographyText>
+    ),
+  },
+];
 
 function HistoryDetailPanel({ releaseId, releaseScope }: HistoryDetailPanelProps) {
   const { data: reportData } = useData<HistoryReportResponse>(
@@ -84,29 +133,28 @@ function HistoryDetailPanel({ releaseId, releaseScope }: HistoryDetailPanelProps
               {planData.plan.rollbackEnabled ? 'Enabled' : 'Disabled'}
             </UIDescriptionsItem>
           </UIDescriptions>
-          {planData.plan.packages.map((pkg, idx) => (
-            <UICard key={idx} size="small" style={{ marginBottom: 8 }}>
-              <UISpace direction="vertical" size="small">
-                <UITypographyText strong>{pkg.name}</UITypographyText>
-                <UISpace>
-                  <UITag color="blue">{pkg.currentVersion}</UITag>
-                  →
-                  <UITag color="green">{pkg.nextVersion}</UITag>
-                  <UITag>{pkg.bump}</UITag>
-                </UISpace>
-                <UITypographyText type="secondary">{pkg.reason}</UITypographyText>
-              </UISpace>
-            </UICard>
-          ))}
+          <UITable
+            columns={PLAN_PACKAGE_COLUMNS}
+            dataSource={planData.plan.packages}
+            rowKey="name"
+            size="small"
+            pagination={planData.plan.packages.length > 10 ? { pageSize: 10 } : false}
+            scroll={{ x: 'max-content' }}
+          />
         </div>
       ) : <UISpin />,
     },
     {
       key: 'changelog',
       label: 'Changelog',
-      children: changelogData?.markdown ? (
+      children: changelogData === undefined ? <UISpin /> : changelogData.markdown ? (
         <UIMarkdownViewer content={changelogData.markdown} />
-      ) : <UISpin />,
+      ) : (
+        <UIEmptyState
+          description="No changelog for this release"
+          image={UIEmptyState.PRESENTED_IMAGE_SIMPLE}
+        />
+      ),
     },
   ];
 
@@ -114,6 +162,7 @@ function HistoryDetailPanel({ releaseId, releaseScope }: HistoryDetailPanelProps
 }
 
 export function HistoryTab({ selectedScope }: HistoryTabProps) {
+  const { antdToken: token } = useTheme();
   const [selectedReleaseId, setSelectedReleaseId] = useState<string | null>(null);
   const [selectedReleaseScope, setSelectedReleaseScope] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -168,8 +217,8 @@ export function HistoryTab({ selectedScope }: HistoryTabProps) {
 
   const timelineItems = filteredReleases.map((release) => ({
     dot: release.success
-      ? <UIIcon name="CheckCircleOutlined" style={{ color: '#52c41a' }} />
-      : <UIIcon name="CloseCircleOutlined" style={{ color: '#ff4d4f' }} />,
+      ? <UIIcon name="CheckCircleOutlined" style={{ color: token.colorSuccess }} />
+      : <UIIcon name="CloseCircleOutlined" style={{ color: token.colorError }} />,
     children: (
       <UICard size="small" style={{ marginBottom: 16 }}>
         <UISpace direction="vertical" style={{ width: '100%' }}>

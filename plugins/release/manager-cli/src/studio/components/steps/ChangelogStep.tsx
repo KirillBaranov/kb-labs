@@ -19,7 +19,7 @@ import {
   UIIcon,
   UIMarkdownViewer,
 } from '@kb-labs/sdk/studio';
-import { useData, useMutateData } from '@kb-labs/sdk/studio';
+import { useData, useMutateData, useTheme } from '@kb-labs/sdk/studio';
 import type {
   ChangelogResponse,
   GenerateChangelogRequest,
@@ -34,6 +34,7 @@ interface ChangelogStepProps {
 }
 
 export function ChangelogStep({ selectedScope, onChangelogReady }: ChangelogStepProps) {
+  const { antdToken: token } = useTheme();
   const [editMode, setEditMode] = React.useState(true);
   const [markdown, setMarkdown] = React.useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
@@ -139,10 +140,7 @@ export function ChangelogStep({ selectedScope, onChangelogReady }: ChangelogStep
           {hasUnsavedChanges ? (
             <UITag color="warning">Unsaved</UITag>
           ) : (
-            <>
-              <UIIcon name="CheckCircleOutlined" style={{ color: '#52c41a' }} />
-              <UITag color="success">Saved</UITag>
-            </>
+            <UITag color="success">Saved</UITag>
           )}
           <span>Changelog</span>
         </UISpace>
@@ -197,12 +195,12 @@ export function ChangelogStep({ selectedScope, onChangelogReady }: ChangelogStep
         {editMode && (
           <UICol span={12}>
             <div style={{
-              border: '1px solid #d9d9d9',
-              borderRadius: 4,
+              border: `1px solid ${token.colorBorder}`,
+              borderRadius: token.borderRadius,
               height: 450,
               overflow: 'auto',
               padding: 12,
-              background: '#fafafa',
+              background: token.colorFillTertiary,
             }}>
               <UITypographyText type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
                 Preview

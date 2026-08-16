@@ -18,7 +18,7 @@ import {
   UIMessage,
   UIIcon,
 } from '@kb-labs/sdk/studio';
-import { useData, useMutateData } from '@kb-labs/sdk/studio';
+import { useData, useMutateData, useTheme } from '@kb-labs/sdk/studio';
 import type { PreviewResponse, BuildRequest, BuildResponse } from '@kb-labs/release-manager-contracts';
 
 function formatBytes(bytes: number): string {
@@ -53,6 +53,7 @@ interface PreviewStepProps {
 }
 
 export function PreviewStep({ selectedScope, onPreviewReady }: PreviewStepProps) {
+  const { antdToken: token } = useTheme();
   const previewUrl = selectedScope ? `/v1/plugins/release/preview?scope=${encodeURIComponent(selectedScope)}` : '';
   const { data: previewData, isLoading, error, refetch } = useData<PreviewResponse>(previewUrl);
   const { mutateAsync: triggerBuild, isLoading: buildLoading } = useMutateData<BuildRequest, BuildResponse>(
@@ -173,15 +174,9 @@ export function PreviewStep({ selectedScope, onPreviewReady }: PreviewStepProps)
           </UISpace>
           <UISpace>
             {allBuilt ? (
-              <>
-                <UIIcon name="CheckCircleOutlined" style={{ color: '#52c41a', fontSize: 24 }} />
-                <UITypographyText strong style={{ color: '#52c41a' }}>Ready to publish</UITypographyText>
-              </>
+              <UITypographyText strong style={{ color: token.colorSuccess }}>Ready to publish</UITypographyText>
             ) : (
-              <>
-                <UIIcon name="WarningOutlined" style={{ color: '#faad14', fontSize: 24 }} />
-                <UITypographyText strong style={{ color: '#faad14' }}>Build required</UITypographyText>
-              </>
+              <UITypographyText strong style={{ color: token.colorWarning }}>Build required</UITypographyText>
             )}
           </UISpace>
         </div>
@@ -261,8 +256,8 @@ export function PreviewStep({ selectedScope, onPreviewReady }: PreviewStepProps)
             <UIProgress
               percent={100}
               success={{ percent: (pkg.files.filter((f) => f.path.endsWith('.js') || f.path.endsWith('.mjs')).reduce((s, f) => s + f.size, 0) / pkg.totalSize) * 100 }}
-              strokeColor="#3178c6"
-              trailColor="#f0f0f0"
+              strokeColor={token.colorPrimary}
+              trailColor={token.colorFillTertiary}
               showInfo={false}
               size="small"
             />

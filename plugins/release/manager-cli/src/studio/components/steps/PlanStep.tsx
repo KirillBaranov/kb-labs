@@ -17,6 +17,7 @@ import {
   UIAccordion,
   UITimeline,
   UIIcon,
+  UIAlert,
 } from '@kb-labs/sdk/studio';
 import { useData, useMutateData } from '@kb-labs/sdk/studio';
 import type {
@@ -166,15 +167,25 @@ export function PlanStep({ selectedScope, selectedScopePath, onPlanReady }: Plan
       title: 'Current',
       dataIndex: 'currentVersion',
       key: 'currentVersion',
-      width: 90,
-      render: (version: string) => version ? <UITag color="blue">{version}</UITag> : '-',
+      width: 180,
+      ellipsis: true,
+      render: (version: string) => version ? (
+        <UITag color="blue" title={version} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {version}
+        </UITag>
+      ) : '-',
     },
     {
       title: 'Next',
       dataIndex: 'nextVersion',
       key: 'nextVersion',
-      width: 90,
-      render: (version: string) => version ? <UITag color="green">{version}</UITag> : '-',
+      width: 180,
+      ellipsis: true,
+      render: (version: string) => version ? (
+        <UITag color="green" title={version} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {version}
+        </UITag>
+      ) : '-',
     },
     {
       title: 'Bump',
@@ -234,20 +245,23 @@ export function PlanStep({ selectedScope, selectedScopePath, onPlanReady }: Plan
               children: (
                 <>
                   {gitTimelineData.suggestedVersion && (
-                    <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f6ffed', borderRadius: 4 }}>
-                      <UISpace>
-                        <UIIcon name="ArrowUpOutlined" />
-                        <UITypographyText strong>
-                          {gitTimelineData.currentVersion || '0.0.0'} → {gitTimelineData.suggestedVersion}
-                        </UITypographyText>
-                        <UITag color={
-                          gitTimelineData.suggestedBump === 'major' ? 'red' :
-                          gitTimelineData.suggestedBump === 'minor' ? 'orange' : 'blue'
-                        }>
-                          {gitTimelineData.suggestedBump}
-                        </UITag>
-                      </UISpace>
-                    </div>
+                    <UIAlert
+                      variant="success"
+                      style={{ marginBottom: 16 }}
+                      message={
+                        <UISpace>
+                          <UITypographyText strong>
+                            {gitTimelineData.currentVersion || '0.0.0'} → {gitTimelineData.suggestedVersion}
+                          </UITypographyText>
+                          <UITag color={
+                            gitTimelineData.suggestedBump === 'major' ? 'red' :
+                            gitTimelineData.suggestedBump === 'minor' ? 'orange' : 'blue'
+                          }>
+                            {gitTimelineData.suggestedBump}
+                          </UITag>
+                        </UISpace>
+                      }
+                    />
                   )}
                   <UITimeline
                     mode="left"
@@ -287,7 +301,14 @@ export function PlanStep({ selectedScope, selectedScopePath, onPlanReady }: Plan
           ]}
         />
       )}
-      <UITable columns={columns} dataSource={plan.packages} rowKey="name" pagination={false} size="small" />
+      <UITable
+        columns={columns}
+        dataSource={plan.packages}
+        rowKey="name"
+        pagination={false}
+        size="small"
+        scroll={{ x: 'max-content' }}
+      />
     </UICard>
   );
 }

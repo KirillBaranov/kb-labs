@@ -1,11 +1,17 @@
 /**
  * History plan handler - Get specific release plan from history
  *
- * Reads: .kb/release/history/{scope}/{id}/plan.json
+ * Reads: .kb/release/history/{scope}/{id}/report.json
+ *
+ * The plan is never persisted as a standalone plan.json — it's embedded in
+ * the release report (see pipeline.ts's buildReport()). Older/persisted
+ * reports predate a few ReleasePlanSchema-required fields (schemaVersion,
+ * scope, createdAt), so we backfill them from data already on hand rather
+ * than silently returning a plan that doesn't satisfy its own contract.
  */
 
 import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
-import type { HistoryPlanResponse, ReleasePlan } from '@kb-labs/release-manager-contracts';
+import type { HistoryPlanResponse, ReleasePlan, ReleaseReport } from '@kb-labs/release-manager-contracts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { scopeToDir } from '../../shared/utils';
@@ -22,11 +28,22 @@ export default defineHandler({
     const repoRoot = await findRepoRoot(cwd);
 
     const scopeDir = scopeToDir(scope);
-    const planPath = join(repoRoot, '.kb/release/history', scopeDir, id, 'plan.json');
+    const reportPath = join(repoRoot, '.kb/release/history', scopeDir, id, 'report.json');
 
     try {
-      const planRaw = await readFile(planPath, 'utf-8');
-      const plan: ReleasePlan = JSON.parse(planRaw);
+      const reportRaw = await readFile(reportPath, 'utf-8');
+      const report: ReleaseReport = JSON.parse(reportRaw);
+
+      if (!report.plan) {
+        throw new Error(`No plan recorded for release ${id}`);
+      }
+
+      const plan: ReleasePlan = {
+        ...report.plan,
+        schemaVersion: report.plan.schemaVersion ?? '1.0',
+        scope: report.plan.scope ?? scope,
+        createdAt: report.plan.createdAt ?? report.ts,
+      };
 
       return {
         id,

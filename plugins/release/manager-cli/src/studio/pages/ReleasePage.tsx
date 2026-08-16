@@ -7,11 +7,15 @@ import { useSearchParams } from 'react-router-dom';
 import { UIPage, UIPageHeader, UITabs, UISelect, UIAccordion, UIDescriptions, UIDescriptionsItem, UITag, useData } from '@kb-labs/sdk/studio';
 import { ReleaseStepper } from '../components/ReleaseStepper';
 import { HistoryTab } from '../components/HistoryTab';
+import { OverviewTab } from '../components/OverviewTab';
 import type { ScopesResponse } from '@kb-labs/release-manager-contracts';
+
+const DEFAULT_TAB = 'overview';
 
 function ReleasePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedScope = searchParams.get('scope') ?? '';
+  const activeTab = searchParams.get('tab') ?? DEFAULT_TAB;
 
   const setSelectedScope = (scope: string) => {
     setSearchParams((prev) => {
@@ -21,6 +25,33 @@ function ReleasePage() {
       return next;
     });
   };
+
+  // UITabs' own syncUrl="search" mode replaces the whole query string on
+  // change, dropping ?scope= (and ?step=) along with it — driving it in
+  // controlled mode here instead so tab switches merge into the existing
+  // params rather than clobbering them.
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === DEFAULT_TAB) {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+      return next;
+    });
+  };
+
+  const goToFlow = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', 'flow');
+      next.delete('step');
+      return next;
+    });
+  };
+
+  const goToHistory = () => setActiveTab('history');
 
   const { data: scopesData, isLoading: scopesLoading } = useData<ScopesResponse>('/v1/plugins/release/scopes');
 
@@ -45,11 +76,24 @@ function ReleasePage() {
 
   const tabs = (
     <UITabs
-      syncUrl="search"
+      activeKey={activeTab}
+      onChange={setActiveTab}
       items={[
         {
           key: 'overview',
-          label: 'Release',
+          label: 'Overview',
+          children: (
+            <OverviewTab
+              scope={currentScope}
+              selectedScope={selectedScope}
+              onStartRelease={goToFlow}
+              onViewHistory={goToHistory}
+            />
+          ),
+        },
+        {
+          key: 'flow',
+          label: 'Release Flow',
           children: (
             <>
               {currentScope && (
