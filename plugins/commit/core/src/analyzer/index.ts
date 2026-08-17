@@ -31,6 +31,7 @@ export {
   detectSecretsInDiffs,
   formatSecretsWarning,
   SecretsDetectedError,
+  isSecretsDetectedError,
   detectSecretsWithLocation,
   formatSecretsReport,
   type SecretMatch,

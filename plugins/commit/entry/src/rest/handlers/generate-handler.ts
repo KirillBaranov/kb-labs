@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
+import { defineHandler, useConfig, useLLM, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import {
   COMMIT_CACHE_PREFIX,
   type GenerateRequest,
@@ -8,7 +8,7 @@ import {
 } from '@kb-labs/commit-contracts';
 import { generateCommitPlan } from '@kb-labs/commit-core/generator';
 import { savePlan, getCurrentPlanPath } from '@kb-labs/commit-core/storage';
-import { SecretsDetectedError } from '@kb-labs/commit-core/analyzer';
+import { isSecretsDetectedError } from '@kb-labs/commit-core/analyzer';
 import { resolveScopePath } from './scope-resolver';
 
 /**
@@ -27,8 +27,26 @@ export default defineHandler({
       const config = resolveCommitConfig(fileConfig ?? {});
       const scopeCwd = resolveScopePath(ctx.cwd, scope, config.scope?.scopes);
 
+      const llm = useLLM();
+      const llmComplete =
+        llm && config.llm.enabled
+          ? async (prompt: string, options?: { systemPrompt?: string; temperature?: number; maxTokens?: number }) => {
+              const result = await llm.complete(prompt, {
+                ...options,
+                temperature: options?.temperature ?? config.llm.temperature,
+                maxTokens: options?.maxTokens ?? config.llm.maxTokens,
+              });
+              return {
+                content: result.content,
+                tokensUsed: result.usage ? result.usage.promptTokens + result.usage.completionTokens : undefined,
+              };
+            }
+          : undefined;
+
       const plan = await generateCommitPlan({
         cwd: scopeCwd,
+        llmComplete,
+        config,
         allowSecrets,
         autoConfirm,
         onProgress: (message) => {
@@ -70,7 +88,7 @@ export default defineHandler({
       };
     } catch (error) {
       // Handle secrets detection specially - return structured response instead of throwing
-      if (error instanceof SecretsDetectedError) {
+      if (isSecretsDetectedError(error)) {
         // Track secrets detected event
         if (ctx.platform.analytics) {
           await ctx.platform.analytics.track('commit.secrets.detected', {

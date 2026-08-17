@@ -25,6 +25,21 @@ export class SecretsDetectedError extends Error {
 }
 
 /**
+ * Structural check for SecretsDetectedError, safe across subpath-export
+ * boundaries (`./analyzer` vs `./generator`). tsup bundles each entry
+ * independently, so `error instanceof SecretsDetectedError` fails when the
+ * throw site and the catch site pull the class from different subpaths —
+ * they end up with two distinct class objects despite identical source.
+ */
+export function isSecretsDetectedError(error: unknown): error is SecretsDetectedError {
+  return (
+    error instanceof Error &&
+    error.name === 'SecretsDetectedError' &&
+    Array.isArray((error as SecretsDetectedError).secretMatches)
+  );
+}
+
+/**
  * Detailed information about a detected secret
  */
 export interface SecretMatch {
