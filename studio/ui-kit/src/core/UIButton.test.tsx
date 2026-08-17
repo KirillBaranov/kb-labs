@@ -38,4 +38,16 @@ describe('UIButton', () => {
     render(<UIButton icon={<span>🔥</span>}>With Icon</UIButton>);
     expect(screen.getByRole('button')).toHaveTextContent('With Icon');
   });
+
+  // Regression guard: tsup/esbuild has no built-in CSS Modules support, so a
+  // bare `styles` default import from './UIButton.module.css' used to
+  // resolve to {} in the published dist bundle — `styles.uiButton` was
+  // silently undefined and never reached the DOM. See
+  // docs/adr/0040-real-css-modules-for-tsup-built-libraries.md.
+  it('applies the CSS Modules class from UIButton.module.css', () => {
+    render(<UIButton>Styled</UIButton>);
+    const button = screen.getByRole('button');
+    expect(button.className).toContain('uiButton');
+    expect(button.className).not.toContain('undefined');
+  });
 });

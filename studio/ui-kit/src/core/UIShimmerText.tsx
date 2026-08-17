@@ -7,6 +7,7 @@
  */
 
 import * as React from 'react';
+import clsx from 'clsx';
 import styles from './UIShimmerText.module.css';
 
 export interface UIShimmerTextProps {
@@ -59,7 +60,7 @@ export function UIShimmerText({
 }: UIShimmerTextProps) {
   return (
     <span
-      className={[styles.shimmer, className].filter(Boolean).join(' ')}
+      className={clsx(styles.shimmer, className)}
       style={{
         '--shimmer-color-1': color,
         '--shimmer-color-2': color,

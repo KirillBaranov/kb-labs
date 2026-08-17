@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { Card as AntCard, theme } from 'antd';
 import type { CardProps as AntCardProps } from 'antd';
+import clsx from 'clsx';
 import { UIBox } from '../primitives/UIBox';
 import { UIText } from '../primitives/UIText';
 import styles from './UICard.module.css';
@@ -107,12 +108,12 @@ export function UICard({
       hoverable={false}
       loading={loading}
       {...rest}
-      className={[
+      className={clsx(
         styles.card,
         hoverable && styles.hoverable,
         status !== 'default' && styles.accented,
         rest.className,
-      ].filter(Boolean).join(' ')}
+      )}
       style={{
         borderColor: token.colorBorder,
         overflow: 'hidden',

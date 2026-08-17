@@ -142,7 +142,18 @@ export async function createStudioRemoteConfig(options: KbStudioRemoteOptions): 
           test: /\.module\.css$/,
           use: [
             require.resolve('style-loader'),
-            { loader: require.resolve('css-loader'), options: { modules: true } },
+            {
+              loader: require.resolve('css-loader'),
+              options: {
+                // Explicit rather than relying on css-loader's version-dependent
+                // default — keeps class name casing consistent with the Studio
+                // host's native Rspack CSS Modules (studio/app/rspack.config.mjs,
+                // `exportsConvention: 'as-is'`) and with the tsup CSS Modules
+                // plugin used by library packages like ui-kit
+                // (infra/devkit/tsup/css-modules-plugin.js).
+                modules: { exportLocalsConvention: 'as-is' },
+              },
+            },
           ],
         },
         {
