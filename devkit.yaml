@@ -822,6 +822,19 @@ custom_checks:
     on: [check]
     categories: [go-binary]
 
+  # .kb/marketplace.lock hygiene — catches drift (a package dir was deleted
+  # or moved but its lock entry wasn't) and corruption (malformed id/path
+  # from a buggy install) before it silently rots. Same lock the MKT-02 e2e
+  # diagnostics test and `kb marketplace doctor` both read.
+  # Fix: no CLI command prunes stale entries yet ("marketplace sync" only
+  # adds, "rehash" only rebuilds discovery hashes) — edit
+  # .kb/marketplace.lock by hand to remove the offending entry.
+  # Self-filters: runs once, anchored to @kb-labs/devkit.
+  # Standalone: node scripts/checks/check-marketplace-lock.mjs
+  - name: check-marketplace-lock
+    run: node scripts/checks/check-marketplace-lock.mjs
+    on: [check]
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check

@@ -155,18 +155,6 @@
       ],
       "enabled": true
     },
-    "@kb-labs/adapters-log-sqlite": {
-      "version": "0.8.0",
-      "integrity": "sha256-C0pltNuBxKbK1EZ45XBBGujikyKFIxVangrq+PR5pEw=",
-      "resolvedPath": "./adapters/log-sqlite",
-      "installedAt": "2026-04-11T10:50:13.109Z",
-      "source": "local",
-      "primaryKind": "adapter",
-      "provides": [
-        "adapter"
-      ],
-      "enabled": true
-    },
     "@kb-labs/adapters-log-ringbuffer": {
       "version": "2.105.0",
       "integrity": "sha256-1ckH1Qiap1g8XAJO4J3H9dS8zgI7sZ8+PpusKmO17tY=",
@@ -500,18 +488,6 @@
       "provides": [
         "plugin",
         "cli-command"
-      ],
-      "enabled": true
-    },
-    "kb:kirill/": {
-      "version": "kb-labs/commit-entry",
-      "integrity": "",
-      "resolvedPath": "./node_modules/kb:kirill",
-      "installedAt": "2026-05-15T23:44:47.572Z",
-      "source": "marketplace",
-      "primaryKind": "plugin",
-      "provides": [
-        "plugin"
       ],
       "enabled": true
     },
