@@ -1,0 +1,75 @@
+name: Promote binaries candidate
+
+# Stable is never published directly. This workflow is the only stable
+# transition for Go binaries: it accepts a `-binaries` release tag, verifies
+# that it is currently the exact tag pointed at by the `binaries-canary`
+# channel, and moves the same immutable tag to the `binaries-stable`
+# pointer. Mirrors promote-npm-release.yml's canary -> latest transition.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag (for example v0.5.0-binaries)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-binaries-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote smoke-tested canary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-binaries$ ]]; then
+            echo "::error::Unsupported release tag: ${RELEASE_TAG}"
+            exit 1
+          fi
+
+      - name: Verify release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null
+
+      - name: Verify canary points at the candidate tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          canary_tag="$(gh release download binaries-canary --repo "$REPOSITORY" --pattern channel.json --output - | jq -r '.tag')"
+          if [[ "$canary_tag" != "$RELEASE_TAG" ]]; then
+            echo "::error::binaries-canary points at ${canary_tag}, not ${RELEASE_TAG}"
+            exit 1
+          fi
+
+      - name: Publish stable binaries channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          commit="$(gh api "repos/${REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+          jq -n --arg tag "$RELEASE_TAG" --arg commit "$commit" \
+            '{schema: 1, channel: "stable", tag: $tag, commit: $commit}' > channel.json
+          if ! gh release view binaries-stable --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release create binaries-stable --repo "$REPOSITORY" --title "KB Labs binaries stable channel" --notes "Mutable stable channel pointer for bootstrap installers."
+          fi
+          gh release upload binaries-stable channel.json --repo "$REPOSITORY" --clobber

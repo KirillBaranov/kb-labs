@@ -214,7 +214,15 @@ git add tools/kb-create/... && git commit -m "feat(launcher): ..." && git push o
 git tag v0.4.7-binaries && git push origin v0.4.7-binaries
 ```
 
-The workflow runs goreleaser with root `.goreleaser.yaml`, builds all 5 tools for darwin/linux/windows × amd64/arm64 (windows arm64 excluded), uploads raw binaries as GitHub Release assets, marked `prerelease: false`. The install manifest is embedded in the binary at build time — no install-script changes needed. Version: increment from the last `-binaries` tag (`gh release list --repo KirillBaranov/kb-labs --limit 3`).
+The workflow (`.github/workflows/release-binaries.yml`) runs goreleaser with root `.goreleaser.yaml`, builds all 5 tools for darwin/linux/windows × amd64/arm64 (windows arm64 excluded), uploads raw binaries as an immutable GitHub Release, marked `prerelease: false`. Version: increment from the last `-binaries` tag (`gh release list --repo KirillBaranov/kb-labs --limit 3`).
+
+**Channels mirror the npm flow.** Every tag push only updates the mutable `binaries-canary` pointer release (a tiny `channel.json` asset: `{schema, channel, tag, commit}`). Nothing reaches `stable` automatically. To promote a canary tag to stable, run `promote-binaries.yml` (`workflow_dispatch`, input `release_tag`) — it verifies `binaries-canary` currently points at that exact tag, then writes the same `channel.json` shape to the `binaries-stable` pointer. This is the same canary → stable transition `promote-npm-release.yml` does for npm dist-tags.
+
+Installers resolve `latest` against a channel with `--channel <stable|canary>` (default `stable`); `--version <tag>` still pins an exact tag and skips channel resolution entirely:
+
+```bash
+curl -fsSL https://kblabs.ru/install.sh | sh -s -- --channel canary
+```
 
 ## Source packages
 

@@ -47,11 +47,12 @@ case "$HOST_ARCH_RAW" in
 esac
 BINARY_FILE="kb-create-${HOST_OS}-${HOST_ARCH}"
 
-# write_fake_curl installs a curl shim into $1 that answers install.sh's three
-# request shapes (stable channel pointer, checksums.txt, the binary itself)
-# using the env vars it reads at call time: FAKE_TAG, FAKE_CHECKSUM_LINE,
-# FAKE_BIN_CONTENT. Single-quoted heredoc — no expansion at generation time,
-# every value is resolved from the environment when the shim actually runs.
+# write_fake_curl installs a curl shim into $1 that answers install.sh's
+# request shapes (stable/canary channel pointer, checksums.txt, the binary
+# itself) using the env vars it reads at call time: FAKE_STABLE_TAG,
+# FAKE_CANARY_TAG, FAKE_CANARY_MISSING, FAKE_CHECKSUM_LINE, FAKE_BIN_CONTENT.
+# Single-quoted heredoc — no expansion at generation time, every value is
+# resolved from the environment when the shim actually runs.
 write_fake_curl() {
   local dir="$1"
   cat >"$dir/curl" <<'SHIM'
@@ -69,7 +70,13 @@ for ((i = 0; i < n; i++)); do
 done
 case "$url" in
   *binaries-stable/channel.json*)
-    out='{ "schema": 1, "channel": "stable", "tag": "'"${FAKE_TAG:-v9.9.9-binaries}"'" }'
+    out='{ "schema": 1, "channel": "stable", "tag": "'"${FAKE_STABLE_TAG:-v9.9.9-binaries}"'" }'
+    ;;
+  *binaries-canary/channel.json*)
+    if [ -n "${FAKE_CANARY_MISSING:-}" ]; then
+      exit 22
+    fi
+    out='{ "schema": 1, "channel": "canary", "tag": "'"${FAKE_CANARY_TAG:-v9.9.9-binaries}"'" }'
     ;;
   *checksums.txt)
     out="$FAKE_CHECKSUM_LINE"
@@ -115,7 +122,8 @@ run_install() {
   write_fake_curl "$fakebin"
   local excl="${EXTRA_EXCLUDE:-}"
   curated_path "$fakebin" $excl
-  RUN_OUT="$(HOME="$RUN_HOME" PATH="$fakebin" FAKE_TAG="${FAKE_TAG:-}" \
+  RUN_OUT="$(HOME="$RUN_HOME" PATH="$fakebin" FAKE_STABLE_TAG="${FAKE_STABLE_TAG:-}" \
+    FAKE_CANARY_TAG="${FAKE_CANARY_TAG:-}" FAKE_CANARY_MISSING="${FAKE_CANARY_MISSING:-}" \
     FAKE_CHECKSUM_LINE="${FAKE_CHECKSUM_LINE:-}" FAKE_BIN_CONTENT="$FAKE_BIN_CONTENT" \
     "$SYS_BASH" "$INSTALL_SH" "$@" 2>&1)"
   RUN_CODE=$?
@@ -251,9 +259,9 @@ test_idempotent_rerun() {
 
 test_pinned_version() {
   FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
-  FAKE_TAG="should-not-be-used"
+  FAKE_STABLE_TAG="should-not-be-used"
   run_install --version v1.2.3
-  unset FAKE_TAG
+  unset FAKE_STABLE_TAG
   if [ "$RUN_CODE" -ne 0 ]; then
     fail "pinned version" "expected exit 0, got $RUN_CODE. Output:\n$RUN_OUT"
     return
@@ -265,7 +273,113 @@ test_pinned_version() {
   pass "pinned version: --version v1.2.3 is used verbatim, no 'latest' resolution"
 }
 
-# ── 7. -h/--help and unknown-argument handling ──────────────────────────────
+# ── 7. --channel defaults to stable ──────────────────────────────────────
+
+test_channel_defaults_to_stable() {
+  FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
+  FAKE_STABLE_TAG="v1.0.0-binaries"
+  FAKE_CANARY_TAG="should-not-be-used"
+  run_install
+  unset FAKE_STABLE_TAG FAKE_CANARY_TAG
+  if [ "$RUN_CODE" -ne 0 ]; then
+    fail "channel defaults to stable" "expected exit 0, got $RUN_CODE. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"Channel: stable (resolved to v1.0.0-binaries)"*) ;;
+    *) fail "channel defaults to stable" "expected stable channel resolution in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "channel defaults to stable: no --channel flag resolves via binaries-stable"
+}
+
+# ── 8. --channel canary resolves via the canary pointer ─────────────────────
+
+test_channel_canary() {
+  FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
+  FAKE_STABLE_TAG="should-not-be-used"
+  FAKE_CANARY_TAG="v1.1.0-binaries"
+  run_install --channel canary
+  unset FAKE_STABLE_TAG FAKE_CANARY_TAG
+  if [ "$RUN_CODE" -ne 0 ]; then
+    fail "channel canary" "expected exit 0, got $RUN_CODE. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"Channel: canary (resolved to v1.1.0-binaries)"*) ;;
+    *) fail "channel canary" "expected canary channel resolution in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "channel canary: --channel canary resolves via binaries-canary, not binaries-stable"
+}
+
+# ── 9. --version pin skips channel resolution entirely, even with --channel ─
+
+test_pinned_version_ignores_channel() {
+  FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
+  FAKE_STABLE_TAG="should-not-be-used"
+  FAKE_CANARY_TAG="should-not-be-used"
+  run_install --version v1.2.3 --channel canary
+  unset FAKE_STABLE_TAG FAKE_CANARY_TAG
+  if [ "$RUN_CODE" -ne 0 ]; then
+    fail "pinned version ignores channel" "expected exit 0, got $RUN_CODE. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"Channel: pinned (v1.2.3)"*) ;;
+    *) fail "pinned version ignores channel" "expected 'Channel: pinned (v1.2.3)' in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "pinned version ignores channel: --version wins over --channel, no pointer lookup"
+}
+
+# ── 10. Unsupported --channel value is rejected before any network call ─────
+
+test_invalid_channel() {
+  FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
+  run_install --channel bogus
+  if [ "$RUN_CODE" -eq 0 ]; then
+    fail "invalid channel" "expected non-zero exit, got 0. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"Unsupported channel: bogus"*) ;;
+    *) fail "invalid channel" "expected 'Unsupported channel: bogus' in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "invalid channel: rejected with a clear error before resolving 'latest'"
+}
+
+# ── 11. --channel requires a value ───────────────────────────────────────────
+
+test_channel_missing_value() {
+  run_install --channel
+  if [ "$RUN_CODE" -eq 0 ]; then
+    fail "--channel missing value" "expected non-zero exit, got 0. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"--channel requires a value"*) ;;
+    *) fail "--channel missing value" "expected '--channel requires a value' in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "--channel missing value: rejected with a clear error"
+}
+
+# ── 12. Canary pointer release absent -> clear resolution failure ───────────
+
+test_canary_pointer_missing() {
+  FAKE_CHECKSUM_LINE="${FAKE_SHA256}  ${BINARY_FILE}"
+  FAKE_CANARY_MISSING=1
+  run_install --channel canary
+  unset FAKE_CANARY_MISSING
+  if [ "$RUN_CODE" -eq 0 ]; then
+    fail "canary pointer missing" "expected non-zero exit, got 0. Output:\n$RUN_OUT"
+    return
+  fi
+  case "$RUN_OUT" in
+    *"Unable to resolve the canary binaries channel"*) ;;
+    *) fail "canary pointer missing" "expected canary resolution error in output:\n$RUN_OUT"; return ;;
+  esac
+  pass "canary pointer missing: aborts with a clear message instead of a raw curl error"
+}
+
+# ── 13. -h/--help and unknown-argument handling ─────────────────────────────
 
 test_help_flag() {
   run_install --help
@@ -314,6 +428,12 @@ test_missing_checksum_entry
 test_no_checksum_tool
 test_idempotent_rerun
 test_pinned_version
+test_channel_defaults_to_stable
+test_channel_canary
+test_pinned_version_ignores_channel
+test_invalid_channel
+test_channel_missing_value
+test_canary_pointer_missing
 test_help_flag
 test_unknown_argument
 
