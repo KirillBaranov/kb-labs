@@ -33,19 +33,13 @@ Ports declared in `.kb/devservices.yaml` / `.kb/devservices.dev.yaml`.
 
 | Port | Service | Range | Scope | Group | Description |
 |------|---------|-------|-------|-------|-------------|
-| 3000 | Studio Web App | `frontend` | dev | ui | Web UI for KB Labs platform |
-| 3001 | KB Labs Docs | `frontend` | prod | ui-web | Documentation site |
-| 3010 | KB Labs Web | `frontend` | prod | ui-web | Product website |
-| 4000 | Gateway | `gateway` | prod | backend | Central router — single entry point for all platform clients |
+| 3000 | Studio Web App | `frontend` | dev | backend | Web UI for KB Labs platform |
+| 4000 | Gateway | `gateway` | prod | backend | Central router — aggregates REST API, Workflow, Marketplace |
 | 5050 | REST API | `services` | dev | backend | Main platform REST API |
 | 5070 | Marketplace Service | `services` | dev | backend | Unified entity marketplace — install, manage, discover |
-| 5071 | Marketplace Registry | `services` | prod | backend | Registry for kb:handle/name packages — publish, install, share |
-| 6333 | Qdrant Vector DB | `exception` | dev | infra | Vector database for Mind RAG search |
-| 6379 | Redis Cache | `exception` | dev | infra | Optional cache for State Daemon |
+| 6379 | Redis Cache | `exception` | dev | infra | State cache + workflow distributed lock backing store |
 | 7777 | State Daemon | `daemons` | dev | infra | Distributed state management |
 | 7778 | Workflow Daemon | `daemons` | dev | backend | Workflow engine REST API |
-| 7779 | MCP Daemon | `daemons` | dev | backend | MCP server — plugin commands as tools for external agents |
-| 20128 | OmniRoute | `exception` | dev | ai | Local AI router for Claude Code and other OpenAI-compatible clients |
 
 ## Exceptions
 
