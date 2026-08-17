@@ -2370,6 +2370,12 @@ importers:
       glob:
         specifier: ^11.0.0
         version: 11.1.0
+      postcss:
+        specifier: '>=8.5.23'
+        version: 8.5.23
+      postcss-modules:
+        specifier: ^9.0.1
+        version: 9.0.1(postcss@8.5.23)
       yaml:
         specifier: ^2.8.0
         version: 2.8.3
@@ -2386,6 +2392,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.6(@types/debug@4.1.13)(@types/node@24.12.2)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.49.2)(tsx@4.21.0)(yaml@2.8.3))
+      esbuild:
+        specifier: ^0.28.1
+        version: 0.28.1
       eslint:
         specifier: ^9.35.0
         version: 9.39.4(jiti@2.6.1)
@@ -7324,6 +7333,9 @@ importers:
       antd:
         specifier: ^5.22.5
         version: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       marked:
         specifier: ^17.0.1
         version: 17.0.6
@@ -12595,6 +12607,9 @@ packages:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
     engines: {node: '>= 0.4'}
 
+  generic-names@4.0.0:
+    resolution: {integrity: sha512-ySFolZQfw9FoDb3ed9d80Cm9f0+r7qj+HJkWjeD9RBfpxEVTlVhol+gvaQB/78WbwYfbnNh8nWHHBSlg072y6A==}
+
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
     engines: {node: '>=6.9.0'}
@@ -13306,6 +13321,10 @@ packages:
     resolution: {integrity: sha512-DFEqQ3ihfS9blba08cLfYf1NRAIEm+dDjic073DRDc3/JspI/8wYmtDsHwd3+4hwvdxSK7PGaElfTmm0awWJ4w==}
     engines: {node: '>=6.11.5'}
 
+  loader-utils@3.3.1:
+    resolution: {integrity: sha512-FMJTLMXfCLMLfJxcX9PFqX5qD88Z5MRGaZCVzfuqeZSPsyiBzs+pahDQjbIWz2QIzPZz0NX9Zy4FX3lmK6YHIg==}
+    engines: {node: '>= 12.13.0'}
+
   locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
     engines: {node: '>=8'}
@@ -13313,6 +13332,9 @@ packages:
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
+
+  lodash.camelcase@4.3.0:
+    resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
 
   lodash.defaults@4.2.0:
     resolution: {integrity: sha512-qjxPLHd3r5DnsdGacqOMU6pb/avJzdh9tFX2ymgoZE27BmjXrNy/y4LoaiTeAb+O3gL8AfpJGtqfX/ae2leYYQ==}
@@ -14244,6 +14266,12 @@ packages:
     peerDependencies:
       postcss: '>=8.5.23'
 
+  postcss-modules@9.0.1:
+    resolution: {integrity: sha512-BrSXxWSls23TzqMuplpeMRL5VHnDOLh2H9EiHNTMIdLBFumJcurDIi47TBuvkn9GsoTLAoPjv2wLzAt1wdQ2aQ==}
+    engines: {node: '>=20.6'}
+    peerDependencies:
+      postcss: '>=8.5.23'
+
   postcss-nested@6.2.0:
     resolution: {integrity: sha512-HQbt28KulC5AJzG+cZtj9kvKB93CFCdLvog1WFLf1D+xmMvPGlBstkpTEZfK5+AN9hfJocyBFCNiqyS48bpgzQ==}
     engines: {node: '>=12.0'}
@@ -15167,6 +15195,9 @@ packages:
 
   string-convert@0.2.1:
     resolution: {integrity: sha512-u/1tdPl4yQnPBjnVrmdLo9gtuLvELKsAoRapekWggdiQNvvvum+jYF329d84NAa660KQw7pB2n36KrIKVoXa3A==}
+
+  string-hash@1.1.3:
+    resolution: {integrity: sha512-kJUvRUFK49aub+a7T1nNE66EJbZBMnBgoC1UbCZ5n6bsZKBRga4KgBRTMn/pFkeCZSYtNeSyMxPDM0AXWELk2A==}
 
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
@@ -21625,6 +21656,10 @@ snapshots:
 
   generator-function@2.0.1: {}
 
+  generic-names@4.0.0:
+    dependencies:
+      loader-utils: 3.3.1
+
   gensync@1.0.0-beta.2: {}
 
   get-intrinsic@1.3.0:
@@ -22441,6 +22476,8 @@ snapshots:
 
   loader-runner@4.3.2: {}
 
+  loader-utils@3.3.1: {}
+
   locate-path@5.0.0:
     dependencies:
       p-locate: 4.1.0
@@ -22448,6 +22485,8 @@ snapshots:
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
+
+  lodash.camelcase@4.3.0: {}
 
   lodash.defaults@4.2.0: {}
 
@@ -23747,6 +23786,18 @@ snapshots:
       icss-utils: 5.1.0(postcss@8.5.23)
       postcss: 8.5.23
 
+  postcss-modules@9.0.1(postcss@8.5.23):
+    dependencies:
+      generic-names: 4.0.0
+      icss-utils: 5.1.0(postcss@8.5.23)
+      lodash.camelcase: 4.3.0
+      postcss: 8.5.23
+      postcss-modules-extract-imports: 3.1.0(postcss@8.5.23)
+      postcss-modules-local-by-default: 4.2.0(postcss@8.5.23)
+      postcss-modules-scope: 3.2.1(postcss@8.5.23)
+      postcss-modules-values: 4.0.0(postcss@8.5.23)
+      string-hash: 1.1.3
+
   postcss-nested@6.2.0(postcss@8.5.23):
     dependencies:
       postcss: 8.5.23
@@ -24953,6 +25004,8 @@ snapshots:
   stream-shift@1.0.3: {}
 
   string-convert@0.2.1: {}
+
+  string-hash@1.1.3: {}
 
   string-width@4.2.3:
     dependencies:

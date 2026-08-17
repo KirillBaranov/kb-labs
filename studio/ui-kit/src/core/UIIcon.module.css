@@ -26,8 +26,10 @@
 /*
  * Ant Design icons (icon fonts)
  * Already use currentColor by default, but ensure it's explicit
+ * `.anticon` is Ant Design's own (unscoped) class — wrapped in :global()
+ * so CSS Modules doesn't hash it away from the real DOM class.
  */
-.uiIcon .anticon {
+.uiIcon :global(.anticon) {
   color: currentColor;
 }
 

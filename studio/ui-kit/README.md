@@ -47,7 +47,7 @@ function MyComponent() {
 ## 📊 Component Stats
 
 - **Total Components:** 52
-- **With Tests:** 4/52 (8%)
+- **With Tests:** 6/52 (12%)
 
 **By Category:**
 
@@ -87,7 +87,7 @@ Essential UI components
 | **UICopyButton** | UICopyButton — one-click copy with built-in visual feedback. | ❌ |
 | **UIIcon** | UIIcon component - Icon wrapper with proper theming | ❌ |
 | **UIShimmerText** | UIShimmerText - Animated gradient shimmer on text | ❌ |
-| **UITag** | UITag component - Label/category tag with semantic colors | ❌ |
+| **UITag** | UITag component - Label/category tag with semantic colors | ✅ |
 | **UITitle** | UITitle component - Page/section titles with hierarchy | ❌ |
 
 ### Layout
@@ -153,7 +153,7 @@ Feedback and notification components
 | **UIEmptyState** | UIEmptyState component - Empty state placeholder | ❌ |
 | **UIErrorState** | UIErrorState component - Error state display | ❌ |
 | **UIResult** | UIResult component - Result page | ❌ |
-| **UISkeleton** | UISkeleton component - Loading skeleton | ❌ |
+| **UISkeleton** | UISkeleton component - Loading skeleton | ✅ |
 | **UISpin** | UISpin component - Loading spinner | ❌ |
 
 ### Overlay

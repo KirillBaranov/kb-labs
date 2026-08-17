@@ -8,7 +8,8 @@
 import * as React from 'react';
 import { Tag as AntTag } from 'antd';
 import type { TagProps as AntTagProps } from 'antd';
-import './UITag.module.css';
+import clsx from 'clsx';
+import styles from './UITag.module.css';
 
 export type UITagVariant = 'success' | 'warning' | 'error' | 'info' | 'default' | 'neutral';
 
@@ -63,7 +64,11 @@ export function UITag({
     neutral: undefined,
   };
 
-  const combinedClassName = ['kb-ui-tag', onClick && 'kb-ui-tag--clickable', className].filter(Boolean).join(' ');
+  const combinedClassName = clsx(
+    styles['kb-ui-tag'],
+    onClick && styles['kb-ui-tag--clickable'],
+    className,
+  );
 
   return (
     <AntTag

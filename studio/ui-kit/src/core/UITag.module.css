@@ -1,8 +1,5 @@
 /*
  * UITag styles — interactive feedback for clickable tags
- *
- * Class name is hardcoded ('kb-ui-tag') because tsup doesn't map
- * CSS module class names in the dist bundle — styles.className is always {}.
  */
 
 .kb-ui-tag {

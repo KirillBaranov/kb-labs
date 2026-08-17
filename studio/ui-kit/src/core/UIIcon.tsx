@@ -9,6 +9,7 @@
  */
 
 import * as React from 'react';
+import clsx from 'clsx';
 import styles from './UIIcon.module.css';
 
 export type UIIconSize = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl';
@@ -84,7 +85,7 @@ export function UIIcon({
   // Build CSS classes
   // 'anticon' class is required so Ant Design components (e.g. Tag icon prop)
   // apply correct margin/spacing — it's the standard Ant Design icon marker class
-  const classes = [
+  const classes = clsx(
     styles.uiIcon,
     'anticon',
     styles[`size-${size}`],
@@ -92,9 +93,7 @@ export function UIIcon({
     spin && styles.spin,
     onClick && styles.clickable,
     className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
 
   // Resolve icon: name prop > string icon > React element icon
   let iconElement: React.ReactNode = null;

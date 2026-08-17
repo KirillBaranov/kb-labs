@@ -7,6 +7,7 @@
 
 import * as React from 'react';
 import { Skeleton as AntSkeleton, theme } from 'antd';
+import clsx from 'clsx';
 import styles from './UISkeleton.module.css';
 
 export interface UISkeletonProps {
@@ -165,7 +166,7 @@ export function UISkeletonText({
       {widths.map((w, i) => (
         <span
           key={i}
-          className={styles.skeletonText}
+          className={clsx(styles.skeletonText)}
           style={{
             display: 'block',
             width: isArray ? (typeof w === 'number' ? `${w}px` : w) : '100%',
