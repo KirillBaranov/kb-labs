@@ -42,7 +42,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: { name: 'My Space' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Space created');
     expect(vi.mocked(createSpace)).toHaveBeenCalledWith(
@@ -62,7 +62,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: { name: 'My Space', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'space-1', name: 'My Space' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -77,7 +77,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: { name: 'My Space', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockSpaceDetail;
     expect(raw.folders).toBeDefined();
     expect(raw.statuses).toBeDefined();
@@ -91,7 +91,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -105,7 +105,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: { name: 'My Space' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -117,7 +117,7 @@ describe('clickup:space.create', () => {
       mockCLIInput({ flags: { name: 'My Space', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(createSpace)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('My Space');

@@ -31,7 +31,7 @@ describe('workflow:metrics', () => {
     const ctx = createMockContext({ ui });
     const result = await metricsCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Metrics');
   });
@@ -45,7 +45,7 @@ describe('workflow:metrics', () => {
     const ctx = createMockContext({ ui });
     const result = await metricsCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const payload = captured.json[0] as { ok: boolean; data: WorkflowMetricsData };
     expect(payload.ok).toBe(true);
     expect(payload.data.runs.total).toBe(42);
@@ -61,7 +61,7 @@ describe('workflow:metrics', () => {
     const ctx = createMockContext({ ui });
     const result = await metricsCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

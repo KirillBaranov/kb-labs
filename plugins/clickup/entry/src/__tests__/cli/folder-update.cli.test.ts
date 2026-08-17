@@ -44,7 +44,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { name: 'Updated Folder' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Folder updated');
     expect(vi.mocked(updateFolder)).toHaveBeenCalledWith('test-api-key', 'folder-1', { name: 'Updated Folder' });
@@ -60,7 +60,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { name: 'Updated Folder', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'folder-1', name: 'Updated Folder' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -75,7 +75,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { name: 'Updated Folder', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockUpdatedFolder;
     expect(raw.lists).toBeDefined();
     expect(raw.orderindex).toBeDefined();
@@ -89,7 +89,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: [], flags: { name: 'Updated Folder' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -101,7 +101,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -115,7 +115,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { name: 'Updated Folder' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -127,7 +127,7 @@ describe('clickup:folder.update', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { name: 'New Name', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updateFolder)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('folder-1');

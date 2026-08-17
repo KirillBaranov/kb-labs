@@ -41,7 +41,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My Folder' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Folder created');
     expect(vi.mocked(createFolder)).toHaveBeenCalledWith('test-api-key', 'space-1', { name: 'My Folder' });
@@ -57,7 +57,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My Folder', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'folder-1', name: 'My Folder' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -72,7 +72,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My Folder', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockFolder;
     expect(raw.lists).toBeDefined();
     expect(raw.orderindex).toBeDefined();
@@ -86,7 +86,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { name: 'My Folder' } }) as Parameters<typeof folderCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -98,7 +98,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1' } }) as Parameters<typeof folderCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -112,7 +112,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My Folder' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -124,7 +124,7 @@ describe('clickup:folder.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My Folder', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(createFolder)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('My Folder');

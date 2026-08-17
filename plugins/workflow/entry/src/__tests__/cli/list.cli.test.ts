@@ -31,7 +31,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.table.length).toBeGreaterThan(0);
     expect(captured.table[0]!.rows.length).toBe(2);
   });
@@ -45,7 +45,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const payload = captured.json[0] as { ok: boolean; data: { executions: JobStatusInfo[] } };
     expect(payload.ok).toBe(true);
     expect(Array.isArray(payload.data.executions)).toBe(true);
@@ -60,7 +60,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: { status: 'running' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.table[0]!.rows.length).toBe(1);
     expect((captured.table[0]!.rows[0] as { status: string }).status).toBe('running');
   });
@@ -78,7 +78,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: { type: 'cron' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.table[0]!.rows.length).toBe(1);
     expect((captured.table[0]!.rows[0] as { id: string }).id).toBe('cron-1');
   });
@@ -92,7 +92,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.errors.length).toBe(0);
     expect(captured.warnings.length).toBeGreaterThan(0);
   });
@@ -106,7 +106,7 @@ describe('workflow:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 

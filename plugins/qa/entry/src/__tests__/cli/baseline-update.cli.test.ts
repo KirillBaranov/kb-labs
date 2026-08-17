@@ -47,7 +47,7 @@ describe('qa:baseline:update', () => {
 
     const result = await baselineUpdateCommand.execute(ctx as never, mockCLIInput<BaselineUpdateFlags>());
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(SnapshotStore).toHaveBeenCalledOnce();
     expect(captured.success.length).toBeGreaterThan(0);
   });
@@ -58,7 +58,7 @@ describe('qa:baseline:update', () => {
 
     const result = await baselineUpdateCommand.execute(ctx as never, mockCLIInput<BaselineUpdateFlags>({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
   });
 
@@ -68,7 +68,7 @@ describe('qa:baseline:update', () => {
 
     const result = await baselineUpdateCommand.execute(ctx as never, mockCLIInput<BaselineUpdateFlags>({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(DevkitAdapter).not.toHaveBeenCalled();
     expect(SnapshotStore).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');

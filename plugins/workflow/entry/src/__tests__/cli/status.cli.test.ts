@@ -45,7 +45,7 @@ describe('workflow:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { 'job-id': 'job-abc' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -58,7 +58,7 @@ describe('workflow:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { 'job-id': 'job-abc', json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const payload = captured.json[0] as { ok: boolean; data: JobStatusDetail };
     expect(payload.ok).toBe(true);
     expect(payload.data.id).toBe('job-abc');
@@ -70,7 +70,7 @@ describe('workflow:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -83,7 +83,7 @@ describe('workflow:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { 'job-id': 'job-abc' } }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -101,7 +101,7 @@ describe('workflow:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { 'job-id': 'job-xyz' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.errors.length).toBe(0);
   });
 

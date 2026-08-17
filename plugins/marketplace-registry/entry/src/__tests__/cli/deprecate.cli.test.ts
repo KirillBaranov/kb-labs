@@ -24,7 +24,7 @@ describe('marketplace:deprecate', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/kirill/my-plugin/deprecate',
       expect.any(Object),
@@ -54,7 +54,7 @@ describe('marketplace:deprecate', () => {
       flags: { json: true },
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ deprecated: true });
   });
 
@@ -63,7 +63,7 @@ describe('marketplace:deprecate', () => {
     const ctx = createMockContext({ ui });
     const result = await deprecateCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -75,7 +75,7 @@ describe('marketplace:deprecate', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -87,7 +87,7 @@ describe('marketplace:deprecate', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('DP-07: HTTP error — exitCode 1, error captured', async () => {
@@ -99,7 +99,7 @@ describe('marketplace:deprecate', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

@@ -43,7 +43,7 @@ describe('workflow:job-run', () => {
     const ctx = createMockContext({ ui });
     const result = await jobRunCommand.execute(ctx, mockCLIInput({ flags: { handler: 'foo#default' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -56,7 +56,7 @@ describe('workflow:job-run', () => {
     const ctx = createMockContext({ ui });
     const result = await jobRunCommand.execute(ctx, mockCLIInput({ flags: { handler: 'foo#default', json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const payload = captured.json[0] as { ok: boolean; data: { id: string; status: string } };
     expect(payload.ok).toBe(true);
     expect(payload.data.id).toBe('job-abc');
@@ -77,7 +77,7 @@ describe('workflow:job-run', () => {
       flags: { handler: 'foo#default', input: '{"key":"val"}' },
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(capturedPayload).toEqual({ key: 'val' });
   });
 
@@ -88,7 +88,7 @@ describe('workflow:job-run', () => {
       flags: { handler: 'foo#default', input: '{not-valid-json' },
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -114,7 +114,7 @@ describe('workflow:job-run', () => {
     await vi.advanceTimersByTimeAsync(2100);
     const result = await resultPromise;
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('CJR-06: missing --handler returns exitCode 1', async () => {
@@ -122,7 +122,7 @@ describe('workflow:job-run', () => {
     const ctx = createMockContext({ ui });
     const result = await jobRunCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -135,7 +135,7 @@ describe('workflow:job-run', () => {
     const ctx = createMockContext({ ui });
     const result = await jobRunCommand.execute(ctx, mockCLIInput({ flags: { handler: 'foo#default' } }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

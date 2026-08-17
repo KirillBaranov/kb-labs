@@ -27,7 +27,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(cancelRun).toHaveBeenCalledWith('run-abc');
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Cancellation Requested');
@@ -46,7 +46,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: { runId: 'run-abc', cancelled: true } });
   });
 
@@ -61,7 +61,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-flag-001' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(cancelRun).toHaveBeenCalledWith('run-flag-001');
   });
 
@@ -75,7 +75,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length + captured.warnings.length).toBeGreaterThan(0);
   });
 
@@ -92,7 +92,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('RCX-06: daemon returns error (run not found / already finished) returns exitCode 1', async () => {
@@ -108,7 +108,7 @@ describe('workflow:runs cancel', () => {
       mockCLIInput({ argv: ['run-finished'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

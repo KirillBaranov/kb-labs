@@ -51,7 +51,7 @@ describe('devlink:undo', () => {
 
     const result = await undoCommand.execute(ctx as never, mockCLIInput<UndoFlags>());
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restoreBackup).toHaveBeenCalledOnce();
     expect(captured.success.length).toBeGreaterThan(0);
   });
@@ -63,7 +63,7 @@ describe('devlink:undo', () => {
 
     const result = await undoCommand.execute(ctx as never, mockCLIInput<UndoFlags>());
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(restoreBackup).not.toHaveBeenCalled();
   });
 
@@ -73,7 +73,7 @@ describe('devlink:undo', () => {
 
     const result = await undoCommand.execute(ctx as never, mockCLIInput<UndoFlags>({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect((captured.json[0] as Record<string, unknown>)?.backupId).toBe('backup-abc123');
   });
 
@@ -83,7 +83,7 @@ describe('devlink:undo', () => {
 
     const result = await undoCommand.execute(ctx as never, mockCLIInput<UndoFlags>({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restoreBackup).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

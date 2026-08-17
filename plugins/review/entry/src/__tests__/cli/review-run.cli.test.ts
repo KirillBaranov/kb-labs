@@ -76,7 +76,7 @@ describe('review:run', () => {
     const ctx = createMockContext({ ui });
     const result = await reviewRunCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(noopLoader.fail).toHaveBeenCalled();
   });
 
@@ -91,7 +91,7 @@ describe('review:run', () => {
     const ctx = createMockContext({ ui });
     const result = await reviewRunCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedRunReview).toHaveBeenCalledOnce();
     expect(captured.success.length + captured.warnings.length).toBeGreaterThan(0);
   });
@@ -109,7 +109,7 @@ describe('review:run', () => {
     const ctx = createMockContext({ ui });
     const result = await reviewRunCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(result.result?.passed).toBe(false);
   });
 
@@ -166,7 +166,7 @@ describe('review:run', () => {
     const ctx = createMockContext({ ui });
     const result = await reviewRunCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(noopLoader.fail).toHaveBeenCalled();
   });
 

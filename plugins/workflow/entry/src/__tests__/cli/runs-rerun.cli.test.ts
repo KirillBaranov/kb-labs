@@ -29,7 +29,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Rerun');
   });
@@ -47,7 +47,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true });
   });
 
@@ -64,7 +64,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-abc' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -76,7 +76,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -93,7 +93,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-bad'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -108,7 +108,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(rerunWorkflow).not.toHaveBeenCalled();
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(captured.infos[0]?.message).toContain('Dry-run');
@@ -137,7 +137,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { 'failed-only': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(rerunWorkflow).toHaveBeenCalledWith('run-abc', { failedOnly: true });
   });
 
@@ -152,7 +152,7 @@ describe('workflow:runs rerun', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(rerunWorkflow).toHaveBeenCalledWith('run-abc', { failedOnly: false });
   });
 });

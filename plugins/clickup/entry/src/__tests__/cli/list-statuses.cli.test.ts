@@ -41,7 +41,7 @@ describe('clickup:list.statuses', () => {
       mockCLIInput({ argv: ['list-1'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.table.length).toBeGreaterThan(0);
     expect(vi.mocked(getListStatuses)).toHaveBeenCalledWith('test-api-key', 'list-1');
   });
@@ -56,7 +56,7 @@ describe('clickup:list.statuses', () => {
       mockCLIInput({ argv: ['list-1'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(Array.isArray(captured.json[0])).toBe(true);
     const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
     expect(slim).toMatchObject({ status: 'open', type: 'open', color: '#000000' });
@@ -74,7 +74,7 @@ describe('clickup:list.statuses', () => {
       mockCLIInput({ argv: ['list-1'], flags: { json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = (captured.json[0] as typeof mockStatuses)[0]!;
     expect(raw.id).toBeDefined();
     expect(raw.orderindex).toBeDefined();
@@ -88,7 +88,7 @@ describe('clickup:list.statuses', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -102,7 +102,7 @@ describe('clickup:list.statuses', () => {
       mockCLIInput({ argv: ['list-1'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

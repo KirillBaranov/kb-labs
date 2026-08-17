@@ -42,7 +42,7 @@ describe('clickup:workspace', () => {
       mockCLIInput({ flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(vi.mocked(getWorkspaceHierarchy)).toHaveBeenCalledWith('test-api-key', 'team-123');
   });
@@ -57,7 +57,7 @@ describe('clickup:workspace', () => {
       mockCLIInput({ flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'ws-1', name: 'My Workspace' });
     // Compact format: spaces array should be present
     expect((captured.json[0] as typeof mockWorkspace).spaces).toBeDefined();
@@ -73,7 +73,7 @@ describe('clickup:workspace', () => {
       mockCLIInput({ flags: { json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     // Full mode returns the raw workspace object
     expect(captured.json[0]).toMatchObject({ id: 'ws-1', name: 'My Workspace' });
   });
@@ -88,7 +88,7 @@ describe('clickup:workspace', () => {
       mockCLIInput({ flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

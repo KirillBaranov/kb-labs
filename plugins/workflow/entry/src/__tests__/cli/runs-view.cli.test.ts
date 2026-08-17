@@ -46,7 +46,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('RV-02: --json=all outputs full run object (BUG-004 path)', async () => {
@@ -62,7 +62,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: 'all' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: { id: 'run-abc' } });
   });
 
@@ -81,7 +81,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: true as unknown as string } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: { id: 'run-abc' } });
   });
 
@@ -98,7 +98,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-abc', json: true as unknown as string } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true });
   });
 
@@ -115,7 +115,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: 'status,jobs' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const data = (captured.json[0] as { ok: boolean; data: Record<string, unknown> })?.data;
     expect(data).toHaveProperty('status');
     expect(data).toHaveProperty('jobs');
@@ -135,7 +135,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-abc' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBe(0); // no --json, so sideBox path
   });
 
@@ -152,7 +152,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.some(i => i.message.includes('No runs found'))).toBe(true);
   });
 
@@ -170,7 +170,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.some(i => i.message.includes('run-latest'))).toBe(true);
   });
 
@@ -187,7 +187,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-bad'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -204,7 +204,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('RV-08: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
@@ -220,7 +220,7 @@ describe('workflow:runs view', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: 'all' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     // durationMs=0 must be present in JSON output, not hidden
     const data = (captured.json[0] as { ok: boolean; data: Record<string, unknown> })?.data;
     expect(data?.durationMs).toBe(0);
@@ -313,7 +313,7 @@ describe('workflow:runs view', () => {
     const ctx = createMockContext({ ui });
     const result = await runsViewCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: { output: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const allText = sideBoxSpy.mock.calls
       .flatMap(([opts]) => (opts.sections ?? []).flatMap(sec => sec.items.map(item => typeof item === 'string' ? item : item.text)))
       .join('\n');
@@ -362,7 +362,7 @@ describe('workflow:runs view', () => {
     const ctx = createMockContext({ ui });
     const result = await runsViewCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: { output: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     // sideBox must be called — tree is rendered even without matching logs
     expect(sideBoxSpy).toHaveBeenCalled();
     const allText = sideBoxSpy.mock.calls
@@ -387,7 +387,7 @@ describe('workflow:runs view', () => {
     const result = await runsViewCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: { output: true } }));
 
     // must NOT crash to exitCode 1 — degraded tree without logs is acceptable
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(sideBoxSpy).toHaveBeenCalled();
     const allText = sideBoxSpy.mock.calls
       .flatMap(([opts]) => (opts.sections ?? []).flatMap(sec => sec.items.map(item => typeof item === 'string' ? item : item.text)))
@@ -423,7 +423,7 @@ describe('workflow:runs view', () => {
     // must not throw — circular must render as [circular], not crash
     const result = await runsViewCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const allText = sideBoxSpy.mock.calls
       .flatMap(([opts]) => (opts.sections ?? []).flatMap(sec => sec.items.map(item => typeof item === 'string' ? item : item.text)))
       .join('\n');
@@ -483,7 +483,7 @@ describe('workflow:runs view', () => {
     const ctx = createMockContext({ ui });
     const result = await runsViewCommand.execute(ctx, mockCLIInput({ argv: ['run-abc'], flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const allText = sideBoxSpy.mock.calls
       .flatMap(([o]) => (o.sections ?? []).flatMap(sec => sec.items.map(item => typeof item === 'string' ? item : item.text)))
       .join('\n');

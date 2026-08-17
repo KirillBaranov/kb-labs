@@ -37,7 +37,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: ['task-001'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('TCL-02: --json outputs slim comments array', async () => {
@@ -50,7 +50,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: ['task-001'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(Array.isArray(captured.json[0])).toBe(true);
     const slim = (captured.json[0] as Array<Record<string, unknown>>)[0]!;
     expect(slim.id).toBe('comment-1');
@@ -69,7 +69,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: ['task-001'], flags: { json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = (captured.json[0] as typeof mockComments)[0]!;
     expect(typeof raw.user).toBe('object');
     expect(raw.resolved).toBeDefined();
@@ -85,7 +85,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: ['task-001'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.length).toBeGreaterThan(0);
   });
 
@@ -97,7 +97,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: [] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -111,7 +111,7 @@ describe('clickup:task comments list', () => {
       mockCLIInput({ argv: ['task-001'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

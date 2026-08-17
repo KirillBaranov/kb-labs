@@ -35,7 +35,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(listPendingApprovals).toHaveBeenCalledWith('run-abc');
     expect(resolveApproval).toHaveBeenCalledWith('run-abc', 'job-001', 'step-review', 'approve', undefined);
     expect(captured.success.length).toBeGreaterThan(0);
@@ -54,7 +54,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { action: 'reject', comment: 'Needs rework' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(resolveApproval).toHaveBeenCalledWith('run-abc', 'job-001', 'step-review', 'reject', 'Needs rework');
     expect(captured.success[0]?.message).toContain('Rejected');
   });
@@ -74,7 +74,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: resolvedPayload });
   });
 
@@ -90,7 +90,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { 'job-id': 'job-001', 'step-id': 'step-x' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(listPendingApprovals).not.toHaveBeenCalled();
     expect(resolveApproval).toHaveBeenCalledWith('run-abc', 'job-001', 'step-x', 'approve', undefined);
   });
@@ -108,7 +108,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -131,7 +131,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -145,7 +145,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length + captured.warnings.length).toBeGreaterThan(0);
   });
 
@@ -159,7 +159,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { action: 'skip' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length + captured.warnings.length).toBeGreaterThan(0);
   });
 
@@ -177,7 +177,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('RAP-10: --run-id flag works as alias for positional argument', async () => {
@@ -195,7 +195,7 @@ describe('workflow:runs approve', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-flag-001' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(resolveApproval).toHaveBeenCalledWith('run-flag-001', expect.any(String), expect.any(String), 'approve', undefined);
   });
 });
