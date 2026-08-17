@@ -1,7 +1,7 @@
 ---
 title: "Overview"
 description: "What @kb-labs/sdk exports and when to import what."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-11"
 order: 1
 ---
 
@@ -9,7 +9,7 @@ order: 1
 
 The SDK groups its surface into five clusters:
 
-1. **Handler definitions** — `defineCommand`, `defineRoute`, `defineAction`, `defineWebhook`, `defineWebSocket`.
+1. **Handler definitions** — `defineCommand`, `defineRoute`, `defineAction`, `defineWebhook`, `defineWebSocket`, `defineEventStream`.
 2. **Runtime hooks** — `usePlatform`, `useLLM`, `useCache`, `useStorage`, `useConfig`, `useLogger`, `useAnalytics`, `useEmbeddings`, `useVectorStore`.
 3. **Manifest helpers** — `defineManifest`, `defineCommandFlags`, `defineFlags`.
 4. **Permission primitives** — `combinePermissions()`, the eight bundled presets, and the `PermissionSpec` type.
@@ -28,10 +28,13 @@ import {
   defineAction,     // higher-level action endpoints
   defineWebhook,    // webhook event handlers
   defineWebSocket,  // WS channel handlers
+  defineEventStream,// server-sent event stream handlers
 } from '@kb-labs/sdk';
 ```
 
-All five produce a handler with an `execute(ctx, input)` method. The runner imports the file specified in the manifest `handler` field, takes `module.default ?? module`, and calls `.execute(...)`. A host guard inside each helper throws if the handler runs from the wrong context — for example, `defineCommand` refuses anything that isn't `ctx.host === 'cli' || ctx.host === 'workflow'`.
+All six produce a handler with an `execute(ctx, input)` method. The runner imports the file specified in the manifest `handler` field, takes `module.default ?? module`, and calls `.execute(...)`. A host guard inside each helper throws if the handler runs from the wrong context — for example, `defineCommand` refuses anything that isn't `ctx.host === 'cli' || ctx.host === 'workflow'`.
+
+`defineEventStream` is for one-way, long-lived SSE connections. It runs in the REST host and receives lifecycle callbacks (`onConnect`, `onDisconnect`, `onError`) plus a host-owned sender; declare the endpoint under the manifest's top-level `sse` section. See [Plugins → REST Routes](/plugins/rest-routes#server-sent-events-sse) for the complete example.
 
 There are corresponding type guards for runtime host checks:
 

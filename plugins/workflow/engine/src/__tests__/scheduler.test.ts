@@ -149,6 +149,31 @@ describe('Scheduler', () => {
     expect(remaining).toHaveLength(0);
   });
 
+  it('regression: N concurrent dequeueJob() calls against one populated queue ' +
+    'return every entry exactly once — no duplicates, no losses. Without the ' +
+    'lock around dequeueFromPriority, the read (zrangebyscore) and the remove ' +
+    '(zrem) are two separate cache round-trips with an await in between, so ' +
+    'two concurrent callers can both read the same top entry before either ' +
+    'removes it — both then go on to process the same job. The daemon runs ' +
+    'multiple instances/pods in production, so this is a live bug, not a ' +
+    'theoretical one.', async () => {
+    const jobCount = 8;
+    for (let i = 0; i < jobCount; i++) {
+      await scheduler.enqueueJob('run-1', makeJob({ id: `run-1:job-${i}`, jobName: `job-${i}` }), 'normal');
+    }
+
+    const results = await Promise.all(
+      Array.from({ length: jobCount }, () => scheduler.dequeueJob()),
+    );
+
+    const jobIds = results.map((entry) => entry?.jobId).filter((id): id is string => id !== undefined);
+    expect(jobIds).toHaveLength(jobCount);
+    expect(new Set(jobIds).size).toBe(jobCount); // no duplicates
+
+    const remaining = await cache.zrangebyscore('kb:jobqueue:normal', 0, Infinity);
+    expect(remaining).toHaveLength(0); // no losses — every entry accounted for
+  });
+
   // ── reschedule ───────────────────────────────────────────────────────
 
   it('reschedules with delay', async () => {

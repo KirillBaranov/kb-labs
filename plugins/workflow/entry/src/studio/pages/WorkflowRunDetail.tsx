@@ -36,6 +36,10 @@ const STATUS_ICON: Record<string, string> = {
   'cancelled': '\u2298',
   'skipped': '\u2014',
   'waiting_approval': '\u23F8',
+  // Jobs (not just steps) can now carry these too \u2014 parked while a step
+  // waits on a human decision or a nested workflow.
+  'waiting_child': '\u23F8',
+  'interrupted': '\u2016',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -46,6 +50,8 @@ const STATUS_COLOR: Record<string, string> = {
   'cancelled': '#8b949e',
   'skipped': '#8b949e',
   'waiting_approval': '#d29922',
+  'waiting_child': '#d29922',
+  'interrupted': '#d29922',
 }
 
 function eventTypeToStatus(type: string): string {
@@ -373,7 +379,7 @@ function JobStepLog({ events, run, onApprove }: JobStepLogProps) {
   }
 
   const activeJobKeys = groups
-    .filter(g => g.status === 'running' || g.status === 'failed' || g.status === 'waiting_approval')
+    .filter(g => g.status === 'running' || g.status === 'failed' || g.status === 'waiting_approval' || g.status === 'waiting_child')
     .map(g => g.jobId)
   const defaultJobKeys = activeJobKeys.length > 0 ? activeJobKeys : groups.map(g => g.jobId)
 
@@ -383,7 +389,7 @@ function JobStepLog({ events, run, onApprove }: JobStepLogProps) {
     const duration = group.durationMs ? formatDurationMs(group.durationMs) : null
 
     const activeStepKeys = group.steps
-      .filter(s => s.status === 'running' || s.status === 'failed' || s.status === 'waiting_approval')
+      .filter(s => s.status === 'running' || s.status === 'failed' || s.status === 'waiting_approval' || s.status === 'waiting_child')
       .map(s => s.stepId)
     const defaultStepKeys = activeStepKeys.length > 0
       ? activeStepKeys

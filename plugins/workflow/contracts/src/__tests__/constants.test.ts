@@ -24,9 +24,10 @@ describe('STEP_STATES', () => {
     expect(RUN_STATES).not.toContain('waiting_approval')
   })
 
-  it('does not contain waiting_approval in JOB_STATES', () => {
-    // waiting_approval is step-specific; it should not appear in job-level states
-    expect(JOB_STATES).not.toContain('waiting_approval')
+  it('contains waiting_approval and waiting_child in JOB_STATES', () => {
+    // a job parks atomically with its step, so job-level states mirror the park states
+    expect(JOB_STATES).toContain('waiting_approval')
+    expect(JOB_STATES).toContain('waiting_child')
   })
 
   it('StepState type accepts waiting_approval as a value at runtime', () => {

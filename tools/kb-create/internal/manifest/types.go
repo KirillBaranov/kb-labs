@@ -50,6 +50,7 @@ type Component struct {
 	GatewayRewrite   *string       `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
 	GatewayWebSocket bool          `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
 	Plugin           string        `json:"plugin,omitempty"`           // companion CLI plugin pkg (services only)
+	PluginVersion    string        `json:"pluginVersion,omitempty"`    // resolved companion CLI plugin version (services only)
 	Config           []ConfigPatch `json:"config,omitempty"`
 }
 
@@ -179,6 +180,14 @@ type Manifest struct {
 	Services    []Component       `json:"services"`
 	Plugins     []Component       `json:"plugins"`
 	Binaries    []Binary          `json:"binaries,omitempty"`
+	// Compatibility is the release's compatibility matrix (schema
+	// kb.compatibility/1, see internal/deployment.Matrix), authored
+	// separately and published as part of manifest.json so it travels
+	// through the same channel-pointer fetch chain as package versions.
+	// Kept as raw JSON here so the manifest package stays dependency-free;
+	// consumers parse it via internal/deployment. Empty/absent means no
+	// compatibility gate is enforced.
+	Compatibility json.RawMessage `json:"compatibility,omitempty"`
 	// AdapterConfig specifies adapter bindings to include in the generated
 	// platform config. Optional — omit to use platform defaults.
 	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`

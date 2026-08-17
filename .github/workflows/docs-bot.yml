@@ -130,7 +130,7 @@ jobs:
                 '|------|----------|------|---------------|',
                 rows,
                 '',
-                `_[CONVENTIONS.md](https://github.com/${owner}/${repo}/blob/main/sites/web/apps/docs/CONVENTIONS.md)_`,
+                `_[CONVENTIONS.md](https://github.com/${owner}/${repo}/blob/master/sites/web/apps/docs/CONVENTIONS.md)_`,
               ].join('\n');
             }
 
@@ -187,7 +187,7 @@ jobs:
                   '',
                   `This file matches owner \`${page.matchedOwner}\`. Please verify the doc is still accurate, then resolve this thread.`,
                   '',
-                  `_Risk: **${page.stalenessRisk}** · [Edit](https://github.com/${owner}/${repo}/edit/main/sites/web/apps/docs/content/en/${page.slug}.mdx)_`,
+                  `_Risk: **${page.stalenessRisk}** · [Edit](https://github.com/${owner}/${repo}/edit/master/sites/web/apps/docs/content/en/${page.slug}.mdx)_`,
                   BOT_MARKER,
                 ].join('\n'),
               });

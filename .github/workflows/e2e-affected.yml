@@ -27,7 +27,7 @@ jobs:
   discover:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number != '') ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     runs-on: ubuntu-latest
     outputs:

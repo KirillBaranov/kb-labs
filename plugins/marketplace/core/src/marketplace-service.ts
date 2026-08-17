@@ -80,6 +80,14 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   private readonly source: PackageSource;
   private readonly registrySource?: PackageSource;
   private readonly strategies = new Map<EntityKind, EntityKindStrategy>();
+  /**
+   * Package-manager and marketplace-lock mutations share a scope root. They
+   * must never overlap: pnpm can mutate node_modules while another request
+   * reads/writes the same lock, which previously made concurrent HTTP callers
+   * observe partial state. The daemon owns one service instance, so a
+   * per-scope promise queue is the correct transaction boundary here.
+   */
+  private readonly mutationTails = new Map<string, Promise<void>>();
 
   constructor(opts: MarketplaceServiceOptions) {
     this.roots = { platformRoot: opts.platformRoot, projectRoot: opts.projectRoot };
@@ -112,6 +120,15 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     opts?: { dev?: boolean; shareToken?: string },
   ): Promise<InstallResult> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
+    return this.withScopeMutation(scopeRoot, () => this.installInScope(ctx, scopeRoot, specs, opts));
+  }
+
+  private async installInScope(
+    ctx: ScopeContext,
+    scopeRoot: string,
+    specs: string[],
+    opts?: { dev?: boolean; shareToken?: string },
+  ): Promise<InstallResult> {
     const installed: InstallResultEntry[] = [];
     const warnings: string[] = [];
     const diagnostics: MarketplaceDiagnostic[] = [];
@@ -200,6 +217,10 @@ export class MarketplaceService implements MarketplaceServiceAPI {
 
   async uninstall(ctx: ScopeContext, packageIds: string[]): Promise<void> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
+    await this.withScopeMutation(scopeRoot, () => this.uninstallInScope(ctx, scopeRoot, packageIds));
+  }
+
+  private async uninstallInScope(ctx: ScopeContext, scopeRoot: string, packageIds: string[]): Promise<void> {
     for (const id of packageIds) {
       // Look up the entry first — if not tracked we skip source removal (idempotent).
       const entry = await this.getEntry(ctx, id);
@@ -229,6 +250,15 @@ export class MarketplaceService implements MarketplaceServiceAPI {
 
   async link(ctx: ScopeContext, packagePath: string, sourceManifest?: unknown): Promise<InstallResultEntry> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
+    return this.withScopeMutation(scopeRoot, () => this.linkInScope(ctx, scopeRoot, packagePath, sourceManifest));
+  }
+
+  private async linkInScope(
+    ctx: ScopeContext,
+    scopeRoot: string,
+    packagePath: string,
+    sourceManifest?: unknown,
+  ): Promise<InstallResultEntry> {
     const absPath = path.resolve(scopeRoot, packagePath);
 
     // Path traversal guard — linked path must be within the scope root.
@@ -290,8 +320,10 @@ export class MarketplaceService implements MarketplaceServiceAPI {
 
   async unlink(ctx: ScopeContext, packageId: string): Promise<void> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
-    await removeFromMarketplaceLock(scopeRoot, packageId);
-    await removeCacheEntry(scopeRoot, packageId);
+    await this.withScopeMutation(scopeRoot, async () => {
+      await removeFromMarketplaceLock(scopeRoot, packageId);
+      await removeCacheEntry(scopeRoot, packageId);
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -318,17 +350,39 @@ export class MarketplaceService implements MarketplaceServiceAPI {
 
   async enable(ctx: ScopeContext, packageId: string): Promise<void> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
-    const ok = await enablePlugin(scopeRoot, packageId);
-    if (!ok) {
-      throw new Error(`Package "${packageId}" not found in ${ctx.scope} marketplace.lock`);
-    }
+    await this.withScopeMutation(scopeRoot, async () => {
+      const ok = await enablePlugin(scopeRoot, packageId);
+      if (!ok) {
+        throw new Error(`Package "${packageId}" not found in ${ctx.scope} marketplace.lock`);
+      }
+    });
   }
 
   async disable(ctx: ScopeContext, packageId: string): Promise<void> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
-    const ok = await disablePlugin(scopeRoot, packageId);
-    if (!ok) {
-      throw new Error(`Package "${packageId}" not found in ${ctx.scope} marketplace.lock`);
+    await this.withScopeMutation(scopeRoot, async () => {
+      const ok = await disablePlugin(scopeRoot, packageId);
+      if (!ok) {
+        throw new Error(`Package "${packageId}" not found in ${ctx.scope} marketplace.lock`);
+      }
+    });
+  }
+
+  private async withScopeMutation<T>(scopeRoot: string, action: () => Promise<T>): Promise<T> {
+    const previous = this.mutationTails.get(scopeRoot) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const tail = new Promise<void>(resolve => { release = resolve; });
+    const queuedTail = previous.then(() => tail);
+    this.mutationTails.set(scopeRoot, queuedTail);
+
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release();
+      if (this.mutationTails.get(scopeRoot) === queuedTail) {
+        this.mutationTails.delete(scopeRoot);
+      }
     }
   }
 
@@ -390,6 +444,18 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     },
   ): Promise<SyncResult> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
+    return this.withScopeMutation(scopeRoot, () => this.syncInScope(ctx, scopeRoot, opts));
+  }
+
+  private async syncInScope(
+    ctx: ScopeContext,
+    scopeRoot: string,
+    opts: {
+      include: string[];
+      exclude?: string[];
+      autoEnable?: boolean;
+    },
+  ): Promise<SyncResult> {
     const autoEnable = opts.autoEnable ?? false;
     const diag = new DiagnosticCollector();
     const lock = await readMarketplaceLock(scopeRoot, diag) ?? createEmptyLock();

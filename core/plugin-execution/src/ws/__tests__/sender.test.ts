@@ -71,6 +71,28 @@ describe('createWSSender', () => {
         })
       );
     });
+
+    it('records structured telemetry for sent and dropped messages', async () => {
+      const logger = { info: vi.fn(), warn: vi.fn() };
+      const stats = { outboundMessages: 0, outboundBytes: 0, droppedMessages: 0 };
+      const sender = createWSSender(mockWebSocket, connectionId, channelPath, { logger, stats });
+
+      await sender.send({ type: 'ready', timestamp: 1 });
+      (mockWebSocket as any).readyState = 3;
+      await sender.send({ type: 'late', timestamp: 2 });
+
+      expect(stats.outboundMessages).toBe(1);
+      expect(stats.outboundBytes).toBeGreaterThan(0);
+      expect(stats.droppedMessages).toBe(1);
+      expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({
+        event: 'websocket.message.sent',
+        'messaging.message_type': 'ready',
+      }), expect.any(String));
+      expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({
+        event: 'websocket.message.dropped',
+        reason: 'socket_not_open',
+      }), expect.any(String));
+    });
   });
 
   describe('broadcast', () => {

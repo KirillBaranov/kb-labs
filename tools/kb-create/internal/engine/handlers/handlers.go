@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kb-labs/create/internal/engine/config"
 	"github.com/kb-labs/create/internal/engine/executor"
@@ -53,7 +54,13 @@ func (h *packageHandler) Check(ctx context.Context, action plan.PlanAction) (boo
 	if action.Inputs["mode"] == "update" {
 		return false, nil
 	}
-	return h.manager.Installed(ctx, action.Inputs["package"])
+	for _, pkg := range packageSpecs(action) {
+		installed, err := h.manager.Installed(ctx, pkg)
+		if err != nil || !installed {
+			return false, err
+		}
+	}
+	return true, nil
 }
 func (h *packageHandler) Apply(ctx context.Context, action plan.PlanAction) (executor.ActionResult, error) {
 	if h.manager == nil {
@@ -65,9 +72,9 @@ func (h *packageHandler) Apply(ctx context.Context, action plan.PlanAction) (exe
 		if !ok {
 			return executor.ActionResult{}, fmt.Errorf("package manager does not support updates")
 		}
-		err = updater.Update(ctx, action.Inputs["package"])
+		err = updatePackages(ctx, updater, packageSpecs(action))
 	} else {
-		err = h.manager.Install(ctx, action.Inputs["package"])
+		err = installPackages(ctx, h.manager, packageSpecs(action))
 	}
 	if err != nil {
 		return executor.ActionResult{}, err
@@ -78,12 +85,58 @@ func (h *packageHandler) Verify(ctx context.Context, action plan.PlanAction, _ e
 	if h.manager == nil {
 		return fmt.Errorf("package manager is not configured")
 	}
-	installed, err := h.manager.Installed(ctx, action.Inputs["package"])
-	if err != nil {
-		return err
+	for _, pkg := range packageSpecs(action) {
+		installed, err := h.manager.Installed(ctx, pkg)
+		if err != nil {
+			return err
+		}
+		if !installed {
+			return fmt.Errorf("package %q is not installed after apply", pkg)
+		}
 	}
-	if !installed {
-		return fmt.Errorf("package %q is not installed after apply", action.Inputs["package"])
+	return nil
+}
+
+func packageSpecs(action plan.PlanAction) []string {
+	if encoded := action.Inputs["packages"]; encoded != "" {
+		return strings.Split(encoded, "\n")
+	}
+	if pkg := action.Inputs["package"]; pkg != "" {
+		return []string{pkg}
+	}
+	return nil
+}
+
+func installPackages(ctx context.Context, manager PackageManager, packages []string) error {
+	if len(packages) == 0 {
+		return fmt.Errorf("package install action has no packages")
+	}
+	if batch, ok := manager.(interface {
+		InstallMany(context.Context, []string) error
+	}); ok {
+		return batch.InstallMany(ctx, packages)
+	}
+	for _, pkg := range packages {
+		if err := manager.Install(ctx, pkg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updatePackages(ctx context.Context, manager PackageUpdater, packages []string) error {
+	if len(packages) == 0 {
+		return fmt.Errorf("package update action has no packages")
+	}
+	if batch, ok := manager.(interface {
+		UpdateMany(context.Context, []string) error
+	}); ok {
+		return batch.UpdateMany(ctx, packages)
+	}
+	for _, pkg := range packages {
+		if err := manager.Update(ctx, pkg); err != nil {
+			return err
+		}
 	}
 	return nil
 }

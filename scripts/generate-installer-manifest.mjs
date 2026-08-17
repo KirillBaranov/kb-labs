@@ -49,6 +49,12 @@ for (const item of manifest.core ?? []) pin(item);
 for (const item of manifest.adapters ?? []) pin(item);
 for (const item of manifest.services ?? []) pin(item);
 for (const item of manifest.plugins ?? []) pin(item);
+for (const item of manifest.services ?? []) {
+  if (!item.plugin) continue;
+  const version = versions.get(item.plugin);
+  if (!version) throw new Error(`No workspace package version found for ${item.plugin}`);
+  item.pluginVersion = version;
+}
 for (const item of manifest.binaries ?? []) {
   if (!item.localPath) item.version = binariesTag;
 }

@@ -2,13 +2,11 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/kb-labs/clikit/diag"
 	"github.com/kb-labs/clikit/result"
 	"github.com/kb-labs/clikit/ui"
 )
@@ -93,18 +91,17 @@ func Execute() {
 		}
 		return
 	}
+	d := classifyError(err)
 	if outputMode() == result.ModeHuman {
 		if err.Error() == "installation cancelled" {
 			fmt.Fprintln(os.Stderr, "Installation cancelled.")
 			os.Exit(1)
 		}
-		printFatalError(err, rootCmd.Version)
-		printSupportHint()
+		printFatalDiagnostic(d, rootCmd.Version)
+		if failureLogPath != "" {
+			printSupportHint(failureLogPath)
+		}
 		os.Exit(1)
-	}
-	var d *diag.Diag
-	if !errors.As(err, &d) {
-		d = diag.Wrap(err, "ERR_UNKNOWN", err.Error())
 	}
 	code := result.RenderDiag(os.Stdout, os.Stderr, d, outputMode())
 	os.Exit(code)

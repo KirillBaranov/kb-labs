@@ -17,8 +17,12 @@ name: Publish npm (on release tag)
 #   3. Deliver candidate (this workflow, job `deliver-candidate`) — downloads
 #      that exact artifact and publishes it under the `canary` dist-tag.
 #   4. User gate (job `launcher-smoke`) — installs and exercises the candidate.
-#   5. Promote (job `promote-stable`) — moves the same immutable versions to
-#      `latest`; no repack or rebuild is allowed after the gate.
+#
+# Stable promotion is deliberately not part of this workflow.  A separate,
+# manual `promote-npm-release.yml` workflow promotes only these exact,
+# smoke-tested canary versions.  This keeps candidate publication and stable
+# promotion independently retryable and makes it impossible for a failed smoke
+# to be mistaken for a failed publish.
 #
 # Tag grammar: `<flow>-v<version>` (e.g. `platform-v2.105.0`,
 # `sdk-v3.2.0`) — one literal, disjoint prefix per flow, so this workflow's
@@ -52,12 +56,12 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Reject tags outside main
+      - name: Reject tags outside master
         run: |
           set -euo pipefail
-          git fetch origin main --no-tags
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::Release tags must point to a commit already reachable from main."
+          git fetch origin master --no-tags
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Release tags must point to a commit already reachable from master."
             echo "::error::Tag: $GITHUB_REF_NAME; commit: $GITHUB_SHA"
             exit 1
           fi
@@ -121,7 +125,9 @@ jobs:
         with:
           name: release-artifacts
           path: .kb/release/artifacts/
-          retention-days: 7
+          # Promotion is a separate manual workflow; retain the exact staged
+          # manifest/tarballs long enough for a human gate and investigation.
+          retention-days: 30
 
   deliver-candidate:
     name: Deliver candidate to npm
@@ -172,110 +178,11 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # Create a GitHub Release for the tag, with the actual changelog section
-  # for this version as the release body — so the tag shows up as a real,
-  # readable release instead of a bare tag with no notes. The release plugin
-  # already writes per-version entries into the repo-root CHANGELOG.md
-  # (plugins/release/manager-core/src/publisher.ts); this just slices out
-  # the one section for the version this tag names and hands it to
-  # softprops/action-gh-release verbatim.
-  github-release:
-    name: GitHub Release
-    needs: promote-stable
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
-
-      - name: Extract changelog section for this version
-        id: notes
-        run: |
-          TAG="${{ github.ref_name }}"
-          FLOW="${TAG%%-v*}"
-          VERSION="${TAG#"$FLOW"-v}"
-          awk -v ver="$VERSION" '
-            /^## \[/ {
-              if (found) exit
-              if ($0 ~ ("^## \\[" ver "\\]")) { found=1; next }
-              next
-            }
-            found { print }
-          ' CHANGELOG.md > release-notes.md
-
-          if [ ! -s release-notes.md ]; then
-            echo "_No changelog entry found for ${VERSION} — see commit history._" > release-notes.md
-          fi
-
-          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      # The installer manifest is immutable and belongs to the exact platform
-      # tag. Resolve binaries only in release CI; normal installers consume the
-      # resulting direct download URL and never call api.github.com.
-      - name: Build immutable installer manifest
-        if: steps.notes.outputs.flow == 'platform'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          binaries_tag="$(gh api 'repos/${{ github.repository }}/releases?per_page=100' --paginate --jq '.[] | select(.tag_name | endswith("-binaries")) | .tag_name' | head -n1)"
-          test -n "$binaries_tag"
-          node scripts/generate-installer-manifest.mjs \
-            --release-tag "${{ github.ref_name }}" \
-            --binaries-tag "$binaries_tag" \
-            --output .kb/release/installer-manifest.json
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "${{ steps.notes.outputs.flow }} v${{ steps.notes.outputs.version }}"
-          body_path: release-notes.md
-          draft: false
-          prerelease: false
-          files: ${{ steps.notes.outputs.flow == 'platform' && '.kb/release/installer-manifest.json' || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # A small mutable pointer selects the verified immutable manifest for the
-  # installer stable channel. Replacing this one asset is also the rollback
-  # operation; package and binary artifacts themselves are never overwritten.
-  installer-channel:
-    name: Publish installer stable channel
-    needs: github-release
-    if: startsWith(github.ref_name, 'platform-v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Publish stable channel pointer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          mkdir -p .kb/release/channel
-          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern installer-manifest.json --dir .kb/release/channel
-          checksum="$(sha256sum .kb/release/channel/installer-manifest.json | awk '{print $1}')"
-          manifest_url="https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG/installer-manifest.json"
-          jq -n \
-            --arg releaseTag "$RELEASE_TAG" \
-            --arg manifestUrl "$manifest_url" \
-            --arg sha256 "$checksum" \
-            '{schema: 1, channel: "stable", releaseTag: $releaseTag, manifestUrl: $manifestUrl, sha256: $sha256}' \
-            > .kb/release/channel/channel.json
-          if ! gh release view installer-stable --repo "$REPOSITORY" >/dev/null 2>&1; then
-            gh release create installer-stable --repo "$REPOSITORY" --title "KB Labs installer stable channel" --notes "Mutable stable channel pointer for kb-create."
-          fi
-          gh release upload installer-stable .kb/release/channel/channel.json --repo "$REPOSITORY" --clobber
-
-  # Post-publish launcher smoke (kb-create e2e) — runs the full kb-create
-  # end-to-end suite against the packages we just delivered to npm. Last-mile
+  # Post-publish launcher smoke runs one bounded, isolated kb-create journey
+  # against the packages we just delivered to npm. The exhaustive lifecycle
+  # suite runs separately: promotion must fail quickly with a precise boundary,
+  # never because an unrelated final test consumed a global suite timeout.
+  # Last-mile
   # gate: if any transitive dep was published with broken workspace:* deps,
   # missing versions, unreadable manifests, or similar publish-time
   # regressions, this job turns red instead of a user bug report. Runs after
@@ -285,12 +192,7 @@ jobs:
     name: kb-create post-publish smoke
     runs-on: ubuntu-latest
     needs: deliver-candidate
-    # 20min wasn't a hang — with --live streaming (see the `run` step below)
-    # the log showed ~20 sequential Go e2e tests genuinely passing at ~2min
-    # each (TestInstallYes alone: 272s), just needing more wall-clock than
-    # the job had. 40min budget rather than trying to parallelize/speed up
-    # tests that install and exercise a real kb-create binary end to end.
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -309,91 +211,50 @@ jobs:
       - name: Build host kb-devkit
         run: make build
         working-directory: tools/kb-devkit
-      - name: Run kb-create e2e against just-published packages
-        # --live: single-package run, so the concurrency=1 it forces costs
-        # nothing — but without it kb-devkit buffers all output in memory
-        # until the command exits (see executor.go runCommand). If this step
-        # ever hits the job timeout, the buffered output dies with the killed
-        # process and the log shows nothing between start and cancellation.
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache --live
+      - name: Run isolated kb-create release smoke against just-published packages
+        # The Make target has its own 12-minute Go-suite deadline and executes
+        # just the promotion-critical journey. The full lifecycle matrix is a
+        # separate, sharded signal rather than a hidden dependency of this gate.
+        run: make e2e-release-smoke
+        working-directory: tools/kb-create
         env:
           # The candidate is published under the canary dist-tag. Without
           # this override kb-create resolves `latest` and tests the previous
           # stable release instead of the artifacts delivered above.
           KB_CREATE_PACKAGE_TAG: canary
 
-  # Stable npm is a promotion, never the first publication. The manifest is
-  # downloaded from the same staged artifact that the candidate delivery job
-  # used, so this job can only move versions that were actually smoke-tested.
-  promote-stable:
-    name: Promote candidate to stable
-    needs: [deliver-candidate, launcher-smoke]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-        with: { run_install: false }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: "https://registry.npmjs.org"
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-artifacts
-          path: .kb/release/artifacts/
-      - name: Promote the smoke-tested versions to latest
+      - name: Capture release-smoke diagnostics
+        if: always()
+        shell: bash
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
+          set -u
+          out=/tmp/kb-create-release-smoke
+          mkdir -p "$out"
+          {
+            echo "release_tag=$RELEASE_TAG"
+            echo "source_sha=$SOURCE_SHA"
+            echo "captured_at=$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_os=$RUNNER_OS"
+          } > "$out/context.env"
+          {
+            node --version
+            pnpm --version
+            go version
+          } > "$out/toolchain.txt" 2>&1 || true
+          ps auxww > "$out/processes.txt" 2>&1 || true
+          (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null || true) > "$out/listening-ports.txt" 2>&1
+          df -h > "$out/disk.txt" 2>&1 || true
+          (free -h 2>/dev/null || vm_stat 2>/dev/null || true) > "$out/memory.txt" 2>&1
+          find "$RUNNER_TEMP" -maxdepth 2 -type d -name 'TestReleaseCandidateJourney*' -print \
+            > "$out/retained-fixtures.txt" 2>&1 || true
 
-          # npm's dist-tag write is eventually consistent with `npm view`.
-          # Use an online read and retry the idempotent write instead of
-          # failing a release on a stale registry/cache response.
-          npm_latest() {
-            npm view "$1" dist-tags.latest \
-              --registry https://registry.npmjs.org \
-              --prefer-online \
-              --fetch-retries=3 \
-              --fetch-retry-mintimeout=1000 \
-              --fetch-retry-maxtimeout=5000 \
-              2>/dev/null || true
-          }
-
-          promote_and_verify() {
-            local name="$1"
-            local version="$2"
-            local spec="${name}@${version}"
-            local actual=""
-
-            for attempt in $(seq 1 12); do
-              echo "Promoting ${spec} to latest (attempt ${attempt}/12)"
-              npm dist-tag add "${spec}" latest \
-                --registry https://registry.npmjs.org \
-                --prefer-online \
-                >/dev/null 2>&1 || true
-
-              actual="$(npm_latest "${name}")"
-              if test "${actual}" = "${version}"; then
-                return 0
-              fi
-
-              echo "Waiting for npm registry convergence: ${name} latest=${actual:-<unavailable>}, expected=${version}"
-              sleep 5
-            done
-
-            echo "::error::npm latest tag did not converge for ${name}: got '${actual}', expected '${version}'"
-            return 1
-          }
-
-          while IFS=$'\t' read -r name version; do
-            promote_and_verify "${name}" "${version}"
-          done < <(node -e '
-            const manifest = require("./.kb/release/artifacts/manifest.json");
-            for (const artifact of manifest) console.log(artifact.name + "\t" + artifact.version);
-          ')
+      - name: Upload release-smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-create-release-smoke-diagnostics-${{ github.run_id }}
+          path: /tmp/kb-create-release-smoke/
+          retention-days: 30

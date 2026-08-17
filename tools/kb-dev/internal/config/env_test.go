@@ -169,6 +169,18 @@ func TestExpandEnvFromDotEnvFile(t *testing.T) {
 	}
 }
 
+func TestExpandEnvFromV2LauncherSecretStore(t *testing.T) {
+	dir := t.TempDir()
+	writeDotEnvTo(t, filepath.Join(dir, ".kb", "v2", "secrets.env"), "V2_LAUNCHER_TOKEN=private\n")
+	yf := minimalYAMLWithEnvVar("${V2_LAUNCHER_TOKEN}")
+	if err := expandEnv(yf, dir); err != nil {
+		t.Fatal(err)
+	}
+	if got := yf.Services["api"].Env["SECRET"]; got != "private" {
+		t.Fatalf("SECRET = %q", got)
+	}
+}
+
 func TestExpandEnvProcessEnvWinsDotEnv(t *testing.T) {
 	// Process env must take priority over .env file.
 	t.Setenv("PRIORITY_VAR", "from-process")
@@ -300,6 +312,9 @@ func writeDotEnv(t *testing.T, content string) string {
 
 func writeDotEnvTo(t *testing.T, path, content string) {
 	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}

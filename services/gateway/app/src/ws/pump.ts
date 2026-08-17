@@ -48,20 +48,46 @@ export function pumpBidirectional(client: WebSocket, upstream: WebSocket, logger
   const pending: Array<{ data: RawData; binary: boolean }> = [];
   let upstreamOpen = false;
   let closed = false;
+  const startedAt = Date.now();
+  let clientToUpstreamMessages = 0;
+  let upstreamToClientMessages = 0;
+  let clientToUpstreamBytes = 0;
+  let upstreamToClientBytes = 0;
+  let droppedMessages = 0;
 
-  const closeBoth = (code?: number, reason?: Buffer | string): void => {
+  const byteLength = (data: RawData): number => {
+    if (typeof data === 'string') { return Buffer.byteLength(data); }
+    if (Buffer.isBuffer(data)) { return data.byteLength; }
+    if (data instanceof ArrayBuffer) { return data.byteLength; }
+    return data.reduce((total, chunk) => total + chunk.byteLength, 0);
+  };
+
+  const closeBoth = (code?: number, reason?: Buffer | string, closeReason = 'peer_closed'): void => {
     if (closed) {
       return;
     }
     closed = true;
     safeClose(client, code, reason);
     safeClose(upstream, code, reason);
+    logger.info('Gateway WebSocket relay closed', {
+      event: 'websocket.relay.closed',
+      closeReason,
+      closeCode: code,
+      durationMs: Date.now() - startedAt,
+      clientToUpstreamMessages,
+      upstreamToClientMessages,
+      clientToUpstreamBytes,
+      upstreamToClientBytes,
+      droppedMessages,
+    });
   };
 
   // client → upstream (buffer until upstream is OPEN)
   client.on('message', (data: RawData, isBinary: boolean) => {
     if (upstreamOpen && upstream.readyState === OPEN) {
       upstream.send(data, { binary: isBinary });
+      clientToUpstreamMessages += 1;
+      clientToUpstreamBytes += byteLength(data);
     } else {
       pending.push({ data, binary: isBinary });
     }
@@ -72,6 +98,10 @@ export function pumpBidirectional(client: WebSocket, upstream: WebSocket, logger
     for (const frame of pending) {
       if (upstream.readyState === OPEN) {
         upstream.send(frame.data, { binary: frame.binary });
+        clientToUpstreamMessages += 1;
+        clientToUpstreamBytes += byteLength(frame.data);
+      } else {
+        droppedMessages += 1;
       }
     }
     pending.length = 0;
@@ -81,6 +111,10 @@ export function pumpBidirectional(client: WebSocket, upstream: WebSocket, logger
   upstream.on('message', (data: RawData, isBinary: boolean) => {
     if (client.readyState === OPEN) {
       client.send(data, { binary: isBinary });
+      upstreamToClientMessages += 1;
+      upstreamToClientBytes += byteLength(data);
+    } else {
+      droppedMessages += 1;
     }
   });
 
@@ -93,10 +127,10 @@ export function pumpBidirectional(client: WebSocket, upstream: WebSocket, logger
 
   upstream.on('error', (err: Error) => {
     logger.warn('Upstream WS error', { error: err.message });
-    closeBoth(1011);
+    closeBoth(1011, undefined, 'upstream_error');
   });
   client.on('error', (err: Error) => {
     logger.warn('Client WS error', { error: err.message });
-    closeBoth(1011);
+    closeBoth(1011, undefined, 'client_error');
   });
 }

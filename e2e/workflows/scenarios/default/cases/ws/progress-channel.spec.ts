@@ -69,12 +69,14 @@ test('WS-P02: unknown jobId → error message, no hang', async ({ request }) => 
 
     // The server should respond with an error message or close the connection
     // within a reasonable time. Hanging silently is not acceptable.
-    const msg = await expectWsMessage<{ type: string; error?: string }>(
+    const msg = await expectWsMessage<{ type: string; payload?: { error?: string; code?: string } }>(
       ws,
       (m) => m.type === 'error',
       { timeoutMs: 5_000, label: 'error message for unknown job' },
     );
 
     expect(msg.type).toBe('error');
+    expect(msg.payload?.error).toBeTruthy();
+    expect(msg.payload?.code).toBe('NOT_FOUND');
   }, await authHeaders(request));
 });

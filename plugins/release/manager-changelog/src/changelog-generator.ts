@@ -93,6 +93,8 @@ export interface GenerateChangelogOptions {
     from?: string;
     to?: string;
     sinceTag?: string;
+    /** Glob limiting automatic baseline discovery to the active release flow. */
+    tagGlob?: string;
   };
   /** Changelog configuration */
   changelog?: {
@@ -164,6 +166,7 @@ export async function generateChangelog(
     from: rangeOptions?.from,
     to: rangeOptions?.to || 'HEAD',
     sinceTag: rangeOptions?.sinceTag,
+    tagGlob: rangeOptions?.tagGlob,
     autoUnshallow: gitConfig?.autoUnshallow,
     requireSignedTags: gitConfig?.requireSignedTags,
   });

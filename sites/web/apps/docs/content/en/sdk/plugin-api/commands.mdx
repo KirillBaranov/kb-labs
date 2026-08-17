@@ -1,7 +1,7 @@
 ---
 title: "Commands"
 description: "defineCommand, defineFlags, CLIInput, host guards, and the command result shape."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-11"
 order: 3
 ---
 
@@ -244,6 +244,38 @@ async execute(ctx, input) {
 ```
 
 These are rarely needed in practice — `defineCommand` already ensures the host is valid. They're here for the edge case where a handler wants to branch on which valid host it's running in.
+
+## `defineEventStream`
+
+Use `defineEventStream` to implement a server-sent event endpoint declared in `manifest.sse.streams`. The REST host owns the HTTP connection, correlation metadata, keepalive and cleanup; plugin code only handles lifecycle events and sends domain events.
+
+```ts
+import { defineEventStream } from '@kb-labs/sdk';
+
+export default defineEventStream({
+  path: '/events',
+  handler: {
+    onConnect(ctx, stream) {
+      stream.send('ready', { pluginId: ctx.pluginId });
+      const unsubscribe = subscribeToUpdates((update) => {
+        stream.send('update', update);
+      });
+      stream.onCleanup(unsubscribe);
+    },
+    onDisconnect() {
+      // Optional: release resources that are not registered with onCleanup.
+    },
+    onError(_ctx, error) {
+      // Optional: record a transport error in plugin-specific telemetry.
+      console.error(error);
+    },
+  },
+});
+```
+
+`onConnect` runs once the connection is open; `onError` receives transport or connection-handler failures; `onDisconnect` runs during cleanup after a successful connection. The sender offers `send(event, data, id?)`, `comment(text)`, `onCleanup(cleanup)`, and `close(reason?)`. It can only run in the REST host; the helper rejects other hosts and a missing sender for `connect` or `error` events.
+
+For the manifest declaration and transport defaults, see [Plugins → REST Routes](/plugins/rest-routes#server-sent-events-sse).
 
 ## A full example
 

@@ -19,7 +19,6 @@ import { DataPrivacySettings } from '../components/data-privacy-settings';
 import { ExperimentalSettings } from '../components/experimental-settings';
 import { ApiRoutesViewer } from '../components/api-routes-viewer';
 import { NavigationSettings } from '../components/navigation-settings';
-import { AccountSettings } from '../components/account-settings';
 import { SystemSettings } from '../components/system-settings';
 import { useFeatureFlags } from '@/hooks/use-feature-flags';
 
@@ -55,79 +54,51 @@ export function SettingsPage() {
     {
       key: 'appearance',
       label: 'Appearance',
-      icon: <UIIcon name="BgColorsOutlined" />,
       children: (
-        <UIPageSection>
-          <UICard>
-            <AppearanceSettings />
-          </UICard>
-        </UIPageSection>
+        <UICard>
+          <AppearanceSettings />
+        </UICard>
       ),
     },
     {
       key: 'navigation',
       label: 'Navigation',
-      icon: <UIIcon name="MenuOutlined" />,
       children: (
-        <UIPageSection>
-          <UICard>
-            <NavigationSettings />
-          </UICard>
-        </UIPageSection>
-      ),
-    },
-    {
-      key: 'account',
-      label: 'Account',
-      icon: <UIIcon name="UserOutlined" />,
-      children: (
-        <UIPageSection>
-          <UICard>
-            <AccountSettings />
-          </UICard>
-        </UIPageSection>
+        <UICard>
+          <NavigationSettings />
+        </UICard>
       ),
     },
     {
       key: 'privacy',
       label: 'Data & Privacy',
-      icon: <UIIcon name="LockOutlined" />,
       children: (
-        <UIPageSection>
-          <UICard>
-            <DataPrivacySettings />
-          </UICard>
-        </UIPageSection>
+        <UICard>
+          <DataPrivacySettings />
+        </UICard>
       ),
     },
-    {
+    ...(isEnabled('settings-system') ? [{
       key: 'system',
       label: 'System',
-      icon: <UIIcon name="DatabaseOutlined" />,
       children: (
-        <UIPageSection>
-          <UICard>
-            <SystemSettings />
-          </UICard>
-        </UIPageSection>
+        <UICard>
+          <SystemSettings />
+        </UICard>
       ),
-    },
+    }] : []),
     {
       key: 'experimental',
       label: 'Experimental',
-      icon: <UIIcon name="ExperimentOutlined" />,
       children: (
-        <UIPageSection>
-          <UICard>
-            <ExperimentalSettings />
-          </UICard>
-        </UIPageSection>
+        <UICard>
+          <ExperimentalSettings />
+        </UICard>
       ),
     },
     ...(isEnabled('devtools-panel') ? [{
       key: 'developer',
       label: 'Developer',
-      icon: <UIIcon name="ToolOutlined" />,
       children: (
         <>
           <UIPageSection>
@@ -181,17 +152,11 @@ export function SettingsPage() {
   ];
 
   return (
-    <UIPage variant="document">
+    <UIPage>
       <UIPageHeader
         title="Settings"
         description="Configure your preferences, manage data, and customize your experience"
-      />
-
-      <UITabs
-        items={tabItems}
-        syncUrl={{ mode: 'path', basePath: '/settings' }}
-        size="large"
-        style={{ marginTop: 24 }}
+        tabs={<UITabs items={tabItems} syncUrl={{ mode: 'path', basePath: '/settings' }} />}
       />
     </UIPage>
   );

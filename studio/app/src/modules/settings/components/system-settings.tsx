@@ -1,9 +1,11 @@
 import * as React from 'react';
 import {
   UISpace,
+  UITabs,
+  UIRow,
+  UICol,
   UITypographyText,
   UITypographyParagraph,
-  UITitle,
   UITag,
   UIButton,
   UIMessage,
@@ -13,7 +15,6 @@ import {
   UIDescriptions,
   UIDescriptionsItem,
   UIIcon,
-  UIDivider,
   UIList,
   UIListItem,
   UIListItemMeta,
@@ -85,101 +86,31 @@ export function SystemSettings() {
 
   const hasRedacted = data?.redacted && data.redacted.length > 0;
 
-  return (
-    <UISpace direction="vertical" size="large" style={{ width: '100%' }}>
+  const platformStatusContent = platformLoading ? (
+    <UIStack>
+      <UISkeleton active lines={5} />
+    </UIStack>
+  ) : error ? (
+    <UIAlert
+      message="Failed to load platform configuration"
+      description={
+        <UISpace direction="vertical" size="small">
+          <UITypographyText>{error instanceof Error ? error.message : 'Unknown error'}</UITypographyText>
+          <UITypographyText type="secondary" style={{ fontSize: '0.875rem' }}>
+            Make sure the REST API server is running and accessible.
+          </UITypographyText>
+        </UISpace>
+      }
+      variant="error"
+      showIcon
+    />
+  ) : !data ? (
+    <UITypographyParagraph type="secondary">No platform configuration available</UITypographyParagraph>
+  ) : null;
 
-      {/* ── STATUS ── */}
-      <UITitle level={4}>Status</UITitle>
-
-      <UICard size="small" title="Data Sources Health">
-        {healthLoading ? (
-          <UIStack>
-            <UISkeleton active lines={3} />
-          </UIStack>
-        ) : healthData ? (
-          <UIList
-            dataSource={healthData.sources}
-            renderItem={(source) => {
-              const status = source.ok
-                ? 'ok'
-                : source.error === 'system_degraded'
-                ? 'degraded'
-                : 'down';
-              return (
-                <UIListItem key={source.name} extra={<HealthIndicator status={status} />}>
-                  <UIListItemMeta
-                    title={source.name}
-                    description={source.latency ? `${source.latency}ms` : undefined}
-                  />
-                </UIListItem>
-              );
-            }}
-          />
-        ) : (
-          <UITypographyParagraph type="secondary">No health data available</UITypographyParagraph>
-        )}
-      </UICard>
-
-      <UICard size="small" title="Registry Status">
-        <UIDescriptions column={{ xs: 1, sm: 2 }} size="small">
-          <UIDescriptionsItem label="Revision">{registryMeta.rev ?? 'N/A'}</UIDescriptionsItem>
-          <UIDescriptionsItem label="Generated At">{formatTimestamp(registryMeta.generatedAt)}</UIDescriptionsItem>
-          <UIDescriptionsItem label="Expires At">{formatTimestamp(registryMeta.expiresAt)}</UIDescriptionsItem>
-          <UIDescriptionsItem label="TTL">
-            {registryMeta.ttlMs ? `${registryMeta.ttlMs / 1000}s` : 'N/A'}
-          </UIDescriptionsItem>
-          <UIDescriptionsItem label="Partial">
-            <UITypographyText type={registryMeta.partial ? 'warning' : 'success'}>
-              {registryMeta.partial ? 'Yes' : 'No'}
-            </UITypographyText>
-          </UIDescriptionsItem>
-          <UIDescriptionsItem label="Stale">
-            <UITypographyText type={registryMeta.stale ? 'danger' : 'success'}>
-              {registryMeta.stale ? 'Yes' : 'No'}
-            </UITypographyText>
-          </UIDescriptionsItem>
-          {registryMeta.checksum && (
-            <UIDescriptionsItem label="Checksum">
-              <UITypographyText code style={{ fontSize: '0.85rem' }}>
-                {registryMeta.checksum.substring(0, 8)}...
-              </UITypographyText>
-            </UIDescriptionsItem>
-          )}
-        </UIDescriptions>
-      </UICard>
-
-      <UIDivider />
-
-      {/* ── PLATFORM ── */}
-      <UITitle level={4}>Platform</UITitle>
-
-      {platformLoading && (
-        <UIStack>
-          <UISkeleton active lines={5} />
-        </UIStack>
-      )}
-
-      {!platformLoading && error && (
-        <UIAlert
-          message="Failed to load platform configuration"
-          description={
-            <UISpace direction="vertical" size="small">
-              <UITypographyText>{error instanceof Error ? error.message : 'Unknown error'}</UITypographyText>
-              <UITypographyText type="secondary" style={{ fontSize: '0.875rem' }}>
-                Make sure the REST API server is running and accessible.
-              </UITypographyText>
-            </UISpace>
-          }
-          variant="error"
-          showIcon
-        />
-      )}
-
-      {!platformLoading && !error && !data && (
-        <UITypographyParagraph type="secondary">No platform configuration available</UITypographyParagraph>
-      )}
-
-      {!platformLoading && !error && data && (
+  const overviewContent = (
+    <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
+      {data && (
         <UICard size="small" title="System Information">
           <UIDescriptions column={{ xs: 1, sm: 2 }} size="small">
             <UIDescriptionsItem label="Execution Mode">
@@ -197,18 +128,81 @@ export function SystemSettings() {
         </UICard>
       )}
 
-      {!platformLoading && !error && data && (
-        <>
-          <UIDivider />
+      <UIRow gutter={[16, 16]}>
+        <UICol xs={24} md={12}>
+          <UICard size="small" title="Data Sources Health" style={{ height: '100%' }}>
+            {healthLoading ? (
+              <UIStack>
+                <UISkeleton active lines={3} />
+              </UIStack>
+            ) : healthData ? (
+              <UIList
+                dataSource={healthData.sources}
+                renderItem={(source) => {
+                  const status = source.ok
+                    ? 'ok'
+                    : source.error === 'system_degraded'
+                    ? 'degraded'
+                    : 'down';
+                  return (
+                    <UIListItem key={source.name} extra={<HealthIndicator status={status} />}>
+                      <UIListItemMeta
+                        title={source.name}
+                        description={source.latency ? `${source.latency}ms` : undefined}
+                      />
+                    </UIListItem>
+                  );
+                }}
+              />
+            ) : (
+              <UITypographyParagraph type="secondary">No health data available</UITypographyParagraph>
+            )}
+          </UICard>
+        </UICol>
 
-          {/* ── ADAPTERS ── */}
-          <UITitle level={4}>Adapters</UITitle>
-          <UITypographyParagraph type="secondary">
-            Adapters are organized by category for better clarity.
-          </UITypographyParagraph>
+        <UICol xs={24} md={12}>
+          <UICard size="small" title="Registry Status" style={{ height: '100%' }}>
+            <UIDescriptions column={1} size="small">
+              <UIDescriptionsItem label="Revision">{registryMeta.rev ?? 'N/A'}</UIDescriptionsItem>
+              <UIDescriptionsItem label="Generated At">{formatTimestamp(registryMeta.generatedAt)}</UIDescriptionsItem>
+              <UIDescriptionsItem label="Expires At">{formatTimestamp(registryMeta.expiresAt)}</UIDescriptionsItem>
+              <UIDescriptionsItem label="TTL">
+                {registryMeta.ttlMs ? `${registryMeta.ttlMs / 1000}s` : 'N/A'}
+              </UIDescriptionsItem>
+              <UIDescriptionsItem label="Partial">
+                <UITypographyText type={registryMeta.partial ? 'warning' : 'success'}>
+                  {registryMeta.partial ? 'Yes' : 'No'}
+                </UITypographyText>
+              </UIDescriptionsItem>
+              <UIDescriptionsItem label="Stale">
+                <UITypographyText type={registryMeta.stale ? 'danger' : 'success'}>
+                  {registryMeta.stale ? 'Yes' : 'No'}
+                </UITypographyText>
+              </UIDescriptionsItem>
+              {registryMeta.checksum && (
+                <UIDescriptionsItem label="Checksum">
+                  <UITypographyText code style={{ fontSize: '0.85rem' }}>
+                    {registryMeta.checksum.substring(0, 8)}...
+                  </UITypographyText>
+                </UIDescriptionsItem>
+              )}
+            </UIDescriptions>
+          </UICard>
+        </UICol>
+      </UIRow>
 
-          <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
-            {groupedAdapters.map((category) => (
+      {!data && platformStatusContent}
+    </UISpace>
+  );
+
+  const adaptersContent = data ? (
+    <>
+      <UITypographyParagraph type="secondary" style={{ marginTop: 0 }}>
+        Adapters are organized by category for better clarity.
+      </UITypographyParagraph>
+
+      <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
+        {groupedAdapters.map((category) => (
               <UICard
                 key={category.name}
                 size="small"
@@ -288,71 +282,90 @@ export function SystemSettings() {
               </UICard>
             ))}
           </UISpace>
+    </>
+  ) : (
+    platformStatusContent
+  );
 
-          {data.adapterOptions && Object.keys(data.adapterOptions).length > 0 && (
-            <div>
-              <UITitle level={4}>Adapter Configuration</UITitle>
-              <UITypographyParagraph type="secondary">
-                Detailed configuration options for each adapter.
-                {hasRedacted && (
-                  <UITypographyText type="warning" style={{ marginLeft: 8 }}>
-                    Some sensitive values have been redacted for security.
-                  </UITypographyText>
-                )}
-              </UITypographyParagraph>
+  const hasAdapterOptions = !!data?.adapterOptions && Object.keys(data.adapterOptions).length > 0;
 
-              <UIAccordion
-                accordion
-                items={Object.entries(data.adapterOptions).map(([adapterName, options]) => {
-                  const optionsCount = options ? Object.keys(options as object).length : 0;
-                  return {
-                    key: adapterName,
-                    label: options ? `${adapterName} (${optionsCount} option${optionsCount !== 1 ? 's' : ''})` : adapterName,
-                    children: options ? (
-                      <pre
-                        style={{
-                          background: 'var(--kb-bg-secondary)',
-                          padding: 12,
-                          borderRadius: 4,
-                          fontSize: '0.85rem',
-                          overflow: 'auto',
-                          margin: 0,
-                        }}
-                      >
-                        {JSON.stringify(options, null, 2)}
-                      </pre>
-                    ) : (
-                      <UITypographyText type="secondary">No options configured</UITypographyText>
-                    ),
-                  };
-                })}
-              />
-            </div>
-          )}
+  const configContent = data ? (
+    <UISpace direction="vertical" size="large" style={{ width: '100%' }}>
+      {hasAdapterOptions && (
+        <div>
+          <UITypographyParagraph type="secondary" style={{ marginTop: 0 }}>
+            Detailed configuration options for each adapter.
+            {hasRedacted && (
+              <UITypographyText type="warning" style={{ marginLeft: 8 }}>
+                Some sensitive values have been redacted for security.
+              </UITypographyText>
+            )}
+          </UITypographyParagraph>
 
-          {hasRedacted && (
-            <UIAlert
-              variant="warning"
-              showIcon
-              message="Security Notice"
-              description={
-                <UISpace direction="vertical" size="small">
-                  <UITypographyText>
-                    The following sensitive fields were redacted from the configuration:
-                  </UITypographyText>
-                  <UISpace wrap>
-                    {data.redacted.map((field) => (
-                      <UITag key={field} color="orange">
-                        {field}
-                      </UITag>
-                    ))}
-                  </UISpace>
-                </UISpace>
-              }
-            />
-          )}
-        </>
+          <UIAccordion
+            accordion
+            items={Object.entries(data.adapterOptions ?? {}).map(([adapterName, options]) => {
+              const optionsCount = options ? Object.keys(options as object).length : 0;
+              return {
+                key: adapterName,
+                label: options ? `${adapterName} (${optionsCount} option${optionsCount !== 1 ? 's' : ''})` : adapterName,
+                children: options ? (
+                  <pre
+                    style={{
+                      background: 'var(--kb-bg-secondary)',
+                      padding: 12,
+                      borderRadius: 4,
+                      fontSize: '0.85rem',
+                      overflow: 'auto',
+                      margin: 0,
+                    }}
+                  >
+                    {JSON.stringify(options, null, 2)}
+                  </pre>
+                ) : (
+                  <UITypographyText type="secondary">No options configured</UITypographyText>
+                ),
+              };
+            })}
+          />
+        </div>
+      )}
+
+      {hasRedacted && (
+        <UIAlert
+          variant="warning"
+          showIcon
+          message="Security Notice"
+          description={
+            <UISpace direction="vertical" size="small">
+              <UITypographyText>
+                The following sensitive fields were redacted from the configuration:
+              </UITypographyText>
+              <UISpace wrap>
+                {(data?.redacted ?? []).map((field) => (
+                  <UITag key={field} color="orange">
+                    {field}
+                  </UITag>
+                ))}
+              </UISpace>
+            </UISpace>
+          }
+        />
       )}
     </UISpace>
+  ) : (
+    platformStatusContent
+  );
+
+  return (
+    <UITabs
+      size="small"
+      defaultActiveKey="overview"
+      items={[
+        { key: 'overview', label: 'Overview', children: overviewContent },
+        { key: 'adapters', label: 'Adapters', children: adaptersContent },
+        { key: 'config', label: 'Configuration', children: configContent },
+      ]}
+    />
   );
 }

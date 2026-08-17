@@ -9,6 +9,9 @@ export default defineConfig({
   testDir: './scenarios',
   testMatch: '**/cases/**/*.spec.ts',
   timeout: 120_000,
+  // Marketplace mutations share one scope lock. Exercise the public API
+  // deterministically here; concurrency safety is covered at the service layer.
+  workers: 1,
   retries: process.env.CI ? 2 : 0,
   reporter: [
     ['list'],

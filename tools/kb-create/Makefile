@@ -1,4 +1,4 @@
-.PHONY: build test test-race e2e cover vet lint clean snapshot help
+.PHONY: build test test-race e2e e2e-release-smoke cover vet lint clean snapshot help
 
 BINARY   := kb-create
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -21,6 +21,10 @@ test:
 ## e2e: run full end-to-end suite (installs platform from npm — requires network)
 e2e:
 	go test -v -race -count=1 -timeout 35m $(if $(E2E_RUN),-run "$(E2E_RUN)",) ./e2e/...
+
+## e2e-release-smoke: bounded public-artifact promotion gate
+e2e-release-smoke:
+	go test -v -race -count=1 -timeout 12m -run '^TestReleaseCandidateJourney$$' ./e2e/...
 
 ## cover: run tests and open coverage report in browser (skips network-bound e2e — use `make e2e` separately)
 cover:

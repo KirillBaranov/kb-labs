@@ -2,8 +2,8 @@
  * Manifest loading utilities
  */
 
-import type { ManifestV3 } from './manifest.js';
-import { isManifestV3 } from './manifest.js';
+import type { ManifestV3 } from "./manifest.js";
+import { isManifestV3 } from "./manifest.js";
 
 /**
  * Parse and validate JSON manifest
@@ -14,7 +14,7 @@ export function parseManifest(json: string): ManifestV3 {
 
     if (!isManifestV3(parsed)) {
       throw new Error(
-        `Invalid manifest: expected schema "kb.plugin/3", got "${parsed.schema || 'unknown'}"`
+        `Invalid manifest: expected schema "kb.plugin/3", got "${parsed.schema || "unknown"}"`,
       );
     }
 
@@ -30,25 +30,32 @@ export function parseManifest(json: string): ManifestV3 {
 /**
  * Validate manifest structure
  */
-export function validateManifest(manifest: ManifestV3): { valid: boolean; errors: string[] } {
+export function validateManifest(manifest: ManifestV3): {
+  valid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Required fields
   if (!manifest.id) {
-    errors.push('Missing required field: id');
+    errors.push("Missing required field: id");
   }
   if (!manifest.version) {
-    errors.push('Missing required field: version');
+    errors.push("Missing required field: version");
   }
 
   // Validate ID format (@scope/name)
   if (manifest.id && !/^@[a-z0-9-]+\/[a-z0-9-]+$/.test(manifest.id)) {
-    errors.push(`Invalid plugin ID format: ${manifest.id} (expected @scope/name)`);
+    errors.push(
+      `Invalid plugin ID format: ${manifest.id} (expected @scope/name)`,
+    );
   }
 
   // Validate version (semver)
   if (manifest.version && !/^\d+\.\d+\.\d+/.test(manifest.version)) {
-    errors.push(`Invalid version format: ${manifest.version} (expected semver)`);
+    errors.push(
+      `Invalid version format: ${manifest.version} (expected semver)`,
+    );
   }
 
   // Validate handler paths exist
@@ -63,7 +70,27 @@ export function validateManifest(manifest: ManifestV3): { valid: boolean; errors
   if (manifest.rest?.routes) {
     for (const route of manifest.rest.routes) {
       if (!route.handler) {
-        errors.push(`REST route "${route.method} ${route.path}" missing handler path`);
+        errors.push(
+          `REST route "${route.method} ${route.path}" missing handler path`,
+        );
+      }
+    }
+  }
+
+  if (manifest.sse?.streams) {
+    const restGetPaths = new Set(
+      (manifest.rest?.routes ?? [])
+        .filter((route) => route.method === "GET")
+        .map((route) => route.path),
+    );
+    for (const stream of manifest.sse.streams) {
+      if (!stream.handler) {
+        errors.push(`Event stream "${stream.path}" missing handler path`);
+      }
+      if (restGetPaths.has(stream.path)) {
+        errors.push(
+          `Event stream "${stream.path}" conflicts with REST GET route`,
+        );
       }
     }
   }
@@ -120,12 +147,22 @@ export function validateManifest(manifest: ManifestV3): { valid: boolean; errors
 export function resolveHeaderPolicy(
   manifest: ManifestV3,
   route?: { path: string; method: string },
-  _basePath?: string
+  _basePath?: string,
 ): {
   allowList?: string[];
   denyList?: string[];
-  inbound: Array<{ match?: { kind: string; name?: string; prefix?: string; pattern?: string }; action?: string; sensitive?: boolean; redactInErrors?: boolean }>;
-  outbound: Array<{ match?: { kind: string; name?: string; prefix?: string; pattern?: string }; action?: string; sensitive?: boolean; redactInErrors?: boolean }>;
+  inbound: Array<{
+    match?: { kind: string; name?: string; prefix?: string; pattern?: string };
+    action?: string;
+    sensitive?: boolean;
+    redactInErrors?: boolean;
+  }>;
+  outbound: Array<{
+    match?: { kind: string; name?: string; prefix?: string; pattern?: string };
+    action?: string;
+    sensitive?: boolean;
+    redactInErrors?: boolean;
+  }>;
 } {
   // For V3, header policy is defined per-route in rest.routes[].headers
   // This is a stub implementation for backward compatibility with registry-lint
@@ -136,7 +173,7 @@ export function resolveHeaderPolicy(
 
   // Find the matching route
   const matchedRoute = manifest.rest.routes.find(
-    r => r.path === route.path && r.method === route.method
+    (r) => r.path === route.path && r.method === route.method,
   );
 
   if (!matchedRoute) {

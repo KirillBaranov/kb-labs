@@ -365,6 +365,10 @@ export interface ChangelogGenerator {
     repoRoot: string;
     gitCwd: string;
     config: ReleaseConfig;
+    /** Named flow whose release tag pattern bounds the changelog. */
+    flow?: string;
+    /** Explicit git boundaries; these take precedence over the flow baseline. */
+    range?: { from?: string; to?: string; sinceTag?: string };
   }): Promise<string>;
 }
 

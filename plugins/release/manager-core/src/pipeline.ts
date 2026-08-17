@@ -309,7 +309,7 @@ async function _runPipeline(ctx: {
   if (changelogGen && channel === 'stable') {
     progress('versioning', 'Generating changelog...');
     try {
-      changelogMd = await changelogGen.generate(plan, { repoRoot, gitCwd: scopeCwd, config });
+      changelogMd = await changelogGen.generate(plan, { repoRoot, gitCwd: scopeCwd, config, flow });
     } catch (err) {
       logger?.warn?.(`Changelog generation failed: ${err instanceof Error ? err.message : String(err)}`);
     }

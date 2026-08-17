@@ -29,6 +29,7 @@ type Input struct {
 	ProjectRoot      string
 	PlatformRoot     string
 	CatalogDigest    string
+	Binaries         []string
 	PackageOverrides map[string]string
 }
 
@@ -71,6 +72,7 @@ func Build(input Input, source catalog.Catalog) (plan.InstallRequest, error) {
 		ProjectRoot:         input.ProjectRoot,
 		PlatformRoot:        input.PlatformRoot,
 		Components:          components,
+		Binaries:            append([]string(nil), input.Binaries...),
 		Effects:             append([]string(nil), file.Effects...),
 		ProviderPreferences: preferences,
 		PackageOverrides:    cloneStringMap(input.PackageOverrides),

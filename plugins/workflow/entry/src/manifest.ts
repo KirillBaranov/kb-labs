@@ -510,7 +510,7 @@ export const manifest = {
     },
     channels: [
       {
-        path: '/logs/:jobId',
+        path: '/logs/:runId',
         handler: './ws/logs-channel.js#default',
         description: 'Real-time job logs streaming',
       },

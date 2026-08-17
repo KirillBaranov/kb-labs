@@ -18,9 +18,9 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@kb-labs/cli-bin?activeTab=versions"><img src="https://img.shields.io/npm/v/%40kb-labs%2Fcli-bin?label=stable" alt="Stable release"></a>
   <a href="https://www.npmjs.com/package/@kb-labs/cli-bin?activeTab=versions"><img src="https://img.shields.io/npm/v/%40kb-labs%2Fcli-bin/canary?label=canary" alt="Canary release"></a>
-  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="Workflow E2E"></a>
-  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml?query=branch%3Amain"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml/badge.svg?branch=main" alt="Security scan"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml?query=branch%3Amaster"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amaster"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=master" alt="Workflow E2E"></a>
+  <a href="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml?query=branch%3Amaster"><img src="https://github.com/kb-labs-team/kb-labs/actions/workflows/security.yml/badge.svg?branch=master" alt="Security scan"></a>
 </p>
 
 <p align="center">Open source · Self-hosted · No cloud required</p>
@@ -63,14 +63,13 @@ decisions; the workflow executes and records the repeatable work.
 
 ```bash
 curl -fsSL https://kblabs.ru/install.sh | sh
-kb-create --demo
+kb-create --help
 ```
 
-Or bootstrap a project directly:
-
-```bash
-kb-create my-project
-```
+`kb-create` is a deterministic launcher: a release supplies a sealed index,
+then a wizard, CI request or agent resolves and applies one compatible plan.
+It has no `--demo` or positional-project install path. See the guide for the
+human and non-interactive flows.
 
 → [Installation guide](https://kblabs.ru/en/install)
 
@@ -108,7 +107,7 @@ Operational signals stay separate from the product header:
 
 | Signal | Status |
 |---|---|
-| Production and documentation | [![Deploy](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain) |
+| Production and documentation | [![Deploy](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=master)](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amaster) |
 | Node.js | 20 or newer; CI runs on Node 22 |
 
 → [CI/CD reference](docs/ci-cd.md)

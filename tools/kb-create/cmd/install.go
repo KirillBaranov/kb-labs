@@ -28,13 +28,18 @@ import (
 )
 
 var (
-	flagInstallPlugins     string
-	flagInstallServices    string
-	flagInstallAdapters    string
-	flagInstallPlatform    string
-	flagInstallProjectRoot string
-	flagInstallRegistry    string
-	flagInstallDevManifest string
+	flagInstallPlugins         string
+	flagInstallServices        string
+	flagInstallAdapters        string
+	flagInstallPlatform        string
+	flagInstallProjectRoot     string
+	flagInstallRegistry        string
+	flagInstallDevManifest     string
+	flagInstallSDKVersion      string
+	flagInstallSDKChannel      string
+	flagInstallPlatformVersion string
+	flagInstallPlatformChannel string
+	flagInstallForceCompat     bool
 )
 
 var installCmd = &cobra.Command{
@@ -54,6 +59,11 @@ func init() {
 	installCmd.Flags().StringVar(&flagInstallProjectRoot, "project-root", "", "project directory to install into (defaults to the project used by the last install for this platform, or the current directory)")
 	installCmd.Flags().StringVar(&flagInstallRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	installCmd.Flags().StringVar(&flagInstallDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
+	installCmd.Flags().StringVar(&flagInstallSDKVersion, "sdk-version", "", "pin the SDK (@kb-labs/sdk) to an exact version — mutually exclusive with --sdk-channel")
+	installCmd.Flags().StringVar(&flagInstallSDKChannel, "sdk-channel", "", `track a release channel for the SDK: "stable" (default) or "canary"`)
+	installCmd.Flags().StringVar(&flagInstallPlatformVersion, "platform-version", "", "pin core+adapters+every service+every plugin to an exact version, all identical — mutually exclusive with --platform-channel")
+	installCmd.Flags().StringVar(&flagInstallPlatformChannel, "platform-channel", "", `track a release channel for core+adapters+every service+every plugin: "stable" (default) or "canary"`)
+	installCmd.Flags().BoolVar(&flagInstallForceCompat, "force-compat", false, "install even if the resolved SDK/Platform versions violate the release's compatibility matrix")
 	rootCmd.AddCommand(installCmd)
 }
 
@@ -73,6 +83,18 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
+	axes, err := resolveAxisFlags(flagInstallSDKVersion, flagInstallSDKChannel, flagInstallPlatformVersion, flagInstallPlatformChannel)
+	if err != nil {
+		return err
+	}
+	manager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
+	if err := ensureToolchain(true, manager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
+	if err := preflightCompatibility(&axes, manifestSource, manager, flagInstallForceCompat, out); err != nil {
+		return err
+	}
+	platformOverrides := manifest.ApplyAxisResolution(manifestSource, axes)
 	catalog, err := enginecatalog.FromManifest(*manifestSource)
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)
@@ -123,7 +145,13 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		}
 		canonicalServices = append(canonicalServices, canonical)
 	}
-	packageOverrides := make(map[string]string, len(pluginVersions)+len(serviceVersions))
+	packageOverrides := make(map[string]string, len(platformOverrides)+len(pluginVersions)+len(serviceVersions))
+	for id, spec := range platformOverrides {
+		packageOverrides[id] = spec
+	}
+	// Per-ID --plugins/--services id@version pins are applied after the
+	// blanket Platform-axis spec, so an explicit per-component pin still
+	// wins for that one component.
 	for id, version := range pluginVersions {
 		packageOverrides["plugin:"+id] = componentPackageSpec(catalog, "plugin:"+id, version)
 	}
@@ -137,6 +165,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		ProjectRoot:      projectDir,
 		PlatformRoot:     platformDir,
 		CatalogDigest:    catalog.Digest,
+		Binaries:         defaultBinaryIDs(manifestSource),
 		PackageOverrides: packageOverrides,
 	}, catalog)
 	if err != nil {
@@ -147,23 +176,24 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("compile declarative install plan: %w", err)
 	}
-	if err := ensureToolchain(true, pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}).Name()); err != nil {
-		return fmt.Errorf("toolchain preflight failed: %w", err)
-	}
 	out.Info(fmt.Sprintf("Installing %s declaratively", describeSelection(plugins, services)))
 	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
-	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}),
-		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
-		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "install.lock"),
-		Rollback:       true,
-	})
-	if err != nil {
-		return fmt.Errorf("declarative installation failed: %w", err)
-	}
 	log, err := logger.NewFileOnly(platformDir)
 	if err != nil {
 		return fmt.Errorf("create declarative install log: %w", err)
+	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: manager,
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "install.lock"),
+		Rollback:       true,
+		Progress:       logPackageManagerProgress(log),
+		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+	})
+	if err != nil {
+		return fmt.Errorf("declarative installation failed: %w", err)
 	}
 	selectedPlugins := make([]string, 0, len(canonicalPlugins))
 	selectedServices := make([]string, 0, len(canonicalServices))
@@ -176,7 +206,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 			selectedServices = append(selectedServices, id)
 		}
 	}
-	result, finalizeErr := (&installer.Installer{PM: pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry}), Log: log}).FinalizeDeclarative(&installer.Selection{
+	result, finalizeErr := (&installer.Installer{PM: manager, Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir:                      platformDir,
 		ProjectCWD:                       projectDir,
 		Plugins:                          selectedPlugins,
@@ -186,13 +216,12 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		Adapters:                         adapters,
 		AllowIncompatibleLegacyMigration: true,
 	}, manifestSource)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return fmt.Errorf("finalize declarative installation: %w", finalizeErr)
 	}
 	printAdapterReconciliation(out, platformDir, adapters, result.InstalledPlugins)
 	printEnvHints(out, platformDir, result.InstalledPlugins)
-	if err := writeDeclarativeInstallState(compiled); err != nil {
+	if err := writeDeclarativeInstallState(compiled, manifestSource, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
 	completed := 0
@@ -204,6 +233,20 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
 
+}
+
+func defaultBinaryIDs(source *manifest.Manifest) []string {
+	if source == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(source.Binaries))
+	for _, binary := range source.Binaries {
+		if binary.Default {
+			ids = append(ids, binary.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 func componentPackageSpec(source enginecatalog.Catalog, id, version string) string {

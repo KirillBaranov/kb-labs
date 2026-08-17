@@ -582,11 +582,20 @@ describe('workflow worker lifecycle', () => {
   });
 
   it('does not execute steps after approval when run is cancelled — regression for merge-without-approval bug', async () => {
-    // Regression: when a run was cancelled while a builtin:approval step was waiting,
-    // waitForApproval returned 'done' instead of 'interrupted' because it only checked
-    // step status (which the engine set to 'success' on cancel), not run status.
-    // This caused the pipeline to continue past the approval gate and execute Merge PR
-    // without human approval.
+    // Original regression: when a run was cancelled while a builtin:approval step
+    // was waiting, the in-process polling loop (`waitForApproval`) returned 'done'
+    // instead of 'interrupted' because it only checked step status (which the
+    // engine set to 'success' on cancel), not run status — the pipeline continued
+    // past the approval gate and executed Merge PR without human approval.
+    //
+    // `waitForApproval` no longer exists: the worker now parks the step and
+    // returns immediately (releasing the worker slot) instead of polling — see
+    // worker.ts's builtin:approval branch. This test now verifies a stronger
+    // guarantee than before: the worker doesn't just check the right field, it
+    // never looks at run/step state again at all once parked, so nothing the
+    // mocked `getRun()` returns afterward (however it's shaped) can cause the
+    // action step to run. Re-queuing a parked-but-cancelled job is guarded
+    // separately, at `engine.resolveApproval`.
     const runId = `run-cancel-approval-${Date.now().toString(36)}`;
     const jobId = `${runId}:job`;
 
@@ -681,10 +690,9 @@ describe('workflow worker lifecycle', () => {
 
     const startPromise = worker.start();
 
-    // Give the worker enough time to reach the approval step, detect cancellation,
-    // and — if the bug is present — proceed to execute the action step.
-    // waitForApproval polls every 2s; 5s gives 2 full polls, enough to exercise the bug.
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // No polling to wait out anymore — the worker parks and returns almost
+    // immediately. A short tick is enough for the job promise to settle.
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     await worker.stop();
     await startPromise;
@@ -695,6 +703,104 @@ describe('workflow worker lifecycle', () => {
 
     // Job must not have completed successfully (was interrupted, not approved)
     expect(run.jobs[0].status).not.toBe('success');
+  });
+
+  it('regression: aborts in-process execution when the job is marked terminal by ' +
+    'something else between steps, instead of continuing and re-finalizing it. ' +
+    'Before the fix, the step loop only re-checked run.status === "cancelled" on ' +
+    'each iteration — never job.status. A job marked \'failed\' by a concurrent ' +
+    'writer (another daemon instance\'s cleanupStaleRuns, a racing markJobFailed) ' +
+    'would still have its remaining steps executed by this in-process loop, and ' +
+    'the loop would then call markJobCompleted/markJobFailed on an already-' +
+    'terminal job — this is the "job failed but still executing" bug.', async () => {
+    const runId = `run-terminal-mid-loop-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      status: 'running',
+      env: {},
+      metadata: {},
+      jobs: [{
+        id: jobId,
+        jobName: 'test-job',
+        status: 'queued',
+        attempt: 0,
+        steps: [
+          { id: 'step-1', status: 'pending', spec: { uses: 'plugin:test/handler', with: {} } },
+          { id: 'step-2', status: 'pending', spec: { uses: 'plugin:test/handler', with: {} } },
+        ],
+      }],
+    };
+
+    let step1Executed = false;
+    mockRunnerExecute.mockImplementation(async () => {
+      if (!step1Executed) {
+        step1Executed = true;
+        // Simulate a concurrent writer marking this job failed while step-1
+        // is executing — e.g. another daemon instance's cleanupStaleRuns, or
+        // a racing markJobFailed call for an unrelated reason.
+        run.jobs[0].status = 'failed';
+      }
+      return { status: 'success', outputs: {} };
+    });
+
+    let queueDrained = false;
+    let markJobCompletedCalled = false;
+    let markJobFailedCalled = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) {
+        return id === runId ? run : null;
+      },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markStepStarted(_r: string, _j: string, stepId: string) {
+        const s = run.jobs[0].steps.find((x: any) => x.id === stepId);
+        if (s) { s.status = 'running'; }
+      },
+      async markStepCompleted(_r: string, _j: string, stepId: string) {
+        const s = run.jobs[0].steps.find((x: any) => x.id === stepId);
+        if (s) { s.status = 'success'; }
+      },
+      async markStepFailed() {},
+      async markJobInterrupted() {},
+      async markJobCompleted() { markJobCompletedCalled = true; },
+      async markJobFailed() { markJobFailedCalled = true; },
+      getStateStore: vi.fn(() => ({
+        updateStep: vi.fn(async () => {}),
+      })),
+    };
+
+    const logger = mockLogger();
+
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger,
+      workspaceRoot: '/tmp/test-terminal-mid-loop',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+    });
+
+    const startPromise = worker.start();
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await worker.stop();
+    await startPromise;
+
+    // step-2 must never have run.
+    expect(mockRunnerExecute).toHaveBeenCalledTimes(1);
+    // Neither terminal-marking method fires again on a job already terminal.
+    expect(markJobCompletedCalled).toBe(false);
+    expect(markJobFailedCalled).toBe(false);
+    expect(run.jobs[0].status).toBe('failed');
   });
 
   it('WF-003: cancel during step execution calls markJobInterrupted, not markJobCompleted', async () => {

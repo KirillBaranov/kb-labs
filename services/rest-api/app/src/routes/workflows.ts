@@ -13,6 +13,7 @@ import type { RestApiConfig } from '@kb-labs/rest-api-core'
 import { WORKFLOW_REDIS_CHANNEL } from '@kb-labs/workflow-constants'
 import { platform } from '@kb-labs/core-runtime'
 import { normalizeBasePath } from './path-helpers'
+import { createSseStream } from '@kb-labs/shared-http'
 
 interface HttpError extends Error {
   statusCode: number;
@@ -68,38 +69,32 @@ export async function registerWorkflowRoutes(
     handler: async (request, reply) => {
       const runId = getRunId(request.params)
 
-      // SSE response — hijack from Fastify
-      reply.hijack()
-      const raw = reply.raw
-
       const origin = request.headers.origin
-      if (typeof origin === 'string' && (origin === 'http://localhost:3000' || origin === 'http://localhost:5173')) {
-        raw.setHeader('Access-Control-Allow-Origin', origin)
-        raw.setHeader('Access-Control-Allow-Credentials', 'true')
-      }
-      raw.setHeader('Content-Type', 'text/event-stream')
-      raw.setHeader('Cache-Control', 'no-cache, no-transform')
-      raw.setHeader('Connection', 'keep-alive')
-      raw.flushHeaders?.()
-      raw.write(': connected\n\n')
+      const stream = createSseStream(request, reply, {
+        logger: request.kbLogger ?? platform.logger,
+        serviceId: 'rest',
+        route: `${basePath}/workflows/runs/:runId/events`,
+        keepAliveMs: KEEP_ALIVE_MS,
+        headers: typeof origin === 'string' && (origin === 'http://localhost:3000' || origin === 'http://localhost:5173')
+          ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }
+          : undefined,
+      })
 
       const sentIds = new Set<string>()
 
       const sendEvent = (type: string, payload: unknown, timestamp?: string) => {
-        if (raw.writableEnded) {return}
         const data = { type, runId, payload, timestamp: timestamp ?? new Date().toISOString() }
         // Dedup by type+timestamp to avoid replaying events that also arrive live
         const dedup = `${type}:${data.timestamp}`
         if (sentIds.has(dedup)) {return}
         sentIds.add(dedup)
-        raw.write(`event: workflow.event\n`)
-        raw.write(`data: ${JSON.stringify(data)}\n\n`)
+        stream.send('workflow.event', data)
       }
 
       // Replay history — send past events for this run
       const alreadyFinished = await replayHistory(runId, sendEvent)
       if (alreadyFinished) {
-        raw.end()
+        stream.close('run_already_finished')
         return
       }
 
@@ -111,11 +106,6 @@ export async function registerWorkflowRoutes(
           cleanup()
         }, IDLE_TIMEOUT_MS)
       }
-
-      const keepAliveTimer = setInterval(() => {
-        if (raw.writableEnded) {return}
-        raw.write(': keep-alive\n\n')
-      }, KEEP_ALIVE_MS)
 
       const unsubscribe = platform.eventBus.subscribe(WORKFLOW_REDIS_CHANNEL, async (rawEvent: unknown) => {
         const event = rawEvent as { type: string; runId: string; payload?: unknown; timestamp?: string }
@@ -130,15 +120,16 @@ export async function registerWorkflowRoutes(
       const cleanup = () => {
         unsubscribe()
         if (idleTimer) {clearTimeout(idleTimer)}
-        clearInterval(keepAliveTimer)
-        if (!raw.writableEnded) {
-          raw.write(`event: workflow.done\ndata: {}\n\n`)
-          raw.end()
-        }
+        stream.send('workflow.done', {})
+        stream.close('workflow_complete')
       }
 
       resetIdle()
-      request.raw.on('close', cleanup)
+      stream.onCleanup(() => {
+        if (idleTimer) {clearTimeout(idleTimer)}
+        unsubscribe()
+      })
+      await stream.closed
     },
   })
 
@@ -152,37 +143,32 @@ export async function registerWorkflowRoutes(
       const query = request.query as { idleTimeoutMs?: string }
       const idleTimeout = query.idleTimeoutMs ? parseInt(query.idleTimeoutMs, 10) : IDLE_TIMEOUT_MS
 
-      reply.hijack()
-      const raw = reply.raw
-
       const origin = request.headers.origin
-      if (typeof origin === 'string' && (origin === 'http://localhost:3000' || origin === 'http://localhost:5173')) {
-        raw.setHeader('Access-Control-Allow-Origin', origin)
-        raw.setHeader('Access-Control-Allow-Credentials', 'true')
-      }
-      raw.setHeader('Content-Type', 'text/event-stream')
-      raw.setHeader('Cache-Control', 'no-cache, no-transform')
-      raw.setHeader('Connection', 'keep-alive')
-      raw.flushHeaders?.()
-      raw.write(': connected\n\n')
+      const stream = createSseStream(request, reply, {
+        logger: request.kbLogger ?? platform.logger,
+        serviceId: 'rest',
+        route: `${basePath}/workflows/runs/:runId/logs`,
+        keepAliveMs: KEEP_ALIVE_MS,
+        headers: typeof origin === 'string' && (origin === 'http://localhost:3000' || origin === 'http://localhost:5173')
+          ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }
+          : undefined,
+      })
 
       const sentLogIds = new Set<string>()
 
       const sendLog = (event: { type: string; runId: string; jobId?: string; stepId?: string; payload?: unknown; timestamp?: string }) => {
-        if (raw.writableEnded) {return}
         const ts = event.timestamp ?? new Date().toISOString()
         const dedup = `${event.type}:${event.jobId ?? ''}:${event.stepId ?? ''}:${ts}`
         if (sentLogIds.has(dedup)) {return}
         sentLogIds.add(dedup)
-        raw.write(`event: workflow.log\n`)
-        raw.write(`data: ${JSON.stringify({
+        stream.send('workflow.log', {
           type: event.type,
           runId: event.runId,
           jobId: event.jobId,
           stepId: event.stepId,
           payload: event.payload,
           timestamp: ts,
-        })}\n\n`)
+        })
       }
 
       // Replay history for logs
@@ -204,8 +190,8 @@ export async function registerWorkflowRoutes(
       } catch { /* cache unavailable */ }
 
       if (logsAlreadyFinished) {
-        raw.write(`event: workflow.done\ndata: {}\n\n`)
-        raw.end()
+        stream.send('workflow.done', {})
+        stream.close('run_already_finished')
         return
       }
 
@@ -217,11 +203,6 @@ export async function registerWorkflowRoutes(
           cleanup()
         }, idleTimeout)
       }
-
-      const keepAliveTimer = setInterval(() => {
-        if (raw.writableEnded) {return}
-        raw.write(': keep-alive\n\n')
-      }, KEEP_ALIVE_MS)
 
       const unsubscribe = platform.eventBus.subscribe(WORKFLOW_REDIS_CHANNEL, async (rawEvent: unknown) => {
         const event = rawEvent as { type: string; runId: string; jobId?: string; stepId?: string; payload?: unknown; timestamp?: string }
@@ -236,15 +217,16 @@ export async function registerWorkflowRoutes(
       const cleanup = () => {
         unsubscribe()
         if (idleTimer) {clearTimeout(idleTimer)}
-        clearInterval(keepAliveTimer)
-        if (!raw.writableEnded) {
-          raw.write(`event: workflow.done\ndata: {}\n\n`)
-          raw.end()
-        }
+        stream.send('workflow.done', {})
+        stream.close('workflow_complete')
       }
 
       resetIdle()
-      request.raw.on('close', cleanup)
+      stream.onCleanup(() => {
+        if (idleTimer) {clearTimeout(idleTimer)}
+        unsubscribe()
+      })
+      await stream.closed
     },
   })
 }

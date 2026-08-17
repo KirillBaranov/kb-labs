@@ -1,7 +1,7 @@
 ---
 title: "Installation"
 description: "Install KB Labs via kb-create, pin versions, verify checksums, and upgrade."
-updatedAt: "2026-07-25"
+updatedAt: "2026-08-12"
 order: 2
 ---
 
@@ -113,6 +113,34 @@ cd my-project
 kb-create status   # shows installed components and platform path
 ```
 
+## Choose a release channel or version
+
+Declarative installs can select the SDK and Platform independently. The
+Platform axis always uses one release for its core packages, adapters,
+services, plugins, and service companion CLI packages.
+
+```bash
+# Install the platform's canary train.
+kb-create my-project --yes --platform-channel canary
+
+# Pin a reproducible Platform release while leaving the SDK at its default.
+kb-create my-project --yes --platform-version 2.118.1
+
+# Use channels with a scoped CI install too.
+kb-create install --plugins=release --sdk-channel stable --platform-channel canary
+```
+
+`stable` maps to npm's `latest` tag and `canary` maps to the npm `canary` tag.
+An exact `--sdk-version` or `--platform-version` cannot be combined with the
+channel flag for that same axis. `kb-create` resolves selected channels to
+concrete versions before installing and stores them in the installation state.
+Use `kb-create status` to see both the channel and resolved version.
+
+If a release manifest publishes compatibility rules, kb-create validates the
+resolved SDK/Platform pair before installation. It refuses an incompatible
+pair without writing packages; `--force-compat` is available for deliberate
+testing or recovery overrides.
+
 ## Verify the installation
 
 ```bash
@@ -166,9 +194,9 @@ See [Configuration → kb.config](/configuration/kb-config) for all adapter opti
 # Upgrade kb-create to latest
 curl -fsSL https://kblabs.ru/install.sh | sh
 
-# Upgrade the platform packages inside a workspace
+# Upgrade the platform packages inside a workspace, keeping its selected channels
 cd my-project
-kb marketplace update
+kb-create update
 ```
 
 ## Enterprise

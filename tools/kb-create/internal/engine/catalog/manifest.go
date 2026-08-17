@@ -34,7 +34,15 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 		for _, patch := range service.Config {
 			componentConfig = append(componentConfig, convertPatch(patch, id))
 		}
-		catalog.Components = append(catalog.Components, Component{ID: id, Kind: "service", Package: service.Pkg, Default: service.Default, Config: componentConfig})
+		companionPackages := []string(nil)
+		if service.Plugin != "" {
+			companion := service.Plugin
+			if service.PluginVersion != "" {
+				companion += "@" + service.PluginVersion
+			}
+			companionPackages = []string{companion}
+		}
+		catalog.Components = append(catalog.Components, Component{ID: id, Kind: "service", Package: service.Pkg, CompanionPackages: companionPackages, Default: service.Default, Config: componentConfig})
 	}
 	for _, plugin := range source.Plugins {
 		if plugin.ID == "" || plugin.Pkg == "" {

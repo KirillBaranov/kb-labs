@@ -1,0 +1,103 @@
+// Package services adapts the public kb-dev JSON protocol to V2 verification.
+// It never imports kb-dev implementation code: the binary protocol is the
+// compatibility boundary that remains valid after launcher cutover.
+package services
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"sort"
+
+	"github.com/kb-labs/create/v2/verify"
+)
+
+type Runner interface {
+	Output(context.Context, string, ...string) ([]byte, error)
+}
+
+type commandRunner struct{}
+
+func (commandRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, name, args...).Output()
+}
+
+// KBDev reads the public JSON emitted by `kb-dev status --json`.
+type KBDev struct {
+	Binary string
+	Runner Runner
+}
+
+func (client KBDev) ServiceStatuses(platformRoot string) ([]verify.ObservedService, error) {
+	binary := client.binary(platformRoot)
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	data, err := runner.Output(context.Background(), binary, "--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "status", "--json")
+	if err != nil {
+		return nil, fmt.Errorf("kb-dev status: %w", err)
+	}
+	var response struct {
+		Services map[string]struct {
+			State string `json:"state"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("decode kb-dev status JSON: %w", err)
+	}
+	result := make([]verify.ObservedService, 0, len(response.Services))
+	for id, service := range response.Services {
+		result = append(result, verify.ObservedService{ID: id, State: service.State})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+// Ensure brings the exact resolved graph to its desired state before V2 reads
+// status. The public `kb-dev ensure --json` command is idempotent and agent
+// friendly; its non-zero exit is preserved as an apply failure.
+func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+	binary := client.binary(platformRoot)
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "ensure"}
+	args = append(args, serviceIDs...)
+	args = append(args, "--json")
+	if _, err := runner.Output(context.Background(), binary, args...); err != nil {
+		return fmt.Errorf("kb-dev ensure: %w", err)
+	}
+	return nil
+}
+
+func (client KBDev) Stop(platformRoot string, serviceIDs []string) error {
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+	binary := client.binary(platformRoot)
+	runner := client.Runner
+	if runner == nil {
+		runner = commandRunner{}
+	}
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "stop"}
+	args = append(args, serviceIDs...)
+	args = append(args, "--json")
+	if _, err := runner.Output(context.Background(), binary, args...); err != nil {
+		return fmt.Errorf("kb-dev stop: %w", err)
+	}
+	return nil
+}
+
+func (client KBDev) binary(platformRoot string) string {
+	if client.Binary != "" {
+		return client.Binary
+	}
+	return filepath.Join(platformRoot, ".kb", "v2", "bin", "kb-dev")
+}

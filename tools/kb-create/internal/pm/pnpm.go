@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/kb-labs/create/internal/toolchain"
 )
@@ -60,9 +61,22 @@ func (p *PnpmManager) installArgs(command, dir string, pkgs []string) []string {
 }
 
 func (p *PnpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
+	// `Installed` is evaluated before the first package is added. pnpm reports
+	// exit code 1 when a valid new platform directory has no node_modules yet;
+	// that is an empty inventory, not an installer failure. Avoid spawning pnpm
+	// in that state so first-run behaviour is independent of a user's HOME,
+	// global pnpm configuration, or shell setup.
+	if _, err := os.Stat(filepath.Join(dir, "node_modules")); err != nil {
+		if os.IsNotExist(err) {
+			return []InstalledPackage{}, nil
+		}
+		return nil, fmt.Errorf("inspect node_modules: %w", err)
+	}
+
 	// #nosec G204 -- command name is fixed; dir is passed as an argument.
 	cmd := exec.CommandContext(context.Background(), "pnpm", "list", "--dir", dir, "--json", "--depth=0")
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "NPM_CONFIG_USERCONFIG="+filepath.Join(dir, ".npmrc"))
 	out, err := cmd.Output()
 	if err != nil && len(out) == 0 {
 		return nil, fmt.Errorf("pnpm list: %w", err)
@@ -146,6 +160,8 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 	}
 
 	done := make(chan struct{}, 2)
+	var output strings.Builder
+	var outputMu sync.Mutex
 	pipe := func(r interface{ Read([]byte) (int, error) }) {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
@@ -154,6 +170,10 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 				*ignoredBuilds = true
 			}
 			if strings.TrimSpace(line) != "" {
+				outputMu.Lock()
+				output.WriteString(line)
+				output.WriteByte('\n')
+				outputMu.Unlock()
 				progress <- Progress{Line: line}
 			}
 		}
@@ -164,7 +184,22 @@ func (p *PnpmManager) runOnce(dir string, args []string, progress chan<- Progres
 	<-done
 	<-done
 
-	return cmd.Wait()
+	err = cmd.Wait()
+	if err == nil {
+		return nil
+	}
+	outputMu.Lock()
+	tail := commandTail(output.String(), 12)
+	outputMu.Unlock()
+	return &CommandError{Command: "pnpm " + strings.Join(args, " "), Output: tail, Cause: err}
+}
+
+func commandTail(output string, limit int) string {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) > limit {
+		lines = lines[len(lines)-limit:]
+	}
+	return strings.Join(lines, "\n")
 }
 
 // approveBuilds runs `pnpm approve-builds --all` headlessly in dir, allowing

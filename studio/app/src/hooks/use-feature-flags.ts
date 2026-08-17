@@ -6,7 +6,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSettings } from '@/providers/settings-provider';
 import type { FeatureId } from '@/config/feature-flags';
-import { isFeatureEnabled as isEnabled, areDependenciesMet } from '@/config/feature-flags';
+import { FEATURE_FLAGS, isFeatureEnabled as isEnabled, areDependenciesMet } from '@/config/feature-flags';
 
 export interface UseFeatureFlagsReturn {
   /** Check if a feature is enabled */
@@ -25,16 +25,7 @@ export interface UseFeatureFlagsReturn {
 
 export function useFeatureFlags(): UseFeatureFlagsReturn {
   const { settings, updateSettings } = useSettings();
-  const enabledFeatures = useMemo(() => settings.experimental?.enabledFeatures ?? [], [settings.experimental?.enabledFeatures]);
-
-  // Create a preferences map for efficient lookup
-  const preferences = useMemo(() => {
-    const map: Record<FeatureId, boolean> = {} as Record<FeatureId, boolean>;
-    enabledFeatures.forEach((id) => {
-      map[id] = true;
-    });
-    return map;
-  }, [enabledFeatures]);
+  const preferences = settings.experimental?.featurePreferences ?? {};
 
   const isFeatureEnabled = useCallback(
     (featureId: FeatureId): boolean => {
@@ -43,44 +34,32 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
     [preferences]
   );
 
-  const toggleFeature = useCallback(
-    (featureId: FeatureId) => {
-      const currentlyEnabled = enabledFeatures.includes(featureId);
-      const newFeatures = currentlyEnabled
-        ? enabledFeatures.filter((id) => id !== featureId)
-        : [...enabledFeatures, featureId];
-
+  const setPreference = useCallback(
+    (featureId: FeatureId, value: boolean) => {
       updateSettings({
         experimental: {
-          enabledFeatures: newFeatures,
+          featurePreferences: { ...preferences, [featureId]: value },
         },
       });
     },
-    [enabledFeatures, updateSettings]
+    [preferences, updateSettings]
+  );
+
+  const toggleFeature = useCallback(
+    (featureId: FeatureId) => {
+      setPreference(featureId, !isFeatureEnabled(featureId));
+    },
+    [isFeatureEnabled, setPreference]
   );
 
   const enableFeature = useCallback(
-    (featureId: FeatureId) => {
-      if (!enabledFeatures.includes(featureId)) {
-        updateSettings({
-          experimental: {
-            enabledFeatures: [...enabledFeatures, featureId],
-          },
-        });
-      }
-    },
-    [enabledFeatures, updateSettings]
+    (featureId: FeatureId) => setPreference(featureId, true),
+    [setPreference]
   );
 
   const disableFeature = useCallback(
-    (featureId: FeatureId) => {
-      updateSettings({
-        experimental: {
-          enabledFeatures: enabledFeatures.filter((id) => id !== featureId),
-        },
-      });
-    },
-    [enabledFeatures, updateSettings]
+    (featureId: FeatureId) => setPreference(featureId, false),
+    [setPreference]
   );
 
   const checkDependencies = useCallback(
@@ -88,6 +67,11 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
       return areDependenciesMet(featureId, preferences);
     },
     [preferences]
+  );
+
+  const enabledFeatures = useMemo(
+    () => (Object.keys(FEATURE_FLAGS) as FeatureId[]).filter((id) => isFeatureEnabled(id)),
+    [isFeatureEnabled]
   );
 
   return {

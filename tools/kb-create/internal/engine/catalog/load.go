@@ -36,7 +36,9 @@ func Normalize(source Catalog) Catalog {
 	source.Migrations = append([]migrate.Definition(nil), source.Migrations...)
 	for i := range source.Components {
 		source.Components[i].Requires = append([]Requirement(nil), source.Components[i].Requires...)
+		source.Components[i].CompanionPackages = append([]string(nil), source.Components[i].CompanionPackages...)
 		source.Components[i].DependsOn = append([]string(nil), source.Components[i].DependsOn...)
+		sort.Strings(source.Components[i].CompanionPackages)
 		sort.Strings(source.Components[i].DependsOn)
 		sort.Slice(source.Components[i].Requires, func(a, b int) bool {
 			return source.Components[i].Requires[a].Capability < source.Components[i].Requires[b].Capability

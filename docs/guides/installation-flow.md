@@ -1,248 +1,81 @@
-# KB Labs — Installation / Update / Uninstall Flow
+# KB Labs launcher lifecycle
 
-> Process diagrams (BPMN-style, rendered as Mermaid) for the `kb-create` installer lifecycle.
-> Source of truth: `tools/kb-create/` (Go implementation) + `.claude/skills/kb-labs-update/SKILL.md` +
-> `.claude/skills/kb-labs-troubleshoot/SKILL.md` + `docs/qa/scenarios/PC-001-clean-install.md` / `S-001-solo-install-first-run.md`.
+`kb-create` has one V2 contract. It does not retain the former imperative installer, its `install` command, package scan, or compatibility state.
 
-**Note on scope:** the original ask assumed uninstall was roadmap-only. It isn't — `kb-create uninstall`
-(`tools/kb-create/cmd/uninstall.go`) is fully implemented today, so it's documented below alongside
-install/update rather than flagged as future work.
+The launcher always receives a sealed `kb.create.release-index/v2` plus an `InstallRequest`; it resolves a deterministic plan before changing either the filesystem or npm state. The same request shape is used by a person, CI, an agent and a built-in scenario.
 
-Swimlanes used across all three diagrams:
+## Inputs and ownership
 
-- **User** — runs commands, answers wizard prompts, confirms diffs/destructive actions
-- **kb-create CLI** — the Go binary orchestrating everything; owns all decision points
-- **Package Manager** (pnpm/npm) — installs/updates npm packages
-- **GitHub Releases** — binary downloads (kb-dev etc.) + kb-create self-update
-- **Filesystem / Config** — platform dir, project `.kb/`, `~/.local/bin` symlinks
-- **Claude Assets** — `.claude/skills/kb-labs-*` + managed CLAUDE.md section (always a non-fatal side lane)
+| Input | Owner | Purpose |
+| --- | --- | --- |
+| `release-index.json` | release workflow | exact npm artifacts, digests, compatibility and service graph for one channel candidate |
+| `InstallRequest` | user / CI / wizard / scenario | platform and SDK selector, service profile, plugins, adapters, roots and policy |
+| component manifests | published packages | config requirements, capability providers and service metadata |
+| receipt and snapshots | launcher | verified installed state used by update, doctor and rollback |
 
-Legend: 🟥 hard failure (aborts, non-zero exit) · 🟨 soft failure (warns, continues) · 🟦 user decision point
+The release index is immutable and digest-checked. The launcher never guesses a package version from a tag or from whatever happens to be in `node_modules`. Services are part of the selected platform bundle; plugins and adapters may be separately selected and pinned when their declared compatibility allows it.
 
----
+## Normal paths
 
-## 1. Install
+For a human, the wizard returns a request; it does not install a different way:
 
-Entry point: `curl -fsSL https://kblabs.ru/install.sh | sh` (downloads `kb-create` binary to
-`~/.local/bin`, verifies SHA-256 against `checksums.txt`) → then `kb-create <project>`.
+```bash
+kb-create wizard \
+  --index release-index.json \
+  --request-platform-root /srv/kb-platform > request.json
 
-```mermaid
-flowchart TD
-    A(["User: curl install.sh"]) --> B{"SHA-256 checksum OK?"}
-    B -- no --> B1["🟥 Abort: checksum mismatch"]
-    B -- yes --> C(["kb-create binary in ~/.local/bin"])
-    C --> D(["User: kb-create PROJECT --yes?"])
-
-    D --> E{"--yes flag or TTY present?"}
-    E -- "no TTY, no --yes" --> E1["🟥 Abort: run with --yes"]
-    E -- "--yes" --> G["Skip wizard, use defaults"]
-    E -- "TTY, no --yes" --> F["Wizard: platform + project dir"]
-
-    F --> F2["Wizard: preset<br/>Recommended / Minimal / Custom"]
-    F2 --> F3{"Custom preset?"}
-    F3 -- yes --> F4["Toggle services / plugins"]
-    F3 -- no --> F5["LLM + telemetry consent<br/>demo mode only"]
-    F4 --> F5
-    F5 --> F6{"🟦 User confirms?"}
-    F6 -- cancel --> F7["🟥 Abort: installation cancelled, nothing written"]
-    F6 -- confirm --> G
-
-    G --> H["Init telemetry<br/>consent-gated"]
-    H --> I["Detect language / PM / framework"]
-    I -. "detect error" .-> I1["🟨 Log and continue"]
-    I --> J["Create platform directory"]
-    J -- "mkdir fails" --> J1["🟥 Abort: create platform dir error"]
-    J --> K["Detect package manager<br/>pnpm preferred, npm fallback"]
-
-    K --> L["Installer.Install"]
-
-    subgraph L1["Step 1: Install packages"]
-        direction TB
-        L1a["Core + adapters + selected<br/>services + plugins via PM.Install"]
-    end
-    L --> L1
-    L1 -- "network/registry error" --> L1x["🟥 Hard fail<br/>telemetry: install_failed<br/>print support hint"]
-
-    subgraph L2["Step 2: Install Go binaries"]
-        direction TB
-        L2a["kb-dev etc. from GitHub Releases<br/>via bindown, symlink to ~/.local/bin"]
-    end
-    L1 --> L2
-    L2 -- "download fails" --> L2x["🟨 Warn: services can be<br/>started manually, continue"]
-
-    subgraph L3["Step 3: Scan manifests"]
-        direction TB
-        L3a["Generate marketplace.lock +<br/>devservices.yaml, derive gateway plan"]
-    end
-    L2 --> L3
-    L3 -- "scan error" --> L3x["🟨 Warn, continue without<br/>marketplace.lock / devservices.yaml"]
-
-    L3 --> M["Symlink kb CLI to ~/.local/bin<br/>+ EnsureInPATH"]
-    M -- "PATH missing" --> M1["🟨 Warn: shell restart needed"]
-    M --> N["Create project .kb/ dir"]
-    N -- fails --> N1["🟥 Abort"]
-    N --> O["Write platform config<br/>provenance, services, plugins"]
-    O -- fails --> O1["🟥 Abort: config error"]
-    O --> P["Persist user state<br/>last platform/project dir"]
-    P -. fails .-> P1["🟨 Non-fatal, continue"]
-
-    P --> Q["Write FULL platform config<br/>gateway plan, LLM, adapters<br/>always overwritten"]
-    Q -- fails --> Q1["🟥 Abort"]
-    Q --> R["Write project .kb/kb.config.jsonc<br/>pointer/overrides, SKIP if exists"]
-
-    R --> S{"--demo flag?"}
-    S -- yes --> S1["Run first AI review<br/>+ offer to commit diff"]
-    S1 -. fails .-> S1x["🟨 Non-fatal, continue"]
-    S -- no --> T
-    S1 --> T["Print next steps to user"]
-
-    T --> U{"--skip-claude?"}
-    U -- no --> V["Claude Assets: write<br/>.claude/skills/kb-labs-*<br/>+ merge managed CLAUDE.md"]
-    V -. fails .-> V1["🟨 Non-fatal, logged only"]
-    U -- yes --> W
-    V --> W["Auto-commit KB Labs-owned<br/>files added during install"]
-    W -. "no git/bare repo" .-> W1["🟨 Skip silently"]
-    W --> X(["✅ Install complete"])
-
-    X --> Y["Post-install: kb-create doctor<br/>user-run verification"]
-    Y --> Y1{"All checks pass?"}
-    Y1 -- yes --> Y2(["Ready: kb --help works"])
-    Y1 -- no --> Y3["Go to kb-labs-troubleshoot skill<br/>stale plugin cache, port conflicts,<br/>build order, zombie daemons, etc."]
-
-    classDef hardfail fill:#5c1a1a,stroke:#ff6b6b,color:#fff
-    classDef softfail fill:#5c4a1a,stroke:#ffcc66,color:#fff
-    classDef decision fill:#1a3a5c,stroke:#6bb3ff,color:#fff
-    class B1,E1,F7,J1,L1x,N1,O1,Q1 hardfail
-    class I1,L2x,L3x,M1,P1,S1x,V1,W1 softfail
-    class B,E,F3,F6,S,U,Y1 decision
+kb-create plan  --index release-index.json --input request.json
+kb-create apply --index release-index.json --input request.json
 ```
 
-**Known real-world failure (from `S-001` QA run, v2.94.0):** `--llm` bootstrap can hit a 401 on gateway
-registration → `.env` is never written → LLM features silently fall back to heuristics (e.g.
-`kb commit` still works, just without AI). This is the `L1x`-adjacent soft path in practice — the
-install itself doesn't abort, but a downstream feature degrades. Worth fixing but not a blocker.
+CI and agents may avoid a request file, but use the identical resolver:
 
----
-
-## 2. Update
-
-Entry point: `kb-create update` (guided by `.claude/skills/kb-labs-update/SKILL.md`).
-
-```mermaid
-flowchart TD
-    A(["User: kb-create update"]) --> B{"Platform dir resolvable?<br/>flag / root flag /<br/>.kb/install.json / user state"}
-    B -- no --> B1["🟥 Abort: platform directory not specified"]
-    B -- yes --> C["Load current manifest,<br/>resolve registry<br/>explicit flag wins over saved"]
-    C --> D["Init telemetry<br/>Nop fallback if config missing"]
-
-    D --> E["Self-update kb-create binary<br/>check GitHub latest *-binaries tag"]
-    E --> F{"Newer version available?"}
-    F -- "check/download fails" --> F1["🟨 Warn only,<br/>continue with current binary"]
-    F -- yes --> G["Download + Apply +<br/>syscall.Exec re-exec self"]
-    G --> H["Rest of update runs<br/>under new binary"]
-    F -- no --> H
-    F1 --> H
-
-    H --> I["Installer.Diff:<br/>installed vs desired package set"]
-    I --> J{"Any changes?"}
-    J -- no --> J1(["✅ Already up to date, exit"])
-    J -- yes --> K{"Registry changed<br/>since last install?"}
-
-    K -- yes --> K1{"🟦 User confirms<br/>registry switch? y/yes"}
-    K1 -- "no/empty" --> K1x["🟥 Abort"]
-    K1 -- yes --> L
-    K -- no --> L["Print diff: Added / Updated / Removed"]
-
-    L --> M{"🟦 User: Apply updates? Y/n"}
-    M -- cancel --> M1["🟥 Abort: nothing applied"]
-    M -- "confirm/default" --> N["Installer.Update"]
-
-    subgraph N1["Package steps"]
-        direction TB
-        N1a["Install newly Added packages"]
-        N1b["PM.Update over full installed set"]
-        N1c["Refresh config snapshot<br/>manifest version, updated-by, registry"]
-        N1d["Re-scan manifests, rewrite<br/>marketplace.lock / devservices.yaml /<br/>gateway upstreams"]
-        N1a --> N1b --> N1c --> N1d
-    end
-    N --> N1
-    N1 -- "fails at any step" --> N1x["🟥 Hard fail<br/>telemetry: update_failed<br/>do NOT hand-fix, run<br/>kb-create doctor --json,<br/>switch to troubleshoot skill"]
-
-    N1 --> O{"--force flag?"}
-    O -- yes --> O1["⚠️ Reset ALL platform config<br/>to manifest defaults<br/>discards LLM/custom adapters<br/>recommend confirming with user first"]
-    O -- no --> O2["Preserve existing services /<br/>plugins / LLM settings"]
-    O1 --> P
-    O2 --> P["Refresh Claude Assets<br/>.claude/skills + CLAUDE.md"]
-    P -. fails .-> P1["🟨 Non-fatal"]
-
-    P --> Q(["✅ Update complete"])
-    Q --> R["User verification:<br/>kb-create doctor + status<br/>+ pnpm kb --help"]
-    R --> S["pnpm kb-dev restart<br/>if services configured"]
-    S --> T["pnpm kb marketplace plugins refresh<br/>clear stale plugin manifests"]
-    T --> U(["Ready"])
-
-    classDef hardfail fill:#5c1a1a,stroke:#ff6b6b,color:#fff
-    classDef softfail fill:#5c4a1a,stroke:#ffcc66,color:#fff
-    classDef decision fill:#1a3a5c,stroke:#6bb3ff,color:#fff
-    class B1,K1x,M1,N1x hardfail
-    class F1,P1 softfail
-    class B,F,J,K,K1,M,O decision
+```bash
+kb-create apply \
+  --index release-index.json \
+  --request-platform-root /srv/kb-platform \
+  --platform-channel stable \
+  --service-profile default \
+  --policy strict \
+  --plugins release@1.2.3 \
+  --adapters openai@1.2.3
 ```
 
----
+Use `--platform-version` or `--sdk-version` for an exact pin. Valid platform channels are `stable`, `canary` and `experimental`. `--offline` chooses the pre-provisioned artifact source; it does not silently fall back to the network.
 
-## 3. Uninstall
+`--platform-root` is retained for recovery operations. `--request-platform-root` is the root for plan/apply/update requests. `--secret-env requirement.id=ENV` passes only an environment-variable reference: the value is never written to the request, receipt, output, diagnostic bundle or telemetry.
 
-Entry point: `kb-create uninstall`. **Fully implemented** (`tools/kb-create/cmd/uninstall.go`) — not
-roadmap. No dedicated skill file yet; `kb-labs-update` SKILL.md references it as the recommended path
-for downgrading ("uninstall, then `kb-create` at desired version").
+## What apply guarantees
 
-```mermaid
-flowchart TD
-    A(["User: kb-create uninstall"]) --> B{"Platform dir resolvable<br/>+ config readable?"}
-    B -- no --> B1["🟥 Abort"]
-    B -- yes --> C["Show deletion preview:<br/>platform dir, project .kb/,<br/>~/.local/bin/kb, ~/.local/bin/kb-dev"]
+1. Validate compatibility, provider bindings, ports and service dependencies.
+2. Install the exact verified artifacts in one package-manager transaction.
+3. Render `.kb/kb.config.jsonc` and `.kb/devservices.yaml` atomically from the resolved plan and package manifests.
+4. Verify `resolved service graph = rendered devservices = kb-dev status`.
+5. Persist a receipt only after verification succeeds.
 
-    C --> D{"--yes flag?"}
-    D -- no --> E{"🟦 User confirms?<br/>strict y/yes, empty = no"}
-    E -- no --> E1["🟥 Abort: nothing removed"]
-    E -- yes --> F
-    D -- yes --> F["Remove Claude Assets first<br/>skills + managed CLAUDE.md section"]
-    F -. fails .-> F1["🟨 Non-fatal:<br/>devkit manifest still<br/>resolvable for diagnostics"]
+An incompatible version, missing provider, missing required configuration, or invalid graph fails before a successful installation is reported. Every result is a JSON envelope with a stable error code, message and remediation hint.
 
-    F --> G["Remove kb / kb-dev<br/>symlinks from user bin dir"]
-    G --> H["Remove project .kb/ dir"]
-    H -. missing .-> H1["🟨 Non-fatal"]
+## Update, recovery and diagnostics
 
-    H --> I["Remove platform directory<br/>retry x3 with backoff<br/>macOS ENOTEMPTY / pnpm symlinks"]
-    I --> J{"All 3 retries failed?"}
-    J -- yes --> J1["🟥 Hard failure: platform dir left behind"]
-    J -- no --> K["Clear last known install<br/>user-state pointer"]
+```bash
+# Resolve and apply a new desired request; a snapshot precedes mutation.
+kb-create update --index release-index.json --input request.json
 
-    K --> L(["✅ Uninstall complete<br/>project source + git history untouched"])
+# Inspect configuration gaps from the selected package manifests.
+kb-create doctor --platform-root /srv/kb-platform
 
-    classDef hardfail fill:#5c1a1a,stroke:#ff6b6b,color:#fff
-    classDef softfail fill:#5c4a1a,stroke:#ffcc66,color:#fff
-    classDef decision fill:#1a3a5c,stroke:#6bb3ff,color:#fff
-    class B1,E1,J1 hardfail
-    class F1,H1 softfail
-    class B,D,E,J decision
+# Apply only manifest-declared safe defaults; missing secrets remain input.
+kb-create doctor --fix --platform-root /srv/kb-platform
+
+# Recover a named immutable snapshot, or remove launcher-owned state.
+kb-create rollback --platform-root /srv/kb-platform --snapshot SNAPSHOT_ID
+kb-create uninstall --platform-root /srv/kb-platform
 ```
 
----
+`doctor --fix` never invents a secret or chooses between ambiguous providers. It records missing user input with the manifest owner and hint. Each mutating operation writes the private package-manager transcript to `.kb/logs/`; on failure it also writes a redacted dossier in `.kb/diagnostics/` and prints both paths. Opt-in telemetry carries only outcome metadata, never paths, secrets or logs.
 
-## Cross-cutting notes
+## Release hand-off
 
-- **Config ownership split** (ADR-0013): platform dir's `.kb/kb.config.jsonc` is installer-owned and
-  always overwritten on install/update; project dir's `.kb/kb.config.jsonc` is user-owned, written
-  once, never overwritten. This is why install/update never clobber user overrides but always refresh
-  platform defaults.
-- **`devservices.yaml` and `marketplace.lock` are always generated**, never hand-edited (matches root
-  `CLAUDE.md`'s "DO NOT MODIFY" rule) — both install and update regenerate them from a manifest scan.
-- **Doctor (`kb-create doctor [--fix]`)** is the standard first response to any post-install/update
-  problem: checks PATH, `node`/`git`/`docker` versions, GitHub reachability (soft), `kb`/`kb-dev` in
-  PATH, platform health (`node_modules` present, package count vs. manifest). `--fix` attempts
-  auto-repair (PATH, symlinks, `node_modules` reinstall) then re-checks.
-- **Troubleshoot skill forbids**: deleting `.kb/kb.config.json`, deleting `.kb/mind/` or `.kb/cache/`
-  without asking, hand-editing files inside `.kb/`, running services with raw `node`/`pnpm *:dev`
-  instead of `kb-dev`, running `pnpm -r build` instead of `kb-devkit` build-order tooling.
+The platform publish workflow emits and seals the index from the exact staged package tarballs, then binds each artifact to the bytes fetched from npm. Candidate smoke performs a clean V2 apply from those public candidate URLs. Promotion attaches the verified index to the platform GitHub Release and updates the stable channel pointer only after the candidate gates are green.
+
+The SDK stream is released first when it changes: the platform index records the exact already-published SDK artifact rather than re-publishing it. See [the release process](../RELEASE-PROCESS.md) for the operational checklist.

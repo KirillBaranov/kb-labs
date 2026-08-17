@@ -1,7 +1,7 @@
 ---
 title: "Manifest Reference (v3)"
 description: "Every field in the kb.plugin/3 plugin manifest."
-updatedAt: "2026-04-07"
+updatedAt: "2026-08-11"
 order: 2
 ---
 
@@ -30,6 +30,7 @@ interface ManifestV3 {
   cli?: { commands: CliCommandDecl[]; groupMeta?: CliGroupMeta[] };
   rest?: RestConfig;
   ws?: WebSocketConfig;
+  sse?: SseConfig;
   workflows?: { handlers: WorkflowHandlerDecl[] };
   webhooks?: { handlers: WebhookHandlerDecl[] };
   jobs?: JobsConfig;
@@ -366,6 +367,48 @@ interface WebSocketChannelDecl {
   idleTimeoutMs?: number;
 }
 ```
+
+## `sse`
+
+Server-sent events are a one-way realtime transport: the client opens an HTTP connection and the plugin sends named events until it closes. `sse` intentionally mirrors the transport-level shape of `ws`, rather than living inside `rest.routes`.
+
+```ts
+interface SseConfig {
+  basePath?: `/v1/plugins/${string}`;
+  defaults?: {
+    timeoutMs?: number;
+    keepAliveMs?: number;
+  };
+  streams: SseStreamDecl[];
+}
+
+interface SseStreamDecl {
+  path: string;
+  description?: string;
+  handler: string;
+  timeoutMs?: number;
+  keepAliveMs?: number;
+  security?: ('none' | 'user' | 'token' | 'oauth')[];
+  permissions?: PermissionSpec;
+}
+```
+
+`basePath` defaults to the plugin REST base path. Stream paths are relative to it and must not overlap a `GET` route of the same plugin. A declaration inherits `timeoutMs` and `keepAliveMs` from `sse.defaults`; values on the stream win. The handler uses `defineEventStream` and runs in-process because its sender owns the live HTTP response.
+
+```ts
+sse: {
+  basePath: '/v1/plugins/agents',
+  defaults: { keepAliveMs: 30_000 },
+  streams: [{
+    path: '/events',
+    description: 'Agent progress updates',
+    handler: './sse/agent-events.js#default',
+    security: ['token'],
+  }],
+}
+```
+
+See [Plugins → REST Routes](/plugins/rest-routes#server-sent-events-sse) for the handler lifecycle.
 
 ## `workflows`
 

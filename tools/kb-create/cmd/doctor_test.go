@@ -1,6 +1,11 @@
 package cmd
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 // TestFailedChecksExcludesSoft verifies that soft failures are not counted as
 // hard failures and therefore do not contribute to the exit-code decision.
@@ -98,5 +103,166 @@ func TestBuildChecks_DockerWiredThroughSoftPath(t *testing.T) {
 	}
 	if !docker.OK && !docker.Soft {
 		t.Error("docker check failed and Soft = false — missing/broken Docker must not fail `kb-create doctor`")
+	}
+}
+
+// ── checkBinariesAgainst: catches the exact 2026-08-12 /tmp symlink-rot incident ──
+
+// symlinkOrSkip creates a symlink and skips the test on platforms/filesystems
+// where symlink creation isn't permitted (matches installer.CopyBinary's own
+// fallback-to-copy behavior, which checkBinariesAgainst explicitly treats as
+// an accepted, undetectable-staleness limitation — see its doc comment).
+func symlinkOrSkip(t *testing.T, target, link string) {
+	t.Helper()
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+}
+
+func TestCheckBinariesAgainstAllHealthy(t *testing.T) {
+	platformDir := t.TempDir()
+	binDir := filepath.Join(platformDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	realBinary := filepath.Join(binDir, "kb-dev")
+	if err := os.WriteFile(realBinary, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	userBinDir := t.TempDir()
+	symlinkOrSkip(t, realBinary, filepath.Join(userBinDir, "kb-dev"))
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if !check.OK {
+		t.Errorf("checkBinariesAgainst() = %+v, want OK for a symlink resolving under <platformDir>/bin", check)
+	}
+}
+
+// TestCheckBinariesAgainstDanglingSymlink reproduces the exact failure mode
+// from the 2026-08-12 incident: ~/.local/bin/kb-dev symlinked into a /tmp
+// build directory that was later reclaimed by macOS's periodic temp
+// cleanup, leaving a dangling symlink that `kb-dev` (bare command) still
+// appeared to "exist" for, while silently resolving to nothing.
+func TestCheckBinariesAgainstDanglingSymlink(t *testing.T) {
+	platformDir := t.TempDir()
+	binDir := filepath.Join(platformDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(binDir, "kb-dev"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	userBinDir := t.TempDir()
+	goneTarget := filepath.Join(t.TempDir(), "reclaimed-build-dir", "kb-dev")
+	symlinkOrSkip(t, goneTarget, filepath.Join(userBinDir, "kb-dev"))
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if check.OK {
+		t.Fatal("checkBinariesAgainst() = OK for a dangling symlink, want a failure")
+	}
+	if check.Soft {
+		t.Error("a dangling binary symlink must be a hard failure, not advisory")
+	}
+	if !strings.Contains(check.Details, "kb-dev") || !strings.Contains(check.Details, "target missing") {
+		t.Errorf("check.Details = %q, want it to name kb-dev and say the target is missing", check.Details)
+	}
+}
+
+// TestCheckBinariesAgainstSymlinkOutsidePlatformTree covers the other rot
+// pattern: the symlink resolves to a real, existing file, but one that
+// belongs to a different platform install (e.g. a stale symlink left over
+// after `--platform` pointed somewhere else) rather than the one being
+// checked.
+func TestCheckBinariesAgainstSymlinkOutsidePlatformTree(t *testing.T) {
+	platformDir := t.TempDir()
+	binDir := filepath.Join(platformDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(binDir, "kb-dev"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	otherPlatformBinary := filepath.Join(t.TempDir(), "kb-dev")
+	if err := os.WriteFile(otherPlatformBinary, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	userBinDir := t.TempDir()
+	symlinkOrSkip(t, otherPlatformBinary, filepath.Join(userBinDir, "kb-dev"))
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if check.OK {
+		t.Fatal("checkBinariesAgainst() = OK for a symlink pointing at a different platform's binary, want a failure")
+	}
+	if !strings.Contains(check.Details, "points outside") {
+		t.Errorf("check.Details = %q, want it to explain the symlink points outside the platform tree", check.Details)
+	}
+}
+
+// TestCheckBinariesAgainstIgnoresBinariesThisPlatformNeverInstalled
+// reproduces a real e2e failure found while dogfooding this check: a
+// scratch platform install that only selects kb-dev (kb-devkit/kb-deploy/
+// kb-monitor are not part of its intent) must not be flagged just because
+// ~/.local/bin/kb-devkit still points at a *different*, legitimately
+// installed platform (e.g. the user's real prod install) — this platform
+// never claimed to own that binary in the first place.
+func TestCheckBinariesAgainstIgnoresBinariesThisPlatformNeverInstalled(t *testing.T) {
+	platformDir := t.TempDir()
+	binDir := filepath.Join(platformDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// This platform only installed kb-dev — kb-devkit was never selected.
+	if err := os.WriteFile(filepath.Join(binDir, "kb-dev"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// A different, unrelated platform install owns kb-devkit.
+	otherPlatformDir := t.TempDir()
+	otherPlatformBin := filepath.Join(otherPlatformDir, "kb-devkit")
+	if err := os.WriteFile(otherPlatformBin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	userBinDir := t.TempDir()
+	symlinkOrSkip(t, filepath.Join(binDir, "kb-dev"), filepath.Join(userBinDir, "kb-dev"))
+	symlinkOrSkip(t, otherPlatformBin, filepath.Join(userBinDir, "kb-devkit"))
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if !check.OK {
+		t.Errorf("checkBinariesAgainst() = %+v, want OK — kb-devkit belongs to a different platform this install never claimed", check)
+	}
+}
+
+func TestCheckBinariesAgainstMissingLinksAreIgnored(t *testing.T) {
+	// No entries in userBinDir at all — an optional binary the user never
+	// installed is not this check's concern (checkKBDev/checkKBCLI cover
+	// "not in PATH" for the required ones).
+	platformDir := t.TempDir()
+	binDir := filepath.Join(platformDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	userBinDir := t.TempDir()
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if !check.OK {
+		t.Errorf("checkBinariesAgainst() = %+v, want OK when no symlinks exist yet to be broken", check)
+	}
+}
+
+func TestCheckBinariesAgainstSkipsWhenPlatformBinMissing(t *testing.T) {
+	// <platformDir>/bin doesn't exist yet — checkPlatform/checkKBDev already
+	// report the more fundamental "not installed" problem; this check must
+	// not pile on a confusing second failure.
+	platformDir := t.TempDir() // no "bin" subdir created
+	userBinDir := t.TempDir()
+
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if !check.OK || !check.Soft {
+		t.Errorf("checkBinariesAgainst() = %+v, want a soft pass when <platformDir>/bin doesn't exist", check)
 	}
 }

@@ -6,80 +6,85 @@
 import type {
   CommandResult as PluginCommandResult,
   PluginContextV3,
-} from '@kb-labs/plugin-contracts';
-import type { FlagSchemaDefinition, InferFlags } from './flags/index';
+} from "@kb-labs/plugin-contracts";
+import type { FlagSchemaDefinition, InferFlags } from "./flags/index";
 
 // Re-exports
-export * from './flags/index';
-export * from './analytics/index';
-export * from './errors/index';
-export * from './helpers/index';
-export * from './define-system-command';
+export * from "./flags/index";
+export * from "./analytics/index";
+export * from "./errors/index";
+export * from "./helpers/index";
+export * from "./define-system-command";
 // Removed: output-helpers (success, error, warning, info, result helpers) - no longer used
-export * from './manifest';
-export * from './manifest-builder';
+export * from "./manifest";
+export * from "./manifest-builder";
 // TODO: V3 migration - permissions helpers need to be rewritten for V3 PermissionSpec structure
 // export * from './permissions';
-export * from './validation/index';
-export * from './rest/index';
-export * from './lifecycle/index';
+export * from "./validation/index";
+export * from "./rest/index";
+export * from "./lifecycle/index";
 // TODO: Remove studio - it's a stub that throws error, not implemented
 // export * from './studio/index';
-export * from './jobs';
-export type { CommandOutput } from '@kb-labs/shared-cli-ui';
+export * from "./jobs";
+export type { CommandOutput } from "@kb-labs/shared-cli-ui";
 
 // Plugin handler definitions (CLI, REST, Webhooks, WebSockets, Workflows)
-export * from './define-command';
-export * from './define-route';
-export * from './define-webhook';
-export * from './define-websocket';
-export * from './define-action';
-export * from './ws-types';
+export * from "./define-command";
+export * from "./define-route";
+export * from "./define-webhook";
+export * from "./define-websocket";
+export * from "./define-event-stream";
+export * from "./define-action";
+export * from "./ws-types";
 
 /**
  * Helper types for command results (optional - use when convenient)
- * 
+ *
  * These types make it easier to define command results without repeating `CommandResult &`.
  * They are completely optional - you can still use `CommandResult & { ... }` directly.
- * 
+ *
  * @example
  * ```typescript
  * // Using helper types (optional)
  * type MyResult = SuccessResult<{ items: Item[]; total: number }>;
- * 
+ *
  * // Direct usage (also works)
  * type MyResult = CommandResult & { ok: true; items: Item[]; total: number };
  * ```
  */
-export type SuccessResult<T extends Record<string, unknown> = Record<string, never>> = CommandResult & { ok: true } & T;
-export type ErrorResult<T extends Record<string, unknown> = Record<string, never>> = CommandResult & { ok: false; error: string } & T;
+export type SuccessResult<
+  T extends Record<string, unknown> = Record<string, never>,
+> = CommandResult & { ok: true } & T;
+export type ErrorResult<
+  T extends Record<string, unknown> = Record<string, never>,
+> = CommandResult & { ok: false; error: string } & T;
 export type ResultWith<T extends Record<string, unknown>> = CommandResult & T;
 
 /**
  * Base command result contract - all command results must extend this
- * 
+ *
  * This defines the minimal contract that every command must fulfill.
  * Every command MUST explicitly declare its result type via generic TResult parameter.
- * 
+ *
  * Required fields:
  * - `ok: boolean` - execution success status
- * 
+ *
  * Recommended fields:
  * - `error?: string` - error message when ok === false
- * 
+ *
  * Additional fields should be added via generic TResult type parameter.
- * 
+ *
  * @example
  * ```typescript
  * // Minimal result (not recommended - use explicit type)
  * type MyResult = CommandResult;
- * 
+ *
  * // Extended result with custom fields (RECOMMENDED)
  * type WorkflowRunResult = CommandResult & {
  *   run: WorkflowRun;
  *   timingMs: number;
  * };
- * 
+ *
  * type ListResult = CommandResult & {
  *   items: Item[];
  *   total: number;
@@ -126,11 +131,11 @@ export type CommandHandler<
   TFlags extends Record<string, unknown> = Record<string, unknown>,
   TResult extends CommandResult = CommandResult,
   TArgv extends readonly string[] = string[],
-  _TEnv = Record<string, string | undefined>
+  _TEnv = Record<string, string | undefined>,
 > = (
   ctx: PluginContextV3,
   argv: TArgv,
-  flags: TFlags
+  flags: TFlags,
 ) => Promise<number | TResult> | number | TResult;
 
 /**
@@ -165,12 +170,12 @@ export type CommandFormatter<
   TFlags extends Record<string, unknown> = Record<string, unknown>,
   TResult extends CommandResult = CommandResult,
   TArgv extends readonly string[] = string[],
-  _TEnv = Record<string, string | undefined>
+  _TEnv = Record<string, string | undefined>,
 > = (
   result: TResult,
   ctx: PluginContextV3,
   flags: TFlags,
-  argv?: TArgv
+  argv?: TArgv,
 ) => void;
 
 /**
@@ -229,7 +234,7 @@ export interface CommandConfig<
   TResult extends CommandResult = CommandResult,
   TConfig = any,
   TArgv extends readonly string[] = string[],
-  TEnv = Record<string, string | undefined>
+  TEnv = Record<string, string | undefined>,
 > {
   /** Command name (for logging) */
   name?: string;
@@ -263,7 +268,13 @@ export interface CommandConfig<
   /** Command handler - must return TResult */
   handler: CommandHandler<TConfig, InferFlags<TFlags>, TResult, TArgv, TEnv>;
   /** Optional formatter for output - receives TResult */
-  formatter?: CommandFormatter<TConfig, InferFlags<TFlags>, TResult, TArgv, TEnv>;
+  formatter?: CommandFormatter<
+    TConfig,
+    InferFlags<TFlags>,
+    TResult,
+    TArgv,
+    TEnv
+  >;
 }
 
 /**

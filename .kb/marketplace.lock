@@ -571,6 +571,20 @@
       ],
       "enabled": true,
       "trust": "untrusted"
+    },
+    "@kb-labs/steward": {
+      "version": "0.1.0",
+      "integrity": "sha256-JeeKJrYK9vfrqwNrvuLOqorIYjoGBY1EBlH+TOHEw/0=",
+      "resolvedPath": "./plugins/steward/entry",
+      "installedAt": "2026-08-14T14:38:00.759Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true,
+      "trust": "untrusted"
     }
   }
 }

@@ -18,11 +18,11 @@ export const manifest = {
 
   cli: {
     groupMeta: [
-      { path: 'marketplace', describe: 'Marketplace plugin management' },
+      { path: 'hub', describe: 'KB Labs Hub publishing (plugin author tools)' },
     ],
     commands: [
       {
-        path: 'marketplace publish',
+        path: 'hub publish',
         category: 'Registry',
         operationType: 'mutate' as const,
         describe: 'Publish plugin to KB Labs Registry',
@@ -30,7 +30,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        path: 'marketplace share',
+        path: 'hub share',
         category: 'Registry',
         operationType: 'mutate' as const,
         describe: 'Share a private plugin (--with or --link)',
@@ -38,7 +38,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        path: 'marketplace yank',
+        path: 'hub yank',
         category: 'Registry',
         operationType: 'mutate' as const,
         describe: 'Yank a specific version',
@@ -46,7 +46,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        path: 'marketplace deprecate',
+        path: 'hub deprecate',
         category: 'Registry',
         operationType: 'mutate' as const,
         describe: 'Deprecate a package',

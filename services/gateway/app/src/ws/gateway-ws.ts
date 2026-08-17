@@ -14,6 +14,7 @@
 import type { Server, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
+import { randomUUID } from 'node:crypto';
 import type { ICache, ILogger } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import { createWsHandler } from '../hosts/ws-handler.js';
@@ -138,8 +139,25 @@ export function attachGatewayWs(
       const { search } = new URL(req.url ?? '/', 'http://localhost');
       const upstreamUrl = buildUpstreamWsUrl(socketUpstream, pathname, search);
       wss.handleUpgrade(req, socket, head, (clientWs) => {
-        const upstreamWs = new WebSocket(upstreamUrl, { headers: forwardWsHeaders(req) });
-        pumpBidirectional(clientWs, upstreamWs, logger);
+        const requestId = typeof req.headers['x-request-id'] === 'string'
+          ? req.headers['x-request-id']
+          : randomUUID();
+        const traceId = typeof req.headers['x-trace-id'] === 'string'
+          ? req.headers['x-trace-id']
+          : randomUUID();
+        const connectionId = randomUUID();
+        const connectionLogger = logger.child({
+          requestId,
+          traceId,
+          'network.transport': 'websocket',
+          'network.connection_id': connectionId,
+          'http.route': pathname,
+        }) ?? logger;
+        connectionLogger.info('Gateway WebSocket relay opened', { event: 'websocket.relay.opened' });
+        const upstreamWs = new WebSocket(upstreamUrl, {
+          headers: { ...forwardWsHeaders(req), 'x-request-id': requestId, 'x-trace-id': traceId },
+        });
+        pumpBidirectional(clientWs, upstreamWs, connectionLogger);
       });
       return;
     }

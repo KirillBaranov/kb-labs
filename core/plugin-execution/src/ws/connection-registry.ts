@@ -24,6 +24,11 @@ export interface ConnectionInfo {
   metadata: Record<string, unknown>;
 }
 
+export interface DeliveryResult {
+  sent: number;
+  dropped: number;
+}
+
 /**
  * Connection registry for tracking and broadcasting
  */
@@ -78,10 +83,12 @@ export class ConnectionRegistry {
    * @param message - Message to broadcast
    * @param excludeConnectionId - Optional connection ID to exclude from broadcast
    */
-  broadcast(channelPath: string, message: WSMessage, excludeConnectionId?: string): void {
+  broadcast(channelPath: string, message: WSMessage, excludeConnectionId?: string): DeliveryResult {
     const connections = this.getChannelConnections(channelPath);
     const payload = JSON.stringify(message);
 
+    let sent = 0;
+    let dropped = 0;
     for (const conn of connections) {
       if (excludeConnectionId && conn.connectionId === excludeConnectionId) {
         continue;
@@ -90,8 +97,12 @@ export class ConnectionRegistry {
       // Only send if socket is open (readyState === 1)
       if (conn.socket.readyState === 1) {
         conn.socket.send(payload);
+        sent += 1;
+      } else {
+        dropped += 1;
       }
     }
+    return { sent, dropped };
   }
 
   /**
@@ -100,15 +111,21 @@ export class ConnectionRegistry {
    * @param connectionIds - Array of connection IDs
    * @param message - Message to send
    */
-  sendTo(connectionIds: string[], message: WSMessage): void {
+  sendTo(connectionIds: string[], message: WSMessage): DeliveryResult {
     const payload = JSON.stringify(message);
 
+    let sent = 0;
+    let dropped = 0;
     for (const connectionId of connectionIds) {
       const conn = this.connections.get(connectionId);
       if (conn && conn.socket.readyState === 1) {
         conn.socket.send(payload);
+        sent += 1;
+      } else {
+        dropped += 1;
       }
     }
+    return { sent, dropped };
   }
 
   /**

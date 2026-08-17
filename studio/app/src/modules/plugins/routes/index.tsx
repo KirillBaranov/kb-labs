@@ -14,6 +14,7 @@ import type { NavigationItem } from '@/components/ui';
 const PATHS = {
   ROOT: '/marketplace',
   DETAIL: '/marketplace/:pluginId',
+  DETAIL_TAB: '/marketplace/:pluginId/:tab',
 } as const;
 
 // Route keys
@@ -32,6 +33,11 @@ export const pluginsRoutes: RouteObject[] = [
   },
   {
     path: PATHS.DETAIL,
+    element: <PluginDetailPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: PATHS.DETAIL_TAB,
     element: <PluginDetailPage />,
     errorElement: <ErrorBoundary />,
   },

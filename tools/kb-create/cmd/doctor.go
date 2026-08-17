@@ -12,9 +12,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/clikit/diag"
+	"github.com/kb-labs/clikit/result"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
+	"github.com/kb-labs/create/internal/platform"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/telemetry"
 )
@@ -56,6 +59,9 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	defer tc.Flush()
 
 	checks := buildChecks(platformDir)
+	if outputMode() != result.ModeHuman {
+		return renderDoctorMachine(cmd, checks)
+	}
 
 	out.Section("Environment Doctor")
 	printChecks(out, checks)
@@ -146,6 +152,22 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	return fmt.Errorf("some checks could not be repaired automatically")
 }
 
+func renderDoctorMachine(cmd *cobra.Command, checks []doctorCheck) error {
+	payload := make([]map[string]any, 0, len(checks))
+	failed := make([]string, 0)
+	for _, check := range checks {
+		payload = append(payload, map[string]any{"name": check.Name, "ok": check.OK, "advisory": check.Soft, "details": check.Details, "fixHint": check.FixHint})
+		if !check.OK && !check.Soft {
+			failed = append(failed, check.Name)
+		}
+	}
+	if len(failed) > 0 {
+		return diag.New(codeDoctor, "Environment checks did not pass", diag.WithReason("failed checks: "+strings.Join(failed, ", ")), diag.WithMeta(map[string]any{"checks": payload, "fixAvailable": doctorFixFlag}))
+	}
+	emit(cmd, result.Success("Environment checks passed", map[string]any{"checks": payload}), outputMode())
+	return nil
+}
+
 // buildChecks constructs all doctor checks with their fix closures.
 func buildChecks(platformDir string) []doctorCheck {
 	ins := &installer.Installer{PM: pm.Detect()}
@@ -164,6 +186,7 @@ func buildChecks(platformDir string) []doctorCheck {
 		checkKBCLI(platformDir, ins),
 		checkKBDev(platformDir, ins),
 		checkPlatform(platformDir, ins),
+		checkBinarySymlinks(platformDir, ins),
 	}
 }
 
@@ -379,6 +402,94 @@ func checkPlatform(platformDir string, ins *installer.Installer) doctorCheck {
 		OK:   true,
 		Details: fmt.Sprintf("%s (%d packages, manifest %s)",
 			platformDir, pkgCount, cfg.Manifest.Version),
+	}
+}
+
+// binariesToCheck are the Go CLIs symlinked into ~/.local/bin whose install
+// is owned by kb-create. "kb" is deliberately excluded — on Unix it's
+// installed as a wrapper shell script (see installer.go), not a raw binary
+// symlink, so the EvalSymlinks-based check below doesn't apply to it.
+var binariesToCheck = []string{"kb-dev", "kb-devkit", "kb-deploy", "kb-monitor"}
+
+// checkBinarySymlinks verifies that each ~/.local/bin/<name> entry actually
+// resolves to a file under the current platform's install tree
+// (<platformDir>/bin). This catches exactly the failure mode from an
+// incident where these symlinks pointed into a /tmp build directory that
+// macOS's periodic temp cleanup later reclaimed: kb-dev kept "existing" on
+// PATH (checkKBDev passes) while silently resolving to nothing.
+func checkBinarySymlinks(platformDir string, ins *installer.Installer) doctorCheck {
+	if platformDir == "" {
+		return doctorCheck{Name: "binaries", OK: true, Soft: true, Details: "skipped (no platform directory)"}
+	}
+	userBinDir, err := platform.UserBinDir()
+	if err != nil {
+		return doctorCheck{Name: "binaries", OK: false, Soft: true, Details: "could not resolve ~/.local/bin: " + err.Error()}
+	}
+	check := checkBinariesAgainst(platformDir, userBinDir)
+	if check.OK || check.Soft {
+		return check
+	}
+	check.Fix = func() error {
+		_, err := ins.RepairBinaries(platformDir)
+		return err
+	}
+	return check
+}
+
+// checkBinariesAgainst is the testable core of checkBinarySymlinks: given an
+// explicit userBinDir (real ~/.local/bin in production, a temp dir in
+// tests), verify every binary THIS platform actually installed (i.e. one
+// that has a real file under <platformDir>/bin) resolves correctly through
+// its ~/.local/bin symlink. Kept side-effect-free (no Fix closure) so tests
+// never need an *installer.Installer.
+//
+// Deliberately does not require every name in binariesToCheck to point at
+// this platform: ~/.local/bin is a single global location shared by every
+// platform install on the machine (that's the whole point of it being on
+// PATH), so a binary this platform never selected — e.g. a scratch/dev
+// install that only installs kb-dev — legitimately keeps pointing at
+// whichever other platform install last claimed it. Flagging that as
+// broken would be a false positive, not a real symlink-rot incident.
+func checkBinariesAgainst(platformDir, userBinDir string) doctorCheck {
+	platformBinDir, err := filepath.EvalSymlinks(filepath.Join(platformDir, "bin"))
+	if err != nil {
+		// Nothing installed under <platformDir>/bin yet — checkPlatform/
+		// checkKBDev already report the more fundamental problem.
+		return doctorCheck{Name: "binaries", OK: true, Soft: true, Details: "skipped (no " + filepath.Join(platformDir, "bin") + ")"}
+	}
+
+	var broken []string
+	for _, name := range binariesToCheck {
+		installedHere := filepath.Join(platformBinDir, name)
+		if _, statErr := os.Stat(installedHere); statErr != nil {
+			// This platform never installed this binary — nothing to own,
+			// nothing to check (see doc comment above).
+			continue
+		}
+		linkPath := filepath.Join(userBinDir, name)
+		if _, statErr := os.Lstat(linkPath); statErr != nil {
+			// Missing entirely — checkKBDev (or an equivalent) already
+			// reports this for kb-dev; other binaries are optional installs.
+			continue
+		}
+		target, evalErr := filepath.EvalSymlinks(linkPath)
+		if evalErr != nil {
+			broken = append(broken, name+" (target missing)")
+			continue
+		}
+		if !strings.HasPrefix(target, platformBinDir+string(filepath.Separator)) && target != platformBinDir {
+			broken = append(broken, fmt.Sprintf("%s (points outside %s: %s)", name, platformBinDir, target))
+		}
+	}
+
+	if len(broken) == 0 {
+		return doctorCheck{Name: "binaries", OK: true, Details: fmt.Sprintf("%s symlinks OK", userBinDir)}
+	}
+	return doctorCheck{
+		Name:    "binaries",
+		OK:      false,
+		Details: strings.Join(broken, ", "),
+		FixHint: "run kb-create doctor --fix",
 	}
 }
 

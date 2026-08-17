@@ -24,14 +24,21 @@ This happens after:
 
 ```bash
 pnpm kb marketplace rehash
+# or, for scripting/agents (no pnpm echo/ELIFECYCLE noise around --json output):
+dev-kb marketplace rehash
 ```
 
 Reads `.kb/marketplace.lock`, recomputes SHA256 for every entry that has a `resolvedPath` (local packages), writes fresh hashes back. No server call, no scope resolution.
 
 ```bash
-# With JSON output for scripting
-pnpm kb marketplace rehash --json
+# With JSON output for scripting — use dev-kb, not `pnpm kb`, so parsers don't
+# choke on the leading `$ node ...` echo or a trailing `ELIFECYCLE` line on failure.
+dev-kb marketplace rehash --json
 ```
+
+> Both `pnpm kb` and `dev-kb` run this repo's local build — never the global
+> prod `kb` in `~/.local/bin`. See "Which `kb` binary to run" in the root
+> `CLAUDE.md`.
 
 ## What it does NOT do
 

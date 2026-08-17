@@ -6,6 +6,8 @@ import { isReady, resolveReadinessReason } from './readiness';
 import type { EventHub, BroadcastEvent } from '../events/hub';
 import { metricsCollector } from '../middleware/metrics.js';
 import { buildRegistrySseAuthHook } from './sse-auth';
+import { createSseStream } from '@kb-labs/shared-http';
+import { platform } from '@kb-labs/core-runtime';
 
 export async function registerEventRoutes(
   server: FastifyInstance,
@@ -23,28 +25,23 @@ export async function registerEventRoutes(
     url: endpoint,
     onRequest: authHook ? [authHook] : undefined,
     handler: async (request, reply) => {
-      // Tell Fastify we're manually managing the response
-      reply.hijack();
-
       // Explicit CORS headers for EventSource (browser requires these before opening connection)
       const origin = request.headers.origin;
-      if (origin === 'http://localhost:3000' || origin === 'http://localhost:5173') {
-        reply.raw.setHeader('Access-Control-Allow-Origin', origin);
-        reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
-      }
-
-      reply.raw.setHeader('Content-Type', 'text/event-stream');
-      reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
-      reply.raw.setHeader('Connection', 'keep-alive');
-      reply.raw.flushHeaders?.();
-      reply.raw.write(': connected\n\n');
+      const stream = createSseStream(request, reply, {
+        logger: request.kbLogger ?? platform.logger,
+        serviceId: 'rest',
+        route: endpoint,
+        headers: origin === 'http://localhost:3000' || origin === 'http://localhost:5173'
+          ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }
+          : undefined,
+      });
 
       const send = (event: BroadcastEvent) => {
-        reply.raw.write(`event: ${event.type}\n`);
-        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+        stream.send(event.type, event);
       };
 
       const unsubscribe = eventHub.subscribe(send);
+      stream.onCleanup(unsubscribe);
 
       const snapshot = registry.snapshot();
       const checksumAlgorithm = snapshot.checksumAlgorithm === 'sha256' ? 'sha256' : undefined;
@@ -100,22 +97,14 @@ export async function registerEventRoutes(
           }
         });
 
-      await new Promise<void>((resolve) => {
-        request.raw.on('close', () => {
-          unsubscribe();
-          reply.raw.end();
-          resolve();
-        });
-        // In inject/test mode, the socket is not a real TCP socket and 'close' may not fire.
-        // Wait for health fetch to complete before resolving so health event is included in response.
-        if (request.raw.socket && !(request.raw.socket as { writable?: boolean }).writable) {
-          void healthPromise.then(() => {
-            unsubscribe();
-            reply.raw.end();
-            resolve();
-          });
-        }
-      });
+      // In inject/test mode there is no TCP close event; finish after the
+      // initial snapshot so Fastify can return the captured response.
+      if (request.raw.socket && !(request.raw.socket as { writable?: boolean }).writable) {
+        await healthPromise;
+        stream.close('test_complete');
+        return;
+      }
+      await stream.closed;
     },
   });
 }

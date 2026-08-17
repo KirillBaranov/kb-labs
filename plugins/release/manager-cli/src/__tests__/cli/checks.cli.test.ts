@@ -84,4 +84,28 @@ describe('release:checks', () => {
     expect(out.ok).toBe(false);
     expect(out.failed).toEqual(['dist-exports']);
   });
+
+  it('CB-04: --flow selects flow checks instead of the global check list', async () => {
+    vi.mocked(useConfig).mockResolvedValue({
+      checks: [{ id: 'global-typecheck', command: 'pnpm', args: ['type-check'] }],
+      flows: {
+        platform: {
+          checks: [{ id: 'dist-exports', command: 'bash', args: ['scripts/gates/check-dist-exports.sh'] }],
+        },
+      },
+    } as never);
+    vi.mocked(runReleaseChecks).mockResolvedValue([
+      { id: 'dist-exports', ok: true, timingMs: 10 },
+    ] as never);
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    const result = await checksCommand.execute(ctx as never, mockCLIInput({ flags: { json: true, flow: 'platform' } }));
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(runReleaseChecks).mock.calls[0]?.[0]).toEqual([
+      { id: 'dist-exports', command: 'bash', args: ['scripts/gates/check-dist-exports.sh'] },
+    ]);
+  });
 });

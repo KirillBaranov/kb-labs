@@ -16,6 +16,7 @@ import '@fastify/type-provider-typebox';
 // such peer, so the augmentation needs an explicit side-effect import here.
 import '@fastify/swagger';
 import type { EventHub } from '../events/hub';
+import type { ILogger } from '@kb-labs/core-platform';
 
 declare module 'fastify/types/instance' {
   interface FastifyInstance<
@@ -61,15 +62,7 @@ declare module 'fastify/types/request' {
       rateLimitKeys: Record<string, string>;
       sanitized: Record<string, string>;
     };
-    kbLogger?: {
-      trace(message: string, meta?: Record<string, unknown>): void;
-      debug(message: string, meta?: Record<string, unknown>): void;
-      info(message: string, meta?: Record<string, unknown>): void;
-      warn(message: string, meta?: Record<string, unknown>): void;
-      error(message: string, error?: Error | unknown, meta?: Record<string, unknown>): void;
-      fatal(message: string, error?: Error | unknown, meta?: Record<string, unknown>): void;
-      child(bindings: Record<string, unknown>): FastifyRequest['kbLogger'];
-    };
+    kbLogger?: ILogger;
     kbPluginId?: string;
     tenantId?: string;
   }

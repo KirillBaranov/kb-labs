@@ -175,7 +175,7 @@ function toRuntimeFormat(spec: PermissionSpec): ContractsPermissionSpec {
   if (spec.shell) { result.shell = { ...spec.shell }; }
 
   if (spec.platform) {
-    const { cache, storage, ...rest } = spec.platform;
+    const { cache, storage, database, ...rest } = spec.platform;
     result.platform = {
       ...rest as NonNullable<ContractsPermissionSpec['platform']>,
       ...(cache !== undefined && {
@@ -183,6 +183,30 @@ function toRuntimeFormat(spec: PermissionSpec): ContractsPermissionSpec {
       }),
       ...(storage !== undefined && {
         storage: Array.isArray(storage) ? { paths: storage } : storage as boolean | { paths?: string[] },
+      }),
+      ...(database !== undefined && typeof database === 'object' && {
+        database: {
+          // `sql`/`timeseries` have no runtime governance yet (no adapter
+          // consumes them) — passed through as-is, inert until one exists.
+          ...(database.sql !== undefined && { sql: database.sql }),
+          ...(database.timeseries !== undefined && { timeseries: database.timeseries }),
+          // The raw contract's `document` grant is object-only (no boolean
+          // "full access" shorthand) — only the `{ collections }` form
+          // translates; `true`/`false` builder shorthands are not
+          // representable and are dropped rather than mistranslated.
+          ...(database.document !== undefined &&
+            typeof database.document === 'object' && {
+              document: {
+                owns: database.document.collections ?? [],
+                // A plugin declaring collections needs to create them.
+                ddl: { ownCollections: true },
+              },
+            }),
+          // Raw contract has no key-prefix scoping yet — `prefixes` is
+          // accepted at the builder level for forward-compatibility but
+          // currently has no runtime effect.
+          ...(database.kv !== undefined && database.kv !== false && { kvStore: {} }),
+        },
       }),
     };
   }

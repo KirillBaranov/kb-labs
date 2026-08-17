@@ -7,6 +7,7 @@
 
 import * as React from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 export interface UIBreadcrumbItem {
   /** Breadcrumb text */
@@ -55,6 +56,8 @@ export function UIBreadcrumb({
   separator,
   className,
 }: UIBreadcrumbProps) {
+  const navigate = useNavigate();
+
   const breadcrumbItems = items.map((item) => ({
     title: item.icon ? (
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -63,7 +66,12 @@ export function UIBreadcrumb({
       </span>
     ) : item.title,
     href: item.href,
-    onClick: item.onClick,
+    onClick: item.href
+      ? (e: React.MouseEvent) => {
+          e.preventDefault();
+          navigate(item.href!);
+        }
+      : item.onClick,
   }));
 
   return (

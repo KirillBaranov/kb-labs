@@ -9,6 +9,7 @@ import {
   type ChangelogPackageInfo,
 } from '@kb-labs/release-manager-changelog';
 import type { ReleaseConfig, ChangelogGenerator } from '@kb-labs/release-manager-core';
+import { buildReleaseTag } from '@kb-labs/release-manager-core';
 import type { ILLM } from '@kb-labs/sdk';
 
 export function createChangelogGenerator(config: ReleaseConfig, llm?: ILLM): ChangelogGenerator {
@@ -27,7 +28,13 @@ export function createChangelogGenerator(config: ReleaseConfig, llm?: ILLM): Cha
           repoRoot: opts.repoRoot,
           gitCwd: opts.gitCwd,
           packages,
-          range: { to: 'HEAD' },
+          range: {
+            ...opts.range,
+            to: opts.range?.to ?? 'HEAD',
+            tagGlob: opts.flow
+              ? buildReleaseTag(opts.flow, '*', config.flows?.[opts.flow]?.tagPattern)
+              : undefined,
+          },
           changelog: {
             template: config.changelog?.template ?? undefined,
             locale,

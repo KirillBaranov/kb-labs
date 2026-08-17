@@ -153,6 +153,94 @@ describe('StateStore', () => {
     expect(result).toBeNull();
   });
 
+  it('regression: two concurrent updateRun calls on the same run do not lose ' +
+    'either mutation — the write lock serializes them so the second call ' +
+    'reads the first call\'s result before applying its own change. Without ' +
+    'the lock, both calls would read the same stale copy, and whichever ' +
+    'saves last would silently discard the other\'s write (the exact class ' +
+    'of bug this rework closes: a job\'s status write and a step\'s status ' +
+    'write to the same run racing and one clobbering the other).', async () => {
+    await store.saveRun(makeRun());
+
+    const [a, b] = await Promise.all([
+      store.updateRun('run-1', (draft) => {
+        draft.env = { ...(draft.env ?? {}), a: 'true' };
+      }),
+      store.updateRun('run-1', (draft) => {
+        draft.env = { ...(draft.env ?? {}), b: 'true' };
+      }),
+    ]);
+
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+
+    const final = await store.getRun('run-1');
+    expect(final!.env).toEqual({ a: 'true', b: 'true' });
+  });
+
+  it('updateRun releases its lock so a subsequent call is not stuck waiting', async () => {
+    await store.saveRun(makeRun());
+
+    await store.updateRun('run-1', (draft) => { draft.status = 'running'; });
+    const second = await store.updateRun('run-1', (draft) => { draft.status = 'success'; });
+
+    expect(second!.status).toBe('success');
+  });
+
+  // ── transitionRun / transitionJob / transitionStep ─────────────────────
+
+  it('transitionRun applies a legal transition and extra field mutations', async () => {
+    await store.saveRun(makeRun());
+
+    const updated = await store.transitionRun('run-1', 'running', (draft) => {
+      draft.startedAt = '2026-01-01T00:01:00Z';
+    });
+
+    expect(updated!.status).toBe('running');
+    expect(updated!.startedAt).toBe('2026-01-01T00:01:00Z');
+  });
+
+  it('transitionRun rejects an illegal transition and leaves the record untouched', async () => {
+    await store.saveRun(makeRun({ status: 'failed' }));
+
+    await expect(store.transitionRun('run-1', 'running')).rejects.toThrow(/Illegal run status transition/);
+
+    const reloaded = await store.getRun('run-1');
+    expect(reloaded!.status).toBe('failed');
+  });
+
+  it('transitionJob applies a legal transition', async () => {
+    await store.saveRun(makeRun());
+
+    const updated = await store.transitionJob('run-1', 'run-1:build', 'running');
+    expect(updated!.status).toBe('running');
+  });
+
+  it('transitionJob rejects an illegal transition', async () => {
+    const run = makeRun();
+    run.jobs[0]!.status = 'success';
+    await store.saveRun(run);
+
+    await expect(store.transitionJob('run-1', 'run-1:build', 'running'))
+      .rejects.toThrow(/Illegal job status transition/);
+  });
+
+  it('transitionStep applies a legal transition', async () => {
+    await store.saveRun(makeRun());
+
+    const updated = await store.transitionStep('run-1', 'run-1:build', 'run-1:build:0', 'running');
+    expect(updated!.status).toBe('running');
+  });
+
+  it('transitionStep rejects an illegal transition', async () => {
+    const run = makeRun();
+    run.jobs[0]!.steps[0]!.status = 'failed';
+    await store.saveRun(run);
+
+    await expect(store.transitionStep('run-1', 'run-1:build', 'run-1:build:0', 'success'))
+      .rejects.toThrow(/Illegal step status transition/);
+  });
+
   // ── updateJob ────────────────────────────────────────────────────────
 
   it('updates a specific job within a run', async () => {
@@ -225,6 +313,47 @@ describe('StateStore', () => {
     expect(released).toHaveLength(1);
     expect(released[0]!.jobName).toBe('test');
     expect(released[0]!.blocked).toBe(false);
+  });
+
+  it('regression: does not double-report a released job when its mutator runs ' +
+    'more than once per call (simulates the CAS-retry loop landing in a later ' +
+    'phase: a discarded attempt against stale data, then a real retry against ' +
+    'a fresh read). Before the fix, `released` was accumulated in a variable ' +
+    'captured once outside the mutator, so every invocation pushed into the ' +
+    'same array — a retried call double-counted the same job, and callers ' +
+    '(markJobCompleted/skipJob) would then enqueue/skip it twice.', async () => {
+    const run = makeRun({
+      jobs: [
+        { id: 'run-1:setup', jobName: 'setup', status: 'success', steps: [] } as unknown as JobRun,
+        {
+          id: 'run-1:test',
+          jobName: 'test',
+          status: 'queued',
+          blocked: true,
+          needs: ['setup'],
+          pendingDependencies: ['setup'],
+          steps: [],
+        } as unknown as JobRun,
+      ],
+    });
+    await store.saveRun(run);
+
+    const originalUpdateRun = store.updateRun.bind(store);
+    const updateRunSpy = vi.spyOn(store, 'updateRun').mockImplementationOnce(async (runId, mutator) => {
+      // Discarded first attempt: mutator runs against a draft that never gets
+      // saved (as if a concurrent writer won the race and this write was
+      // rejected) — exactly what a CAS-conflict retry does before its real,
+      // successful attempt.
+      const discarded = structuredClone((await store.getRun(runId))!);
+      mutator(discarded);
+      return originalUpdateRun(runId, mutator);
+    });
+
+    const released = await store.releaseBlockedJobs('run-1', 'setup');
+    updateRunSpy.mockRestore();
+
+    expect(released).toHaveLength(1);
+    expect(released[0]!.jobName).toBe('test');
   });
 
   it('does not release jobs with remaining dependencies', async () => {

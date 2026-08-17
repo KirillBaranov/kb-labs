@@ -25,7 +25,7 @@ export default defineCommand<unknown, CLIInput<ShareFlags>, ShareTokenResult>({
       const t0 = Date.now();
 
       if (!pkg) {
-        validationError(ctx, 'Package spec is required', 'Usage: kb marketplace share kb:handle/name [--with handle | --link]', flags.json);
+        validationError(ctx, 'Package spec is required', 'Usage: kb hub share kb:handle/name [--with handle | --link]', flags.json);
         return { ok: false, error: 'Package spec is required' };
       }
 

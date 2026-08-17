@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/inbox-contracts",
-  "version": "2.117.0",
+  "version": "2.118.2",
   "type": "module",
   "description": "Public types and schemas for the inbox plugin",
   "main": "./dist/index.js",

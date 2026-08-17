@@ -280,7 +280,7 @@ pnpm kb marketplace plugins refresh
 | Path | Purpose |
 |------|---------|
 | `.kb/devservices.yaml` | Service definitions (ports, commands, deps) |
-| `.kb/kb.config.json` | Platform config (adapters, profiles, scopes) |
+| `.kb/kb.config.jsonc` | V2-generated platform config (adapters, profiles, scopes); rendered from the verified receipt and package manifests |
 | `.kb/logs/tmp/<service>.log` | Service logs (cleared on start) |
 | `.kb/tmp/<service>.pid` | PID files (kill handle, not status source) |
 | `~/.kb/agent.json` | Host Agent config (hostId, gateway URL, workspace paths) |

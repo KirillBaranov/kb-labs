@@ -2,7 +2,7 @@ module github.com/kb-labs/dev
 
 go 1.25.0
 
-toolchain go1.25.12
+toolchain go1.25.13
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0

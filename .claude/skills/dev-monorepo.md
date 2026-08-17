@@ -45,11 +45,13 @@ Layer 4: studio/* (consumes sdk, plugins expose pages)
 ## Running Services
 
 ```bash
-kb-dev start           # all services
-kb-dev start rest      # specific service
+kb-dev start --config .kb/devservices.yaml --net-offset 0        # all services
+kb-dev start rest --config .kb/devservices.yaml --net-offset 0   # specific service
 kb-dev status          # health check
 kb-dev logs workflow   # service logs
 ```
+
+`start`/`restart`/`ensure` require `--config` and `--net-offset` — enforced by a `PreToolUse` hook in `.claude/settings.json`.
 
 ## Publishing
 

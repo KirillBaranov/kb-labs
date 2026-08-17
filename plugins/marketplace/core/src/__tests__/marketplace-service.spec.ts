@@ -154,6 +154,41 @@ describe('MarketplaceService', () => {
       expect(Object.keys(lock!.installed)).toHaveLength(2);
     });
 
+    it('serializes concurrent mutations for the same marketplace scope', async () => {
+      const { dir: dir1, integrity: int1 } = await createPluginDir(tmpDir, 'serial-a', '@kb-labs/serial-a');
+      const { dir: dir2, integrity: int2 } = await createPluginDir(tmpDir, 'serial-b', '@kb-labs/serial-b');
+      const packages = new Map([
+        ['@kb-labs/serial-a', { dir: dir1, version: '1.0.0', integrity: int1 }],
+        ['@kb-labs/serial-b', { dir: dir2, version: '1.0.0', integrity: int2 }],
+      ]);
+      const source = createMockSource(packages);
+      let active = 0;
+      let maxActive = 0;
+      const originalInstall = source.install;
+      source.install = async (...args) => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, 20);
+        });
+        try {
+          return await originalInstall(...args);
+        } finally {
+          active--;
+        }
+      };
+
+      const service = new MarketplaceService({ platformRoot: tmpDir, source });
+      await Promise.all([
+        service.install({ scope: 'platform' }, ['@kb-labs/serial-a']),
+        service.install({ scope: 'platform' }, ['@kb-labs/serial-b']),
+      ]);
+
+      expect(maxActive).toBe(1);
+      const lock = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
+      expect(Object.keys(lock!.installed).sort()).toEqual(['@kb-labs/serial-a', '@kb-labs/serial-b']);
+    });
+
     it('catches afterInstall hook errors as warnings', async () => {
       const { dir, integrity } = await createPluginDir(tmpDir, 'hook-fail', '@kb-labs/hook-fail');
       const source = createMockSource(

@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kb-labs/create/internal/config"
-	"github.com/kb-labs/create/internal/engine/bootstrap"
+	enginecatalog "github.com/kb-labs/create/internal/engine/catalog"
 	"github.com/kb-labs/create/internal/engine/direct"
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
@@ -36,6 +36,9 @@ func init() {
 	updateCmd.Flags().BoolP("yes", "y", false, "skip confirmation prompts")
 	updateCmd.Flags().Bool("force", false, "reset config to defaults (discards LLM and custom adapter settings)")
 	updateCmd.Flags().String("registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
+	updateCmd.Flags().String("sdk-channel", "", `track a release channel for the SDK: "stable" or "canary" (defaults to the channel used by the last install/update)`)
+	updateCmd.Flags().String("platform-channel", "", `track a release channel for core+adapters+every service+every plugin: "stable" or "canary" (defaults to the channel used by the last install/update)`)
+	updateCmd.Flags().Bool("force-compat", false, "update even if the resolved SDK/Platform versions violate the release's compatibility matrix")
 	rootCmd.AddCommand(updateCmd)
 }
 
@@ -55,13 +58,28 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	if err != nil {
 		return err
 	}
-	catalog, err := bootstrap.DefaultCatalog()
-	if err != nil {
-		return fmt.Errorf("load declarative catalog: %w", err)
+	sdkChannelFlag, _ := cmd.Flags().GetString("sdk-channel")
+	platformChannelFlag, _ := cmd.Flags().GetString("platform-channel")
+	forceCompat, _ := cmd.Flags().GetBool("force-compat")
+	axes := manifest.ResolvedAxes{
+		SDK:      stickyAxis(sdkChannelFlag, current.Source.SDKChannel),
+		Platform: stickyAxis(platformChannelFlag, current.Source.PlatformChannel),
+	}
+	manager := pm.Detect(pm.DetectOptions{Registry: registry})
+	if err := ensureToolchain(true, manager.Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
 	}
 	manifestNow, err := manifest.LoadDefault()
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
+	}
+	if err := preflightCompatibility(&axes, manifestNow, manager, forceCompat, out); err != nil {
+		return err
+	}
+	platformOverrides := manifest.ApplyAxisResolution(manifestNow, axes)
+	catalog, err := enginecatalog.FromManifest(*manifestNow)
+	if err != nil {
+		return fmt.Errorf("compile declarative catalog: %w", err)
 	}
 	force, _ := cmd.Flags().GetBool("force")
 	if !force {
@@ -94,12 +112,13 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		}
 	}
 	request, err := direct.Build(direct.Input{
-		Plugins:       plugins,
-		Services:      services,
-		Config:        directConfig,
-		ProjectRoot:   current.CWD,
-		PlatformRoot:  platformDir,
-		CatalogDigest: catalog.Digest,
+		Plugins:          plugins,
+		Services:         services,
+		Config:           directConfig,
+		ProjectRoot:      current.CWD,
+		PlatformRoot:     platformDir,
+		CatalogDigest:    catalog.Digest,
+		PackageOverrides: platformOverrides,
 	}, catalog)
 	if err != nil {
 		return fmt.Errorf("build update request: %w", err)
@@ -115,18 +134,22 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		out.Warn("Cancelled.")
 		return nil
 	}
-	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(pm.DetectOptions{Registry: registry}),
-		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
-		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "update.lock"),
-		Rollback:       true,
-	})
-	if err != nil {
-		return fmt.Errorf("declarative update failed: %w", err)
-	}
 	log, err := logger.NewFileOnly(platformDir)
 	if err != nil {
 		return fmt.Errorf("create declarative update log: %w", err)
+	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
+		PackageManager: manager,
+		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
+		LockPath:       filepath.Join(platformDir, ".kb", "kb-create", "locks", "update.lock"),
+		Rollback:       true,
+		Progress:       logPackageManagerProgress(log),
+		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+	})
+	if err != nil {
+		return fmt.Errorf("declarative update failed: %w", err)
 	}
 	_, finalizeErr := (&installer.Installer{Log: log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir: platformDir,
@@ -135,11 +158,10 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		Services:    append([]string(nil), current.SelectedServices...),
 		Binaries:    intentBinaries(current.ScenarioID, manifestNow),
 	}, manifestNow)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return finalizeErr
 	}
-	if err := writeDeclarativeInstallState(compiled); err != nil {
+	if err := writeDeclarativeInstallState(compiled, manifestNow, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
 	completed := 0

@@ -15,6 +15,7 @@ import (
 
 	"github.com/kb-labs/create/internal/config"
 	engineagent "github.com/kb-labs/create/internal/engine/agent"
+	enginecatalog "github.com/kb-labs/create/internal/engine/catalog"
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	"github.com/kb-labs/create/internal/engine/scenario"
@@ -27,16 +28,21 @@ import (
 )
 
 var (
-	flagYes         bool
-	flagLocal       bool
-	flagDemo        bool
-	flagPlatform    string
-	flagSkipClaude  bool
-	flagNoClaudeMd  bool
-	flagDevManifest string
-	flagRegistry    string
-	flagIntent      string
-	flagEngine      bool
+	flagYes             bool
+	flagLocal           bool
+	flagDemo            bool
+	flagPlatform        string
+	flagSkipClaude      bool
+	flagNoClaudeMd      bool
+	flagDevManifest     string
+	flagRegistry        string
+	flagIntent          string
+	flagEngine          bool
+	flagSDKVersion      string
+	flagSDKChannel      string
+	flagPlatformVersion string
+	flagPlatformChannel string
+	flagForceCompat     bool
 )
 
 func init() {
@@ -50,6 +56,11 @@ func init() {
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
 	rootCmd.Flags().BoolVar(&flagEngine, "engine", false, "use the declarative flow engine for the interactive installation")
+	rootCmd.Flags().StringVar(&flagSDKVersion, "sdk-version", "", "pin the SDK (@kb-labs/sdk) to an exact version — mutually exclusive with --sdk-channel")
+	rootCmd.Flags().StringVar(&flagSDKChannel, "sdk-channel", "", `track a release channel for the SDK: "stable" (default) or "canary"`)
+	rootCmd.Flags().StringVar(&flagPlatformVersion, "platform-version", "", "pin core+adapters+every service+every plugin to an exact version, all identical — mutually exclusive with --platform-channel")
+	rootCmd.Flags().StringVar(&flagPlatformChannel, "platform-channel", "", `track a release channel for core+adapters+every service+every plugin: "stable" (default) or "canary"`)
+	rootCmd.Flags().BoolVar(&flagForceCompat, "force-compat", false, "install even if the resolved SDK/Platform versions violate the release's compatibility matrix")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -89,6 +100,9 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if flagDevManifest != "" {
 		return runDeclarativeCreateFromManifest(cmd, projectRoot, platformRoot)
 	}
+	if err := ensureToolchain(true, pm.Detect().Name()); err != nil {
+		return fmt.Errorf("toolchain preflight failed: %w", err)
+	}
 	intent := flagIntent
 	if intent == "" {
 		intent = "explore"
@@ -105,31 +119,52 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		state.Values["access.mode"] = []byte(`"local"`)
 	}
 	state.Done = true
-	request := engineagent.Request{Command: engineagent.CommandPlan, Scenario: mustJSON(loaded), State: &state, ProjectRoot: projectRoot, PlatformRoot: platformRoot}
-	compiled, protocolErr := engineagent.CompilePlan(request)
-	if protocolErr != nil {
-		return fmt.Errorf("compile declarative create plan: %s", protocolErr.Message)
-	}
-	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
-	if _, err := executeFlowPlan(compiled); err != nil {
+
+	axes, err := resolveAxisFlags(flagSDKVersion, flagSDKChannel, flagPlatformVersion, flagPlatformChannel)
+	if err != nil {
 		return err
 	}
 	declarativeManifest, err := manifest.LoadDefault()
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
-	declarativeIntent := declarativeManifest.IntentByID(intent)
-	if declarativeIntent == nil {
-		return fmt.Errorf("declarative manifest has no intent %q", intent)
+	if err := preflightCompatibility(&axes, declarativeManifest, pm.Detect(), flagForceCompat, newOutput()); err != nil {
+		return err
 	}
+	platformOverrides := manifest.ApplyAxisResolution(declarativeManifest, axes)
+	resolvedCatalog, err := enginecatalog.FromManifest(*declarativeManifest)
+	if err != nil {
+		return fmt.Errorf("compile declarative catalog: %w", err)
+	}
+	builtInstall, err := engineflow.BuildInstallRequest(loaded, state, projectRoot, platformRoot, resolvedCatalog.Digest)
+	if err != nil {
+		return fmt.Errorf("build declarative install request: %w", err)
+	}
+	builtInstall.PackageOverrides = platformOverrides
+
+	request := engineagent.Request{Command: engineagent.CommandPlan, Catalog: &resolvedCatalog, Install: &builtInstall, ProjectRoot: projectRoot, PlatformRoot: platformRoot}
+	compiled, protocolErr := engineagent.CompilePlan(request)
+	if protocolErr != nil {
+		return fmt.Errorf("compile declarative create plan: %s", protocolErr.Message)
+	}
+	printHumanPlanSummary(cmd.OutOrStdout(), compiled)
 	log, err := logger.NewFileOnly(compiled.PlatformRoot)
 	if err != nil {
 		return fmt.Errorf("create declarative install log: %w", err)
 	}
+	rememberRunLog(log)
+	defer func() { _ = log.Close() }()
+	if _, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled)); err != nil {
+		return err
+	}
+	declarativeIntent := declarativeManifest.IntentByID(intent)
+	if declarativeIntent == nil {
+		return fmt.Errorf("declarative manifest has no intent %q", intent)
+	}
 	packageActions := 0
 	for _, action := range compiled.Actions {
 		if action.Kind == engineplan.ActionInstallPackage {
-			packageActions++
+			packageActions += len(actionPackages(action))
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
@@ -144,11 +179,10 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:                         flagDemo,
 		AllowIncompatibleLegacyMigration: true,
 	}, declarativeManifest)
-	_ = log.Close()
 	if finalizeErr != nil {
 		return finalizeErr
 	}
-	if err := writeDeclarativeInstallState(compiled); err != nil {
+	if err := writeDeclarativeInstallState(compiled, declarativeManifest, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "\ninstalled successfully (declarative intent %q).\n", intent)
@@ -219,12 +253,14 @@ func selectedComponentsFromPlan(compiled engineplan.InstallPlan) (plugins, servi
 		if action.Kind != engineplan.ActionInstallPackage {
 			continue
 		}
-		kind, id := manifestComponent(action.Inputs["component"])
-		switch kind {
-		case "plugin":
-			plugins = append(plugins, id)
-		case "service":
-			services = append(services, id)
+		for _, component := range actionComponents(action) {
+			kind, id := manifestComponent(component)
+			switch kind {
+			case "plugin":
+				plugins = append(plugins, id)
+			case "service":
+				services = append(services, id)
+			}
 		}
 	}
 	sort.Strings(plugins)

@@ -154,7 +154,16 @@ func latestBinariesTag(repo string) (string, error) {
 
 func latestBinariesTagFromAPI(repo string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Get(url) // #nosec G704 -- trusted GitHub API fallback
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	// GitHub Actions provides GITHUB_TOKEN automatically. Use it for this
+	// compatibility fallback so a matrix of clean installs does not exhaust
+	// the shared unauthenticated API rate limit when the channel asset is
+	// temporarily unavailable. Local users retain the unauthenticated path.
+	applyGitHubToken(req)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req) // #nosec G704 -- trusted GitHub API fallback
 	if err != nil {
 		return "", err
 	}
@@ -180,6 +189,12 @@ func latestBinariesTagFromAPI(repo string) (string, error) {
 	return "", fmt.Errorf("no %s release found in %s", binariesReleaseSuffix, repo)
 }
 
+func applyGitHubToken(req *http.Request) {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+}
+
 func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
 	var channel struct {
 		Tag string `json:"tag"`
@@ -196,19 +211,34 @@ func latestBinariesTagFromJSON(body []byte, repo string) (string, error) {
 // downloadToTemp downloads a URL into a temporary file and returns its path.
 func downloadToTemp(url string) (string, error) {
 	client := &http.Client{Timeout: 120 * time.Second}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil) // #nosec G107
-	if err != nil {
-		return "", err
-	}
-	resp, err := client.Do(req) // #nosec G704 -- URL from trusted manifest data
-	if err != nil {
-		return "", err
+	var resp *http.Response
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		req, requestErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil) // #nosec G107
+		if requestErr != nil {
+			return "", requestErr
+		}
+		resp, err = client.Do(req) // #nosec G704 -- URL from trusted manifest data
+		if err == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
+		if err != nil {
+			if attempt == 2 {
+				return "", err
+			}
+			time.Sleep(time.Duration(attempt+1) * time.Second)
+			continue
+		}
+		status := resp.StatusCode
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		if !isRetryableHTTPStatus(status) || attempt == 2 {
+			return "", fmt.Errorf("GET %s: HTTP %d", url, status)
+		}
+		time.Sleep(time.Duration(attempt+1) * time.Second)
 	}
 	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GET %s: HTTP %d", url, resp.StatusCode)
-	}
 
 	tmp, err := os.CreateTemp("", "kb-bin-*")
 	if err != nil {
@@ -223,26 +253,40 @@ func downloadToTemp(url string) (string, error) {
 	return tmp.Name(), nil
 }
 
+func isRetryableHTTPStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status >= http.StatusInternalServerError
+}
+
 // verifyChecksum downloads checksums.txt and verifies the file's SHA-256.
 func verifyChecksum(filePath, binaryFile, checksumsURL string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, checksumsURL, nil) // #nosec G107
-	if err != nil {
-		return fmt.Errorf("download checksums: %w", err)
-	}
-	resp, err := client.Do(req) // #nosec G704 -- URL from trusted manifest
-	if err != nil {
-		return fmt.Errorf("download checksums: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GET checksums.txt: HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	var body []byte
+	for attempt := 0; attempt < 3; attempt++ {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, checksumsURL, nil) // #nosec G107
+		if err != nil {
+			return fmt.Errorf("download checksums: %w", err)
+		}
+		resp, err := client.Do(req) // #nosec G704 -- URL from trusted manifest
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				body, err = io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				if err != nil {
+					return err
+				}
+				break
+			}
+			status := resp.StatusCode
+			_ = resp.Body.Close()
+			if !isRetryableHTTPStatus(status) || attempt == 2 {
+				return fmt.Errorf("GET checksums.txt: HTTP %d", status)
+			}
+		} else if attempt == 2 {
+			return fmt.Errorf("download checksums: %w", err)
+		}
+		if attempt < 2 {
+			time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond)
+		}
 	}
 
 	// Find line: "<hash>  <filename>"

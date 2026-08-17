@@ -71,6 +71,17 @@ func TestPnpmManagerName(t *testing.T) {
 	}
 }
 
+func TestPnpmListInstalledTreatsFreshDirectoryAsEmptyInventory(t *testing.T) {
+	dir := t.TempDir()
+	installed, err := (&PnpmManager{}).ListInstalled(dir)
+	if err != nil {
+		t.Fatalf("ListInstalled() on a fresh directory returned an error: %v", err)
+	}
+	if len(installed) != 0 {
+		t.Fatalf("ListInstalled() = %#v, want an empty inventory", installed)
+	}
+}
+
 func TestPnpmInstallArgsUseAppendOnlyReporter(t *testing.T) {
 	p := &PnpmManager{Registry: "http://localhost:4873"}
 	args := p.installArgs("add", "/tmp/project", []string{"@kb-labs/gateway-app"})
@@ -347,6 +358,13 @@ func TestEnsureNpmrcHonorsCustomRegistry(t *testing.T) {
 func TestPnpmInstallRecoversFromIgnoredBuilds(t *testing.T) {
 	if _, err := exec.LookPath("pnpm"); err != nil {
 		t.Skip("pnpm not found in PATH")
+	}
+	// A pnpm binary can be present yet unusable with the active Node runtime
+	// (for example pnpm 11 on Node 20). This integration test exercises pnpm,
+	// so skip rather than misreporting a toolchain mismatch as an installer
+	// regression.
+	if err := exec.Command("pnpm", "--version").Run(); err != nil {
+		t.Skipf("pnpm is not runnable with the active Node runtime: %v", err)
 	}
 
 	fixtureDir := t.TempDir()

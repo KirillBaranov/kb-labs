@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/kb-labs/create/internal/engine/catalog"
 	engineconfig "github.com/kb-labs/create/internal/engine/config"
@@ -133,7 +134,6 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	}
 
 	providers := make(map[string]catalog.Provider)
-	providerDependencies := make(map[string]map[string]bool)
 	for _, componentID := range componentIDs {
 		component := selected[componentID]
 		for _, requirement := range component.Requires {
@@ -142,10 +142,6 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 				return InstallPlan{}, err
 			}
 			providers[requirement.Capability] = provider
-			if providerDependencies[requirement.Capability] == nil {
-				providerDependencies[requirement.Capability] = make(map[string]bool)
-			}
-			providerDependencies[requirement.Capability]["install:"+componentID] = true
 			providerValue, _ := json.Marshal(provider.Package)
 			assembly.Patches = append(assembly.Patches, engineconfig.ConfigPatch{
 				ID:        "provider." + requirement.Capability,
@@ -188,29 +184,21 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		})
 	}
 
-	actions := make([]PlanAction, 0, len(source.Core)+len(selected)+len(providers)+1)
-	foundation := make([]string, 0, len(source.Core))
-	for _, packageSpec := range catalog.SortedIDs(source.Core) {
-		id := "install:core:" + packageSpec
-		foundation = append(foundation, id)
-		inputs := map[string]string{"component": "core", "package": packageSpec}
-		if request.RefreshPackages {
-			inputs["mode"] = "update"
-		}
-		actions = append(actions, PlanAction{ID: id, Kind: ActionInstallPackage, Inputs: inputs})
+	// Installing one package per action made a fresh platform run pnpm's full
+	// dependency resolution once for every artifact. Keep transaction boundaries
+	// where they matter (foundation before selected extensions), but install each
+	// deterministic group in one package-manager invocation.
+	actions := make([]PlanAction, 0, len(providers)+3)
+	foundation := ""
+	if specs := catalog.SortedIDs(source.Core); len(specs) > 0 {
+		foundation = "install:foundation"
+		actions = append(actions, packageAction(foundation, "foundation", specs, nil, nil, request.RefreshPackages))
 	}
+	selectionSpecs := make([]string, 0, len(selected)+len(providers))
 	for _, id := range componentIDs {
 		component := selected[id]
-		dependencies := make([]string, 0, len(component.DependsOn))
-		dependencies = append(dependencies, foundation...)
-		for _, dependency := range catalog.SortedIDs(component.DependsOn) {
-			dependencies = append(dependencies, "install:"+dependency)
-		}
-		inputs := map[string]string{"component": id, "package": component.Package}
-		if request.RefreshPackages {
-			inputs["mode"] = "update"
-		}
-		actions = append(actions, PlanAction{ID: "install:" + id, Kind: ActionInstallPackage, DependsOn: dependencies, Inputs: inputs})
+		selectionSpecs = append(selectionSpecs, component.Package)
+		selectionSpecs = append(selectionSpecs, component.CompanionPackages...)
 	}
 	capabilities := make([]string, 0, len(providers))
 	for capability := range providers {
@@ -219,20 +207,16 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	sort.Strings(capabilities)
 	for _, capability := range capabilities {
 		provider := providers[capability]
-		providerInstall := "install:provider:" + capability
-		providerDeps := append([]string(nil), foundation...)
-		inputs := map[string]string{"component": "provider:" + capability, "package": provider.Package}
-		if request.RefreshPackages {
-			inputs["mode"] = "update"
-		}
-		actions = append(actions, PlanAction{ID: providerInstall, Kind: ActionInstallPackage, DependsOn: providerDeps, Inputs: inputs})
-		dependencies := make([]string, 0, len(providerDependencies[capability])+1)
-		dependencies = append(dependencies, providerInstall)
-		for dependency := range providerDependencies[capability] {
-			dependencies = append(dependencies, dependency)
-		}
-		sort.Strings(dependencies)
+		selectionSpecs = append(selectionSpecs, provider.Package)
+		dependencies := []string{"install:selection"}
 		actions = append(actions, PlanAction{ID: "bind:" + capability, Kind: ActionBindProvider, DependsOn: dependencies, Inputs: map[string]string{"capability": capability, "provider": provider.ID, "package": provider.Package}})
+	}
+	if len(selectionSpecs) > 0 {
+		dependencies := make([]string, 0, 1)
+		if foundation != "" {
+			dependencies = append(dependencies, foundation)
+		}
+		actions = append(actions, packageAction("install:selection", "selection", selectionSpecs, componentIDs, dependencies, request.RefreshPackages))
 	}
 	// Scenario/direct effects are applied after component and provider
 	// contributions. Effect IDs are sorted so request ordering cannot change
@@ -254,6 +238,21 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Binaries: catalog.SortedIDs(request.Binaries), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
+}
+
+func packageAction(id, component string, specs, components, dependsOn []string, update bool) PlanAction {
+	specs = catalog.SortedIDs(specs)
+	inputs := map[string]string{
+		"component": component,
+		"packages":  strings.Join(specs, "\n"),
+	}
+	if len(components) > 0 {
+		inputs["components"] = strings.Join(catalog.SortedIDs(components), "\n")
+	}
+	if update {
+		inputs["mode"] = "update"
+	}
+	return PlanAction{ID: id, Kind: ActionInstallPackage, DependsOn: append([]string(nil), dependsOn...), Inputs: inputs}
 }
 
 func sortedPreferenceKeys(preferences map[string][]string) []string {
