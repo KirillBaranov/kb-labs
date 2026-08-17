@@ -349,7 +349,6 @@ export async function createWorkflowWorker(
         // Deterministic workspaceId per run — retries reuse the same worktree
         const ws = await wsProvider.materialize({
           workspaceId: wsId,
-          sourceRef: "main",
           metadata: { runId: run.id, jobId: job.id },
           onProgress: (event) => {
             jobLogger.info(`[workspace] ${event.stage}: ${event.message}`, {

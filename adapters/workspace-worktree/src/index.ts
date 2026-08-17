@@ -142,6 +142,10 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       );
       progress('worktree', 'Worktree created', 25);
 
+      // Stage 1b: Symlink the root .env — it's gitignored so `git worktree add`
+      // never copies it, and its contents aren't per-worktree specific.
+      this.symlinkEnvFromRoot(worktreePath);
+
       // Stage 2: Initialize submodules
       if (this.initSubmodules) {
         progress('submodules', 'Initializing submodules...', 30);
@@ -315,6 +319,18 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
           // ignore — another process may have raced us
         }
       }
+    }
+  }
+
+  private symlinkEnvFromRoot(worktreePath: string): void {
+    const rootEnv = path.join(this.repoRoot, '.env');
+    if (!existsSync(rootEnv)) return;
+    const worktreeEnv = path.join(worktreePath, '.env');
+    if (existsSync(worktreeEnv)) return;
+    try {
+      symlinkSync(rootEnv, worktreeEnv);
+    } catch {
+      // ignore — another process may have raced us
     }
   }
 

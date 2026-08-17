@@ -135,7 +135,11 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`Studio  http://localhost:${PORT}`);
-  console.log(`API     ${runtimeConfig.KB_API_BASE_URL}`);
-});
+// Only listen when this file is the entrypoint — a bare `import` (e.g. the
+// release pipeline's clean-install packaging check) must not start a server.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  server.listen(PORT, HOST, () => {
+    console.log(`Studio  http://localhost:${PORT}`);
+    console.log(`API     ${runtimeConfig.KB_API_BASE_URL}`);
+  });
+}

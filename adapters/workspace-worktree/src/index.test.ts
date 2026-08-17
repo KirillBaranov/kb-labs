@@ -170,4 +170,91 @@ describe('WorktreeWorkspaceAdapter', () => {
       expect(vi.mocked(symlinkSync)).not.toHaveBeenCalled();
     });
   });
+
+  describe('symlinkEnvFromRoot', () => {
+    beforeEach(() => {
+      vi.mocked(existsSync).mockReset();
+      vi.mocked(mkdirSync).mockReset();
+      vi.mocked(symlinkSync).mockReset();
+    });
+
+    afterEach(() => {
+      vi.mocked(existsSync).mockReset();
+    });
+
+    it('symlinks root .env into worktree when present and not already linked', async () => {
+      const repoRoot = '/platform';
+      const worktreePath = `${repoRoot}/.worktrees/wt_env`;
+
+      vi.mocked(existsSync).mockImplementation((p) => {
+        if (String(p) === `${repoRoot}/.worktrees`) return true;
+        if (String(p) === worktreePath) return false;
+        if (String(p) === `${repoRoot}/.env`) return true;
+        if (String(p) === `${worktreePath}/.env`) return false;
+        return false;
+      });
+
+      const adapter = new WorktreeWorkspaceAdapter({
+        workspace: { cwd: repoRoot },
+        initSubmodules: false,
+        installDeps: false,
+        toolDistPaths: [],
+      });
+
+      await adapter.materialize({ workspaceId: 'wt_env', sourceRef: 'main' }).catch(() => {});
+
+      const calls = vi.mocked(symlinkSync).mock.calls;
+      const envCall = calls.find(([src]) => String(src).endsWith('.env'));
+      expect(envCall).toBeDefined();
+      expect(String(envCall![0])).toBe(`${repoRoot}/.env`);
+      expect(String(envCall![1])).toBe(`${worktreePath}/.env`);
+    });
+
+    it('skips symlink when root .env does not exist', async () => {
+      const repoRoot = '/platform';
+      const worktreePath = `${repoRoot}/.worktrees/wt_noenv`;
+
+      vi.mocked(existsSync).mockImplementation((p) => {
+        if (String(p) === `${repoRoot}/.worktrees`) return true;
+        if (String(p) === worktreePath) return false;
+        if (String(p) === `${repoRoot}/.env`) return false;
+        return false;
+      });
+
+      const adapter = new WorktreeWorkspaceAdapter({
+        workspace: { cwd: repoRoot },
+        initSubmodules: false,
+        installDeps: false,
+        toolDistPaths: [],
+      });
+
+      await adapter.materialize({ workspaceId: 'wt_noenv', sourceRef: 'main' }).catch(() => {});
+
+      expect(vi.mocked(symlinkSync)).not.toHaveBeenCalled();
+    });
+
+    it('skips symlink when worktree .env already exists', async () => {
+      const repoRoot = '/platform';
+      const worktreePath = `${repoRoot}/.worktrees/wt_envexists`;
+
+      vi.mocked(existsSync).mockImplementation((p) => {
+        if (String(p) === `${repoRoot}/.worktrees`) return true;
+        if (String(p) === worktreePath) return false;
+        if (String(p) === `${repoRoot}/.env`) return true;
+        if (String(p) === `${worktreePath}/.env`) return true;
+        return false;
+      });
+
+      const adapter = new WorktreeWorkspaceAdapter({
+        workspace: { cwd: repoRoot },
+        initSubmodules: false,
+        installDeps: false,
+        toolDistPaths: [],
+      });
+
+      await adapter.materialize({ workspaceId: 'wt_envexists', sourceRef: 'main' }).catch(() => {});
+
+      expect(vi.mocked(symlinkSync)).not.toHaveBeenCalled();
+    });
+  });
 });
