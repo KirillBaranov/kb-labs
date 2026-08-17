@@ -19,12 +19,13 @@ export async function verifyPackages(
   options?: {
     logger?: Pick<PluginLogger, 'info'>;
     onProgress?: (pkg: string, result: VerifyResult) => void;
+    packageManager?: 'pnpm' | 'npm' | 'yarn';
   },
 ): Promise<VerifyResult[]> {
   const results: VerifyResult[] = [];
 
   for (const pkg of packages) {
-    const result = verifyPackage(pkg.path, pkg.name);
+    const result = verifyPackage(pkg.path, pkg.name, options?.packageManager);
     results.push(result);
     options?.onProgress?.(pkg.name, result);
   }
@@ -34,9 +35,26 @@ export async function verifyPackages(
 
 /**
  * Verify a single package is publishable.
- * npm pack → extract → check exports, directory imports, test leaks, syntax.
+ * pack → extract → check exports, directory imports, test leaks, syntax.
+ *
+ * Packing tool must match what the real publish step will actually use:
+ * `pnpm pack` resolves `workspace:`/`link:` protocol refs to real version
+ * ranges natively (confirmed: `pnpm pack` on a package with
+ * `peerDependencies: { "@kb-labs/sdk": "workspace:^" }` produces a tarball
+ * with `"@kb-labs/sdk": "^2.115.4"`). `npm pack` does not — it packs the
+ * manifest byte-for-byte, so an unrewritten `workspace:*`/`link:` ref
+ * survives into the tarball and gets correctly flagged by
+ * findForbiddenDependencyProtocols() below. Defaulting to 'npm' here when
+ * the caller doesn't say otherwise is deliberately the strict reading (catch
+ * it even if we don't know yet what will actually publish); passing 'pnpm'
+ * for a pipeline that really does pack with pnpm avoids false positives on
+ * refs pnpm already resolves for free.
  */
-export function verifyPackage(packagePath: string, packageName?: string): VerifyResult {
+export function verifyPackage(
+  packagePath: string,
+  packageName?: string,
+  packageManager: 'pnpm' | 'npm' | 'yarn' = 'npm',
+): VerifyResult {
   const pkgJsonPath = join(packagePath, 'package.json');
   if (!existsSync(pkgJsonPath)) {
     return { name: packageName ?? packagePath, success: true, issues: [] }; // skip
@@ -60,23 +78,28 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
   try {
     mkdirSync(tmpDir, { recursive: true });
 
-    // 1. npm pack (with link: → * replacement)
+    const isPnpm = packageManager === 'pnpm';
+
+    // 1. pack — pnpm resolves workspace:/link: refs on its own; npm/yarn need
+    // the manual link: → * patch since they don't understand either protocol.
     const origPkg = readFileSync(pkgJsonPath, 'utf-8');
-    const modPkg = JSON.parse(origPkg);
-    for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
-      const deps = modPkg[section];
-      if (!deps) {continue;}
-      for (const [k, v] of Object.entries(deps)) {
-        if (typeof v === 'string' && (v as string).startsWith('link:')) {
-          deps[k] = '*';
+    if (!isPnpm) {
+      const modPkg = JSON.parse(origPkg);
+      for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+        const deps = modPkg[section];
+        if (!deps) {continue;}
+        for (const [k, v] of Object.entries(deps)) {
+          if (typeof v === 'string' && (v as string).startsWith('link:')) {
+            deps[k] = '*';
+          }
         }
       }
+      writeFileSync(pkgJsonPath, JSON.stringify(modPkg, null, 2) + '\n');
     }
-    writeFileSync(pkgJsonPath, JSON.stringify(modPkg, null, 2) + '\n');
 
     let tgzFile: string | undefined;
     try {
-      spawnSync('npm', ['pack', '--pack-destination', tmpDir], { cwd: packagePath, stdio: 'pipe', timeout: 30_000 });
+      spawnSync(isPnpm ? 'pnpm' : 'npm', ['pack', '--pack-destination', tmpDir], { cwd: packagePath, stdio: 'pipe', timeout: 30_000 });
       const files = readdirSync(tmpDir).filter(f => f.endsWith('.tgz'));
       tgzFile = files[0] ? join(tmpDir, files[0]) : undefined;
     } finally {

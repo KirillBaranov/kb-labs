@@ -259,7 +259,11 @@ async function _runPipeline(ctx: {
   // 5. Verify (pack + install check)
   if (!skipVerify && !dryRun) {
     progress('verifying', 'Verifying package artifacts...');
-    const verifyResults = await verifyPackages(plan.packages, { logger });
+    // Must match what the real publish step packs with — pnpm resolves
+    // workspace:/link: refs natively; verifying with a different tool than
+    // what actually ships flags refs that will never make it to npm as-is.
+    const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
+    const verifyResults = await verifyPackages(plan.packages, { logger, packageManager });
     const verifyFailed = verifyResults.filter(r => !r.success);
 
     if (verifyFailed.length > 0) {

@@ -17,7 +17,7 @@
 
 name: release-prepare
 version: 1.0.0
-description: Prepare a release (version, changelog, git tag/push) with a human approval gate — never publishes to npm.
+description: Prepare a release with a human approval gate. channel=stable versions/tags/pushes and never touches npm itself (CI publishes off the tag); channel=canary publishes straight to npm right after approval instead.
 on:
   manual: true
 
@@ -26,6 +26,16 @@ inputs:
     type: string
     description: Release flow to prepare — must match a key under release.flows in .kb/kb.config.json (e.g. "platform", "sdk")
     required: true
+  channel:
+    type: string
+    description: >-
+      Release channel — "stable" (default) bumps versions, writes the changelog, and
+      commits/tags/pushes; nothing is published to npm here, CI publishes off the pushed
+      tag. "canary" skips version bump/changelog/git entirely and instead publishes
+      straight to real npm under the canary dist-tag as part of this workflow, gated by
+      the same approval step — there is no CI leg for canary, so approving IS the publish.
+    required: false
+    default: stable
   skipChecks:
     type: boolean
     description: Skip the pre-release Checks step (dist-exports/pack-install/typecheck/lint/tests). Escape hatch for shipping when Checks itself is broken/too slow — the packages still get built and reviewed, just not gate-checked. Re-run checks manually before trusting the release.
@@ -62,8 +72,8 @@ jobs:
         run: |
           set -e
           branch="$(git branch --show-current)"
-          if [ "$branch" != "main" ]; then
-            echo "Release preparation is allowed only from main (current branch: ${branch:-detached})" >&2
+          if [ "$branch" != "master" ]; then
+            echo "Release preparation is allowed only from master (current branch: ${branch:-detached})" >&2
             exit 1
           fi
 
@@ -71,7 +81,7 @@ jobs:
         id: plan
         phase: preview
         timeoutMs: 1200000
-        run: pnpm kb release plan --flow ${{ inputs.flow }}
+        run: pnpm kb release plan --flow ${{ inputs.flow }} --channel ${{ inputs.channel }}
 
       - name: Checks
         id: checks
@@ -127,35 +137,50 @@ jobs:
             showInSummary: true
         run: |
           set -e
-          pnpm kb release changelog --flow ${{ inputs.flow }}
-          node .kb/workflows/scripts/release-review-artifacts.mjs
+          if [ "${{ inputs.channel }}" = "stable" ]; then
+            pnpm kb release changelog --flow ${{ inputs.flow }}
+          fi
+          RELEASE_CHANNEL="${{ inputs.channel }}" node .kb/workflows/scripts/release-review-artifacts.mjs
 
       - name: Confirm release
         phase: approval
         uses: builtin:approval
         with:
-          title: "Release ${{ inputs.flow }} — proceed?"
-          instructions: "Review the release plan, generated changelog, package links, comparison link, and check/build results above. Approve only if this exact release should be versioned, tagged, and pushed. Nothing is published to npm here — that happens in CI, triggered by the tag pushed at the end. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
+          title: "Release ${{ inputs.flow }} (${{ inputs.channel }}) — proceed?"
+          instructions: "Review the release plan, package links, and check/build results above. channel=stable: approving versions, tags, and pushes the release — nothing is published to npm here, that happens in CI off the pushed tag. channel=canary: approving publishes straight to real npm under the canary dist-tag as the very next step in this workflow — there is no later gate. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
 
       - name: Bump versions
         id: version
         phase: prepare
+        if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
         run: pnpm kb release version --flow ${{ inputs.flow }} --json
 
       - name: Verify release branch before git operations
         id: git-branch
         phase: git
+        if: ${{ inputs.channel == 'stable' }}
         run: |
           set -e
           branch="$(git branch --show-current)"
-          if [ "$branch" != "main" ]; then
-            echo "Refusing to create release commit or tag outside main (current branch: ${branch:-detached})" >&2
+          if [ "$branch" != "master" ]; then
+            echo "Refusing to create release commit or tag outside master (current branch: ${branch:-detached})" >&2
             exit 1
           fi
 
       - name: Commit and tag
         id: git
         phase: git
+        if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
         run: pnpm kb release git --flow ${{ inputs.flow }} --bump auto --json
+
+      # No CI leg exists for canary (no tag is ever pushed to trigger one), so
+      # approval above is the only gate before this publishes to real npm —
+      # unlike stable, where nothing here touches npm and CI does it later.
+      - name: Publish canary
+        id: publish
+        phase: git
+        if: ${{ inputs.channel == 'canary' }}
+        timeoutMs: 3600000
+        run: pnpm kb release run --flow ${{ inputs.flow }} --channel canary --skip-checks --skip-build --yes --json

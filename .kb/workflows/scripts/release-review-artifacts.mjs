@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 
 const flow = process.env.RELEASE_FLOW;
 const planPath = process.env.RELEASE_PLAN_PATH;
+const channel = process.env.RELEASE_CHANNEL || "stable";
 
 if (!flow || !planPath) {
   throw new Error("RELEASE_FLOW and RELEASE_PLAN_PATH are required");
@@ -20,7 +21,9 @@ const changelog = existsSync(changelogPath)
 
 const packages = Array.isArray(plan.packages) ? plan.packages : [];
 const nextVersion = packages[0]?.nextVersion || "unknown";
-const releaseTag = `${flow}-v${nextVersion}`;
+const isCanary = channel === "canary";
+// Canary never creates a git tag — this is the npm version string it publishes under, not a ref.
+const releaseTag = isCanary ? `${nextVersion} (canary, no git tag)` : `${flow}-v${nextVersion}`;
 
 function command(args, fallback = "") {
   try {
@@ -48,13 +51,16 @@ const previousTag = command([
   `${flow}-v*`,
   "--abbrev=0",
 ]);
+// Canary never creates a git ref, so there is nothing on GitHub to link to.
 const compareUrl =
-  repository && previousTag
-    ? `${repository}/compare/${previousTag}...${releaseTag}`
-    : repository
-      ? `${repository}/releases/tag/${releaseTag}`
-      : "";
-const tagUrl = repository ? `${repository}/releases/tag/${releaseTag}` : "";
+  isCanary
+    ? ""
+    : repository && previousTag
+      ? `${repository}/compare/${previousTag}...${releaseTag}`
+      : repository
+        ? `${repository}/releases/tag/${releaseTag}`
+        : "";
+const tagUrl = !isCanary && repository ? `${repository}/releases/tag/${releaseTag}` : "";
 
 const summary = {
   flow,
@@ -83,7 +89,9 @@ const packageTable =
 const links = [
   compareUrl
     ? `- Changes: [compare with ${previousTag || "the previous release"}](${compareUrl})`
-    : "- Changes: repository URL unavailable",
+    : isCanary
+      ? "- Changes: canary publishes no git ref — nothing to compare/link"
+      : "- Changes: repository URL unavailable",
   tagUrl
     ? `- Release tag: [${releaseTag}](${tagUrl})`
     : `- Release tag: \`${releaseTag}\``,
