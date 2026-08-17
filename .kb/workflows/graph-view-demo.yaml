@@ -1,0 +1,77 @@
+name: graph-view-demo
+version: 1.0.0
+description: >
+  Synthetic workflow for exercising the Graph view — a gate with a forward
+  skip, a gate with a backward rework loop (self-resolving after one retry),
+  and an if-guarded block. No real repo/PR side effects, echo-only steps.
+
+on:
+  manual: true
+
+jobs:
+  demo:
+    runsOn: local
+    steps:
+      - name: Init
+        id: init
+        run: echo "starting demo run"
+
+      - name: Check Skip Flag
+        id: check_skip
+        run: |
+          echo '::kb-output:: {"value":"no"}'
+
+      - name: Maybe Skip Gate
+        id: skip_gate
+        uses: builtin:gate
+        with:
+          decision: steps.check_skip.outputs.value
+          routes:
+            "yes":
+              skipTo: finalize
+            "no": continue
+          default: continue
+
+      - name: Optional Extra Check
+        id: extra_check
+        if: ${{ steps.check_skip.outputs.value == 'no' }}
+        run: echo "ran because skip flag was no"
+
+      - name: Work
+        id: work
+        run: echo "doing the work (attempt)"
+
+      - name: Review
+        id: review
+        run: |
+          COUNTER_FILE=".kb/workflows/tmp/graph-view-demo-counter"
+          mkdir -p "$(dirname "$COUNTER_FILE")"
+          COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+          COUNT=$((COUNT + 1))
+          echo "$COUNT" > "$COUNTER_FILE"
+          if [ "$COUNT" -lt 2 ]; then
+            echo '::kb-output:: {"passed":"false"}'
+          else
+            echo '::kb-output:: {"passed":"true"}'
+            rm -f "$COUNTER_FILE"
+          fi
+
+      - name: Review Gate
+        id: review_gate
+        uses: builtin:gate
+        with:
+          decision: steps.review.outputs.passed
+          routes:
+            "true": continue
+            "false":
+              restartFrom: work
+          maxIterations: 3
+
+      - name: Finalize
+        id: finalize
+        run: echo "finalizing"
+
+      - name: Done
+        id: done
+        run: echo "done"
+

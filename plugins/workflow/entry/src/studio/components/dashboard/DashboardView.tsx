@@ -1,6 +1,6 @@
 /**
  * Dashboard view for a single workflow run.
- * Shows: StatRow → PhaseProgressBar → Hero block (current step) → Completed steps → Skipped steps → Future steps
+ * Shows: StatsBar (stats + phases) → Hero block (current step) → Completed steps → Skipped steps → Future steps
  */
 
 import * as React from 'react';
@@ -37,59 +37,69 @@ function formatDurationMs(ms: number): string {
   return `${m}m ${rem}s`;
 }
 
-// ─── Stat row ─────────────────────────────────────────────────────────────────
+// ─── Stat + phase bar ───────────────────────────────────────────────────────
+// Single-row summary (stats inline + phase progress), mirroring the compact
+// "pulse" bar used on the platform dashboard — keeps the header out of the way
+// of the actually useful content (current/completed steps) below.
 
-interface StatCardProps {
+interface StatInlineProps {
   value: number | string;
   label: string;
   color?: string;
 }
 
-function StatCard({ value, label, color = 'var(--text-primary)' }: StatCardProps) {
+function StatInline({ value, label, color = 'var(--text-primary)' }: StatInlineProps) {
   return (
-    <div style={{
-      padding: '10px 14px',
-      border: '1px solid var(--border-primary)',
-      borderRadius: 8,
-      textAlign: 'center',
-      background: 'var(--bg-secondary)',
-      flex: '1 1 0',
-      minWidth: 80,
-    }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2 }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{label}</div>
-    </div>
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 15, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
+    </span>
   );
 }
 
-interface StatRowProps {
+interface StatsBarProps {
   allSteps: StepRun[];
   run: WorkflowRun;
   isTerminal: boolean;
+  phases: PhaseStatus[];
 }
 
-function StatRow({ allSteps, run, isTerminal }: StatRowProps) {
+function StatsBar({ allSteps, run, isTerminal, phases }: StatsBarProps) {
   const total     = allSteps.length;
   const doneCount = allSteps.filter(s => s.status === 'success').length;
   const failCount = allSteps.filter(s => s.status === 'failed').length;
   const skipCount = allSteps.filter(s => s.status === 'skipped' || s.status === 'cancelled').length;
   const durationMs = run.durationMs ?? run.result?.metrics?.timeMs;
 
-  if (total === 0) { return null; }
+  if (total === 0 && phases.length === 0) { return null; }
 
   return (
-    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 'var(--spacing-section)' }}>
-      <StatCard value={total} label="Total steps" />
-      <StatCard value={doneCount} label="Done" color="var(--success)" />
-      {failCount > 0 && (
-        <StatCard value={failCount} label="Failed" color="var(--error)" />
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      padding: '8px 14px',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 8,
+      background: 'var(--bg-secondary)',
+      flexWrap: 'wrap',
+      marginBottom: 'var(--spacing-section)',
+    }}>
+      {total > 0 && (
+        <>
+          <StatInline value={total} label="steps" />
+          <StatInline value={doneCount} label="done" color="var(--success)" />
+          {failCount > 0 && <StatInline value={failCount} label="failed" color="var(--error)" />}
+          {skipCount > 0 && <StatInline value={skipCount} label="skipped" color="var(--text-tertiary)" />}
+          {isTerminal && durationMs != null && durationMs > 0 && (
+            <StatInline value={formatDurationMs(durationMs)} label="duration" />
+          )}
+        </>
       )}
-      {skipCount > 0 && (
-        <StatCard value={skipCount} label="Skipped" color="var(--text-tertiary)" />
+      {total > 0 && phases.length > 0 && (
+        <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />
       )}
-      {isTerminal && durationMs != null && durationMs > 0 && (
-        <StatCard value={formatDurationMs(durationMs)} label="Duration" />
-      )}
+      {phases.length > 0 && <PhaseProgressBar phases={phases} compact />}
     </div>
   );
 }
@@ -391,21 +401,8 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
 
   return (
     <div>
-      {/* Stat summary */}
-      <StatRow allSteps={allSteps} run={run} isTerminal={isTerminal} />
-
-      {/* Phase bar */}
-      {phases.length > 0 && (
-        <div style={{
-          padding: '12px 16px',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 8,
-          marginBottom: 'var(--spacing-section)',
-        }}>
-          <PhaseProgressBar phases={phases} />
-        </div>
-      )}
+      {/* Stat + phase summary */}
+      <StatsBar allSteps={allSteps} run={run} isTerminal={isTerminal} phases={phases} />
 
       {/* Preparing: run active but no step started yet */}
       {isPreparing && <PreparingBlock startedAt={run.startedAt} />}

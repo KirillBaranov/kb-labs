@@ -20,6 +20,7 @@ import { ConnectionBadge } from '../components/shared/ConnectionBadge'
 import { ApprovalModal } from '../components/ApprovalModal'
 import { PipelineView } from '../components/pipeline/PipelineView'
 import { DashboardView } from '../components/dashboard/DashboardView'
+import { GraphView } from '../components/graph/GraphView'
 import { ViewModeSelector } from '../components/shared/ViewModeSelector'
 
 const Text = UITypographyText
@@ -566,11 +567,12 @@ export default function WorkflowRunDetail() {
   )
 
   const [approvalStep, setApprovalStep] = useState<StepRun | null>(null)
-  const [viewMode, setViewMode] = useState<'dashboard' | 'pipeline' | 'engineering'>('dashboard')
+  const [viewMode, setViewMode] = useState<'dashboard' | 'pipeline' | 'graph' | 'engineering'>('dashboard')
 
   const VIEW_MODES = {
     dashboard:   { label: 'Dashboard' },
     pipeline:    { label: 'Pipeline' },
+    graph:       { label: 'Graph' },
     engineering: { label: 'Engineering' },
   } as const
 
@@ -654,12 +656,13 @@ export default function WorkflowRunDetail() {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 16,
-            padding: '12px 16px',
+            gap: 14,
+            padding: '8px 16px',
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border-primary)',
             borderRadius: 8,
             flexWrap: 'wrap',
+            marginBottom: 8,
           }}>
             <WorkflowStatusBadge status={run.status} />
             <Link
@@ -692,28 +695,15 @@ export default function WorkflowRunDetail() {
                 {new Date(run.startedAt).toLocaleString()}
               </span>
             )}
-            {run.result?.summary && (
-              <span style={{
-                fontSize: 13,
-                color: 'var(--text-secondary)',
-                borderTop: '1px solid var(--border-primary)',
-                paddingTop: 8,
-                width: '100%',
-              }}>
-                {run.result.summary}
-              </span>
-            )}
-          </div>
-        </UIPageSection>
-      )}
-
-      {run && (
-        <UIPageSection>
-          {/* View toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Title level={4} style={{ margin: 0 }}>Execution</Title>
+            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border-primary)' }} />
             <ViewModeSelector views={VIEW_MODES} current={viewMode} onChange={setViewMode} />
           </div>
+
+          {run.result?.summary && (
+            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 12 }}>
+              {run.result.summary}
+            </Text>
+          )}
 
           {isRunActive && logError && connectionStatus !== 'reconnecting' && (
             <UIAlert variant="warning" message="Reconnecting to event stream…" description="Using polling as fallback" style={{ marginBottom: 12 }} />
@@ -727,6 +717,13 @@ export default function WorkflowRunDetail() {
           )}
           {viewMode === 'pipeline' && (
             <PipelineView
+              run={run}
+              events={events}
+              onApprove={(step) => setApprovalStep(step)}
+            />
+          )}
+          {viewMode === 'graph' && (
+            <GraphView
               run={run}
               events={events}
               onApprove={(step) => setApprovalStep(step)}
