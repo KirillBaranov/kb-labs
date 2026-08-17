@@ -127,6 +127,26 @@ export class TurnAssembler {
   }
 
   /**
+   * Public wrapper around getTurnId, for callers that need to snapshot the
+   * turn's pre-mutation state (e.g. to diff against post-mutation state)
+   * before calling processEventAsync.
+   */
+  getTurnIdForEvent(event: AgentEvent): string | null {
+    return this.getTurnId(event);
+  }
+
+  /**
+   * Peek at the current in-progress turn for a turn id, WITHOUT mutating
+   * anything. Returns a live reference (not a clone) — the assembler
+   * mutates turn/step objects in place, so callers that need a stable
+   * "before" snapshot must clone this themselves before calling
+   * processEventAsync.
+   */
+  peekTurn(turnId: string): Turn | undefined {
+    return this.activeTurns.get(turnId);
+  }
+
+  /**
    * Derive turn ID from event.
    * For root agents: use agentId
    * For sub-agents: return null (handled separately)

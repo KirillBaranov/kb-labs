@@ -2,7 +2,7 @@
  * WebSocket message types for agent event streaming
  */
 
-import type { Turn } from './turn.js';
+import type { Turn, TurnDelta } from './turn.js';
 import type { AgentResponseMode, AgentSmartTieringConfig } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,6 +33,14 @@ export interface RunCompletedMessage {
     success: boolean;
     summary: string;
     durationMs: number;
+    /** Session-wide cursor value for this event, for gap detection. */
+    seq: number;
+    /**
+     * Final state of the assistant turn this run produced, if any. Carried
+     * here so the client has a guaranteed-fresh terminal state without
+     * depending on the ordering of a separate delta message arriving first.
+     */
+    turn?: Turn;
   };
   timestamp: number;
 }
@@ -64,37 +72,42 @@ export interface CorrectionAckMessage {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Turn Snapshot Messages (NEW - Phase 1: Backend Turn Assembly)
+// Turn Delta / Snapshot Messages
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Turn snapshot message (server → client)
- * Sent whenever a turn is created or updated (incremental updates)
+ * Turn delta message (server → client)
+ * Sent for every incremental change to a turn's projection. This is the
+ * SOLE live-update channel — the client applies deltas as ordered patches
+ * against its local turn map, gated by `delta.seq`. Replaces the previous
+ * full-Turn-per-event `turn:snapshot` message.
  */
-export interface TurnSnapshotMessage {
-  type: 'turn:snapshot';
+export interface TurnDeltaMessage {
+  type: 'turn:delta';
   payload: {
     sessionId: string;
-    turn: Turn;
-    sequenceNumber: number;
+    delta: TurnDelta;
   };
   timestamp: number;
 }
 
 /**
  * Conversation snapshot message (server → client)
- * Sent on initial WebSocket connection to provide recent history
+ * Sent on initial WebSocket connection (or reconnect without a resume
+ * cursor) to provide the full current projection as a cold-start baseline.
  */
 export interface ConversationSnapshotMessage {
   type: 'conversation:snapshot';
   payload: {
     sessionId: string;
-    /** Recent completed turns (last 20) */
+    /** Recent completed turns */
     completedTurns: Turn[];
     /** Currently streaming turns */
     activeTurns: Turn[];
     /** Total turns in session */
     totalTurns: number;
+    /** Session-wide cursor value this snapshot was taken at. */
+    seq: number;
     /** Snapshot timestamp */
     timestamp: string;
   };
@@ -109,7 +122,7 @@ export type ServerMessage =
   | RunCompletedMessage
   | ErrorMessage
   | CorrectionAckMessage
-  | TurnSnapshotMessage
+  | TurnDeltaMessage
   | ConversationSnapshotMessage;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -187,6 +200,12 @@ export interface RunRequest {
   smartTiering?: AgentSmartTieringConfig;
   /** Answer style depth (auto/brief/deep) */
   responseMode?: AgentResponseMode;
+  /**
+   * Client-generated id for the optimistic user message this run represents.
+   * Echoed back on `RunResponse.userTurn.metadata.clientId` so the frontend
+   * can reconcile its optimistic turn by id instead of text-matching.
+   */
+  clientId?: string;
 }
 
 /**
@@ -206,6 +225,12 @@ export interface RunResponse {
   status: 'started' | 'queued';
   /** Timestamp */
   startedAt: string;
+  /**
+   * The persisted user turn this run created, returned synchronously so the
+   * frontend can reconcile its optimistic message immediately by id/clientId
+   * without waiting on a WS round-trip.
+   */
+  userTurn: Turn;
 }
 
 /**

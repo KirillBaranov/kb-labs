@@ -79,8 +79,27 @@ export interface Turn {
     runId?: string;
     /** Summary of files changed during this turn (populated on run completion) */
     fileChanges?: FileChangeSummary[];
+    /**
+     * Client-generated id echoed back on user turns, so the frontend can
+     * reconcile its optimistic message by id instead of fuzzy text-matching.
+     */
+    clientId?: string;
   };
 }
+
+/**
+ * Incremental change to a Turn, addressed by the session's monotonic `seq`.
+ * The server emits these instead of resending the full Turn on every event —
+ * the client applies them as ordered patches against its local turn map.
+ * `turn:created` carries the turn WITHOUT steps; steps arrive via their own
+ * `turn:step:appended` deltas (including any present at creation time).
+ */
+export type TurnDelta =
+  | { kind: 'turn:created'; seq: number; turn: Turn }
+  | { kind: 'turn:step:appended'; seq: number; turnId: string; step: TurnStep }
+  | { kind: 'turn:step:updated'; seq: number; turnId: string; step: TurnStep }
+  | { kind: 'turn:status'; seq: number; turnId: string; status: Turn['status']; completedAt: string | null; error?: Turn['error'] }
+  | { kind: 'turn:metadata'; seq: number; turnId: string; patch: Partial<Turn['metadata']> };
 
 /**
  * A step is a single action within a turn.

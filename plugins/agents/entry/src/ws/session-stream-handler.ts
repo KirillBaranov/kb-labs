@@ -2,11 +2,17 @@
  * WebSocket handler for session-level event streaming
  *
  * Path: /session/:sessionId
- * Single persistent connection per session — streams turn:snapshot for ALL runs in the session.
+ * Single persistent connection per session — streams turn deltas for ALL runs in the session.
  * Unlike /events/:runId which closes when a run ends, this stays open for the entire session.
+ *
+ * Delta-based, not read-derived: the session listener registered here receives
+ * the exact TurnDelta[] that SessionManager.processEventAndUpdateTurn computed
+ * at persist time (via RunManager.broadcastSessionDeltas), not re-derived by
+ * re-reading turns.json off disk on every event. That re-read (the previous
+ * resolveTurnForEvent) was the actual root cause of the WS stream lagging one
+ * event behind persisted state — see run-handler.ts's onEvent for the other
+ * half of that fix (persist now happens before broadcast, not after).
  */
-
-/* eslint-disable @typescript-eslint/consistent-type-imports */
 
 import {
   defineWebSocket,
@@ -19,53 +25,15 @@ import type {
   ConnectionReadyMessage,
   RunCompletedMessage,
   ErrorMessage,
-  TurnSnapshotMessage,
+  TurnDeltaMessage,
   ConversationSnapshotMessage,
-  AgentEvent,
-  Turn,
 } from '@kb-labs/agent-contracts';
-import { RunManager } from '../rest/run-manager.js';
+import { RunManager, type SessionBroadcastPayload } from '../rest/run-manager.js';
 import { SessionManager } from '@kb-labs/agent-core';
-
-function getTurnIdFromEvent(event: AgentEvent): string | null {
-  if ((event.type === 'agent:start' || event.type === 'agent:end' || event.type === 'agent:error') && !event.parentAgentId && event.agentId) {
-    return `turn-${event.agentId}`;
-  }
-  return null;
-}
-
-function getTurnSignature(turn: Turn): string {
-  return `${turn.id}:${turn.status}:${turn.completedAt || ''}:${turn.steps.length}`;
-}
-
-async function resolveTurnForEvent(
-  sessionManager: SessionManager,
-  sessionId: string,
-  event: AgentEvent
-): Promise<Turn | null> {
-  const turns = await sessionManager.getTurns(sessionId);
-  if (turns.length === 0) {
-    return null;
-  }
-
-  const explicitTurnId = getTurnIdFromEvent(event);
-  if (explicitTurnId) {
-    const explicit = turns.find((turn: Turn) => turn.id === explicitTurnId);
-    if (explicit) {
-      return explicit;
-    }
-  }
-
-  // For tool/llm/status events, send latest assistant turn snapshot.
-  const assistantTurns = turns
-    .filter((turn: Turn) => turn.type === 'assistant')
-    .sort((a: Turn, b: Turn) => b.sequence - a.sequence);
-  return assistantTurns[0] || null;
-}
 
 interface SessionConnectionState {
   sessionId: string;
-  callback: import('@kb-labs/agent-contracts').AgentEventCallback;
+  callback: (payload: SessionBroadcastPayload) => void;
 }
 
 /** Per-connection state keyed by the opaque ctx object — avoids mutating ctx */
@@ -77,7 +45,14 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
 
   handler: {
     async onConnect(ctx: PluginContextV3, sender: TypedSender<ServerMessage>) {
-      const sessionId = (ctx.hostContext as { params?: { sessionId?: string } }).params?.sessionId;
+      const hostContext = ctx.hostContext as { params?: { sessionId?: string }; query?: Record<string, string> };
+      const sessionId = hostContext.params?.sessionId;
+      // Present on resume/gap-recovery reconnects (see AgentsPage.tsx's turn-reducer
+      // 'gap' handling). Not used to filter the response — see getProjection's doc
+      // comment for why resume always re-sends the full projection rather than a
+      // replayed delta range — but accepted and logged so a resume is distinguishable
+      // from a cold connect in server logs.
+      const afterSeq = hostContext.query?.afterSeq ? Number(hostContext.query.afterSeq) : undefined;
 
       if (!sessionId) {
         await sender.send({
@@ -89,10 +64,13 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
         return;
       }
 
-      ctx.platform.logger.info(`[session-ws] Client connected to session ${sessionId}`);
+      ctx.platform.logger.info(
+        afterSeq != null
+          ? `[session-ws] Client connected to session ${sessionId} (resume after seq ${afterSeq})`
+          : `[session-ws] Client connected to session ${sessionId}`
+      );
 
       const sessionManager = new SessionManager(ctx.cwd);
-      const lastTurnSignatures = new Map<string, string>();
 
       // Send connection:ready immediately
       try {
@@ -106,81 +84,69 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
         throw err;
       }
 
-      // Send conversation:snapshot (history)
+      // Send conversation:snapshot (full current projection) as the baseline —
+      // both for a cold connect AND a resume/gap-recovery reconnect alike.
       try {
-        const snapshot = await sessionManager.getConversationSnapshot(sessionId);
+        const { turns, seq } = await sessionManager.getProjection(sessionId);
+        const completedTurns = turns.filter((t) => t.status !== 'streaming');
+        const activeTurns = turns.filter((t) => t.status === 'streaming');
         await sender.send({
           type: 'conversation:snapshot',
           payload: {
             sessionId,
-            completedTurns: snapshot.completedTurns,
-            activeTurns: snapshot.activeTurns,
-            totalTurns: snapshot.totalTurns,
+            completedTurns,
+            activeTurns,
+            totalTurns: turns.length,
+            seq,
             timestamp: new Date().toISOString(),
           },
           timestamp: Date.now(),
         } satisfies ConversationSnapshotMessage);
         ctx.platform.logger.info(
-          `[session-ws] Sent snapshot: ${snapshot.completedTurns.length} completed + ${snapshot.activeTurns.length} active turns`
+          `[session-ws] Sent snapshot: ${completedTurns.length} completed + ${activeTurns.length} active turns at seq ${seq}`
         );
       } catch (err) {
         ctx.platform.logger.error(`[session-ws] Failed to send snapshot: ${err}`);
       }
 
-      // Session-level event callback — registered on ALL active runs in this session
-      const eventCallback = async (event: import('@kb-labs/agent-contracts').AgentEvent) => {
-        // Resolve sessionId from event
-        const evtSessionId = (event as { sessionId?: string }).sessionId
-          || (event.metadata?.sessionId as string | undefined);
-
-        // Only forward events belonging to this session
-        if (evtSessionId && evtSessionId !== sessionId) {
+      // Session-level listener — receives turn deltas and run:completed
+      // notifications from ALL runs in this session, already computed at
+      // persist time (see module doc comment above).
+      const callback = (payload: SessionBroadcastPayload) => {
+        if (payload.kind === 'deltas') {
+          for (const delta of payload.deltas) {
+            void sender.send({
+              type: 'turn:delta',
+              payload: { sessionId, delta },
+              timestamp: Date.now(),
+            } satisfies TurnDeltaMessage).catch((err) => {
+              ctx.platform.logger.error(`[session-ws] Failed to send turn:delta: ${err}`);
+            });
+          }
           return;
         }
 
-        const targetSessionId = evtSessionId || sessionId;
-
-        try {
-          const turn = await resolveTurnForEvent(sessionManager, targetSessionId, event);
-          if (turn) {
-            const signature = getTurnSignature(turn);
-            const previousSignature = lastTurnSignatures.get(turn.id);
-            if (previousSignature !== signature) {
-              lastTurnSignatures.set(turn.id, signature);
-
-              await sender.send({
-                type: 'turn:snapshot',
-                payload: { sessionId: targetSessionId, turn, sequenceNumber: turn.sequence },
-                timestamp: Date.now(),
-              } satisfies TurnSnapshotMessage);
-            }
-          }
-        } catch (err) {
-          ctx.platform.logger.error(`[session-ws] Failed to process turn snapshot: ${err}`);
-        }
-
-        // Notify run completion
-        if (event.type === 'agent:end' && !event.parentAgentId) {
-          const runId = (event as { runId?: string }).runId || (event.metadata?.runId as string | undefined);
-          await sender.send({
-            type: 'run:completed',
-            payload: {
-              runId: runId ?? 'unknown',
-              success: event.data.success,
-              summary: event.data.summary,
-              durationMs: event.data.durationMs,
-            },
-            timestamp: Date.now(),
-          } satisfies RunCompletedMessage);
-        }
+        void sender.send({
+          type: 'run:completed',
+          payload: {
+            runId: payload.runId,
+            success: payload.success,
+            summary: payload.summary,
+            durationMs: payload.durationMs,
+            seq: payload.seq,
+            turn: payload.turn,
+          },
+          timestamp: Date.now(),
+        } satisfies RunCompletedMessage).catch((err) => {
+          ctx.platform.logger.error(`[session-ws] Failed to send run:completed: ${err}`);
+        });
       };
 
       // Store callback for cleanup in a WeakMap keyed by ctx — no ctx mutation
-      connectionState.set(ctx as object, { sessionId, callback: eventCallback });
+      connectionState.set(ctx as object, { sessionId, callback });
 
-      // Register on all currently active runs in this session
       try {
-        RunManager.addSessionListener(sessionId, eventCallback);
+        RunManager.addSessionListener(sessionId, callback);
       } catch (err) {
         ctx.platform.logger.error(`[session-ws] Failed to register session listener: ${String(err)}`);
         throw err;
