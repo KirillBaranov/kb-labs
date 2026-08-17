@@ -1,0 +1,117 @@
+name: KB Labs Development Environment
+
+# Prod-equivalent service set (same 6 services as .kb/devservices.yaml),
+# running from local build output instead of the installed platform.
+# Use this by default for day-to-day dev. For the full local stack
+# (qdrant, redis, marketplace-registry, mcp-daemon, kb-web, kb-docs,
+# host-agent, runtime-server, omniroute), use devservices.full.dev.yaml.
+
+groups:
+  infra:   [redis, state-daemon]
+  backend: [gateway, marketplace, rest, studio, workflow]
+
+services:
+  # Not in devservices.yaml's own service list — prod's Redis is externally
+  # managed. Locally, state-daemon's cache and workflow's distributed lock
+  # (plugins/workflow/engine/src/lock.ts) both dial it directly, so it has
+  # to be up even though nothing in the prod list depends on it explicitly.
+  redis:
+    name: Redis Cache
+    description: State cache + workflow distributed lock backing store
+    group: infra
+    type: docker
+    container: redis
+    command: >-
+      name="redis$KB_NET_OFFSET" &&
+      docker stop "$name" 2>/dev/null || true &&
+      docker rm "$name" 2>/dev/null || true &&
+      docker run --name "$name"
+      -p $((6379 + KB_NET_OFFSET)):6379
+      redis:7-alpine
+    stop_command: >-
+      name="redis$KB_NET_OFFSET" && docker stop "$name"
+    health_check: localhost:6379
+    port: 6379
+    optional: true
+
+  state-daemon:
+    name: State Daemon
+    description: Distributed state management
+    group: infra
+    type: node
+    command: node ./plugins/state/daemon/dist/bin.cjs
+    health_check: http://localhost:7777/health
+    port: 7777
+    url: http://localhost:7777
+    depends_on: [redis]
+    env:
+      KB_STATE_DAEMON_PORT: "7777"
+      KB_STATE_DAEMON_HOST: localhost
+
+  workflow:
+    name: Workflow Daemon
+    description: Workflow engine REST API
+    group: backend
+    type: node
+    command: node ./plugins/workflow/daemon/dist/index.js
+    health_check: http://localhost:7778/health
+    port: 7778
+    url: http://localhost:7778
+    depends_on: [state-daemon, redis]
+    env:
+      GITHUB_WORKFLOW_TOKEN: "${GITHUB_WORKFLOW_TOKEN}"
+
+  rest:
+    name: REST API
+    description: Main platform REST API
+    group: backend
+    type: node
+    command: node ./services/rest-api/app/dist/index.js
+    health_check: http://localhost:5050/api/v1/health
+    port: 5050
+    url: http://localhost:5050
+    depends_on: [workflow]
+
+  marketplace:
+    name: Marketplace Service
+    description: Unified entity marketplace — install, manage, discover
+    group: backend
+    type: node
+    command: node ./plugins/marketplace/daemon/dist/index.js
+    health_check: http://localhost:5070/health
+    port: 5070
+    url: http://localhost:5070
+    depends_on: [state-daemon]
+
+  gateway:
+    name: Gateway
+    description: Central router — aggregates REST API, Workflow, Marketplace
+    group: backend
+    type: node
+    command: node ./services/gateway/app/dist/index.js
+    health_check: http://localhost:4000/health
+    port: 4000
+    url: http://localhost:4000
+    depends_on: [rest, workflow]
+
+  studio:
+    name: Studio Web App
+    description: Web UI for KB Labs platform
+    group: backend
+    type: node
+    command: >-
+      cd studio/app &&
+      PORT=$((3000 + KB_NET_OFFSET))
+      API_PROXY_TARGET="http://localhost:$((4000 + KB_NET_OFFSET))"
+      pnpm dev
+    health_check: http://localhost:3000/
+    port: 3000
+    url: http://localhost:3000
+    highlight: true
+    depends_on: [rest, gateway]
+
+settings:
+  logs_dir: .kb/logs/tmp
+  pid_dir: .kb/tmp
+  start_timeout_ms: 30000
+  health_check_interval_ms: 1000
