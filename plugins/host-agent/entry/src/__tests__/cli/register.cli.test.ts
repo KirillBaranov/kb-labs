@@ -49,8 +49,8 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(0);
-    expect(result.configPath).toContain('agent.json');
+    expect(result.ok).toBe(true);
+    expect(result.result.configPath).toContain('agent.json');
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -69,7 +69,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'], json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({
       hostId: MOCK_REGISTER_RESPONSE.hostId,
       clientId: MOCK_REGISTER_RESPONSE.clientId,
@@ -84,7 +84,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: '', workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -96,7 +96,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: 'localhost:4000', workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -110,7 +110,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/nonexistent/path'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -128,7 +128,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -142,7 +142,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -154,7 +154,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'], 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(fetch)).not.toHaveBeenCalled();
     expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
@@ -176,7 +176,7 @@ describe('workspace:register', () => {
       mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'] } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

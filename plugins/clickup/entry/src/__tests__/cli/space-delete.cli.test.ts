@@ -40,7 +40,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: ['space-1'], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(vi.mocked(deleteSpace)).toHaveBeenCalledWith('test-api-key', 'space-1');
   });
@@ -55,7 +55,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: ['space-1'], flags: { force: true, json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, deleted: true, spaceId: 'space-1' });
   });
 
@@ -67,7 +67,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: [], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -79,7 +79,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: ['space-1'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -93,7 +93,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: ['space-1'], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -105,7 +105,7 @@ describe('clickup:space.delete', () => {
       mockCLIInput({ argv: ['space-1'], flags: { 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(deleteSpace)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('space-1');

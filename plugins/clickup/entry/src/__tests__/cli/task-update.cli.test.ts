@@ -35,7 +35,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: ['task-001'], flags: { name: 'Updated Task' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Task updated');
   });
@@ -50,7 +50,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: ['task-001'], flags: { name: 'Updated Task', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const slim = captured.json[0] as Record<string, unknown>;
     expect(slim.id).toBe('task-001');
     expect(typeof slim.status).toBe('string');
@@ -68,7 +68,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: ['task-001'], flags: { name: 'Updated Task', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockUpdatedTask;
     expect(typeof raw.status).toBe('object');
     expect(raw.date_created).toBeDefined();
@@ -82,7 +82,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: [] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -94,7 +94,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: ['task-001'], flags: { name: 'New Name', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updateTask)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('task-001');
@@ -110,7 +110,7 @@ describe('clickup:task.update', () => {
       mockCLIInput({ argv: ['task-001'], flags: { status: 'done' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

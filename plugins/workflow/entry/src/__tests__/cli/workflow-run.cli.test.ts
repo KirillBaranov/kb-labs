@@ -28,7 +28,7 @@ describe('workflow:run', () => {
       mockCLIInput({ flags: { 'workflow-id': 'e2e-hello' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success[0]?.message).toBeTruthy();
   });
 
@@ -44,7 +44,7 @@ describe('workflow:run', () => {
       mockCLIInput({ flags: { 'workflow-id': 'e2e-hello', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: { runId: 'r-123', status: 'queued' } });
   });
 
@@ -126,7 +126,7 @@ describe('workflow:run', () => {
       mockCLIInput({ flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -142,7 +142,7 @@ describe('workflow:run', () => {
       mockCLIInput({ flags: { 'workflow-id': 'e2e-hello' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -158,7 +158,7 @@ describe('workflow:run', () => {
       mockCLIInput({ flags: { 'workflow-id': 'e2e-hello', isolation: 'invalid-mode' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

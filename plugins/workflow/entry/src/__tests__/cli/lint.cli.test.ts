@@ -16,7 +16,7 @@ describe('workflow:lint', () => {
 
     const result = await lintCommand.execute(ctx, mockCLIInput({ flags: { path: fixture('valid.yml') } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.errors).toHaveLength(0);
     expect(captured.success.length).toBeGreaterThan(0);
   });
@@ -27,7 +27,7 @@ describe('workflow:lint', () => {
 
     const result = await lintCommand.execute(ctx, mockCLIInput({ flags: { path: fixture('invalid.yml') } }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
     // The validation error must mention the offending field (jobs).
     expect(captured.errors.some((e) => /job/i.test(e))).toBe(true);
@@ -42,7 +42,7 @@ describe('workflow:lint', () => {
       mockCLIInput({ flags: { path: fixture('invalid.yml'), json: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     const payload = captured.json[0] as { ok: boolean; files: Array<{ ok: boolean; errors: string[] }> };
     expect(payload.ok).toBe(false);
     expect(payload.files.length).toBe(1);
@@ -59,7 +59,7 @@ describe('workflow:lint', () => {
       mockCLIInput({ flags: { path: fixturesDir, json: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     const payload = captured.json[0] as { ok: boolean; files: Array<{ relativePath: string; ok: boolean }> };
     expect(payload.files.length).toBe(2);
     expect(payload.files.some((f) => f.ok)).toBe(true);
@@ -75,6 +75,6 @@ describe('workflow:lint', () => {
       mockCLIInput({ flags: { path: fixture('valid.yml'), strict: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 });

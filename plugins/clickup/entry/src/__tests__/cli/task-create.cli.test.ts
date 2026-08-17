@@ -32,7 +32,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1', name: 'My Task' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Task created');
   });
@@ -47,7 +47,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1', name: 'My Task', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const slim = captured.json[0] as Record<string, unknown>;
     expect(slim.id).toBe('task-001');
     expect(typeof slim.status).toBe('string');
@@ -65,7 +65,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1', name: 'My Task', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockTask;
     expect(typeof raw.status).toBe('object');
     expect(raw.date_created).toBeDefined();
@@ -79,7 +79,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { name: 'My Task' } }) as Parameters<typeof taskCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -91,7 +91,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1' } }) as Parameters<typeof taskCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -103,7 +103,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1', name: 'My Task', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(createTask)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('My Task');
@@ -119,7 +119,7 @@ describe('clickup:task.create', () => {
       mockCLIInput({ flags: { list: 'list-1', name: 'My Task' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

@@ -68,7 +68,7 @@ describe('qa:e2e-flaky', () => {
 
     const result = await e2eFlakyCommand.execute(ctx as never, mockCLIInput<QaE2eFlakyFlags>({ flags: { agent: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBe(1);
     const overview = captured.json[0] as { top: unknown[]; totalCases: number };
     expect(overview.totalCases).toBe(1);
@@ -86,7 +86,7 @@ describe('qa:e2e-flaky', () => {
       mockCLIInput<QaE2eFlakyFlags>({ flags: { agent: true, case: 'gw/a.spec.ts#A-1' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const timeline = captured.json[0] as { caseKey: string; history: unknown[] };
     expect(timeline.caseKey).toBe('gw/a.spec.ts#A-1');
     expect(timeline.history).toHaveLength(2);
@@ -102,7 +102,7 @@ describe('qa:e2e-flaky', () => {
       mockCLIInput<QaE2eFlakyFlags>({ flags: { case: 'gw/unknown.spec.ts#X-1' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('No history found');
   });
 
@@ -127,7 +127,7 @@ describe('qa:e2e-flaky', () => {
 
       const result = await e2eFlakyCommand.execute(ctx as never, mockCLIInput<QaE2eFlakyFlags>({ flags: { ingest: dir } }));
 
-      expect(result.exitCode).toBe(0);
+      expect(result.ok).toBe(true);
       expect(mockSaveE2eFlaky).toHaveBeenCalledOnce();
       const [cases] = mockSaveE2eFlaky.mock.calls[0] as [Array<{ testId: string }>];
       expect(cases.map(c => c.testId).sort()).toEqual(['A-1', 'B-1']);
@@ -143,7 +143,7 @@ describe('qa:e2e-flaky', () => {
 
     const result = await e2eFlakyCommand.execute(ctx as never, mockCLIInput<QaE2eFlakyFlags>({ flags: { sync: true } }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('No flaky history yet');
   });
 
@@ -166,7 +166,7 @@ describe('qa:e2e-flaky', () => {
         mockCLIInput<QaE2eFlakyFlags>({ flags: { sync: true, ingest: dir } }),
       );
 
-      expect(result.exitCode).toBe(0);
+      expect(result.ok).toBe(true);
       // Both must have run: sync (git fetch) and ingest (saveE2eFlaky) — sync
       // must not be silently dropped just because --ingest was also passed.
       expect(ctx.api.shell.exec).toHaveBeenCalledWith('git', ['fetch', 'origin', 'ci-data'], expect.anything());
@@ -186,7 +186,7 @@ describe('qa:e2e-flaky', () => {
 
       const result = await e2eFlakyCommand.execute(ctx as never, mockCLIInput<QaE2eFlakyFlags>({ flags: { ingest: dir } }));
 
-      expect(result.exitCode).toBe(1);
+      expect(result.ok).toBe(false);
       expect(captured.errors[0]).toContain('No flaky-report.json files found');
       expect(mockSaveE2eFlaky).not.toHaveBeenCalled();
     } finally {

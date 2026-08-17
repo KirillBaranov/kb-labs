@@ -29,7 +29,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Restart');
   });
@@ -45,7 +45,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { 'from-step': 'checkout' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restartRun).toHaveBeenCalledWith('run-abc', { fromStepId: 'checkout' });
   });
 
@@ -60,7 +60,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: ['run-abc'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restartRun).toHaveBeenCalledWith('run-abc', { fromStepId: undefined });
   });
 
@@ -77,7 +77,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: ['run-abc'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true });
   });
 
@@ -89,7 +89,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: [], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -106,7 +106,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: ['run-bad'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -121,7 +121,7 @@ describe('workflow:runs restart', () => {
       mockCLIInput({ argv: [], flags: { 'run-id': 'run-abc' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(restartRun).toHaveBeenCalledWith('run-abc', expect.any(Object));
   });
 });

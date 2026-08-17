@@ -24,7 +24,7 @@ describe('marketplace:share', () => {
       flags: { with: 'bob' },
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/kirill/my-plugin/share/allowlist',
       expect.objectContaining({ namespaceId: 'bob' }),
@@ -45,7 +45,7 @@ describe('marketplace:share', () => {
       flags: { link: true },
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.errors).toHaveLength(0);
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/kirill/my-plugin/share/token',
@@ -88,7 +88,7 @@ describe('marketplace:share', () => {
     const ctx = createMockContext({ ui });
     const result = await shareCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -100,7 +100,7 @@ describe('marketplace:share', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -112,7 +112,7 @@ describe('marketplace:share', () => {
       flags: { with: 'bob' },
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -124,7 +124,7 @@ describe('marketplace:share', () => {
       flags: { with: 'bob' },
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('SH-09: HTTP error — exitCode 1, error captured', async () => {
@@ -136,7 +136,7 @@ describe('marketplace:share', () => {
       flags: { with: 'bob' },
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

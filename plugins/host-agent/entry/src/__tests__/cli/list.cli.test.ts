@@ -48,8 +48,8 @@ describe('workspace:list', () => {
     const ctx = createMockContext({ ui });
     const result = await listCommand.execute(ctx, mockCLIInput({ flags: { gateway: 'http://localhost:4000' } }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.hosts).toHaveLength(1);
+    expect(result.ok).toBe(true);
+    expect(result.result.hosts).toHaveLength(1);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -68,7 +68,7 @@ describe('workspace:list', () => {
       mockCLIInput({ flags: { gateway: 'http://localhost:4000', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ hosts: [{ hostId: 'host-1' }] });
   });
 
@@ -86,8 +86,8 @@ describe('workspace:list', () => {
       mockCLIInput({ flags: { gateway: 'http://localhost:4000' } }),
     );
 
-    expect(result.exitCode).toBe(0);
-    expect(result.hosts).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    expect(result.result.hosts).toHaveLength(0);
     expect(captured.infos.length).toBeGreaterThan(0);
   });
 
@@ -105,7 +105,7 @@ describe('workspace:list', () => {
       mockCLIInput({ flags: { gateway: 'http://localhost:4000' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -119,7 +119,7 @@ describe('workspace:list', () => {
       mockCLIInput({ flags: { gateway: 'http://localhost:4000' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -141,7 +141,7 @@ describe('workspace:list', () => {
       mockCLIInput({ flags: { gateway: 'http://localhost:4000' } }),
     );
 
-    expect(result.exitCode).toBe(0);
-    expect(result.hosts).toHaveLength(2);
+    expect(result.ok).toBe(true);
+    expect(result.result.hosts).toHaveLength(2);
   });
 });

@@ -32,7 +32,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Comment added');
   });
@@ -49,7 +49,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const slim = captured.json[0] as Record<string, unknown>;
     expect(slim.id).toBe('comment-1');
     expect(slim).not.toHaveProperty('user');
@@ -67,7 +67,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const slim = captured.json[0] as Record<string, unknown>;
     expect(slim.id).toBe('comment-1');
     expect(typeof slim.user).toBe('string');
@@ -85,7 +85,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockComment;
     expect(typeof raw.user).toBe('object');
     expect(raw.resolved).toBeDefined();
@@ -99,7 +99,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: [], flags: { text: 'Hello world' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -111,7 +111,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -125,7 +125,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -137,7 +137,7 @@ describe('clickup:task comments add', () => {
       mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(addTaskComment)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('task-001');

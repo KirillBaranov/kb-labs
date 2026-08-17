@@ -267,6 +267,8 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
       - name: Run all unit tests
         run: ./tools/kb-devkit/kb-devkit run test --no-cache
+      - name: Run all CLI handler tests
+        run: ./tools/kb-devkit/kb-devkit run test:cli --no-cache
 
   # ── 4. Workspace checks — devkit structure, deps and boundaries ────────────
   devkit-checks:

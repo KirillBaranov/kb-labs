@@ -44,7 +44,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: ['space-1'], flags: { name: 'Updated Space' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('Space updated');
     expect(vi.mocked(updateSpace)).toHaveBeenCalledWith('test-api-key', 'space-1', expect.any(Object));
@@ -60,7 +60,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: ['space-1'], flags: { name: 'Updated Space', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'space-1', name: 'Updated Space' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -75,7 +75,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: ['space-1'], flags: { name: 'Updated Space', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockUpdatedSpace;
     expect(raw.folders).toBeDefined();
     expect(raw.statuses).toBeDefined();
@@ -89,7 +89,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: [], flags: { name: 'Updated Space' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -103,7 +103,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: ['space-1'], flags: { name: 'Updated Space' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -115,7 +115,7 @@ describe('clickup:space.update', () => {
       mockCLIInput({ argv: ['space-1'], flags: { name: 'New Name', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updateSpace)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('space-1');

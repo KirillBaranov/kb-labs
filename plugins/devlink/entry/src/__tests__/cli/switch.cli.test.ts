@@ -62,7 +62,7 @@ describe('devlink:switch', () => {
 
     const result = await switchCommand.execute(ctx as never, mockCLIInput({ flags: { mode: 'link' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(vi.mocked(applyPlan)).toHaveBeenCalledOnce();
   });
@@ -76,7 +76,7 @@ describe('devlink:switch', () => {
 
     const result = await switchCommand.execute(ctx as never, mockCLIInput({ flags: { mode: 'link' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(applyPlan)).not.toHaveBeenCalled();
     expect(captured.infos.length).toBeGreaterThan(0);
   });
@@ -90,7 +90,7 @@ describe('devlink:switch', () => {
 
     const result = await switchCommand.execute(ctx as never, mockCLIInput({ flags: { mode: 'link' } }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -100,7 +100,7 @@ describe('devlink:switch', () => {
 
     const result = await switchCommand.execute(ctx as never, mockCLIInput({ flags: { mode: 'link', 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(applyPlan)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('link');

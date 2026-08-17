@@ -30,7 +30,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: { yes: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('task-001');
   });
@@ -45,7 +45,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: { yes: true, json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, deleted: true, taskId: 'task-001' });
   });
 
@@ -57,7 +57,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: [], flags: { yes: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -69,7 +69,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -83,7 +83,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: { yes: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -95,7 +95,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: { 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(deleteTask).not.toHaveBeenCalled();
     expect(captured.infos.length).toBeGreaterThan(0);
     expect(captured.infos[0]?.message).toContain('Dry-run');
@@ -110,7 +110,7 @@ describe('clickup:task.delete', () => {
       mockCLIInput({ argv: ['task-001'], flags: { 'dry-run': true, yes: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(deleteTask).not.toHaveBeenCalled();
     expect(captured.infos.length).toBeGreaterThan(0);
   });

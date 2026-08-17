@@ -44,7 +44,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: ['list-1'], flags: { name: 'Updated List' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('List updated');
     expect(vi.mocked(updateList)).toHaveBeenCalledWith('test-api-key', 'list-1', { name: 'Updated List' });
@@ -60,7 +60,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: ['list-1'], flags: { name: 'Updated List', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'list-1', name: 'Updated List' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -75,7 +75,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: ['list-1'], flags: { name: 'Updated List', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockUpdatedList;
     expect(raw.orderindex).toBeDefined();
     expect(raw.taskCount).toBeDefined();
@@ -89,7 +89,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: [], flags: { name: 'Updated List' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -103,7 +103,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: ['list-1'], flags: { name: 'Updated List' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -115,7 +115,7 @@ describe('clickup:list.update', () => {
       mockCLIInput({ argv: ['list-1'], flags: { name: 'New Name', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(updateList)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('list-1');

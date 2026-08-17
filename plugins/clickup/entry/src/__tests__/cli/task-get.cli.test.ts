@@ -36,7 +36,7 @@ describe('clickup:task.get', () => {
       mockCLIInput({ argv: ['task-001'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
   });
 
   it('TG-02: --json outputs slim task object', async () => {
@@ -50,7 +50,7 @@ describe('clickup:task.get', () => {
       mockCLIInput({ argv: ['task-001'], flags: { json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const slim = captured.json[0] as Record<string, unknown>;
     expect(slim.id).toBe('task-001');
     expect(slim.status).toBe('open');
@@ -72,7 +72,7 @@ describe('clickup:task.get', () => {
       mockCLIInput({ argv: ['task-001'], flags: { json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ task: { id: 'task-001' } });
   });
 
@@ -84,7 +84,7 @@ describe('clickup:task.get', () => {
       mockCLIInput({ argv: [] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -99,7 +99,7 @@ describe('clickup:task.get', () => {
       mockCLIInput({ argv: ['task-001'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

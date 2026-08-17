@@ -24,7 +24,7 @@ describe('marketplace:yank', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mockedPost).toHaveBeenCalledWith(
       '/packages/kirill/my-plugin/1.0.0/yank',
       expect.any(Object),
@@ -55,7 +55,7 @@ describe('marketplace:yank', () => {
       flags: { json: true },
     }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ yanked: true, version: '1.0.0' });
   });
 
@@ -64,7 +64,7 @@ describe('marketplace:yank', () => {
     const ctx = createMockContext({ ui });
     const result = await yankCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -76,7 +76,7 @@ describe('marketplace:yank', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -88,7 +88,7 @@ describe('marketplace:yank', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
@@ -100,7 +100,7 @@ describe('marketplace:yank', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('YK-08: HTTP error — exitCode 1, error captured', async () => {
@@ -112,7 +112,7 @@ describe('marketplace:yank', () => {
       flags: {},
     }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

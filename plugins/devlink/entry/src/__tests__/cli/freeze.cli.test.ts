@@ -46,7 +46,7 @@ describe('devlink:freeze', () => {
 
     const result = await freezeCommand.execute(ctx as never, mockCLIInput<FreezeFlags>());
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(freeze).toHaveBeenCalledOnce();
     expect(captured.success.length).toBeGreaterThan(0);
   });
@@ -57,7 +57,7 @@ describe('devlink:freeze', () => {
 
     const result = await freezeCommand.execute(ctx as never, mockCLIInput<FreezeFlags>({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json.length).toBeGreaterThan(0);
     expect((captured.json[0] as Record<string, unknown>).frozenAt).toBeDefined();
   });
@@ -68,7 +68,7 @@ describe('devlink:freeze', () => {
 
     const result = await freezeCommand.execute(ctx as never, mockCLIInput<FreezeFlags>({ flags: { 'dry-run': true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(freeze).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
   });

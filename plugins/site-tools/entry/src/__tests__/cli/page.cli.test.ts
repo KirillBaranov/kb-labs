@@ -31,7 +31,7 @@ describe('site-tools:page', () => {
 
     const result = await pageCommand.execute(ctx as never, mockCLIInput<PageFlags>({ argv: [] }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
     expect(writeFileSync).not.toHaveBeenCalled();
   });
@@ -44,7 +44,7 @@ describe('site-tools:page', () => {
 
     const result = await pageCommand.execute(ctx as never, mockCLIInput<PageFlags>({ argv: ['pricing'] }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('pricing');
     expect(mkdirSync).not.toHaveBeenCalled();
   });
@@ -55,7 +55,7 @@ describe('site-tools:page', () => {
 
     const result = await pageCommand.execute(ctx as never, mockCLIInput<PageFlags>({ argv: ['pricing'] }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mkdirSync).toHaveBeenCalledOnce();
     // page.tsx, opengraph-image.tsx, en.json, ru.json
     expect(writeFileSync).toHaveBeenCalledTimes(4);
@@ -81,7 +81,7 @@ describe('site-tools:page', () => {
       mockCLIInput<PageFlags>({ argv: ['pricing'], flags: { 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(mkdirSync).not.toHaveBeenCalled();
     expect(writeFileSync).not.toHaveBeenCalled();
     expect(captured.success[0]?.message).toContain('dry-run');
@@ -108,7 +108,7 @@ describe('site-tools:page', () => {
 
     const result = await pageCommand.execute(ctx as never, mockCLIInput<PageFlags>({ argv: ['pricing'] }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('opengraph-image.tsx');
     expect(mkdirSync).not.toHaveBeenCalled();
   });
@@ -122,7 +122,7 @@ describe('site-tools:page', () => {
       mockCLIInput<PageFlags>({ argv: ['../../../etc/passwd'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('Invalid segment');
     expect(mkdirSync).not.toHaveBeenCalled();
     expect(writeFileSync).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('site-tools:page', () => {
       mockCLIInput<PageFlags>({ argv: ['My-Page'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors[0]).toContain('Invalid segment');
   });
 

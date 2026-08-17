@@ -170,7 +170,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, type-check, test]
+        task: [lint, type-check, test, test:cli]
     steps:
       - uses: actions/checkout@v4
         with:

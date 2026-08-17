@@ -40,7 +40,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(vi.mocked(deleteFolder)).toHaveBeenCalledWith('test-api-key', 'folder-1');
   });
@@ -55,7 +55,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { force: true, json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, deleted: true, folderId: 'folder-1' });
   });
 
@@ -67,7 +67,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: [], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -79,7 +79,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: ['folder-1'], flags: {} }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -93,7 +93,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { force: true } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -105,7 +105,7 @@ describe('clickup:folder.delete', () => {
       mockCLIInput({ argv: ['folder-1'], flags: { 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(deleteFolder)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('folder-1');

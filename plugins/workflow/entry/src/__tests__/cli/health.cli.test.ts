@@ -26,7 +26,7 @@ describe('workflow:health', () => {
     const ctx = createMockContext({ ui });
     const result = await healthCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('healthy');
   });
@@ -40,7 +40,7 @@ describe('workflow:health', () => {
     const ctx = createMockContext({ ui });
     const result = await healthCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ ok: true, data: { ok: true, service: 'workflow' } });
   });
 
@@ -53,7 +53,7 @@ describe('workflow:health', () => {
     const ctx = createMockContext({ ui });
     const result = await healthCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

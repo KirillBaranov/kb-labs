@@ -41,7 +41,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1', name: 'My List' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.success.length).toBeGreaterThan(0);
     expect(captured.success[0]?.message).toContain('List created');
     expect(vi.mocked(createListInFolder)).toHaveBeenCalledWith('test-api-key', 'folder-1', { name: 'My List' });
@@ -57,7 +57,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { space: 'space-1', name: 'My List' } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(createListInSpace)).toHaveBeenCalledWith('test-api-key', 'space-1', { name: 'My List' });
   });
 
@@ -71,7 +71,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1', name: 'My List', json: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({ id: 'list-1', name: 'My List' });
     expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
   });
@@ -86,7 +86,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1', name: 'My List', json: true, full: true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const raw = captured.json[0] as typeof mockList;
     expect(raw.orderindex).toBeDefined();
     expect(raw.taskCount).toBeDefined();
@@ -100,7 +100,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1' } }) as Parameters<typeof listCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -112,7 +112,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { name: 'My List' } }) as Parameters<typeof listCreateCommand.execute>[1],
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -126,7 +126,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1', name: 'My List' } }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
@@ -138,7 +138,7 @@ describe('clickup:list.create', () => {
       mockCLIInput({ flags: { folder: 'folder-1', name: 'My List', 'dry-run': true } }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(vi.mocked(createListInFolder)).not.toHaveBeenCalled();
     expect(captured.infos[0]?.message).toContain('Dry-run');
     expect(captured.infos[0]?.message).toContain('My List');

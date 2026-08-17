@@ -31,7 +31,7 @@ describe('workflow:runs-logs', () => {
     const ctx = createMockContext({ ui });
     const result = await runsLogsCommand.execute(ctx, mockCLIInput({ flags: {}, argv: ['r-123'] }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.logs.length).toBe(3);
     expect(captured.logs[0]?.message).toContain('Step started');
   });
@@ -45,7 +45,7 @@ describe('workflow:runs-logs', () => {
     const ctx = createMockContext({ ui });
     const result = await runsLogsCommand.execute(ctx, mockCLIInput({ flags: { 'run-id': 'r-456' } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.logs.length).toBe(3);
   });
 
@@ -58,7 +58,7 @@ describe('workflow:runs-logs', () => {
     const ctx = createMockContext({ ui });
     const result = await runsLogsCommand.execute(ctx, mockCLIInput({ flags: { json: true }, argv: ['r-123'] }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     const payload = captured.json[0] as { ok: boolean; data: { logs: typeof sampleLogs } };
     expect(payload.ok).toBe(true);
     expect(Array.isArray(payload.data.logs)).toBe(true);
@@ -70,7 +70,7 @@ describe('workflow:runs-logs', () => {
     const ctx = createMockContext({ ui });
     const result = await runsLogsCommand.execute(ctx, mockCLIInput({ flags: {}, argv: [] }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.some(e => e.includes('Missing run ID'))).toBe(true);
   });
 
@@ -115,7 +115,7 @@ describe('workflow:runs-logs', () => {
     const ctx = createMockContext({ ui });
     const result = await runsLogsCommand.execute(ctx, mockCLIInput({ flags: {}, argv: ['r-123'] }));
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 });

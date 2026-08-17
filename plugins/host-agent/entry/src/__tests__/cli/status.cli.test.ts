@@ -44,8 +44,8 @@ describe('workspace:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.running).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.result.running).toBe(false);
     expect(captured.infos.length).toBeGreaterThan(0);
   });
 
@@ -60,10 +60,10 @@ describe('workspace:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.running).toBe(true);
-    expect(result.connected).toBe(true);
-    expect(result.hostId).toBe('host-123');
+    expect(result.ok).toBe(true);
+    expect(result.result.running).toBe(true);
+    expect(result.result.connected).toBe(true);
+    expect(result.result.hostId).toBe('host-123');
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -78,9 +78,9 @@ describe('workspace:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.running).toBe(true);
-    expect(result.connected).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.result.running).toBe(true);
+    expect(result.result.connected).toBe(false);
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
@@ -95,8 +95,8 @@ describe('workspace:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.running).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.result.running).toBe(false);
     expect(captured.json[0]).toMatchObject({ running: false });
   });
 
@@ -111,7 +111,7 @@ describe('workspace:status', () => {
     const ctx = createMockContext({ ui });
     const result = await statusCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.json[0]).toMatchObject({
       running: true,
       connected: true,

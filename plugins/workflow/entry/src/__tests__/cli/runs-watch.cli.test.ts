@@ -64,7 +64,7 @@ describe('workflow:runs watch', () => {
     const ctx = createMockContext({ ui });
     const result = await runsWatchCommand.execute(ctx, mockCLIInput({ argv: [] }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.some(i => i.message.includes('No runs found'))).toBe(true);
   });
 
@@ -82,7 +82,7 @@ describe('workflow:runs watch', () => {
     const ctx = createMockContext({ ui });
     const result = await runsWatchCommand.execute(ctx, mockCLIInput({ argv: [] }));
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.infos.some(i => i.message.includes('run-latest'))).toBe(true);
   });
 
@@ -99,7 +99,7 @@ describe('workflow:runs watch', () => {
       mockCLIInput({ argv: ['run-abc'] }),
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.ok).toBe(true);
     expect(captured.writes.some((w) => w.includes('run.finished') || w.includes('SUCCESS'))).toBe(true);
   });
 
@@ -115,7 +115,7 @@ describe('workflow:runs watch', () => {
       mockCLIInput({ argv: ['run-abc'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
   });
 
   it('CW-04: --json flag emits JSON objects per event', async () => {
@@ -145,7 +145,7 @@ describe('workflow:runs watch', () => {
       mockCLIInput({ argv: ['run-abc'] }),
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
