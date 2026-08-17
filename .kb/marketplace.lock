@@ -478,19 +478,6 @@
       ],
       "enabled": true
     },
-    "@kb-labs/notifier-test": {
-      "version": "0.1.0",
-      "integrity": "sha256-oRptKFwNJmiu8YlrBBwjDipGD6WY667EbP9Z4jv1SSA=",
-      "resolvedPath": "./tmp/notifier-test/packages/notifier-test-entry",
-      "installedAt": "2026-05-15T23:12:17.798Z",
-      "source": "local",
-      "primaryKind": "plugin",
-      "provides": [
-        "plugin",
-        "cli-command"
-      ],
-      "enabled": true
-    },
     "@kb-labs/adapters-telegram": {
       "version": "2.105.0",
       "integrity": "sha256-uWAOEfgZZBgD9oorf9D1T+lVLqnwbDPIjChFa46vJUA=",
