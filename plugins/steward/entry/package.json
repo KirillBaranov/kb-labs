@@ -18,7 +18,10 @@
   "kb": {
     "manifest": "./dist/manifest.js"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf dist",
