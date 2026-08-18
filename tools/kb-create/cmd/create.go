@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"sort"
@@ -282,17 +280,6 @@ func telemetryFailureCategory(err error) string {
 	default:
 		return "unknown"
 	}
-}
-
-// generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
-// string, used to seed the gateway's bootstrap admin account (#271) for
-// non-local installs. Same crypto/rand + hex pattern as telemetry.GenerateDeviceID.
-func generateBootstrapAdminPassword() string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
-	}
-	return hex.EncodeToString(b)
 }
 
 // envOrDefault returns os.Getenv(key) when non-empty, else def.

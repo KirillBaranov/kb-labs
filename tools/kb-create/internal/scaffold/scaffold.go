@@ -1209,7 +1209,7 @@ func ensureGitignore(projectDir string) error {
 	const (
 		marker    = "# kb-labs-ignore"
 		endMarker = "# end-kb-labs-ignore"
-		block     = "# kb-labs-ignore\n.env\n*.log\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/runtime/\n.kb/commit/\n.kb/mind/\n.kb/database/\n.kb/onboarding/\n.kb/qa/\n.kb/run-artifacts/\n# scaffolded plugins build their own node_modules/dist under .kb/plugins/*\n.kb/plugins/*/node_modules/\n.kb/plugins/*/dist/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.dev.yaml\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n"
+		block     = "# kb-labs-ignore\n.env\n*.log\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/runtime/\n.kb/commit/\n.kb/mind/\n.kb/database/\n.kb/onboarding/\n.kb/qa/\n.kb/run-artifacts/\n# scaffolded plugins build their own node_modules/dist under .kb/plugins/*\n.kb/plugins/*/node_modules/\n.kb/plugins/*/dist/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.dev.yaml\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# kb-create install manifest — may carry provisioned telemetry credentials\n.kb/install.json\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n"
 	)
 	path := filepath.Join(projectDir, ".gitignore")
 	existing, err := os.ReadFile(path)

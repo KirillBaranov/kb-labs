@@ -161,7 +161,7 @@ export PRESERVE_PLATFORM_DIR=/tmp/kb-e2e-preserve/kb-platform
 mkdir -p /tmp/work-preserve && cd /tmp/work-preserve
 if kb-create install --plugins=commit --platform "$PRESERVE_PLATFORM_DIR" > /tmp/install-preserve-first.log 2>&1 && \
    kb-create install --plugins=release --platform "$PRESERVE_PLATFORM_DIR" > /tmp/install-preserve-second.log 2>&1; then
-  if [ -d "$PRESERVE_PLATFORM_DIR/node_modules/@kb-labs/commit-cli" ] && \
+  if [ -d "$PRESERVE_PLATFORM_DIR/node_modules/@kb-labs/commit-entry" ] && \
      [ -d "$PRESERVE_PLATFORM_DIR/node_modules/@kb-labs/release-manager-cli" ]; then
     pass "custom plugin install preserves the existing plugin"
   else

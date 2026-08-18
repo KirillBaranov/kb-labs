@@ -20,11 +20,11 @@ jobs:
           fi
       - name: Build
         run: |
-          if [ -f package.json ]; then pnpm run build --if-present; else echo "No package.json — build skipped"; fi
+          if [ -f package.json ]; then pnpm run --if-present build; else echo "No package.json — build skipped"; fi
       - name: Lint
         run: |
-          if [ -f package.json ]; then pnpm run lint --if-present; else echo "No package.json — lint skipped"; fi
+          if [ -f package.json ]; then pnpm run --if-present lint; else echo "No package.json — lint skipped"; fi
         continueOnError: true
       - name: Test
         run: |
-          if [ -f package.json ]; then pnpm run test --if-present; else echo "No package.json — tests skipped"; fi
+          if [ -f package.json ]; then pnpm run --if-present test; else echo "No package.json — tests skipped"; fi

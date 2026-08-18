@@ -5,6 +5,8 @@ package installer
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -149,21 +151,43 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 	gatewayPlan := buildGatewayPlan(scanResult, m)
 	var gatewayAuthEnabled *bool
 	gatewayHost := ""
+	bootstrapAdminEmail := ""
+	bootstrapTenantID := ""
+	bootstrapAdminPassword := ""
 	if sel.LocalMode {
 		authEnabled := false
 		gatewayAuthEnabled = &authEnabled
 		gatewayHost = "127.0.0.1"
+	} else if slices.Contains(sel.Services, "gateway") {
+		// Non-local installs that select the gateway service run with auth
+		// enabled but otherwise have no way to obtain a credential (#271):
+		// `kb auth login` needs a client-id/secret nobody has, and
+		// `/auth/register` needs an already-authenticated admin, which a
+		// fresh install has none of. Seed a bootstrap admin so the gateway
+		// auto-provisions the CLI's first credential on first start. This
+		// mirrors the pre-declarative-launcher wiring that generated a fresh
+		// random password per install (writeEnvFile below only writes it to
+		// .env the first time, so re-running install never rotates it out
+		// from under an already-bootstrapped gateway).
+		authEnabled := true
+		gatewayAuthEnabled = &authEnabled
+		bootstrapAdminEmail = envOrDefault("GATEWAY_BOOTSTRAP_ADMIN_EMAIL", "admin@bootstrap.local")
+		bootstrapTenantID = envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default")
+		bootstrapAdminPassword = generateBootstrapAdminPassword()
 	}
 	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffold.Options{
-		PlatformDir:        sel.PlatformDir,
-		Services:           sel.Services,
-		Plugins:            sel.Plugins,
-		Adapters:           sel.Adapters,
-		Catalog:            m,
-		DemoMode:           sel.DemoMode,
-		GatewayAuthEnabled: gatewayAuthEnabled,
-		GatewayHost:        gatewayHost,
-		Gateway:            gatewayPlan,
+		PlatformDir:            sel.PlatformDir,
+		Services:               sel.Services,
+		Plugins:                sel.Plugins,
+		Adapters:               sel.Adapters,
+		Catalog:                m,
+		DemoMode:               sel.DemoMode,
+		GatewayAuthEnabled:     gatewayAuthEnabled,
+		GatewayHost:            gatewayHost,
+		BootstrapAdminEmail:    bootstrapAdminEmail,
+		BootstrapTenantID:      bootstrapTenantID,
+		BootstrapAdminPassword: bootstrapAdminPassword,
+		Gateway:                gatewayPlan,
 	}); err != nil {
 		return nil, fmt.Errorf("write platform config: %w", err)
 	}
@@ -182,6 +206,9 @@ func (ins *Installer) FinalizeDeclarative(sel *Selection, m *manifest.Manifest) 
 			Catalog:                          m,
 			GatewayAuthEnabled:               gatewayAuthEnabled,
 			GatewayHost:                      gatewayHost,
+			BootstrapAdminEmail:              bootstrapAdminEmail,
+			BootstrapTenantID:                bootstrapTenantID,
+			BootstrapAdminPassword:           bootstrapAdminPassword,
 			Gateway:                          gatewayPlan,
 			AllowIncompatibleLegacyMigration: sel.AllowIncompatibleLegacyMigration,
 		}); err != nil {
@@ -519,6 +546,25 @@ func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Mani
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+// envOrDefault returns os.Getenv(key) when non-empty, else def.
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
+// string, used to seed the gateway's bootstrap admin account (#271) for
+// non-local installs that select the gateway service.
+func generateBootstrapAdminPassword() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
 
 func (ins *Installer) step(n, total int, label string) {
 	ins.Log.Printf("[%d/%d] %s", n, total, label)

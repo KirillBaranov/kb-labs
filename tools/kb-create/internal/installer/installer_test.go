@@ -601,6 +601,87 @@ func TestFinalizeDeclarativeLocalModeDisablesGatewayAuth(t *testing.T) {
 	}
 }
 
+// TestFinalizeDeclarativeSeedsGatewayBootstrapForNonLocalInstall guards
+// against a regression from the declarative-launcher cutover: the old
+// imperative `kb-create <name>` flow generated a random
+// GATEWAY_BOOTSTRAP_ADMIN_PASSWORD and wrote gateway.auth.bootstrap into the
+// platform config whenever a non-local install selected the gateway
+// service — otherwise a fresh non-local install has auth enabled but no way
+// to ever obtain a credential (#271), so `kb auth login` (and anything that
+// depends on it, e.g. the marketplace/scaffold registration call) fails.
+// That wiring called `generateBootstrapAdminPassword()` from the old
+// `cmd/create.go`; the cutover to FinalizeDeclarative dropped the call site
+// but left the now-dead helper behind, so the bug shipped silently.
+func TestFinalizeDeclarativeSeedsGatewayBootstrapForNonLocalInstall(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // WritePlatformConfig records ~/.kb/active-platform
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	m := manifest.Manifest{
+		Services: []manifest.Component{{ID: "gateway", Pkg: "@kb-labs/gateway-app"}},
+	}
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.FinalizeDeclarative(&Selection{
+		PlatformDir: platformDir,
+		ProjectCWD:  projectDir,
+		Services:    []string{"gateway"},
+	}, &m); err != nil {
+		t.Fatalf("FinalizeDeclarative() error = %v", err)
+	}
+
+	configData, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		t.Fatalf("read platform config: %v", err)
+	}
+	configText := string(configData)
+	if !strings.Contains(configText, `"adminEmail": "admin@bootstrap.local"`) {
+		t.Errorf("platform config missing gateway bootstrap admin email:\n%s", configText)
+	}
+	if !strings.Contains(configText, `"auth": {`) {
+		t.Errorf("platform config must enable gateway auth for a non-local install:\n%s", configText)
+	}
+
+	envData, err := os.ReadFile(filepath.Join(projectDir, ".env"))
+	if err != nil {
+		t.Fatalf("read project .env: %v — GATEWAY_BOOTSTRAP_ADMIN_PASSWORD was never written", err)
+	}
+	if !strings.Contains(string(envData), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=") {
+		t.Errorf(".env missing GATEWAY_BOOTSTRAP_ADMIN_PASSWORD:\n%s", string(envData))
+	}
+}
+
+// TestFinalizeDeclarativeSkipsGatewayBootstrapWithoutGatewayService ensures
+// the bootstrap wiring only activates when the gateway service is actually
+// selected — a scoped `kb-create install --plugins=X` with no services must
+// not gain an unrelated gateway.auth.bootstrap section as a side effect.
+func TestFinalizeDeclarativeSkipsGatewayBootstrapWithoutGatewayService(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // WritePlatformConfig records ~/.kb/active-platform
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	m := manifest.Manifest{
+		Plugins: []manifest.Component{{ID: "release", Pkg: "@kb-labs/release-manager-cli"}},
+	}
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.FinalizeDeclarative(&Selection{
+		PlatformDir: platformDir,
+		ProjectCWD:  projectDir,
+		Plugins:     []string{"release"},
+	}, &m); err != nil {
+		t.Fatalf("FinalizeDeclarative() error = %v", err)
+	}
+
+	configData, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		t.Fatalf("read platform config: %v", err)
+	}
+	if strings.Contains(string(configData), "adminEmail") {
+		t.Errorf("platform config must not seed a gateway bootstrap admin when gateway isn't selected:\n%s", string(configData))
+	}
+	if envData, err := os.ReadFile(filepath.Join(projectDir, ".env")); err == nil &&
+		strings.Contains(string(envData), "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=") {
+		t.Errorf(".env must not carry a bootstrap password when gateway isn't selected:\n%s", string(envData))
+	}
+}
+
 // ── provenance ────────────────────────────────────────────────────────────────
 
 // TestInstallWritesSourceProvenance verifies that Install persists the registry
