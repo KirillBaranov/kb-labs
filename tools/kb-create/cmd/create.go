@@ -35,7 +35,6 @@ var (
 	flagDevManifest     string
 	flagRegistry        string
 	flagIntent          string
-	flagEngine          bool
 	flagSDKVersion      string
 	flagSDKChannel      string
 	flagPlatformVersion string
@@ -53,7 +52,6 @@ func init() {
 	rootCmd.Flags().StringVar(&flagDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
-	rootCmd.Flags().BoolVar(&flagEngine, "engine", false, "use the declarative flow engine for the interactive installation")
 	rootCmd.Flags().StringVar(&flagSDKVersion, "sdk-version", "", "pin the SDK (@kb-labs/sdk) to an exact version — mutually exclusive with --sdk-channel")
 	rootCmd.Flags().StringVar(&flagSDKChannel, "sdk-channel", "", `track a release channel for the SDK: "stable" (default) or "canary"`)
 	rootCmd.Flags().StringVar(&flagPlatformVersion, "platform-version", "", "pin core+adapters+every service+every plugin to an exact version, all identical — mutually exclusive with --platform-channel")
@@ -166,20 +164,6 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
-	selectedPlugins, selectedServices := selectedComponentsFromPlan(compiled)
-	_, finalizeErr := (&installer.Installer{PM: pm.Detect(), Log: log}).FinalizeDeclarative(&installer.Selection{
-		PlatformDir:                      compiled.PlatformRoot,
-		ProjectCWD:                       compiled.ProjectRoot,
-		Binaries:                         compiled.Binaries,
-		Plugins:                          selectedPlugins,
-		Services:                         selectedServices,
-		LocalMode:                        flagLocal,
-		DemoMode:                         flagDemo,
-		AllowIncompatibleLegacyMigration: true,
-	}, declarativeManifest)
-	if finalizeErr != nil {
-		return finalizeErr
-	}
 	if err := writeDeclarativeInstallState(compiled, declarativeManifest, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -289,6 +273,7 @@ func envOrDefault(key, def string) string {
 	}
 	return def
 }
+
 
 // initTelemetry creates a telemetry client based on the user's consent
 // (from wizard or --yes defaults). Credentials are persisted via the

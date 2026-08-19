@@ -18,7 +18,6 @@ import (
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
-	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
@@ -119,6 +118,7 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		PlatformRoot:     platformDir,
 		CatalogDigest:    catalog.Digest,
 		PackageOverrides: platformOverrides,
+		Binaries:         intentBinaries(current.ScenarioID, manifestNow),
 	}, catalog)
 	if err != nil {
 		return fmt.Errorf("build update request: %w", err)
@@ -150,16 +150,6 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	})
 	if err != nil {
 		return fmt.Errorf("declarative update failed: %w", err)
-	}
-	_, finalizeErr := (&installer.Installer{Log: log}).FinalizeDeclarative(&installer.Selection{
-		PlatformDir: platformDir,
-		ProjectCWD:  current.CWD,
-		Plugins:     append([]string(nil), current.SelectedPlugins...),
-		Services:    append([]string(nil), current.SelectedServices...),
-		Binaries:    intentBinaries(current.ScenarioID, manifestNow),
-	}, manifestNow)
-	if finalizeErr != nil {
-		return finalizeErr
 	}
 	if err := writeDeclarativeInstallState(compiled, manifestNow, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
