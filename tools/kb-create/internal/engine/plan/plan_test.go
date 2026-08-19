@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -236,5 +237,24 @@ func TestCompileSortsEffectIDsForDeterministicPlans(t *testing.T) {
 	}
 	if first.PlanHash != second.PlanHash {
 		t.Fatalf("effect order changed plan hash: %q != %q", first.PlanHash, second.PlanHash)
+	}
+}
+
+func TestCompileAddsProjectArtifactsForWorkflowAndDemo(t *testing.T) {
+	result, err := Compile(InstallRequest{
+		Components: []string{"service:workflow"},
+		Values:     map[string]json.RawMessage{"demo.enabled": []byte(`true`)},
+	}, catalog.Catalog{Components: []catalog.Component{{ID: "service:workflow", Kind: "service", Package: "workflow"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make(map[string]bool, len(result.Assembly.Artifacts))
+	for _, artifact := range result.Assembly.Artifacts {
+		got[artifact.Path] = true
+	}
+	for _, path := range []string{".gitignore", ".kb/workflows/healthcheck.yaml", ".kb/workflows/deploy-with-approval.yaml", ".kb/workflows/scheduled-report.yaml", ".kb/workflows/demo.yaml"} {
+		if !got[path] {
+			t.Errorf("missing generated artifact %q", path)
+		}
 	}
 }

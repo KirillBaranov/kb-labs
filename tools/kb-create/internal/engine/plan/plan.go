@@ -163,6 +163,13 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		selected[id] = component
 		assembly.Patches = append(assembly.Patches, component.Config...)
 	}
+	assembly.Artifacts = append(assembly.Artifacts, gitignoreArtifact())
+	if _, workflowSelected := selected["service:workflow"]; workflowSelected {
+		assembly.Artifacts = append(assembly.Artifacts, starterWorkflowArtifacts()...)
+	}
+	if demoEnabled(request.Values) {
+		assembly.Artifacts = append(assembly.Artifacts, demoWorkflowArtifact())
+	}
 
 	providers := make(map[string]catalog.Provider)
 	for _, componentID := range componentIDs {
@@ -423,6 +430,129 @@ func sortedPreferenceKeys(preferences map[string][]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func demoEnabled(values map[string]json.RawMessage) bool {
+	var enabled bool
+	return json.Unmarshal(values["demo.enabled"], &enabled) == nil && enabled
+}
+
+func gitignoreArtifact() engineconfig.ArtifactWrite {
+	return engineconfig.ArtifactWrite{
+		ID: "project.gitignore", Root: engineconfig.RootProject, Path: ".gitignore", Format: engineconfig.FormatText,
+		Owner: "kb-create", Overwrite: engineconfig.OverwriteMerge,
+		MergeMarker: "# kb-labs-ignore", MergeEndMarker: "# end-kb-labs-ignore",
+		Text: "# kb-labs-ignore\n.env\n*.log\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/runtime/\n.kb/commit/\n.kb/mind/\n.kb/database/\n.kb/onboarding/\n.kb/qa/\n.kb/run-artifacts/\n# scaffolded plugins build their own node_modules/dist under .kb/plugins/*\n.kb/plugins/*/node_modules/\n.kb/plugins/*/dist/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.dev.yaml\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n",
+	}
+}
+
+func starterWorkflowArtifacts() []engineconfig.ArtifactWrite {
+	return []engineconfig.ArtifactWrite{
+		{ID: "workflow.healthcheck", Root: engineconfig.RootProject, Path: ".kb/workflows/healthcheck.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Healthcheck — verify your project builds and passes tests.
+# Run:  kb workflow run --workflow-id healthcheck
+# Docs: https://docs.kblabs.ru/workflows
+name: healthcheck
+version: 1.0.0
+description: "Build, lint, and test your project"
+on:
+  manual: true
+
+jobs:
+  check:
+    runsOn: local
+    steps:
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+          else
+            echo "No package.json — dependency installation skipped"
+          fi
+      - name: Build
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present build; else echo "No package.json — build skipped"; fi
+      - name: Lint
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present lint; else echo "No package.json — lint skipped"; fi
+        continueOnError: true
+      - name: Test
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present test; else echo "No package.json — tests skipped"; fi
+`},
+		{ID: "workflow.deploy-with-approval", Root: engineconfig.RootProject, Path: ".kb/workflows/deploy-with-approval.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Deploy with approval gate — human sign-off before deploy.
+# Run:  kb workflow run --workflow-id deploy-with-approval
+# Docs: https://docs.kblabs.ru/workflows
+name: deploy-with-approval
+version: 1.0.0
+description: "Build, test, get approval, then deploy"
+on:
+  manual: true
+
+inputs:
+  environment:
+    type: string
+    description: "Target environment"
+    default: "staging"
+
+jobs:
+  build-and-test:
+    runsOn: local
+    steps:
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
+
+  approve:
+    needs: [build-and-test]
+    runsOn: local
+    steps:
+      - name: Request approval
+        uses: builtin:approval
+        with:
+          message: "Deploy to ${{ inputs.environment }}? Build and tests passed."
+          approvers: ["team-lead"]
+          timeout: "1h"
+
+  deploy:
+    needs: [approve]
+    runsOn: local
+    steps:
+      - name: Deploy
+        run: echo "Deploying to ${{ inputs.environment }}..."
+        summary: "Deployed to ${{ inputs.environment }}"
+`},
+		{ID: "workflow.scheduled-report", Root: engineconfig.RootProject, Path: ".kb/workflows/scheduled-report.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Scheduled report — runs on a cron schedule.
+# This workflow runs daily and generates a project health summary.
+# Docs: https://docs.kblabs.ru/workflows
+name: scheduled-report
+version: 1.0.0
+description: "Daily project health check (cron)"
+on:
+  schedule:
+    cron: "0 9 * * 1-5"
+  manual: true
+
+jobs:
+  report:
+    runsOn: local
+    steps:
+      - name: Git summary
+        id: git
+        run: |
+          echo "## Commits (last 24h)"
+          git log --oneline --since="24 hours ago" || echo "No recent commits"
+      - name: Dependency check
+        run: pnpm outdated || true
+        continueOnError: true
+      - name: Disk usage
+        run: du -sh node_modules/ dist/ 2>/dev/null || echo "N/A"
+`},
+	}
+}
+
+func demoWorkflowArtifact() engineconfig.ArtifactWrite {
+	return engineconfig.ArtifactWrite{ID: "workflow.demo", Root: engineconfig.RootProject, Path: ".kb/workflows/demo.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: "# Demo pipeline — generated by kb-create --demo\n# Run:  kb workflow run --workflow-id demo\n# Edit: edit this file directly, then re-run\n# Docs: https://docs.kblabs.ru/workflows\n\nname: demo\ndescription: \"Quick demo — commit policy, AI review, QA gate\"\n"}
 }
 
 func cloneValues(values map[string]json.RawMessage) map[string]json.RawMessage {

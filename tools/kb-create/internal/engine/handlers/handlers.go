@@ -223,7 +223,7 @@ func (h *configHandler) Check(_ context.Context, _ plan.PlanAction) (bool, error
 	}
 	for _, artifact := range result.Artifacts {
 		data, readErr := os.ReadFile(artifact.Path) // #nosec G304 -- path was root-validated by config.Assemble.
-		if readErr != nil || string(data) != string(artifact.Content) {
+		if readErr != nil || !artifactMatches(data, artifact, h.effectiveAssembly()) {
 			return false, nil
 		}
 	}
@@ -255,11 +255,40 @@ func (h *configHandler) Verify(_ context.Context, _ plan.PlanAction, _ executor.
 		if readErr != nil {
 			return readErr
 		}
-		if string(data) != string(artifact.Content) {
+		if !artifactMatches(data, artifact, h.effectiveAssembly()) {
 			return fmt.Errorf("artifact %q failed read-back verification", artifact.Path)
 		}
 	}
 	return nil
+}
+
+func artifactMatches(actual []byte, artifact config.MaterializedArtifact, assembly config.ConfigAssembly) bool {
+	if artifact.Mode != config.OverwriteMerge {
+		return string(actual) == string(artifact.Content)
+	}
+	for _, candidate := range assembly.Artifacts {
+		if candidate.ID != artifact.ID {
+			continue
+		}
+		return string(actual) == string(mergeArtifactBlock(actual, artifact.Content, candidate.MergeMarker, candidate.MergeEndMarker))
+	}
+	return false
+}
+
+func mergeArtifactBlock(existing, block []byte, marker, endMarker string) []byte {
+	content := string(existing)
+	if start := strings.Index(content, marker); start >= 0 {
+		if end := strings.Index(content[start:], endMarker); end >= 0 {
+			end += start + len(endMarker)
+			return []byte(content[:start] + string(block) + strings.TrimLeft(content[end:], "\r\n"))
+		}
+		return []byte(content[:start] + string(block))
+	}
+	separator := "\n"
+	if content == "" || strings.HasSuffix(content, "\n") {
+		separator = ""
+	}
+	return []byte(content + separator + string(block))
 }
 
 // secretHandler generates (once) and persists a secret value to a

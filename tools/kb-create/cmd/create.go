@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -135,6 +136,12 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	builtInstall, err := engineflow.BuildInstallRequest(loaded, state, projectRoot, platformRoot, resolvedCatalog.Digest)
 	if err != nil {
 		return fmt.Errorf("build declarative install request: %w", err)
+	}
+	if flagDemo {
+		if builtInstall.Values == nil {
+			builtInstall.Values = make(map[string]json.RawMessage)
+		}
+		builtInstall.Values["demo.enabled"] = json.RawMessage(`true`)
 	}
 	builtInstall.PackageOverrides = platformOverrides
 
@@ -273,7 +280,6 @@ func envOrDefault(key, def string) string {
 	}
 	return def
 }
-
 
 // initTelemetry creates a telemetry client based on the user's consent
 // (from wizard or --yes defaults). Credentials are persisted via the
