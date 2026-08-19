@@ -238,6 +238,9 @@ func (h *configHandler) Apply(_ context.Context, _ plan.PlanAction) (executor.Ac
 	if err := config.Write(result, assembly, h.roots); err != nil {
 		return executor.ActionResult{}, err
 	}
+	if err := migrateLegacyProjectConfig(assembly, h.roots); err != nil {
+		return executor.ActionResult{}, err
+	}
 	return executor.ActionResult{}, nil
 }
 func (h *configHandler) Verify(_ context.Context, _ plan.PlanAction, _ executor.ActionResult) error {
