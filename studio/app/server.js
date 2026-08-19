@@ -16,7 +16,7 @@
  * This server only serves static files.
  */
 import { createServer, request as httpRequest } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, realpath } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -137,7 +137,26 @@ const server = createServer(async (req, res) => {
 
 // Only listen when this file is the entrypoint — a bare `import` (e.g. the
 // release pipeline's clean-install packaging check) must not start a server.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Deploy installs run through a `services/<short>/current` symlink: Node
+// resolves symlinks when computing import.meta.url but leaves process.argv[1]
+// as the literal (unresolved) path it was invoked with, so a strict string
+// comparison never matches there — the guard silently fails, listen() is
+// never called, and the process exits 0 without starting. Compare realpaths
+// on both sides so a symlinked entrypoint still counts as "this is main".
+async function isEntrypoint() {
+  if (!process.argv[1]) return false;
+  try {
+    const [self, argv1] = await Promise.all([
+      realpath(fileURLToPath(import.meta.url)),
+      realpath(process.argv[1]),
+    ]);
+    return self === argv1;
+  } catch {
+    return false;
+  }
+}
+
+if (await isEntrypoint()) {
   server.listen(PORT, HOST, () => {
     console.log(`Studio  http://localhost:${PORT}`);
     console.log(`API     ${runtimeConfig.KB_API_BASE_URL}`);
