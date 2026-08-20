@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildEvidence, renderMarkdown } from './ci-evidence-summary.mjs';
+import { fileURLToPath } from 'node:url';
+import { buildEvidence, readArtifactLogForJob, renderMarkdown } from './ci-evidence-summary.mjs';
+
+const fixtureDir = fileURLToPath(new URL('./fixtures/ci-evidence/', import.meta.url));
 
 const jobs = [
   { id: 1, name: 'E2E / services', conclusion: 'failure', html_url: 'https://example.test/1', steps: [{ name: 'Wait for platform to be healthy', conclusion: 'failure' }, { name: 'Run e2e tests', conclusion: 'skipped' }] },
@@ -33,4 +36,13 @@ test('does not merge jobs when their own evidence has different fingerprints', (
   ]));
   assert.equal(report.incidents.length, 2);
   assert.equal(report.incidents.every(incident => incident.jobs.length === 1), true);
+});
+
+test('reads diagnostics only from the artifact belonging to the failed job suite', () => {
+  const services = readArtifactLogForJob(fixtureDir, 'docker-e2e (services) / E2E / services');
+  const auth = readArtifactLogForJob(fixtureDir, 'auth-e2e / E2E / auth');
+  assert.match(services, /serviceTransport/);
+  assert.doesNotMatch(services, /auth adapter/);
+  assert.match(auth, /auth adapter/);
+  assert.doesNotMatch(auth, /serviceTransport/);
 });

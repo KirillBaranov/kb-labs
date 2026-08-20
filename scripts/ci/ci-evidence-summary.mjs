@@ -114,7 +114,7 @@ function main(argv) {
   process.stdout.write(renderMarkdown(report));
 }
 
-function readArtifactLogForJob(root, jobName) {
+export function readArtifactLogForJob(root, jobName) {
   try {
     const suite = suiteName(jobName);
     if (!suite) return '';
