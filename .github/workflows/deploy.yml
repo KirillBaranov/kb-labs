@@ -44,7 +44,7 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0  # full history for multi-commit push diff
 
@@ -53,7 +53,7 @@ jobs:
         run: git checkout ${{ inputs.rollback-sha }}
 
       - name: Restore deploy state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .kb/deploy/state.json
           key: deploy-state-${{ github.ref_name }}-${{ github.sha }}
@@ -61,12 +61,12 @@ jobs:
             deploy-state-${{ github.ref_name }}-
             deploy-state-
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.25'
           cache-dependency-path: tools/kb-deploy/go.sum
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.25'
           cache-dependency-path: tools/kb-devkit/go.sum
@@ -79,9 +79,9 @@ jobs:
         run: make build
         working-directory: tools/kb-deploy
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: pnpm
@@ -230,7 +230,7 @@ jobs:
 
       - name: Save deploy state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .kb/deploy/state.json
           key: deploy-state-${{ github.ref_name }}-${{ github.sha }}

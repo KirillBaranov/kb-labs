@@ -113,7 +113,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Validate aggregation logic
         run: node --test scripts/ci/aggregate-e2e-result.test.mjs
       - name: Check matrix outcome
@@ -128,13 +128,13 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: pnpm
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: e2e-platform-prebuilt-${{ github.run_id }}
           path: /tmp/e2e-prebuilt
@@ -146,13 +146,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: pnpm kb qa ci evidence capture --exclude-job "Flaky history" --output .kb/qa/ci/dossier.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: qa-ci-evidence-${{ github.run_id }}
           path: .kb/qa/ci/dossier.json
           retention-days: 90
           if-no-files-found: error
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: flaky-report-*-${{ github.run_id }}
           path: /tmp/flaky-reports
