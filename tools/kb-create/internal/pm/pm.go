@@ -75,8 +75,9 @@ type PackageManager interface {
 
 // DetectOptions configures the package manager returned by Detect.
 type DetectOptions struct {
-	Registry string // optional: custom registry URL
-	StoreDir string // optional: shared pnpm store dir (ignored by npm)
+	Registry         string            // optional: custom registry URL
+	StoreDir         string            // optional: shared pnpm store dir (ignored by npm)
+	PackageOverrides map[string]string // explicit platform-owned pins for this install wave
 }
 
 // Detect returns pnpm if available, otherwise npm.
@@ -90,15 +91,28 @@ type DetectOptions struct {
 // overriding a Docker-internal registry address with a host-side one.
 func Detect(opts ...DetectOptions) PackageManager {
 	var registry, storeDir string
+	var packageOverrides map[string]string
 	if len(opts) > 0 {
 		registry = opts[0].Registry
 		storeDir = opts[0].StoreDir
+		packageOverrides = cloneStringMap(opts[0].PackageOverrides)
 	}
 	if registry == "" && os.Getenv("NPM_CONFIG_REGISTRY") == "" {
 		registry = os.Getenv("KB_REGISTRY_URL")
 	}
 	if _, err := exec.LookPath("pnpm"); err == nil {
-		return &PnpmManager{Registry: registry, StoreDir: storeDir}
+		return &PnpmManager{Registry: registry, StoreDir: storeDir, PackageOverrides: packageOverrides}
 	}
-	return &NpmManager{Registry: registry}
+	return &NpmManager{Registry: registry, PackageOverrides: packageOverrides}
+}
+
+func cloneStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	clone := make(map[string]string, len(values))
+	for key, value := range values {
+		clone[key] = value
+	}
+	return clone
 }

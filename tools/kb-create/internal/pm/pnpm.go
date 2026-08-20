@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -17,6 +18,9 @@ import (
 // PnpmManager implements PackageManager using pnpm.
 type PnpmManager struct {
 	Registry string // optional: custom registry URL (e.g. http://localhost:4873)
+	// PackageOverrides contains explicit platform-owned pins for the current
+	// install wave. Empty means preserve the values already in package.json.
+	PackageOverrides map[string]string
 	// StoreDir optionally points pnpm at a shared content-addressable store. When
 	// every release dir shares one store on the same filesystem, identical package
 	// versions are hardlinked into each release's node_modules instead of copied —
@@ -105,7 +109,7 @@ func (p *PnpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
 }
 
 func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) error {
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, p.PackageOverrides); err != nil {
 		return err
 	}
 	if err := pinPnpmPackageJSON(dir); err != nil {
@@ -309,15 +313,45 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 		workspaceConfig += "  - '" + name + "'\n"
 	}
 	workspaceConfig += "overrides:\n"
-	for _, name := range []string{
-		"@kb-labs/gateway-contracts",
-		"@kb-labs/gateway-auth",
-		"@kb-labs/gateway-core",
-		"@kb-labs/sdk",
-		"@kb-labs/core-runtime",
-		"@kb-labs/core-platform",
-	} {
-		workspaceConfig += "  '" + name + "': '>=2.0.0'\n"
+	overrides := packageJSONOverrides(dir)
+	for name, value := range defaultPackageOverrides {
+		if _, exists := overrides[name]; !exists {
+			overrides[name] = value
+		}
+	}
+	for _, name := range sortedOverrideNames(overrides) {
+		workspaceConfig += "  '" + name + "': '" + overrides[name] + "'\n"
 	}
 	return os.WriteFile(filepath.Join(dir, "pnpm-workspace.yaml"), []byte(workspaceConfig), 0o600)
+}
+
+func packageJSONOverrides(dir string) map[string]string {
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return map[string]string{}
+	}
+	var pkg struct {
+		Pnpm struct {
+			Overrides map[string]interface{} `json:"overrides"`
+		} `json:"pnpm"`
+	}
+	if json.Unmarshal(data, &pkg) != nil {
+		return map[string]string{}
+	}
+	result := make(map[string]string, len(pkg.Pnpm.Overrides))
+	for name, value := range pkg.Pnpm.Overrides {
+		if text, ok := value.(string); ok && text != "" {
+			result[name] = text
+		}
+	}
+	return result
+}
+
+func sortedOverrideNames(overrides map[string]string) []string {
+	names := make([]string, 0, len(overrides))
+	for name := range overrides {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

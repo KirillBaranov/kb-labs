@@ -103,7 +103,7 @@ func TestEnsurePackageJSONCreates(t *testing.T) {
 	dir := t.TempDir()
 	pkgPath := filepath.Join(dir, "package.json")
 
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, nil); err != nil {
 		t.Fatalf("ensurePackageJSON() error = %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestEnsurePackageJSONCreates(t *testing.T) {
 
 func TestEnsurePackageJSONAllowsPlatformBuildDependencies(t *testing.T) {
 	dir := t.TempDir()
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, nil); err != nil {
 		t.Fatalf("ensurePackageJSON: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
@@ -156,7 +156,7 @@ func TestEnsurePackageJSONMergesOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, nil); err != nil {
 		t.Fatalf("ensurePackageJSON() error = %v", err)
 	}
 
@@ -187,13 +187,66 @@ func TestEnsurePackageJSONMergesOverrides(t *testing.T) {
 	}
 }
 
+// TestPlatformOverridesSurviveSubsequentAdd guards the install-wave invariant:
+// a canary platform pin written by the initial add must remain the owner of
+// shared KB packages when a later plugin/service add prepares package.json.
+func TestPlatformOverridesSurviveSubsequentAdd(t *testing.T) {
+	dir := t.TempDir()
+	canary := map[string]string{
+		"@kb-labs/sdk":           "2.118.0-canary.1",
+		"@kb-labs/core-runtime":  "2.119.0-canary.85d060ea",
+		"@kb-labs/core-platform": "2.119.0-canary.85d060ea",
+	}
+
+	if err := ensurePackageJSON(dir, canary); err != nil {
+		t.Fatalf("initial ensurePackageJSON() error = %v", err)
+	}
+	// This is the second add: no new platform axis was selected, so the
+	// package manager must preserve the already persisted platform pins.
+	if err := ensurePackageJSON(dir, nil); err != nil {
+		t.Fatalf("subsequent ensurePackageJSON() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct {
+		Pnpm struct {
+			Overrides map[string]string `json:"overrides"`
+		} `json:"pnpm"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range canary {
+		if got := pkg.Pnpm.Overrides[name]; got != want {
+			t.Errorf("pnpm override %s = %q after second add, want %q", name, got, want)
+		}
+	}
+
+	if err := (&PnpmManager{}).ensureNpmrc(dir); err != nil {
+		t.Fatalf("ensureNpmrc() error = %v", err)
+	}
+	workspace, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range canary {
+		line := "'" + name + "': '" + want + "'"
+		if !strings.Contains(string(workspace), line) {
+			t.Errorf("workspace override %s missing after second add: want %q in %q", name, line, string(workspace))
+		}
+	}
+}
+
 // TestEnsurePackageJSONCreatesDir verifies that ensurePackageJSON creates the
 // target directory if it does not exist.
 func TestEnsurePackageJSONCreatesDir(t *testing.T) {
 	base := t.TempDir()
 	dir := filepath.Join(base, "new", "nested", "dir")
 
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, nil); err != nil {
 		t.Fatalf("ensurePackageJSON() error = %v", err)
 	}
 
