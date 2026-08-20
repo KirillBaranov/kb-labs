@@ -109,6 +109,9 @@ type ConfigPatch struct {
 	Value     json.RawMessage `json:"value,omitempty"`
 	SchemaRef string          `json:"schemaRef,omitempty"`
 	Owner     string          `json:"owner,omitempty"`
+	// Doc is an optional inline comment rendered above this path's key when
+	// the output uses FormatJSONCCommented. See engineconfig.ConfigPatch.Doc.
+	Doc string `json:"doc,omitempty"`
 }
 
 type ConfigOutput struct {
@@ -117,6 +120,10 @@ type ConfigOutput struct {
 	Path      string `json:"path"`
 	Format    string `json:"format"`
 	Overwrite string `json:"overwrite,omitempty"`
+	// SectionOrder/Banner apply only when Format == "jsonc-commented". See
+	// engineconfig.ConfigOutput.
+	SectionOrder []string `json:"sectionOrder,omitempty"`
+	Banner       string   `json:"banner,omitempty"`
 }
 
 type ConfigArtifact struct {
@@ -133,8 +140,20 @@ type ConfigArtifact struct {
 // ConfigEffect is a reusable product configuration contribution. Scenarios
 // select effect IDs; they do not duplicate the patch bodies in each option.
 type ConfigEffect struct {
-	ID     string        `json:"id"`
-	Config []ConfigPatch `json:"config,omitempty"`
+	ID      string              `json:"id"`
+	Config  []ConfigPatch       `json:"config,omitempty"`
+	Secrets []SecretRequirement `json:"secrets,omitempty"`
+}
+
+// SecretRequirement mirrors engineconfig.SecretRequirement — a secret value
+// generated (if absent) and persisted to a project dotenv file, never
+// serialized into the plan/patches. See engineconfig.SecretRequirement for
+// why this can't just be a ConfigPatch.
+type SecretRequirement struct {
+	ID        string `json:"id"`
+	EnvVar    string `json:"envVar"`
+	Generator string `json:"generator"`
+	Owner     string `json:"owner,omitempty"`
 }
 
 // MigrationPredicate and MigrationOperation form the small declarative DSL

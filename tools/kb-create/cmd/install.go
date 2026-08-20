@@ -18,11 +18,9 @@ import (
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
-	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
-	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/scan"
 	"github.com/kb-labs/create/internal/validate"
 )
@@ -195,32 +193,17 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("declarative installation failed: %w", err)
 	}
-	selectedPlugins := make([]string, 0, len(canonicalPlugins))
-	selectedServices := make([]string, 0, len(canonicalServices))
-	for _, component := range append(append([]string(nil), canonicalPlugins...), canonicalServices...) {
-		kind, id := manifestComponent(component)
-		switch kind {
-		case "plugin":
-			selectedPlugins = append(selectedPlugins, id)
-		case "service":
-			selectedServices = append(selectedServices, id)
-		}
+	// scan.Run has already run once as part of the plan's discover:services
+	// action (engineruntime.Apply above); re-running it here is cheap (local
+	// file parsing, no network/package-manager work) and keeps the plugin
+	// capability/env-var hints below purely informational — never gating the
+	// install itself on whether this second read succeeds.
+	var installedPlugins []scan.PluginEntry
+	if scanResult, scanErr := scan.Run(platformDir); scanErr == nil {
+		installedPlugins = scanResult.Plugins
 	}
-	result, finalizeErr := (&installer.Installer{PM: manager, Log: log}).FinalizeDeclarative(&installer.Selection{
-		PlatformDir:                      platformDir,
-		ProjectCWD:                       projectDir,
-		Plugins:                          selectedPlugins,
-		Services:                         selectedServices,
-		PluginVersions:                   pluginVersions,
-		ServiceVersions:                  serviceVersions,
-		Adapters:                         adapters,
-		AllowIncompatibleLegacyMigration: true,
-	}, manifestSource)
-	if finalizeErr != nil {
-		return fmt.Errorf("finalize declarative installation: %w", finalizeErr)
-	}
-	printAdapterReconciliation(out, platformDir, adapters, result.InstalledPlugins)
-	printEnvHints(out, platformDir, result.InstalledPlugins)
+	printAdapterReconciliation(out, platformDir, adapters, installedPlugins)
+	printEnvHints(out, platformDir, installedPlugins)
 	if err := writeDeclarativeInstallState(compiled, manifestSource, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -295,6 +278,18 @@ func mergeIDs(existing, requested []string) []string {
 	return merged
 }
 
+// defaultAdapterRoles lists the capability roles the platform config always
+// carries a package for, with or without an --adapters override. "cache" is
+// deliberately absent — it has no built-in default and only appears when
+// explicitly set via --adapters. Mirrors the roles the gateway.access.*
+// effects and the adapterOptions catalog defaults (manifest.json) wire up —
+// kept as a plain literal here rather than derived from the catalog because
+// it's purely informational (a printAdapterReconciliation input), not part
+// of the install itself.
+var defaultAdapterRoles = []string{
+	"llm", "storage", "logger", "logRingBuffer", "analytics", "serviceTransport",
+}
+
 // printAdapterReconciliation reports on capability roles: whether an
 // --adapters role name is a recognized capability (using the installed
 // generated list when available, with the local catalog as a fallback),
@@ -326,8 +321,8 @@ func printAdapterReconciliation(out output, platformDir string, adapters map[str
 			role, strings.Join(knownRoles, ", ")))
 	}
 
-	configured := make(map[string]bool, len(scaffold.DefaultAdapterRoles)+len(adapters))
-	for _, r := range scaffold.DefaultAdapterRoles {
+	configured := make(map[string]bool, len(defaultAdapterRoles)+len(adapters))
+	for _, r := range defaultAdapterRoles {
 		configured[r] = true
 	}
 	for role := range adapters {

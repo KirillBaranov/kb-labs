@@ -229,7 +229,20 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan, source *manif
 	sort.Strings(cfg.SelectedServices)
 	cfg.SelectedEffects = append([]string(nil), compiled.Effects...)
 	sort.Strings(cfg.SelectedEffects)
-	return installconfig.Write(compiled.PlatformRoot, cfg)
+	if err := installconfig.Write(compiled.PlatformRoot, cfg); err != nil {
+		return err
+	}
+	// Also persist install state into the project directory (when distinct
+	// from the platform directory) so commands run from inside the project
+	// — the common case after `kb-create <name>` — can resolve the platform
+	// via cwd-based config.Read without requiring --platform every time, and
+	// so the project itself carries proof that its install actually completed.
+	if compiled.ProjectRoot != "" && compiled.ProjectRoot != compiled.PlatformRoot {
+		if err := installconfig.Write(compiled.ProjectRoot, cfg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func manifestComponent(component string) (kind, id string) {
