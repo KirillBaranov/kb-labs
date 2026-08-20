@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Resolve pull request refs
         id: pr
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
           INPUT_PR: ${{ inputs.pr-number }}
           WORKFLOW_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
@@ -52,7 +52,7 @@ jobs:
             core.setOutput('number', String(pr.number));
             core.setOutput('base', pr.base.ref);
             core.setOutput('head', pr.head.sha);
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ steps.pr.outputs.head }}
           fetch-depth: 0
