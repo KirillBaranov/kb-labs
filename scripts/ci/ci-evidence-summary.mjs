@@ -4,7 +4,8 @@
 // failures into a single incident while preserving the evidence link per job.
 
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const TEST_STEP = /(?:\brun\b.*(?:test|e2e|playwright)|(?:test|e2e|playwright).*(?:run|tests?))/i;
 const SIGNAL = /(?:\[error\]|\[err\]|\bfatal\b|\bexception\b|\bfailed\b|\brequires?\b|\bcannot\b|\brefused\b)/i;
@@ -90,25 +91,45 @@ function compact(value) { return value.replace(/^.*?\]\s*/, '').replace(/\s+/g, 
 function unescapeJsonString(value) { try { return JSON.parse(`"${value}"`); } catch { return value; } }
 function escapeMarkdown(value) { return value.replace(/[|\[\]]/g, '\\$&'); }
 
-function gh(args) {
-  return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-}
-
 function main(argv) {
   const outputIndex = argv.indexOf('--output');
   const output = outputIndex >= 0 ? argv[outputIndex + 1] : undefined;
+  const logsIndex = argv.indexOf('--logs-dir');
+  const logsDir = logsIndex >= 0 ? argv[logsIndex + 1] : undefined;
   const repository = process.env.GITHUB_REPOSITORY;
   const runId = process.env.GITHUB_RUN_ID;
   if (!repository || !runId) throw new Error('GITHUB_REPOSITORY and GITHUB_RUN_ID are required');
-  const response = JSON.parse(gh(['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`]));
-  const failedLogs = new Map();
-  for (const job of response.jobs.filter(job => job.conclusion === 'failure')) {
-    try { failedLogs.set(job.id, gh(['run', 'view', runId, '--repo', repository, '--job', String(job.id), '--log-failed'])); }
-    catch (error) { failedLogs.set(job.id, `Unable to collect job log: ${error.message}`); }
-  }
+  const response = JSON.parse(execFileSync('gh', ['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+  }));
+  // Artifacts are deliberately preferred to the Actions log endpoint: the
+  // token granted to a pull_request job may enumerate jobs but cannot read a
+  // sibling job's raw log. E2E jobs already upload platform-bootstrap.log on
+  // every outcome, so evidence remains available without broader privileges.
+  const artifactLog = logsDir ? readArtifactLogs(logsDir) : '';
+  const failedLogs = new Map(response.jobs
+    .filter(job => job.conclusion === 'failure')
+    .map(job => [job.id, artifactLog]));
   const report = buildEvidence(response.jobs, failedLogs);
   if (output) writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(renderMarkdown(report));
+}
+
+function readArtifactLogs(root) {
+  try {
+    return files(root)
+      .filter(path => path.endsWith('platform-bootstrap.log') || path.endsWith('/gateway.log'))
+      .map(path => readFileSync(path, 'utf8'))
+      .join('\n');
+  } catch { return ''; }
+}
+
+function files(root) {
+  const entries = readdirSync(root);
+  return entries.flatMap(entry => {
+    const path = join(root, entry);
+    return statSync(path).isDirectory() ? files(path) : [path];
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main(process.argv.slice(2));
