@@ -24,3 +24,12 @@ test('renders links and the execution boundary for the agent-facing summary', ()
   assert.match(markdown, /Failed jobs that started tests: \*\*1\*\*/);
   assert.match(markdown, /\[E2E \/ services\]\(https:\/\/example\.test\/1\)/);
 });
+
+test('does not merge jobs when their own evidence has different fingerprints', () => {
+  const report = buildEvidence(jobs.slice(0, 2), new Map([
+    [1, 'platform-1 | [ERROR] Service setup failed {"event":"service.failed","error":{"message":"Gateway requires the serviceTransport adapter"}}'],
+    [2, 'platform-1 | [ERROR] Service setup failed {"event":"service.failed","error":{"message":"Gateway requires the auth adapter"}}'],
+  ]));
+  assert.equal(report.incidents.length, 2);
+  assert.equal(report.incidents.every(incident => incident.jobs.length === 1), true);
+});

@@ -106,22 +106,32 @@ function main(argv) {
   // token granted to a pull_request job may enumerate jobs but cannot read a
   // sibling job's raw log. E2E jobs already upload platform-bootstrap.log on
   // every outcome, so evidence remains available without broader privileges.
-  const artifactLog = logsDir ? readArtifactLogs(logsDir) : '';
   const failedLogs = new Map(response.jobs
     .filter(job => job.conclusion === 'failure')
-    .map(job => [job.id, artifactLog]));
+    .map(job => [job.id, logsDir ? readArtifactLogForJob(logsDir, job.name) : '']));
   const report = buildEvidence(response.jobs, failedLogs);
   if (output) writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(renderMarkdown(report));
 }
 
-function readArtifactLogs(root) {
+function readArtifactLogForJob(root, jobName) {
   try {
-    return files(root)
-      .filter(path => path.endsWith('platform-bootstrap.log') || path.endsWith('/gateway.log'))
+    const suite = suiteName(jobName);
+    if (!suite) return '';
+    const artifactDirs = readdirSync(root)
+      .filter(name => name.includes('platform-logs-'))
+      .filter(name => name.includes(`e2e-${suite}-platform-logs-`) || name.endsWith(`-${suite}`))
+      .map(name => join(root, name));
+    return artifactDirs.flatMap(directory => files(directory))
+      .filter(path => path.endsWith('.log'))
       .map(path => readFileSync(path, 'utf8'))
       .join('\n');
   } catch { return ''; }
+}
+
+function suiteName(jobName) {
+  return jobName.match(/\(([^)]+)\)\s*\/ E2E/)?.[1]
+    ?? jobName.match(/\/ E2E \/\s*(.+)$/)?.[1];
 }
 
 function files(root) {
