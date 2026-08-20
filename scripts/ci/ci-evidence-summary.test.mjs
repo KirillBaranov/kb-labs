@@ -16,6 +16,7 @@ test('groups the same startup cause and identifies tests that did not run', () =
   assert.equal(report.incidents[0].jobs.length, 2);
   assert.equal(report.incidents[0].jobs[0].testsStarted, false);
   assert.equal(report.totals.testsStarted, 1);
+  assert.doesNotMatch(report.incidents[0].evidence, /\n/);
 });
 
 test('renders links and the execution boundary for the agent-facing summary', () => {

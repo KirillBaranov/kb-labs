@@ -73,7 +73,7 @@ export function renderMarkdown(report) {
 
 function extractEvidence(log, failedStep) {
   const serviceFailure = log.match(/"event":"service\.failed".*?"message":"([^"\\]*(?:\\.[^"\\]*)*)"/);
-  if (serviceFailure) return unescapeJsonString(serviceFailure[1]);
+  if (serviceFailure) return compact(unescapeJsonString(serviceFailure[1]));
   const readiness = log.split('\n').find(line => /platform failed to start|health check timeout/i.test(line));
   const signal = log.split('\n').find(line => SIGNAL.test(line) && !/post job cleanup|cache is not found/i.test(line));
   return compact(readiness ?? signal ?? failedStep);
