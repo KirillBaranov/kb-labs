@@ -25,4 +25,5 @@ jobs:
       compose-file: docker-compose.production.yml
       deploy-dir: /opt/kb-labs
       health-check-url: http://localhost:5050/api/v1/health
+    # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
     secrets: inherit

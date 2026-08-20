@@ -12,7 +12,6 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
-
 // Client wraps an active SSH connection.
 type Client struct {
 	conn *gossh.Client
@@ -26,9 +25,9 @@ func New(host, user, keyPEM string) (*Client, error) {
 	}
 
 	cfg := &gossh.ClientConfig{
-		User:            user,
-		Auth:            []gossh.AuthMethod{gossh.PublicKeys(signer)},
-		HostKeyCallback: gossh.InsecureIgnoreHostKey(), //nolint:gosec // VPS monitoring tool
+		User: user,
+		Auth: []gossh.AuthMethod{gossh.PublicKeys(signer)},
+		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 		Timeout:         15 * time.Second,
 	}
 

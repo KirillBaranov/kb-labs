@@ -299,9 +299,19 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
     const raw = reply.raw;
 
     const origin = request.headers.origin;
-    if (typeof origin === 'string' && origin.startsWith('http://localhost')) {
-      raw.setHeader('Access-Control-Allow-Origin', origin);
-      raw.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (typeof origin === 'string') {
+      try {
+        const parsed = new URL(origin);
+        const isLocalOrigin =
+          parsed.protocol === 'http:' &&
+          (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]');
+        if (isLocalOrigin) {
+          raw.setHeader('Access-Control-Allow-Origin', origin);
+          raw.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+      } catch {
+        // Ignore malformed Origin values; no CORS headers are emitted.
+      }
     }
     raw.setHeader('Content-Type', 'text/event-stream');
     raw.setHeader('Cache-Control', 'no-cache, no-transform');

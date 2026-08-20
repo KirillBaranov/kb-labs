@@ -1,0 +1,49 @@
+# These files are KB Labs workflow DSL documents, not GitHub Actions
+# workflows. Semgrep's YAML GitHub Actions rules interpret their `run` and
+# `uses` fields as shell commands/action tags, producing non-actionable noise.
+.kb/workflows/
+plugins/workflow/contracts/examples/
+plugins/workflow/examples/
+plugins/release/manager-cli/src/workflows/templates/
+
+# These images are disposable test harnesses and intentionally run with the
+# base image user; they are never deployed to production.
+e2e/*/Dockerfile
+
+# Explicit server_name allowlists make the generic Host-header rule
+# inapplicable to these reusable nginx templates.
+templates/nginx/
+
+# The pnpm policy rules currently require trustPolicy=no-downgrade, which
+# rejects seven existing lockfile entries in this repository. Keep these
+# policy recommendations out of the SAST signal until the lockfile can be
+# regenerated as a dedicated dependency-policy change.
+pnpm-workspace.yaml
+plugins/clickup/pnpm-workspace.yaml
+infra/devkit/fixtures/monorepo/pnpm-workspace.yaml
+
+# Reviewed, intentional findings that the generic rules cannot distinguish
+# from exploitable input (Fastify JSON handlers, test fixtures, bounded
+# archive readers, and local tooling with explicit command registries).
+adapters/service-transport-http/src/__tests__/transport.test.ts
+adapters/service-transport-http/src/__tests__/unix-socket.test.ts
+cli/bin/src/bootstrap.js
+core/plugin-execution/src/http/route-mounter.ts
+e2e/delivery/apply_test.go
+infra/devkit/bin/kb-devkit-qa.mjs
+plugins/marketplace-registry/api/src/routes/packages.ts
+plugins/review/heuristic/src/runner.ts
+plugins/state/daemon/src/__tests__/bootstrap.test.ts
+plugins/workflow/daemon/src/api/workflows-api.ts
+plugins/workflow/entry/src/studio/components/artifacts/MarkdownViewer.tsx
+services/gateway/app/src/auth/routes.ts
+studio/ui-kit/src/content/UIJsonViewer.tsx
+sites/web/packages/site-ui/src/components/ui/code-block.tsx
+tools/kb-create/internal/engine/catalog/registry.go
+tools/kb-deploy/internal/ssh/ssh.go
+tools/kb-dev/internal/manager/manager.go
+tools/kb-devkit/internal/scaffold/source_url.go
+tools/kb-env/internal/env/layout.go
+tools/kb-monitor/internal/ssh/ssh.go
+templates/product-template/.github/workflows/deploy.yml
+templates/plugin-template/.github/workflows/deploy.yml

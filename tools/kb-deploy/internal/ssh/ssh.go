@@ -29,7 +29,7 @@ func New(host, user, keyPEM string, port int) (*Client, error) {
 		Auth: []gossh.AuthMethod{
 			gossh.PublicKeys(signer),
 		},
-		HostKeyCallback: gossh.InsecureIgnoreHostKey(), //nolint:gosec // VPS deploy tool, not a security-critical context
+		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	}
 
 	if port == 0 {

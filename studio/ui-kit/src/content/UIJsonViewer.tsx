@@ -115,7 +115,9 @@ export function UIJsonViewer({
             </div>
           ))
         ) : (
-          <span dangerouslySetInnerHTML={{ __html: highlightedJson }} />
+          <span
+            dangerouslySetInnerHTML={{ __html: highlightedJson }}
+          />
         )}
       </pre>
     </UIBox>
@@ -126,6 +128,10 @@ export function UIJsonViewer({
  * Basic JSON syntax highlighting
  */
 function highlightJson(json: string, token: any): string {
+  // JSON values can contain arbitrary user text. Escape HTML before adding
+  // highlighting spans so the viewer never turns data into markup.
+  json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   // String values
   json = json.replace(/"([^"]+)":/g, `<span style="color: ${token.colorPrimary}">"$1"</span>:`);
 

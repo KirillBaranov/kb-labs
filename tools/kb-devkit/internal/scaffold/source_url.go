@@ -15,6 +15,12 @@ import (
 	"github.com/kb-labs/devkit/internal/config"
 )
 
+const (
+	maxScaffoldArchiveBytes = 256 << 20
+	maxScaffoldFileBytes    = 64 << 20
+	maxScaffoldEntries      = 100_000
+)
+
 func resolveURL(tmpl config.ScaffoldTemplate) (fs.FS, func(), error) {
 	if tmpl.URL == "" {
 		return nil, noop, fmt.Errorf("url template requires a url")
@@ -67,9 +73,12 @@ func extractZip(r io.Reader, dest string) error {
 	defer os.Remove(tmp.Name())
 	defer tmp.Close()
 
-	size, err := io.Copy(tmp, r)
+	size, err := io.Copy(tmp, io.LimitReader(r, maxScaffoldArchiveBytes+1))
 	if err != nil {
 		return fmt.Errorf("buffer zip: %w", err)
+	}
+	if size > maxScaffoldArchiveBytes {
+		return fmt.Errorf("zip archive exceeds %d MiB limit", maxScaffoldArchiveBytes>>20)
 	}
 
 	zr, err := zip.NewReader(tmp, size)
@@ -77,8 +86,17 @@ func extractZip(r io.Reader, dest string) error {
 		return fmt.Errorf("open zip: %w", err)
 	}
 
+	if len(zr.File) > maxScaffoldEntries {
+		return fmt.Errorf("zip archive contains too many entries (max %d)", maxScaffoldEntries)
+	}
 	for _, f := range zr.File {
-		target := filepath.Join(dest, filepath.FromSlash(f.Name)) //nolint:gosec
+		target, err := archiveTarget(dest, f.Name)
+		if err != nil {
+			return err
+		}
+		if f.UncompressedSize64 > maxScaffoldFileBytes {
+			return fmt.Errorf("zip entry %q exceeds %d MiB limit", f.Name, maxScaffoldFileBytes>>20)
+		}
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(target, 0o755) //nolint:errcheck
 			continue
@@ -95,11 +113,14 @@ func extractZip(r io.Reader, dest string) error {
 			rc.Close()
 			return err
 		}
-		_, err = io.Copy(out, rc) //nolint:gosec
+		n, copyErr := io.Copy(out, io.LimitReader(rc, maxScaffoldFileBytes+1))
 		rc.Close()
 		out.Close()
-		if err != nil {
-			return err
+		if copyErr != nil {
+			return copyErr
+		}
+		if n > maxScaffoldFileBytes {
+			return fmt.Errorf("zip entry %q exceeds %d MiB limit", f.Name, maxScaffoldFileBytes>>20)
 		}
 	}
 	return nil
@@ -113,6 +134,8 @@ func extractTarGz(r io.Reader, dest string) error {
 	defer gz.Close()
 
 	tr := tar.NewReader(gz)
+	var entries int
+	var totalBytes int64
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -121,11 +144,21 @@ func extractTarGz(r io.Reader, dest string) error {
 		if err != nil {
 			return fmt.Errorf("tar: %w", err)
 		}
-		target := filepath.Join(dest, filepath.FromSlash(hdr.Name)) //nolint:gosec
+		entries++
+		if entries > maxScaffoldEntries {
+			return fmt.Errorf("tar archive contains too many entries (max %d)", maxScaffoldEntries)
+		}
+		target, err := archiveTarget(dest, hdr.Name)
+		if err != nil {
+			return err
+		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			os.MkdirAll(target, 0o755) //nolint:errcheck
 		case tar.TypeReg:
+			if hdr.Size > maxScaffoldFileBytes || totalBytes > maxScaffoldArchiveBytes-hdr.Size {
+				return fmt.Errorf("tar archive exceeds extraction size limit")
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
@@ -133,12 +166,24 @@ func extractTarGz(r io.Reader, dest string) error {
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(out, tr) //nolint:gosec
+			written, copyErr := io.Copy(out, io.LimitReader(tr, hdr.Size))
 			out.Close()
-			if err != nil {
-				return err
+			if copyErr != nil {
+				return copyErr
 			}
+			if written != hdr.Size {
+				return fmt.Errorf("tar entry %q ended before declared size", hdr.Name)
+			}
+			totalBytes += written
 		}
 	}
 	return nil
+}
+
+func archiveTarget(dest, name string) (string, error) {
+	rel := filepath.Clean(filepath.FromSlash(name))
+	if rel == "." || filepath.IsAbs(rel) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("archive entry escapes destination: %q", name)
+	}
+	return filepath.Join(dest, rel), nil
 }

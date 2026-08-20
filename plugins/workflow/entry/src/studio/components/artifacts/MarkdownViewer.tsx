@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import { UIButton } from '@kb-labs/sdk/studio'
 
 interface Props {
@@ -39,7 +40,10 @@ function anchorLink(id: string, text: string): string {
 }
 
 function externalLink(url: string, text: string): string {
-  return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="${S.link}">${text}</a>`
+  // Only allow web links; javascript:, data:, and other schemes must not reach
+  // the generated anchor even though the surrounding markdown is escaped.
+  if (!/^https?:\/\//i.test(url)) return text
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="${S.link}">${text}</a>`
 }
 
 function heading(level: 1 | 2 | 3 | 4, text: string): string {
@@ -150,7 +154,7 @@ export function MarkdownViewer({ data, editable, onEdit }: Props) {
       )}
       <div
         style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)' }}
-        dangerouslySetInnerHTML={{ __html: mdToHtml(text) }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(mdToHtml(text)) }}
       />
     </div>
   )
