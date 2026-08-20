@@ -38,6 +38,7 @@
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*",
     "@kb-labs/workflow-runtime": "workspace:*",
+    "dompurify": "^3.4.13",
     "reactflow": "^11.11.4"
   },
   "devDependencies": {

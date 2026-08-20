@@ -5481,6 +5481,9 @@ importers:
       '@kb-labs/workflow-runtime':
         specifier: workspace:*
         version: link:../runtime
+      dompurify:
+        specifier: ^3.4.13
+        version: 3.4.13
       antd:
         specifier: ^5.21.0
         version: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -7336,6 +7339,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      dompurify:
+        specifier: ^3.4.13
+        version: 3.4.13
       marked:
         specifier: ^17.0.1
         version: 17.0.6

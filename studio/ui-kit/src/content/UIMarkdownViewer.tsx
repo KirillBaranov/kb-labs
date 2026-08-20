@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { theme } from 'antd';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { UIBox } from '../primitives/UIBox';
 
 const { useToken } = theme;
@@ -47,12 +48,14 @@ export function UIMarkdownViewer({ content, className, style: customStyle }: UIM
     .kb-md img { max-width:100%; border-radius:${token.borderRadius}px; }
   `;
 
+  const html = DOMPurify.sanitize(marked.parse(content) as string);
+
   return (
     <UIBox className={className} style={{ padding: token.padding, ...customStyle }}>
       <style>{css}</style>
       <div
         className="kb-md"
-        dangerouslySetInnerHTML={{ __html: marked(content) as string }}
+        dangerouslySetInnerHTML={{ __html: html }}
       />
     </UIBox>
   );
