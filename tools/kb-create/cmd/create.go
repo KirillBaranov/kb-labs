@@ -97,7 +97,8 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if flagDevManifest != "" {
 		return runDeclarativeCreateFromManifest(cmd, projectRoot, platformRoot)
 	}
-	if err := ensureToolchain(true, pm.Detect().Name()); err != nil {
+	manager := pm.Detect(pm.DetectOptions{Registry: flagRegistry})
+	if err := ensureToolchain(true, manager.Name()); err != nil {
 		return fmt.Errorf("toolchain preflight failed: %w", err)
 	}
 	intent := flagIntent
@@ -125,10 +126,14 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
-	if err := preflightCompatibility(&axes, declarativeManifest, pm.Detect(), flagForceCompat, newOutput()); err != nil {
+	if err := preflightCompatibility(&axes, declarativeManifest, manager, flagForceCompat, newOutput()); err != nil {
 		return err
 	}
 	platformOverrides := manifest.ApplyAxisResolution(declarativeManifest, axes)
+	manager = pm.Detect(pm.DetectOptions{
+		Registry:         flagRegistry,
+		PackageOverrides: manifest.PackageManagerOverrides(axes),
+	})
 	resolvedCatalog, err := enginecatalog.FromManifest(*declarativeManifest)
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)
@@ -157,7 +162,7 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	}
 	rememberRunLog(log)
 	defer func() { _ = log.Close() }()
-	if _, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled)); err != nil {
+	if _, err := executeFlowPlan(compiled, manager, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled)); err != nil {
 		return err
 	}
 	declarativeIntent := declarativeManifest.IntentByID(intent)

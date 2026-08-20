@@ -78,7 +78,7 @@ var flowRunCmd = &cobra.Command{
 			}
 			rememberRunLog(log)
 			defer func() { _ = log.Close() }()
-			journal, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled))
+			journal, err := executeFlowPlan(compiled, pm.Detect(), logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled))
 			if err != nil {
 				return err
 			}
@@ -262,9 +262,9 @@ func containsString(values []string, want string) bool {
 	return false
 }
 
-func executeFlowPlan(compiled engineplan.InstallPlan, progress func(pm.Progress), emit func(executor.Event)) (executor.Journal, error) {
+func executeFlowPlan(compiled engineplan.InstallPlan, manager pm.PackageManager, progress func(pm.Progress), emit func(executor.Event)) (executor.Journal, error) {
 	return engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(),
+		PackageManager: manager,
 		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 		Progress:       progress,

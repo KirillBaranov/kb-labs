@@ -13,7 +13,8 @@ import (
 
 // NpmManager implements PackageManager using npm.
 type NpmManager struct {
-	Registry string // optional: custom registry URL (e.g. http://localhost:4873)
+	Registry         string            // optional: custom registry URL (e.g. http://localhost:4873)
+	PackageOverrides map[string]string // explicit platform-owned pins for this install wave
 }
 
 func (n *NpmManager) Name() string        { return "npm" }
@@ -74,7 +75,7 @@ func (n *NpmManager) ListInstalled(dir string) ([]InstalledPackage, error) {
 }
 
 func (n *NpmManager) run(dir string, args []string, progress chan<- Progress) error {
-	if err := ensurePackageJSON(dir); err != nil {
+	if err := ensurePackageJSON(dir, n.PackageOverrides); err != nil {
 		return err
 	}
 
@@ -115,10 +116,10 @@ func (n *NpmManager) run(dir string, args []string, progress chan<- Progress) er
 	return cmd.Wait()
 }
 
-// ensurePackageJSON creates a minimal package.json if none exists.
-// kbOverrides are the pnpm overrides always written into kb-platform/package.json.
-// They pin core KB Labs packages to latest so transitive deps can't pull in old versions.
-var kbOverrides = map[string]string{
+// defaultPackageOverrides are the safety floor for platforms created without
+// an explicit axis selection. Explicit axis pins are merged on top and existing
+// values are preserved on later package-manager calls.
+var defaultPackageOverrides = map[string]string{
 	"@kb-labs/gateway-contracts": ">=2.0.0",
 	"@kb-labs/gateway-auth":      ">=2.0.0",
 	"@kb-labs/gateway-core":      ">=2.0.0",
@@ -127,7 +128,8 @@ var kbOverrides = map[string]string{
 	"@kb-labs/core-platform":     ">=2.0.0",
 }
 
-func ensurePackageJSON(dir string) error {
+// ensurePackageJSON creates a minimal package.json if none exists.
+func ensurePackageJSON(dir string, packageOverrides map[string]string) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
@@ -146,7 +148,9 @@ func ensurePackageJSON(dir string) error {
 		}
 	}
 
-	// Ensure pnpm.overrides contains all required entries.
+	// Ensure pnpm.overrides contains the safety floor without replacing a
+	// platform axis pin written by an earlier install. A configured axis is the
+	// explicit owner and may replace the value for this install wave.
 	pnpmBlock, _ := pkg["pnpm"].(map[string]interface{})
 	if pnpmBlock == nil {
 		pnpmBlock = map[string]interface{}{}
@@ -155,7 +159,12 @@ func ensurePackageJSON(dir string) error {
 	if overrides == nil {
 		overrides = map[string]interface{}{}
 	}
-	for k, v := range kbOverrides {
+	for k, v := range defaultPackageOverrides {
+		if _, exists := overrides[k]; !exists {
+			overrides[k] = v
+		}
+	}
+	for k, v := range packageOverrides {
 		overrides[k] = v
 	}
 	pnpmBlock["overrides"] = overrides
@@ -172,12 +181,14 @@ func ensurePackageJSON(dir string) error {
 	}
 	pkg["pnpm"] = pnpmBlock
 
-	// npm does not read pnpm.overrides. Keep the native overrides block for
-	// launcher projects that fall back to npm; currently the shared core
-	// overrides above are pnpm-only because npm resolves their ranges directly.
+	// npm does not read pnpm.overrides. Keep explicit axis pins in npm's native
+	// overrides block as well for launcher projects that fall back to npm.
 	npmOverrides, _ := pkg["overrides"].(map[string]interface{})
 	if npmOverrides == nil {
 		npmOverrides = map[string]interface{}{}
+	}
+	for k, v := range packageOverrides {
+		npmOverrides[k] = v
 	}
 	pkg["overrides"] = npmOverrides
 

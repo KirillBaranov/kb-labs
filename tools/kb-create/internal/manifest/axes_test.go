@@ -140,3 +140,24 @@ func TestApplyAxisResolutionExactVersionPinTakesPrecedenceOverChannel(t *testing
 		t.Errorf("Version = %q, want exact pin %q (not the canary channel)", m.Core[0].Version, "1.4.2")
 	}
 }
+
+func TestPackageManagerOverridesFollowSelectedAxes(t *testing.T) {
+	overrides := PackageManagerOverrides(ResolvedAxes{
+		SDK:      AxisSelection{Version: "2.118.0-canary.1"},
+		Platform: AxisSelection{Version: "2.119.0-canary.85d060ea"},
+	})
+	if got := overrides[SDKPackageName]; got != "2.118.0-canary.1" {
+		t.Errorf("SDK override = %q, want %q", got, "2.118.0-canary.1")
+	}
+	for _, name := range PlatformOwnedDependencyPackages {
+		if got := overrides[name]; got != "2.119.0-canary.85d060ea" {
+			t.Errorf("platform override %s = %q, want canary pin", name, got)
+		}
+	}
+}
+
+func TestPackageManagerOverridesOmitUnsetAxes(t *testing.T) {
+	if got := PackageManagerOverrides(ResolvedAxes{Platform: AxisSelection{Resolved: "2.117.0"}}); len(got) != 0 {
+		t.Fatalf("overrides for unset axes = %#v, want empty", got)
+	}
+}
