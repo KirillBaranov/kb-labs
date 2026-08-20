@@ -23,10 +23,10 @@ jobs:
     name: Build Go tools
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: ${{ inputs.fetch-depth }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: '1.25'
           cache-dependency-path: |
@@ -49,7 +49,7 @@ jobs:
           cp tools/kb-create/kb-create go-tools/kb-create
           cp tools/kb-deploy/kb-deploy go-tools/kb-deploy
           cp tools/kb-monitor/kb-monitor go-tools/kb-monitor
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: go-tools
           path: go-tools/

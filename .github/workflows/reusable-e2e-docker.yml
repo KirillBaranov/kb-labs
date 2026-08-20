@@ -78,13 +78,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       # ── Build toolchain ──────────────────────────────────────────────────
 
       - name: Set up Go
         if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == ''
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: tools/kb-create/go.mod
           cache-dependency-path: |
@@ -92,10 +92,10 @@ jobs:
             tools/kb-dev/go.sum
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
           cache: ${{ inputs.cache-mode == 'read-write' && 'pnpm' || '' }}
@@ -113,7 +113,7 @@ jobs:
 
       - name: Restore immutable prebuilt E2E bundle
         if: inputs.prebuilt-artifact != '' || inputs.prebuilt-files-artifact != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: ${{ inputs.prebuilt-artifact != '' && inputs.prebuilt-artifact || inputs.prebuilt-files-artifact }}
           path: /tmp/e2e-prebuilt
@@ -179,7 +179,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: inputs.prebuilt-artifact == '' && inputs.prebuilt-files-artifact == '' && !inputs.fast-build
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
         timeout-minutes: 5
 
       - name: Build platform image
@@ -312,7 +312,7 @@ jobs:
 
       - name: Upload platform logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}platform-logs-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/e2e-logs/
@@ -343,7 +343,7 @@ jobs:
 
       - name: Upload KB_DEBUG diagnostic snapshot
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}kb-e2e-diag-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/kb-e2e-diag.json
@@ -352,7 +352,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}playwright-report-${{ github.run_id }}-${{ inputs.suite }}
           path: e2e/${{ inputs.suite }}/report/
@@ -360,7 +360,7 @@ jobs:
 
       - name: Upload E2E diagnostic dossiers
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}e2e-diagnostics-${{ inputs.suite }}-${{ github.run_id }}
           path: e2e/${{ inputs.suite }}/report/diagnostics/
@@ -369,7 +369,7 @@ jobs:
 
       - name: Upload flaky report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}flaky-report-${{ inputs.suite }}-${{ github.run_id }}
           path: e2e/${{ inputs.suite }}/flaky-report.json
@@ -446,7 +446,7 @@ jobs:
 
       - name: Upload timings
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact-prefix != '' && format('{0}-', inputs.artifact-prefix) || '' }}e2e-timings-${{ github.run_id }}-${{ inputs.suite }}
           path: /tmp/e2e-timings/
