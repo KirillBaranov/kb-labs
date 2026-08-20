@@ -1,7 +1,10 @@
 name: Release Binaries
 
 # Builds and publishes all KB Labs Go binaries (kb-create, kb-dev, kb-devkit,
-# kb-deploy, kb-monitor) as a single GitHub Release.
+# kb-deploy, kb-monitor) as a single, immutable GitHub Release, then points
+# the mutable `binaries-canary` channel at it — mirroring the npm flow, where
+# every tag push lands on canary first and promote-binaries.yml is the only
+# path to stable.
 #
 # Tag format: v<MAJOR>.<MINOR>.<PATCH>-binaries (e.g. v0.4.0-binaries).
 # Valid semver (prerelease suffix) — goreleaser accepts it. The release is
@@ -44,15 +47,20 @@ jobs:
       # The public bootstrap scripts read this direct release asset instead of
       # listing releases through api.github.com. Updating this pointer is a
       # release-time operation and makes rollback a single asset replacement.
-      - name: Publish stable binaries channel
+      #
+      # Every tag push lands on canary first — promote-binaries.yml is the
+      # only path that moves a specific tag to the `binaries-stable` pointer.
+      - name: Publish canary binaries channel
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          jq -n --arg tag "$RELEASE_TAG" '{schema: 1, channel: "stable", tag: $tag}' > channel.json
-          if ! gh release view binaries-stable --repo "$REPOSITORY" >/dev/null 2>&1; then
-            gh release create binaries-stable --repo "$REPOSITORY" --title "KB Labs binaries stable channel" --notes "Mutable stable channel pointer for bootstrap installers."
+          commit="$(git rev-parse HEAD)"
+          jq -n --arg tag "$RELEASE_TAG" --arg commit "$commit" \
+            '{schema: 1, channel: "canary", tag: $tag, commit: $commit}' > channel.json
+          if ! gh release view binaries-canary --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release create binaries-canary --repo "$REPOSITORY" --title "KB Labs binaries canary channel" --notes "Mutable canary channel pointer for bootstrap installers."
           fi
-          gh release upload binaries-stable channel.json --repo "$REPOSITORY" --clobber
+          gh release upload binaries-canary channel.json --repo "$REPOSITORY" --clobber

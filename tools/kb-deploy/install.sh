@@ -5,6 +5,7 @@ REPO="kb-labs-team/kb-labs"
 BINARY="kb-deploy"
 DEST="${HOME}/.local/bin/${BINARY}"
 VERSION="latest"
+CHANNEL="stable"
 RESOLVED_VERSION=""
 START_TS="$(date +%s)"
 
@@ -34,12 +35,13 @@ err()  { printf "%s[ERR ]%s %s\n" "$C_RED"    "$C_RESET" "$1" >&2; }
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [--version <tag>] [--dest <path>]
+Usage: install.sh [--version <tag>] [--dest <path>] [--channel <stable|canary>]
 
 Options:
-  --version <tag>   Install specific release tag (example: v1.2.3)
-  --dest <path>     Install binary to a custom path (default: ~/.local/bin/kb-deploy)
-  -h, --help        Show this help
+  --version <tag>       Install specific release tag (example: v1.2.3-binaries)
+  --dest <path>         Install binary to a custom path (default: ~/.local/bin/kb-deploy)
+  --channel <name>      Channel to resolve "latest" from: stable or canary (default: stable)
+  -h, --help            Show this help
 EOF
 }
 
@@ -65,6 +67,14 @@ while [ "$#" -gt 0 ]; do
         exit 1
       fi
       VERSION="$1"
+      ;;
+    --channel)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "Error: --channel requires a value (stable or canary)." >&2
+        exit 1
+      fi
+      CHANNEL="$1"
       ;;
     --dest)
       shift
@@ -121,11 +131,21 @@ case "$OS" in
     ;;
 esac
 
+# ── Channel validation ──────────────────────────────────────────────────────
+
+case "$CHANNEL" in
+  stable|canary) ;;
+  *)
+    err "Unsupported channel: $CHANNEL (expected stable or canary)"
+    exit 1
+    ;;
+esac
+
 # ── Version resolution ────────────────────────────────────────────────────────
 
 if [ "$VERSION" = "latest" ]; then
-  RESOLVED_VERSION="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-stable/channel.json" | sed -n 's/.*"tag":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
-  [ -n "$RESOLVED_VERSION" ] || { err "Unable to resolve stable binaries channel."; exit 1; }
+  RESOLVED_VERSION="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-${CHANNEL}/channel.json" | sed -n 's/.*"tag":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
+  [ -n "$RESOLVED_VERSION" ] || { err "Unable to resolve ${CHANNEL} binaries channel."; exit 1; }
   BASE_URL="https://github.com/${REPO}/releases/download/${RESOLVED_VERSION}"
 else
   RESOLVED_VERSION="$VERSION"
@@ -142,9 +162,9 @@ print_banner
 info "Repository : ${REPO}"
 if [ "$VERSION" = "latest" ]; then
   if [ -n "$RESOLVED_VERSION" ]; then
-    info "Channel    : latest (resolved to ${RESOLVED_VERSION})"
+    info "Channel    : ${CHANNEL} (resolved to ${RESOLVED_VERSION})"
   else
-    info "Channel    : latest (GitHub latest/download)"
+    info "Channel    : ${CHANNEL} (GitHub latest/download)"
   fi
 else
   info "Channel    : pinned (${RESOLVED_VERSION})"

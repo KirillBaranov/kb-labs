@@ -18,6 +18,12 @@ It also manages stateful infrastructure (databases, caches, queues) as a separat
 curl -fsSL https://kblabs.ru/kb-deploy/install.sh | sh
 ```
 
+Defaults to the `stable` channel. Pass `--channel canary` to try the latest unreleased build, or `--version <tag>` to pin an exact `-binaries` release:
+
+```bash
+curl -fsSL https://kblabs.ru/kb-deploy/install.sh | sh -s -- --channel canary
+```
+
 Or download a binary directly from [GitHub Releases](https://github.com/kb-labs-team/kb-labs/releases/latest).
 
 **Build from source:**
