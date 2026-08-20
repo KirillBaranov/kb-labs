@@ -113,7 +113,7 @@ describe('cssModulesPlugin', () => {
 
     const { css } = await bundle(dir);
 
-    const keyframesMatch = css.match(/@keyframes (spin_\w+)/);
+    const keyframesMatch = css.match(/@keyframes (spin_[\w-]+)/);
     expect(keyframesMatch).not.toBeNull();
     const scopedKeyframesName = keyframesMatch![1];
 
