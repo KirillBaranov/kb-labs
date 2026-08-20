@@ -138,3 +138,25 @@ jobs:
       hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
     permissions:
       contents: read
+
+  evidence:
+    name: CI evidence
+    needs: [discover, docker-e2e, auth-e2e, oauth-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Summarize every failed job
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ci-evidence-summary.mjs --output ci-evidence.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload CI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-evidence-${{ github.run_id }}
+          path: ci-evidence.json
+          retention-days: 30
