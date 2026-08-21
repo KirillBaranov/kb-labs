@@ -5,17 +5,17 @@ package toolchain
 import (
 	"fmt"
 	"os/exec"
-	"strconv"
 	"strings"
+
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 )
 
 const (
-	// NodeMajor is the minimum supported Node.js major. The platform targets
-	// the current LTS line; newer supported majors are accepted as well.
-	NodeMajor = 24
+	// NodeMajor is the only Node.js major supported by the platform.
+	NodeMajor = sharedtoolchain.SupportedNodeMajor
 	// PnpmVersion is pinned into generated platform package.json files. The
 	// launcher may update a user's pnpm to this exact version before install.
-	PnpmVersion = "11.4.0"
+	PnpmVersion = sharedtoolchain.SupportedPnpm
 )
 
 type Status struct {
@@ -39,21 +39,13 @@ func Inspect(manager string) (Status, error) {
 }
 
 func Validate(s Status) error {
-	major, err := majorVersion(s.NodeVersion)
-	if err != nil {
-		return fmt.Errorf("unsupported Node.js version %q: %w", s.NodeVersion, err)
-	}
-	if major < NodeMajor {
-		return fmt.Errorf("Node.js %s is unsupported; KB Labs requires Node.js %d or newer", s.NodeVersion, NodeMajor)
+	if err := sharedtoolchain.ValidateNode(s.NodeVersion); err != nil {
+		return err
 	}
 	if s.PnpmVersion == "" {
 		return nil
 	}
-	pnpmMajor, err := majorVersion(s.PnpmVersion)
-	if err != nil || pnpmMajor != 11 {
-		return fmt.Errorf("pnpm %s is unsupported; KB Labs requires pnpm %s", s.PnpmVersion, PnpmVersion)
-	}
-	return nil
+	return sharedtoolchain.ValidatePnpm(s.PnpmVersion)
 }
 
 // UpgradePnpm activates the version used by generated platforms. It prefers
@@ -82,17 +74,4 @@ func commandVersion(name string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-func majorVersion(version string) (int, error) {
-	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
-	part := version
-	if i := strings.IndexByte(part, '.'); i >= 0 {
-		part = part[:i]
-	}
-	major, err := strconv.Atoi(part)
-	if err != nil {
-		return 0, fmt.Errorf("invalid semantic version")
-	}
-	return major, nil
 }

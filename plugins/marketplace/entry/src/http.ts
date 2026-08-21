@@ -3,10 +3,9 @@
  */
 
 import { useEnv } from '@kb-labs/sdk';
-import { CredentialsManager, SessionManager } from '@kb-labs/cli-runtime/gateway';
+import { CredentialsManager, SessionManager, resolveLocalGatewayUrl } from '@kb-labs/cli-runtime/gateway';
 import type { GatewayCredentials, SessionCredentials } from '@kb-labs/cli-runtime/gateway';
 
-const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:4000';
 const MARKETPLACE_PREFIX = '/api/v1/marketplace';
 const FETCH_TIMEOUT_MS = 30_000;
 
@@ -49,7 +48,7 @@ function getBaseUrl(gatewayUrl?: string): string {
   if (marketplaceUrl) {
     return `${marketplaceUrl}${MARKETPLACE_PREFIX}`;
   }
-  const gateway = gatewayUrl ?? useEnv('KB_GATEWAY_URL') ?? DEFAULT_GATEWAY_URL;
+  const gateway = gatewayUrl ?? useEnv('KB_GATEWAY_URL') ?? resolveLocalGatewayUrl();
   return `${gateway}${MARKETPLACE_PREFIX}`;
 }
 

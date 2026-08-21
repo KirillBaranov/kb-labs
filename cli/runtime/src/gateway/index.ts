@@ -14,3 +14,4 @@ export { TerminalEventRenderer } from './renderer.js';
 export type { IEventRenderer } from './renderer.js';
 export { HostAgentTransport } from './host-agent-transport.js';
 export { resolveTransport } from './transport-resolver.js';
+export { hasLocalRuntimeState, resolveLocalGatewayUrl, resolveNetOffset } from './net-offset.js';

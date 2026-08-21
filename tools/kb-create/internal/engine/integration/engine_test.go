@@ -27,6 +27,10 @@ func (p *packages) Install(_ context.Context, pkg string) error { p.installed[pk
 
 type providers struct{ values map[string]string }
 
+type materializer struct{}
+
+func (materializer) Materialize(context.Context, plan.InstallPlan) error { return nil }
+
 func (p *providers) Bound(_ context.Context, capability, provider string) (bool, error) {
 	return p.values[capability] == provider, nil
 }
@@ -56,7 +60,7 @@ func TestCommitScenarioRunsThroughPlanExecutorAndConfig(t *testing.T) {
 	platform := request.PlatformRoot
 	packages := &packages{installed: map[string]bool{}}
 	providers := &providers{values: map[string]string{}}
-	journal, err := executor.Run(context.Background(), compiled, handlers.Registry(handlers.RegistryOptions{Packages: packages, Providers: providers, Assembly: compiled.Assembly, Roots: config.Roots{config.RootPlatform: platform, config.RootProject: request.ProjectRoot}}), executor.Options{})
+	journal, err := executor.Run(context.Background(), compiled, handlers.Registry(handlers.RegistryOptions{Packages: packages, Providers: providers, Assembly: compiled.Assembly, Roots: config.Roots{config.RootPlatform: platform, config.RootProject: request.ProjectRoot}, Materializer: materializer{}, Plan: compiled}), executor.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

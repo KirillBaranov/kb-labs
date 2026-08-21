@@ -114,6 +114,9 @@ func switchToAlias(ctx context.Context, platformDir, alias string, keepOthers, q
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := ensureSupportedRuntime(nil, mgr); err != nil {
+		return nil, nil, err
+	}
 
 	targets, err := mgr.Config().ResolveTarget("")
 	if err != nil {

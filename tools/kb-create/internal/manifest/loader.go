@@ -80,7 +80,11 @@ func LoadDefault() (*Manifest, error) {
 		return loadBytes(embeddedManifest)
 	}
 	if override := os.Getenv("KB_CREATE_MANIFEST_URL"); override != "" {
-		return Load(LoadOptions{RemoteURL: override})
+		// Routed through loadChannel, not loadRemote: the override must still
+		// resolve to a signed channel pointer (sha256-verified manifest), so an
+		// attacker who merely controls the env var cannot smuggle an
+		// unverified manifest past the default trust chain.
+		return loadChannel(override)
 	}
 	if m, err := loadChannel(defaultChannelURL); err == nil {
 		return m, nil

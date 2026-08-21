@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	cliruntime "github.com/kb-labs/clikit/runtime"
 )
 
 // Resolve discovers runtime binary paths and builds an EnvCache.
@@ -58,6 +60,14 @@ func Resolve() *EnvCache {
 
 	cache.ExtraPath = extraDirs
 	return cache
+}
+
+// ValidateNode checks the exact Node binary selected for managed services.
+// It intentionally does not inspect a fresh `node` from PATH: the resolved
+// binary is what kb-dev will place first in each service's PATH.
+func (c *EnvCache) ValidateNode() error {
+	_, err := cliruntime.CheckNode(c.Node)
+	return err
 }
 
 // resolveNVMNode finds the node binary from NVM's default alias.

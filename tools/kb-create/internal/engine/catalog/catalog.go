@@ -25,16 +25,6 @@ type Component struct {
 	Requires          []Requirement              `json:"requires,omitempty"`
 	DependsOn         []string                   `json:"dependsOn,omitempty"`
 	Config            []engineconfig.ConfigPatch `json:"config,omitempty"`
-	// GatewayPrefix/GatewayRewrite/GatewayWebSocket declare this service's
-	// gateway proxy route (services only; empty GatewayPrefix means "not
-	// gateway-routed"). Prefix/rewrite/websocket are static catalog facts;
-	// the upstream's port is not — it's read from the installed package's
-	// own runtime metadata by the discover-services action, since it's a
-	// fact about the specific installed version, not something the catalog
-	// can know ahead of time.
-	GatewayPrefix    string  `json:"gatewayPrefix,omitempty"`
-	GatewayRewrite   *string `json:"gatewayRewrite,omitempty"`
-	GatewayWebSocket bool    `json:"gatewayWebSocket,omitempty"`
 }
 
 type Provider struct {
@@ -48,9 +38,8 @@ type Provider struct {
 // Effect is a reusable product configuration contribution selected by a
 // scenario answer or direct install request.
 type Effect struct {
-	ID      string                          `json:"id"`
-	Config  []engineconfig.ConfigPatch      `json:"config,omitempty"`
-	Secrets []engineconfig.SecretRequirement `json:"secrets,omitempty"`
+	ID     string                     `json:"id"`
+	Config []engineconfig.ConfigPatch `json:"config,omitempty"`
 }
 
 type Catalog struct {
@@ -63,29 +52,6 @@ type Catalog struct {
 	Migrations []migrate.Definition         `json:"migrations,omitempty"`
 	Outputs    []engineconfig.ConfigOutput  `json:"outputs,omitempty"`
 	Artifacts  []engineconfig.ArtifactWrite `json:"artifacts,omitempty"`
-	Binaries   []Binary                     `json:"binaries,omitempty"`
-}
-
-// Binary describes a Go binary distributed via GitHub Releases, mirroring
-// manifest.Binary. Kept here (not read from manifest.Manifest directly by
-// the install-binary handler) so the handler stays generic over its request
-// source, matching how Component/Provider/Effect already normalize their
-// manifest counterparts.
-type Binary struct {
-	ID        string `json:"id"`
-	Repo      string `json:"repo,omitempty"`
-	Name      string `json:"name"`
-	Version   string `json:"version,omitempty"`
-	LocalPath string `json:"localPath,omitempty"`
-}
-
-func (c Catalog) Binary(id string) (Binary, bool) {
-	for _, b := range c.Binaries {
-		if b.ID == id {
-			return b, true
-		}
-	}
-	return Binary{}, false
 }
 
 func (c Catalog) Component(id string) (Component, bool) {

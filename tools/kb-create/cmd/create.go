@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -36,6 +38,7 @@ var (
 	flagDevManifest     string
 	flagRegistry        string
 	flagIntent          string
+	flagEngine          bool
 	flagSDKVersion      string
 	flagSDKChannel      string
 	flagPlatformVersion string
@@ -53,6 +56,7 @@ func init() {
 	rootCmd.Flags().StringVar(&flagDevManifest, "dev-manifest", "", "path to dev manifest JSON (installs from local file: paths instead of npm registry)")
 	rootCmd.Flags().StringVar(&flagRegistry, "registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.Flags().StringVar(&flagIntent, "intent", "", `non-interactive intent selection with --yes (e.g. "release", "ai-review", "plugin-author"; default "explore" — the same footprint bare --yes has always installed). "custom" is not valid here — use the interactive wizard or "kb-create install --plugins/--services" instead`)
+	rootCmd.Flags().BoolVar(&flagEngine, "engine", false, "use the declarative flow engine for the interactive installation")
 	rootCmd.Flags().StringVar(&flagSDKVersion, "sdk-version", "", "pin the SDK (@kb-labs/sdk) to an exact version — mutually exclusive with --sdk-channel")
 	rootCmd.Flags().StringVar(&flagSDKChannel, "sdk-channel", "", `track a release channel for the SDK: "stable" (default) or "canary"`)
 	rootCmd.Flags().StringVar(&flagPlatformVersion, "platform-version", "", "pin core+adapters+every service+every plugin to an exact version, all identical — mutually exclusive with --platform-channel")
@@ -137,12 +141,6 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("build declarative install request: %w", err)
 	}
-	if flagDemo {
-		if builtInstall.Values == nil {
-			builtInstall.Values = make(map[string]json.RawMessage)
-		}
-		builtInstall.Values["demo.enabled"] = json.RawMessage(`true`)
-	}
 	builtInstall.PackageOverrides = platformOverrides
 
 	request := engineagent.Request{Command: engineagent.CommandPlan, Catalog: &resolvedCatalog, Install: &builtInstall, ProjectRoot: projectRoot, PlatformRoot: platformRoot}
@@ -157,7 +155,8 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	}
 	rememberRunLog(log)
 	defer func() { _ = log.Close() }()
-	if _, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled)); err != nil {
+	materializer := &declarativeMaterializer{log: log, source: declarativeManifest, localMode: flagLocal, bootstrapEmail: bootstrapEmailForPlan(builtInstall.Values, flagLocal), bootstrapTenant: bootstrapTenantForPlan(builtInstall.Values, flagLocal), bootstrapPass: bootstrapPasswordForPlan(builtInstall.Values, flagLocal)}
+	if _, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled), materializer); err != nil {
 		return err
 	}
 	declarativeIntent := declarativeManifest.IntentByID(intent)
@@ -171,6 +170,8 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 	log.Printf("Installing %d packages via declarative plan", packageActions)
+	bootstrapEmail := bootstrapEmailForPlan(builtInstall.Values, flagLocal)
+	bootstrapPassword := bootstrapPasswordForPlan(builtInstall.Values, flagLocal)
 	if err := writeDeclarativeInstallState(compiled, declarativeManifest, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -178,6 +179,9 @@ func runDeclarativeCreate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", compiled.PlatformRoot)
 	if compiled.ProjectRoot != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Project:  %s\n", compiled.ProjectRoot)
+	}
+	if bootstrapEmail != "" {
+		printBootstrapAdminCredentials(bootstrapEmail, bootstrapPassword)
 	}
 	printCompletionBlock(&installer.Result{
 		PlatformDir: compiled.PlatformRoot,
@@ -271,6 +275,49 @@ func telemetryFailureCategory(err error) string {
 	default:
 		return "unknown"
 	}
+}
+
+// generateBootstrapAdminPassword returns 32 random bytes as a 64-char hex
+// string, used to seed the gateway's bootstrap admin account (#271) for
+// non-local installs. Same crypto/rand + hex pattern as telemetry.GenerateDeviceID.
+func generateBootstrapAdminPassword() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
+func bootstrapEmailForPlan(values map[string]json.RawMessage, explicitLocal bool) string {
+	if explicitLocal || planAccessMode(values) == "local" {
+		return ""
+	}
+	return envOrDefault("GATEWAY_BOOTSTRAP_ADMIN_EMAIL", "admin@bootstrap.local")
+}
+
+func bootstrapTenantForPlan(values map[string]json.RawMessage, explicitLocal bool) string {
+	if explicitLocal || planAccessMode(values) == "local" {
+		return ""
+	}
+	return envOrDefault("GATEWAY_BOOTSTRAP_TENANT_ID", "default")
+}
+
+func bootstrapPasswordForPlan(values map[string]json.RawMessage, explicitLocal bool) string {
+	if explicitLocal || planAccessMode(values) == "local" {
+		return ""
+	}
+	if configured := os.Getenv("GATEWAY_BOOTSTRAP_ADMIN_PASSWORD"); configured != "" {
+		return configured
+	}
+	return generateBootstrapAdminPassword()
+}
+
+func planAccessMode(values map[string]json.RawMessage) string {
+	var mode string
+	if raw := values["access.mode"]; len(raw) > 0 {
+		_ = json.Unmarshal(raw, &mode)
+	}
+	return mode
 }
 
 // envOrDefault returns os.Getenv(key) when non-empty, else def.

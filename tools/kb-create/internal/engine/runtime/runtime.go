@@ -25,6 +25,7 @@ type Options struct {
 	Rollback       bool
 	Progress       func(pm.Progress)
 	Emit           func(executor.Event)
+	Materializer   handlers.Materializer
 }
 
 func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (executor.Journal, error) {
@@ -56,7 +57,9 @@ func Apply(ctx context.Context, compiled plan.InstallPlan, options Options) (exe
 			engineconfig.RootPlatform: compiled.PlatformRoot,
 			engineconfig.RootProject:  compiled.ProjectRoot,
 		},
-		BaseConfig: base,
+		BaseConfig:   base,
+		Materializer: options.Materializer,
+		Plan:         compiled,
 	})
 	return executor.Run(ctx, compiled, registry, executor.Options{
 		DryRun:            options.DryRun,

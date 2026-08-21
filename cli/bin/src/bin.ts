@@ -19,6 +19,18 @@
  * `process.exit()` so the shell receives the correct status.
  */
 
+import { assertSupportedNode } from "./runtime/node-version.js";
+
+// Fail before importing any platform module. Some dependencies require Node
+// 24 built-ins (for example node:sqlite); without this guard users see an
+// opaque module-loader stack instead of the supported-runtime instruction.
+try {
+  assertSupportedNode();
+} catch (error) {
+  process.stderr.write(`[kb] ${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}
+
 const rawCliArgs = process.argv.slice(2);
 
 function resolveBootstrapLogLevel(args: string[]): string | undefined {

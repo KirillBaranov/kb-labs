@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	cliruntime "github.com/kb-labs/clikit/runtime"
 	"github.com/kb-labs/dev/internal/docker"
 	"github.com/kb-labs/dev/internal/environ"
 	"github.com/kb-labs/dev/internal/manager"
@@ -103,9 +104,17 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	env := environ.Resolve()
 	if env.Node != "" {
 		nodeVersion := getVersion(env.Node, "--version")
+		nodeErr := cliruntime.ValidateNodeVersion(nodeVersion)
 		result.Checks = append(result.Checks, manager.DoctorCheck{
-			ID: "node", OK: true, Detail: nodeVersion, Path: env.Node,
+			ID: "node", OK: nodeErr == nil, Detail: nodeVersion, Path: env.Node,
 		})
+		if nodeErr != nil {
+			result.Checks[len(result.Checks)-1].Detail = nodeErr.Error()
+			result.OK = false
+			if result.Hint == "" {
+				result.Hint = "Install and select Node.js 24, then retry (for nvm: nvm install 24 && nvm use 24)"
+			}
+		}
 	} else {
 		result.Checks = append(result.Checks, manager.DoctorCheck{
 			ID: "node", OK: false, Detail: "node not found on PATH",

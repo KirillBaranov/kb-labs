@@ -14,6 +14,7 @@ import (
 	"github.com/kb-labs/create/internal/engine/flow"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/engine/scenario"
+	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/spf13/cobra"
@@ -172,11 +173,22 @@ func runAgentApply(cmd *cobra.Command, _ []string) error {
 		return diag.New("ERR_AGENT_ROOT", "plan.platformRoot is required for apply")
 	}
 	manager := pm.Detect()
+	manifestSource, manifestErr := manifest.LoadDefault()
+	if manifestErr != nil {
+		return diag.Wrap(manifestErr, "ERR_AGENT_MANIFEST", "cannot load manifest for install materialization")
+	}
+	log, logErr := logger.NewFileOnly(compiled.PlatformRoot)
+	if logErr != nil {
+		return diag.Wrap(logErr, "ERR_AGENT_LOG", "cannot create install log")
+	}
+	defer func() { _ = log.Close() }()
+	localMode := planAccessMode(compiled.Values) == "local"
 	journal, runErr := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: manager,
 		DryRun:         agentPlanOnly,
 		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
+		Materializer:   &declarativeMaterializer{log: log, source: manifestSource, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)},
 	})
 	if runErr == nil && !agentPlanOnly {
 		if stateErr := writeDeclarativeInstallState(compiled, nil, manifest.ResolvedAxes{}); stateErr != nil {

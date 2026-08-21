@@ -14,11 +14,13 @@ import (
 	"github.com/kb-labs/create/internal/engine/agent"
 	"github.com/kb-labs/create/internal/engine/executor"
 	engineflow "github.com/kb-labs/create/internal/engine/flow"
+	"github.com/kb-labs/create/internal/engine/handlers"
 	engineplan "github.com/kb-labs/create/internal/engine/plan"
 	engineruntime "github.com/kb-labs/create/internal/engine/runtime"
 	"github.com/kb-labs/create/internal/engine/scenario"
 	engineui "github.com/kb-labs/create/internal/engine/ui"
 	terminalui "github.com/kb-labs/create/internal/engine/ui/terminal"
+	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
@@ -78,7 +80,12 @@ var flowRunCmd = &cobra.Command{
 			}
 			rememberRunLog(log)
 			defer func() { _ = log.Close() }()
-			journal, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled))
+			resolvedManifest, err := manifest.LoadDefault()
+			if err != nil {
+				return fmt.Errorf("load manifest for install materialization: %w", err)
+			}
+			localMode := planAccessMode(compiled.Values) == "local"
+			journal, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled), &declarativeMaterializer{log: log, source: resolvedManifest, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)})
 			if err != nil {
 				return err
 			}
@@ -229,20 +236,7 @@ func writeDeclarativeInstallState(compiled engineplan.InstallPlan, source *manif
 	sort.Strings(cfg.SelectedServices)
 	cfg.SelectedEffects = append([]string(nil), compiled.Effects...)
 	sort.Strings(cfg.SelectedEffects)
-	if err := installconfig.Write(compiled.PlatformRoot, cfg); err != nil {
-		return err
-	}
-	// Also persist install state into the project directory (when distinct
-	// from the platform directory) so commands run from inside the project
-	// — the common case after `kb-create <name>` — can resolve the platform
-	// via cwd-based config.Read without requiring --platform every time, and
-	// so the project itself carries proof that its install actually completed.
-	if compiled.ProjectRoot != "" && compiled.ProjectRoot != compiled.PlatformRoot {
-		if err := installconfig.Write(compiled.ProjectRoot, cfg); err != nil {
-			return err
-		}
-	}
-	return nil
+	return installconfig.Write(compiled.PlatformRoot, cfg)
 }
 
 func manifestComponent(component string) (kind, id string) {
@@ -262,13 +256,42 @@ func containsString(values []string, want string) bool {
 	return false
 }
 
-func executeFlowPlan(compiled engineplan.InstallPlan, progress func(pm.Progress), emit func(executor.Event)) (executor.Journal, error) {
+type declarativeMaterializer struct {
+	log             *logger.Logger
+	source          *manifest.Manifest
+	bootstrapEmail  string
+	bootstrapTenant string
+	bootstrapPass   string
+	localMode       bool
+	result          *installer.Result
+}
+
+func (m *declarativeMaterializer) Materialize(_ context.Context, compiled engineplan.InstallPlan) error {
+	plugins, services := selectedComponentsFromPlan(compiled)
+	result, err := (&installer.Installer{PM: pm.Detect(), Log: m.log}).FinalizeDeclarative(&installer.Selection{
+		PlatformDir:                      compiled.PlatformRoot,
+		ProjectCWD:                       compiled.ProjectRoot,
+		Binaries:                         compiled.Binaries,
+		Plugins:                          plugins,
+		Services:                         services,
+		LocalMode:                        m.localMode,
+		BootstrapAdminEmail:              m.bootstrapEmail,
+		BootstrapTenantID:                m.bootstrapTenant,
+		BootstrapAdminPassword:           m.bootstrapPass,
+		AllowIncompatibleLegacyMigration: true,
+	}, m.source)
+	m.result = result
+	return err
+}
+
+func executeFlowPlan(compiled engineplan.InstallPlan, progress func(pm.Progress), emit func(executor.Event), materializer handlers.Materializer) (executor.Journal, error) {
 	return engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: pm.Detect(),
 		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 		Progress:       progress,
 		Emit:           emit,
+		Materializer:   materializer,
 	})
 }
 

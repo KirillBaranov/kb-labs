@@ -13,12 +13,6 @@ import (
 	"strings"
 )
 
-const (
-	maxRegistryFileBytes  = 64 << 20
-	maxRegistryTotalBytes = 256 << 20
-	maxRegistryEntries    = 100_000
-)
-
 type RegistryOptions struct {
 	NPM      string
 	Registry string
@@ -107,7 +101,6 @@ func extractTarGz(archivePath, destination string) error {
 	if err != nil {
 		return err
 	}
-	var entries, totalBytes int64
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -115,10 +108,6 @@ func extractTarGz(archivePath, destination string) error {
 		}
 		if err != nil {
 			return err
-		}
-		entries++
-		if entries > maxRegistryEntries {
-			return fmt.Errorf("package archive contains too many entries (max %d)", maxRegistryEntries)
 		}
 		name := filepath.Clean(filepath.FromSlash(header.Name))
 		if name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) {
@@ -137,23 +126,14 @@ func extractTarGz(archivePath, destination string) error {
 				return err
 			}
 		case tar.TypeReg:
-			if header.Size > maxRegistryFileBytes || totalBytes > maxRegistryTotalBytes-header.Size {
-				return fmt.Errorf("package archive exceeds extraction size limit")
-			}
 			output, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 			if err != nil {
 				return err
 			}
-			written, err := io.Copy(output, io.LimitReader(tarReader, header.Size))
-			if err != nil {
+			if _, err := io.Copy(output, io.LimitReader(tarReader, header.Size)); err != nil {
 				_ = output.Close()
 				return err
 			}
-			if written != header.Size {
-				_ = output.Close()
-				return fmt.Errorf("package archive entry %q ended before declared size", header.Name)
-			}
-			totalBytes += written
 			if err := output.Close(); err != nil {
 				return err
 			}

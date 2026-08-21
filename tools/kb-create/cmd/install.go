@@ -21,6 +21,7 @@ import (
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/scan"
 	"github.com/kb-labs/create/internal/validate"
 )
@@ -182,6 +183,10 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	}
 	rememberRunLog(log)
 	defer func() { _ = log.Close() }()
+	bootstrapEmail := bootstrapEmailForPlan(nil, false)
+	bootstrapPassword := bootstrapPasswordForPlan(nil, false)
+	bootstrapTenant := bootstrapTenantForPlan(nil, false)
+	materializer := &declarativeMaterializer{log: log, source: manifestSource, bootstrapEmail: bootstrapEmail, bootstrapTenant: bootstrapTenant, bootstrapPass: bootstrapPassword}
 	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: manager,
 		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
@@ -189,21 +194,18 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		Rollback:       true,
 		Progress:       logPackageManagerProgress(log),
 		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+		Materializer:   materializer,
 	})
 	if err != nil {
 		return fmt.Errorf("declarative installation failed: %w", err)
 	}
-	// scan.Run has already run once as part of the plan's discover:services
-	// action (engineruntime.Apply above); re-running it here is cheap (local
-	// file parsing, no network/package-manager work) and keeps the plugin
-	// capability/env-var hints below purely informational — never gating the
-	// install itself on whether this second read succeeds.
-	var installedPlugins []scan.PluginEntry
-	if scanResult, scanErr := scan.Run(platformDir); scanErr == nil {
-		installedPlugins = scanResult.Plugins
+	if bootstrapEmail != "" {
+		printBootstrapAdminCredentials(bootstrapEmail, bootstrapPassword)
 	}
-	printAdapterReconciliation(out, platformDir, adapters, installedPlugins)
-	printEnvHints(out, platformDir, installedPlugins)
+	if materializer.result != nil {
+		printAdapterReconciliation(out, platformDir, adapters, materializer.result.InstalledPlugins)
+		printEnvHints(out, platformDir, materializer.result.InstalledPlugins)
+	}
 	if err := writeDeclarativeInstallState(compiled, manifestSource, axes); err != nil {
 		return fmt.Errorf("write declarative install state: %w", err)
 	}
@@ -278,18 +280,6 @@ func mergeIDs(existing, requested []string) []string {
 	return merged
 }
 
-// defaultAdapterRoles lists the capability roles the platform config always
-// carries a package for, with or without an --adapters override. "cache" is
-// deliberately absent — it has no built-in default and only appears when
-// explicitly set via --adapters. Mirrors the roles the gateway.access.*
-// effects and the adapterOptions catalog defaults (manifest.json) wire up —
-// kept as a plain literal here rather than derived from the catalog because
-// it's purely informational (a printAdapterReconciliation input), not part
-// of the install itself.
-var defaultAdapterRoles = []string{
-	"llm", "storage", "logger", "logRingBuffer", "analytics", "serviceTransport",
-}
-
 // printAdapterReconciliation reports on capability roles: whether an
 // --adapters role name is a recognized capability (using the installed
 // generated list when available, with the local catalog as a fallback),
@@ -321,8 +311,8 @@ func printAdapterReconciliation(out output, platformDir string, adapters map[str
 			role, strings.Join(knownRoles, ", ")))
 	}
 
-	configured := make(map[string]bool, len(defaultAdapterRoles)+len(adapters))
-	for _, r := range defaultAdapterRoles {
+	configured := make(map[string]bool, len(scaffold.DefaultAdapterRoles)+len(adapters))
+	for _, r := range scaffold.DefaultAdapterRoles {
 		configured[r] = true
 	}
 	for role := range adapters {

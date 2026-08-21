@@ -5,7 +5,6 @@ REPO="kb-labs-team/kb-labs"
 BINARY="kb-create"
 DEST="${HOME}/.local/bin/${BINARY}"
 VERSION="latest"
-CHANNEL="stable"
 RESOLVED_VERSION=""
 START_TS="$(date +%s)"
 
@@ -35,12 +34,11 @@ err() { printf "%s[ERR ]%s %s\n" "$C_RED" "$C_RESET" "$1" >&2; }
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [--version <tag>] [--channel <stable|canary>]
+Usage: install.sh [--version <tag>]
 
 Options:
-  --version <tag>       Install specific release tag (example: v1.2.3-binaries)
-  --channel <name>      Channel to resolve "latest" from: stable or canary (default: stable)
-  -h, --help            Show this help
+  --version <tag>   Install specific release tag (example: v1.2.3)
+  -h, --help        Show this help
 EOF
 }
 
@@ -66,14 +64,6 @@ while [ "$#" -gt 0 ]; do
         exit 1
       fi
       VERSION="$1"
-      ;;
-    --channel)
-      shift
-      if [ "$#" -eq 0 ]; then
-        echo "Error: --channel requires a value (stable or canary)." >&2
-        exit 1
-      fi
-      CHANNEL="$1"
       ;;
     -h|--help)
       usage
@@ -113,21 +103,12 @@ case "$OS" in
     ;;
 esac
 
-case "$CHANNEL" in
-  stable|canary) ;;
-  *)
-    err "Unsupported channel: $CHANNEL (expected stable or canary)"
-    exit 1
-    ;;
-esac
-
 if [ "$VERSION" = "latest" ]; then
-  # `binaries-stable`/`binaries-canary` are tiny mutable GitHub Release assets
-  # maintained by release-binaries.yml (canary) and promote-binaries.yml
-  # (stable). Using the direct asset URL avoids GitHub REST API lookup and
-  # cannot accidentally select a platform/npm release.
-  CHANNEL_JSON="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-${CHANNEL}/channel.json" 2>/dev/null)" || {
-    err "Unable to resolve the ${CHANNEL} binaries channel from GitHub Releases."
+  # `binaries-stable` is a tiny mutable GitHub Release asset maintained by
+  # release-binaries.yml. Using the direct asset URL avoids GitHub REST API
+  # lookup and cannot accidentally select a platform/npm release.
+  CHANNEL_JSON="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-stable/channel.json" 2>/dev/null)" || {
+    err "Unable to resolve the stable binaries channel from GitHub Releases."
     exit 1
   }
   RESOLVED_VERSION="$(printf '%s\n' "$CHANNEL_JSON" | sed -n 's/.*"tag":[[:space:]]*"\([^"]*-binaries\)".*/\1/p' | head -n 1)"
@@ -149,9 +130,9 @@ print_banner
 info "Repository: ${REPO}"
 if [ "$VERSION" = "latest" ]; then
   if [ -n "$RESOLVED_VERSION" ]; then
-    info "Channel: ${CHANNEL} (resolved to ${RESOLVED_VERSION})"
+    info "Channel: latest (resolved to ${RESOLVED_VERSION})"
   else
-    info "Channel: ${CHANNEL} (GitHub latest/download)"
+    info "Channel: latest (GitHub latest/download)"
   fi
 else
   info "Channel: pinned (${RESOLVED_VERSION})"

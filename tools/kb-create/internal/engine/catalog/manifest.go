@@ -17,11 +17,7 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 	foundation := append(source.CorePackageSpecs(), source.AdapterPackageSpecs()...)
 	catalog := Catalog{Core: foundation, Components: make([]Component, 0, len(source.Services)+len(source.Plugins)), Effects: make([]Effect, 0, len(source.Effects)), Migrations: make([]migrate.Definition, 0, len(source.Migrations))}
 	for _, output := range source.Outputs {
-		catalog.Outputs = append(catalog.Outputs, engineconfig.ConfigOutput{
-			Scope: engineconfig.ConfigScope(output.Scope), Root: engineconfig.Root(output.Root), Path: output.Path,
-			Format: engineconfig.Format(output.Format), Overwrite: engineconfig.OverwritePolicy(output.Overwrite),
-			SectionOrder: append([]string(nil), output.SectionOrder...), Banner: output.Banner,
-		})
+		catalog.Outputs = append(catalog.Outputs, engineconfig.ConfigOutput{Scope: engineconfig.ConfigScope(output.Scope), Root: engineconfig.Root(output.Root), Path: output.Path, Format: engineconfig.Format(output.Format), Overwrite: engineconfig.OverwritePolicy(output.Overwrite)})
 	}
 	for _, artifact := range source.Artifacts {
 		catalog.Artifacts = append(catalog.Artifacts, engineconfig.ArtifactWrite{ID: artifact.ID, Root: engineconfig.Root(artifact.Root), Path: artifact.Path, Format: engineconfig.Format(artifact.Format), Content: append(json.RawMessage(nil), artifact.Content...), Text: artifact.Text, Owner: artifact.Owner, Overwrite: engineconfig.OverwritePolicy(artifact.Overwrite), Required: true})
@@ -46,10 +42,7 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 			}
 			companionPackages = []string{companion}
 		}
-		catalog.Components = append(catalog.Components, Component{
-			ID: id, Kind: "service", Package: service.Pkg, CompanionPackages: companionPackages, Default: service.Default, Config: componentConfig,
-			GatewayPrefix: service.GatewayPrefix, GatewayRewrite: service.GatewayRewrite, GatewayWebSocket: service.GatewayWebSocket,
-		})
+		catalog.Components = append(catalog.Components, Component{ID: id, Kind: "service", Package: service.Pkg, CompanionPackages: companionPackages, Default: service.Default, Config: componentConfig})
 	}
 	for _, plugin := range source.Plugins {
 		if plugin.ID == "" || plugin.Pkg == "" {
@@ -77,15 +70,6 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 		for _, patch := range effect.Config {
 			converted.Config = append(converted.Config, convertPatch(patch, "catalog:effect/"+effect.ID))
 		}
-		for _, secret := range effect.Secrets {
-			owner := secret.Owner
-			if owner == "" {
-				owner = "catalog:effect/" + effect.ID
-			}
-			converted.Secrets = append(converted.Secrets, engineconfig.SecretRequirement{
-				ID: secret.ID, EnvVar: secret.EnvVar, Generator: engineconfig.SecretGenerator(secret.Generator), Owner: owner,
-			})
-		}
 		catalog.Effects = append(catalog.Effects, converted)
 	}
 	for _, definition := range source.Migrations {
@@ -103,9 +87,6 @@ func FromManifest(source manifest.Manifest) (Catalog, error) {
 		}
 		catalog.Migrations = append(catalog.Migrations, converted)
 	}
-	for _, binary := range source.Binaries {
-		catalog.Binaries = append(catalog.Binaries, Binary{ID: binary.ID, Repo: binary.Repo, Name: binary.Name, Version: binary.Version, LocalPath: binary.LocalPath})
-	}
 	catalog = Normalize(catalog)
 	catalog.Digest = Digest(catalog)
 	if err := catalog.Validate(); err != nil {
@@ -119,7 +100,7 @@ func convertPatch(patch manifest.ConfigPatch, fallbackOwner string) engineconfig
 	if owner == "" {
 		owner = fallbackOwner
 	}
-	return engineconfig.ConfigPatch{ID: patch.ID, Scope: engineconfig.ConfigScope(patch.Scope), Operation: engineconfig.Operation(patch.Operation), Path: patch.Path, Value: append(json.RawMessage(nil), patch.Value...), SchemaRef: patch.SchemaRef, Owner: owner, Doc: patch.Doc}
+	return engineconfig.ConfigPatch{ID: patch.ID, Scope: engineconfig.ConfigScope(patch.Scope), Operation: engineconfig.Operation(patch.Operation), Path: patch.Path, Value: append(json.RawMessage(nil), patch.Value...), SchemaRef: patch.SchemaRef, Owner: owner}
 }
 
 func convertMigrationPredicate(source manifest.MigrationPredicate) migrate.Predicate {

@@ -34,7 +34,6 @@ func Normalize(source Catalog) Catalog {
 	source.Providers = append([]Provider(nil), source.Providers...)
 	source.Effects = append([]Effect(nil), source.Effects...)
 	source.Migrations = append([]migrate.Definition(nil), source.Migrations...)
-	source.Binaries = append([]Binary(nil), source.Binaries...)
 	for i := range source.Components {
 		source.Components[i].Requires = append([]Requirement(nil), source.Components[i].Requires...)
 		source.Components[i].CompanionPackages = append([]string(nil), source.Components[i].CompanionPackages...)

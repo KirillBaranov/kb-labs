@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -38,15 +37,6 @@ type InstallRequest struct {
 	PackageOverrides    map[string]string           `json:"packageOverrides,omitempty"`
 	Values              map[string]json.RawMessage  `json:"values,omitempty"`
 	AssemblyOutputs     []engineconfig.ConfigOutput `json:"assemblyOutputs,omitempty"`
-	// ExtraPatches are applied after every catalog default, component
-	// contribution, provider binding, and effect — the highest-precedence
-	// layer ("explicit direct-request overrides" in the patch precedence
-	// order), for callers that need to override a value the manifest cannot
-	// know ahead of time (e.g. an environment variable read at request-build
-	// time). Not part of the scenario/effect vocabulary: a caller building
-	// this list is responsible for keeping it small and well-justified —
-	// most product decisions belong in catalog effects, not here.
-	ExtraPatches []engineconfig.ConfigPatch `json:"extraPatches,omitempty"`
 }
 
 type ActionKind string
@@ -55,27 +45,7 @@ const (
 	ActionInstallPackage ActionKind = "installPackage"
 	ActionBindProvider   ActionKind = "bindProvider"
 	ActionWriteConfig    ActionKind = "writeConfig"
-	// ActionWriteSecret generates (if not already present) and persists a
-	// secret value to a project-scoped dotenv file. Never appears in
-	// ConfigAssembly.Patches — patch.Scope == ScopeSecretEnv is explicitly
-	// rejected by config.validateAssembly — because a patch's Value would
-	// have to hold the plaintext secret, and that would put it in the plan,
-	// the journal, and any --plan-only preview output. See
-	// engineconfig.SecretRequirement.
-	ActionWriteSecret ActionKind = "writeSecret"
-	// ActionDiscoverServices scans the installed packages under the platform
-	// dir for their own declared runtime facts (ports, capabilities) and
-	// writes devservices.yaml/marketplace.lock — the only source of truth
-	// for "what actually got installed", since a package's own manifest can
-	// legitimately diverge from what the catalog expected (a bad publish, a
-	// version mismatch). Also derives the gateway upstream plan (prefix +
-	// discovered port) that ActionWriteConfig renders into kb.config.jsonc.
-	ActionDiscoverServices ActionKind = "discoverServices"
-	// ActionInstallBinary downloads a Go binary (e.g. kb-dev) from GitHub
-	// Releases into the platform's bin/ dir and symlinks the kb CLI plus any
-	// downloaded binaries into the user's PATH. One action per requested
-	// binary ID.
-	ActionInstallBinary ActionKind = "installBinary"
+	ActionMaterialize    ActionKind = "materializeInstall"
 )
 
 type PlanAction struct {
@@ -163,13 +133,6 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		selected[id] = component
 		assembly.Patches = append(assembly.Patches, component.Config...)
 	}
-	assembly.Artifacts = append(assembly.Artifacts, gitignoreArtifact())
-	if _, workflowSelected := selected["service:workflow"]; workflowSelected {
-		assembly.Artifacts = append(assembly.Artifacts, starterWorkflowArtifacts()...)
-	}
-	if demoEnabled(request.Values) {
-		assembly.Artifacts = append(assembly.Artifacts, demoWorkflowArtifact())
-	}
 
 	providers := make(map[string]catalog.Provider)
 	for _, componentID := range componentIDs {
@@ -249,38 +212,12 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 		dependencies := []string{"install:selection"}
 		actions = append(actions, PlanAction{ID: "bind:" + capability, Kind: ActionBindProvider, DependsOn: dependencies, Inputs: map[string]string{"capability": capability, "provider": provider.ID, "package": provider.Package}})
 	}
-	discoverDependencies := []string(nil)
 	if len(selectionSpecs) > 0 {
 		dependencies := make([]string, 0, 1)
 		if foundation != "" {
 			dependencies = append(dependencies, foundation)
 		}
 		actions = append(actions, packageAction("install:selection", "selection", selectionSpecs, componentIDs, dependencies, request.RefreshPackages))
-		discoverDependencies = []string{"install:selection"}
-	} else if foundation != "" {
-		discoverDependencies = []string{foundation}
-	}
-	// Discovery must run after packages are installed (it reads each
-	// installed package's own declared manifest for facts the catalog can't
-	// know ahead of time — a port, a capability). Runs even with zero
-	// selected components: an install with no services/plugins still gets a
-	// (trivially empty) devservices.yaml/marketplace.lock, matching what a
-	// fresh, component-free platform dir looks like today.
-	discoverInputs := map[string]string{}
-	if routes := gatewayRoutesJSON(componentIDs, selected); routes != "" {
-		discoverInputs["gatewayRoutesJSON"] = routes
-	}
-	if len(discoverInputs) == 0 {
-		discoverInputs = nil
-	}
-	actions = append(actions, PlanAction{ID: "discover:services", Kind: ActionDiscoverServices, DependsOn: discoverDependencies, Inputs: discoverInputs})
-	for _, binaryID := range catalog.SortedIDs(request.Binaries) {
-		binary, ok := source.Binary(binaryID)
-		if !ok {
-			return InstallPlan{}, fmt.Errorf("unknown binary %q", binaryID)
-		}
-		inputs := map[string]string{"id": binaryID, "name": binary.Name, "repo": binary.Repo, "version": binary.Version, "localPath": binary.LocalPath}
-		actions = append(actions, PlanAction{ID: "binary:" + binaryID, Kind: ActionInstallBinary, Inputs: inputs})
 	}
 	// Scenario/direct effects are applied after component and provider
 	// contributions. Effect IDs are sorted so request ordering cannot change
@@ -297,115 +234,12 @@ func Compile(request InstallRequest, source catalog.Catalog) (InstallPlan, error
 			return InstallPlan{}, fmt.Errorf("unknown effect %q", effectID)
 		}
 		assembly.Patches = append(assembly.Patches, effect.Config...)
-		assembly.Secrets = append(assembly.Secrets, effect.Secrets...)
-	}
-	// Environment overrides for the gateway bootstrap admin (E2E fixtures pin
-	// these — see gatewayBootstrapEnvOverrides doc) sit above every catalog
-	// default and effect, but below the caller's own ExtraPatches so a caller
-	// can still force a value if it ever needs to. Only meaningful when the
-	// secured-access effect is actually selected — local/no-auth installs
-	// never render a bootstrap section, and forcing one into existence here
-	// would add a stray "bootstrap" block a local install never asked for.
-	if _, secured := seenEffects["gateway.access.secured"]; secured {
-		assembly.Patches = append(assembly.Patches, gatewayBootstrapEnvOverrides()...)
-	}
-	assembly.Patches = append(assembly.Patches, request.ExtraPatches...)
-	seenSecrets := make(map[string]bool, len(assembly.Secrets))
-	secretIDs := make([]string, 0, len(assembly.Secrets))
-	for _, secret := range assembly.Secrets {
-		if seenSecrets[secret.ID] {
-			continue
-		}
-		seenSecrets[secret.ID] = true
-		secretIDs = append(secretIDs, secret.ID)
-	}
-	sort.Strings(secretIDs)
-	for _, id := range secretIDs {
-		actions = append(actions, PlanAction{ID: "secret:" + id, Kind: ActionWriteSecret, Inputs: map[string]string{"id": id}})
 	}
 	actions = append(actions, PlanAction{ID: "config:runtime", Kind: ActionWriteConfig, DependsOn: actionIDs(actions)})
+	actions = append(actions, PlanAction{ID: "materialize:install", Kind: ActionMaterialize, DependsOn: []string{"config:runtime"}})
 	result := InstallPlan{Schema: request.Schema, CatalogDigest: request.CatalogDigest, Source: request.Source, ScenarioID: request.ScenarioID, ProjectRoot: request.ProjectRoot, PlatformRoot: request.PlatformRoot, Effects: effectIDs, Values: cloneValues(request.Values), Binaries: catalog.SortedIDs(request.Binaries), Assembly: assembly, Actions: actions}
 	result.PlanHash = hashPlan(result)
 	return result, nil
-}
-
-// gatewayBootstrapEnvOverrides returns explicit-precedence config patches for
-// the gateway bootstrap admin email/tenant when GATEWAY_BOOTSTRAP_ADMIN_EMAIL
-// / GATEWAY_BOOTSTRAP_TENANT_ID are set in the environment — overriding the
-// catalog default from the gateway.access.secured effect. The gateway's own
-// bootstrap fallback (services/gateway/app/src/bootstrap.ts) reads the same
-// env vars, but only when kb.config.jsonc's gateway.auth.bootstrap block is
-// absent; since the effect always writes that block now, these env vars must
-// be threaded through explicitly or they'd be permanently shadowed. E2E
-// fixtures (e2e/docker-compose.yml, docker-compose.auth-ci.yml) set both to
-// align the bootstrap admin with what their test suites expect.
-//
-// Lives here (not in a cmd/*.go call site) so every entry point — create
-// --yes, the interactive wizard, `kb-create install`, `kb-create update`,
-// and `kb-create agent apply` — gets it automatically from the one function
-// they all eventually call, matching the existing platform.dir/
-// project.platform.dir injection just above.
-func gatewayBootstrapEnvOverrides() []engineconfig.ConfigPatch {
-	var patches []engineconfig.ConfigPatch
-	if v := os.Getenv("GATEWAY_BOOTSTRAP_ADMIN_EMAIL"); v != "" {
-		value, _ := json.Marshal(v)
-		patches = append(patches, engineconfig.ConfigPatch{
-			ID: "gateway.bootstrap.adminEmail.override", Scope: engineconfig.ScopePlatform,
-			Operation: engineconfig.OperationSet, Path: "/gateway/auth/bootstrap/adminEmail",
-			Value: value, Owner: "env:GATEWAY_BOOTSTRAP_ADMIN_EMAIL",
-		})
-	}
-	if v := os.Getenv("GATEWAY_BOOTSTRAP_TENANT_ID"); v != "" {
-		value, _ := json.Marshal(v)
-		patches = append(patches, engineconfig.ConfigPatch{
-			ID: "gateway.bootstrap.tenantId.override", Scope: engineconfig.ScopePlatform,
-			Operation: engineconfig.OperationSet, Path: "/gateway/auth/bootstrap/tenantId",
-			Value: value, Owner: "env:GATEWAY_BOOTSTRAP_TENANT_ID",
-		})
-	}
-	return patches
-}
-
-// GatewayRouteInfo is the JSON shape embedded in discover:services'
-// gatewayRoutesJSON input — a compile-time-resolved, catalog-derived fact
-// (which services are gateway-routed, and how) that the discovery handler
-// combines with a run-time-only fact (the actual port each installed
-// package's own manifest declares) to produce the full gateway upstream
-// plan. Mirrors scan.ServiceGatewayInfo's shape without plan importing scan
-// (plan stays free of filesystem/process dependencies).
-type GatewayRouteInfo struct {
-	Prefix    string  `json:"prefix"`
-	Rewrite   *string `json:"rewrite,omitempty"`
-	WebSocket bool    `json:"webSocket,omitempty"`
-}
-
-// gatewayRoutesJSON builds the {serviceID: route} map for every selected
-// service component that declares a GatewayPrefix, keyed by the manifest's
-// raw service ID (canonicalComponentID's "service:" prefix stripped) since
-// that's what a scanned package's own manifest.json "id" field will be.
-// Returns "" when no selected service is gateway-routed, so the discovery
-// action's Inputs stays nil rather than an empty-but-present JSON object.
-func gatewayRoutesJSON(componentIDs []string, selected map[string]catalog.Component) string {
-	routes := make(map[string]GatewayRouteInfo)
-	for _, id := range componentIDs {
-		component := selected[id]
-		if component.GatewayPrefix == "" {
-			continue
-		}
-		rawID := id
-		if idx := strings.Index(id, ":"); idx >= 0 {
-			rawID = id[idx+1:]
-		}
-		routes[rawID] = GatewayRouteInfo{Prefix: component.GatewayPrefix, Rewrite: component.GatewayRewrite, WebSocket: component.GatewayWebSocket}
-	}
-	if len(routes) == 0 {
-		return ""
-	}
-	data, err := json.Marshal(routes)
-	if err != nil {
-		return ""
-	}
-	return string(data)
 }
 
 func packageAction(id, component string, specs, components, dependsOn []string, update bool) PlanAction {
@@ -430,129 +264,6 @@ func sortedPreferenceKeys(preferences map[string][]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-func demoEnabled(values map[string]json.RawMessage) bool {
-	var enabled bool
-	return json.Unmarshal(values["demo.enabled"], &enabled) == nil && enabled
-}
-
-func gitignoreArtifact() engineconfig.ArtifactWrite {
-	return engineconfig.ArtifactWrite{
-		ID: "project.gitignore", Root: engineconfig.RootProject, Path: ".gitignore", Format: engineconfig.FormatText,
-		Owner: "kb-create", Overwrite: engineconfig.OverwriteMerge,
-		MergeMarker: "# kb-labs-ignore", MergeEndMarker: "# end-kb-labs-ignore",
-		Text: "# kb-labs-ignore\n.env\n*.log\n.kb/analytics/\n.kb/cache/\n.kb/ai-review/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n.kb/runtime/\n.kb/commit/\n.kb/mind/\n.kb/database/\n.kb/onboarding/\n.kb/qa/\n.kb/run-artifacts/\n# scaffolded plugins build their own node_modules/dist under .kb/plugins/*\n.kb/plugins/*/node_modules/\n.kb/plugins/*/dist/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.dev.yaml\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# managed by kb-create update — the commit plugin refuses to commit these anyway\n.claude/\n# end-kb-labs-ignore\n",
-	}
-}
-
-func starterWorkflowArtifacts() []engineconfig.ArtifactWrite {
-	return []engineconfig.ArtifactWrite{
-		{ID: "workflow.healthcheck", Root: engineconfig.RootProject, Path: ".kb/workflows/healthcheck.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Healthcheck — verify your project builds and passes tests.
-# Run:  kb workflow run --workflow-id healthcheck
-# Docs: https://docs.kblabs.ru/workflows
-name: healthcheck
-version: 1.0.0
-description: "Build, lint, and test your project"
-on:
-  manual: true
-
-jobs:
-  check:
-    runsOn: local
-    steps:
-      - name: Install dependencies
-        run: |
-          if [ -f package.json ]; then
-            if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
-          else
-            echo "No package.json — dependency installation skipped"
-          fi
-      - name: Build
-        run: |
-          if [ -f package.json ]; then pnpm run --if-present build; else echo "No package.json — build skipped"; fi
-      - name: Lint
-        run: |
-          if [ -f package.json ]; then pnpm run --if-present lint; else echo "No package.json — lint skipped"; fi
-        continueOnError: true
-      - name: Test
-        run: |
-          if [ -f package.json ]; then pnpm run --if-present test; else echo "No package.json — tests skipped"; fi
-`},
-		{ID: "workflow.deploy-with-approval", Root: engineconfig.RootProject, Path: ".kb/workflows/deploy-with-approval.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Deploy with approval gate — human sign-off before deploy.
-# Run:  kb workflow run --workflow-id deploy-with-approval
-# Docs: https://docs.kblabs.ru/workflows
-name: deploy-with-approval
-version: 1.0.0
-description: "Build, test, get approval, then deploy"
-on:
-  manual: true
-
-inputs:
-  environment:
-    type: string
-    description: "Target environment"
-    default: "staging"
-
-jobs:
-  build-and-test:
-    runsOn: local
-    steps:
-      - name: Build
-        run: pnpm build
-      - name: Test
-        run: pnpm test
-
-  approve:
-    needs: [build-and-test]
-    runsOn: local
-    steps:
-      - name: Request approval
-        uses: builtin:approval
-        with:
-          message: "Deploy to ${{ inputs.environment }}? Build and tests passed."
-          approvers: ["team-lead"]
-          timeout: "1h"
-
-  deploy:
-    needs: [approve]
-    runsOn: local
-    steps:
-      - name: Deploy
-        run: echo "Deploying to ${{ inputs.environment }}..."
-        summary: "Deployed to ${{ inputs.environment }}"
-`},
-		{ID: "workflow.scheduled-report", Root: engineconfig.RootProject, Path: ".kb/workflows/scheduled-report.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: `# Scheduled report — runs on a cron schedule.
-# This workflow runs daily and generates a project health summary.
-# Docs: https://docs.kblabs.ru/workflows
-name: scheduled-report
-version: 1.0.0
-description: "Daily project health check (cron)"
-on:
-  schedule:
-    cron: "0 9 * * 1-5"
-  manual: true
-
-jobs:
-  report:
-    runsOn: local
-    steps:
-      - name: Git summary
-        id: git
-        run: |
-          echo "## Commits (last 24h)"
-          git log --oneline --since="24 hours ago" || echo "No recent commits"
-      - name: Dependency check
-        run: pnpm outdated || true
-        continueOnError: true
-      - name: Disk usage
-        run: du -sh node_modules/ dist/ 2>/dev/null || echo "N/A"
-`},
-	}
-}
-
-func demoWorkflowArtifact() engineconfig.ArtifactWrite {
-	return engineconfig.ArtifactWrite{ID: "workflow.demo", Root: engineconfig.RootProject, Path: ".kb/workflows/demo.yaml", Format: engineconfig.FormatText, Owner: "kb-create", Overwrite: engineconfig.OverwriteCreateOnly, Text: "# Demo pipeline — generated by kb-create --demo\n# Run:  kb workflow run --workflow-id demo\n# Edit: edit this file directly, then re-run\n# Docs: https://docs.kblabs.ru/workflows\n\nname: demo\ndescription: \"Quick demo — commit policy, AI review, QA gate\"\n"}
 }
 
 func cloneValues(values map[string]json.RawMessage) map[string]json.RawMessage {

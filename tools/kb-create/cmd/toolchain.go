@@ -1,44 +1,52 @@
 package cmd
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 	"github.com/kb-labs/create/internal/toolchain"
 )
 
 // ensureToolchain keeps CI non-interactive while giving human installs a
-// recoverable update path. Node.js cannot be safely replaced inside the
-// running process, so the prompt prints the exact command and stops; pnpm can
-// be activated in-place and the install continues after revalidation.
+// recoverable update path. The shared updater activates Node.js for this
+// process, so package-manager commands started afterwards use the same runtime.
 func ensureToolchain(nonInteractive bool, manager string) error {
-	status, err := toolchain.Inspect(manager)
-	if status.NodeVersion != "" {
-		if nodeErr := toolchain.Validate(toolchain.Status{NodeVersion: status.NodeVersion}); nodeErr != nil {
-			msg := fmt.Sprintf("Node.js %s is not supported; KB Labs requires Node.js %d or newer. Update Node.js to %d? [y/N] ", status.NodeVersion, toolchain.NodeMajor, toolchain.NodeMajor)
-			if !nonInteractive && confirmToolchain(msg) {
-				return fmt.Errorf("please update Node.js to %d and run kb-create again (for nvm: `nvm install %d && nvm use %d`)", toolchain.NodeMajor, toolchain.NodeMajor, toolchain.NodeMajor)
-			}
-			return fmt.Errorf("Node.js %s is unsupported; install Node.js %d or newer and run kb-create again", status.NodeVersion, toolchain.NodeMajor)
+	status, inspectErr := toolchain.Inspect(manager)
+	if nodeErr := sharedtoolchain.ValidateNode(status.NodeVersion); nodeErr != nil {
+		issue, _ := nodeErr.(*sharedtoolchain.ValidationError)
+		if nonInteractive || !sharedtoolchain.ConfirmUpdate(os.Stdin, os.Stdout, issue) {
+			return nodeErr
+		}
+		nodePath, err := sharedtoolchain.UpdateNode(context.Background())
+		if err != nil {
+			return err
+		}
+		if err := sharedtoolchain.ActivateNode(nodePath); err != nil {
+			return err
+		}
+		status, inspectErr = toolchain.Inspect(manager)
+		if nodeErr := sharedtoolchain.ValidateNode(status.NodeVersion); nodeErr != nil {
+			return nodeErr
 		}
 	}
 	// Corepack may be unable to start pnpm at all with an old Node.js. Node
 	// was validated above from the partial status, so users receive a direct
 	// runtime fix instead of a package-manager stack trace.
-	if err != nil {
-		return err
+	if inspectErr != nil {
+		return inspectErr
 	}
-	if err := toolchain.Validate(status); err == nil {
+	validationErr := toolchain.Validate(status)
+	if validationErr == nil {
 		return nil
 	}
 
 	if manager == "pnpm" {
 		shouldUpdate := nonInteractive
 		if !nonInteractive {
-			fmt.Printf("pnpm %s is not supported by this platform; KB Labs uses pnpm %s. Update pnpm? [y/N] ", status.PnpmVersion, toolchain.PnpmVersion)
-			shouldUpdate = confirmToolchain("")
+			issue, _ := validationErr.(*sharedtoolchain.ValidationError)
+			shouldUpdate = sharedtoolchain.ConfirmUpdate(os.Stdin, os.Stdout, issue)
 		}
 		if !shouldUpdate {
 			return fmt.Errorf("install pnpm@%s and run kb-create again", toolchain.PnpmVersion)
@@ -54,19 +62,4 @@ func ensureToolchain(nonInteractive bool, manager string) error {
 		return toolchain.Validate(updated)
 	}
 	return fmt.Errorf("unsupported package manager/toolchain; use pnpm@%s", toolchain.PnpmVersion)
-}
-
-func confirmToolchain(prompt string) bool {
-	if prompt != "" {
-		fmt.Print(prompt)
-	}
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "y")
-}
-
-func major(version string) (int, error) {
-	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
-	var value int
-	_, err := fmt.Sscanf(version, "%d", &value)
-	return value, err
 }

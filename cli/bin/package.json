@@ -63,7 +63,7 @@
     "vitest": "^3.2.6"
   },
   "engines": {
-    "node": ">=22.0.0",
+    "node": "24.x",
     "pnpm": ">=9.0.0"
   },
   "publishConfig": {

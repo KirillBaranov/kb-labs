@@ -118,7 +118,6 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		PlatformRoot:     platformDir,
 		CatalogDigest:    catalog.Digest,
 		PackageOverrides: platformOverrides,
-		Binaries:         intentBinaries(current.ScenarioID, manifestNow),
 	}, catalog)
 	if err != nil {
 		return fmt.Errorf("build update request: %w", err)
@@ -140,6 +139,7 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 	}
 	rememberRunLog(log)
 	defer func() { _ = log.Close() }()
+	materializer := &declarativeMaterializer{log: log, source: manifestNow}
 	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: manager,
 		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),
@@ -147,6 +147,7 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		Rollback:       true,
 		Progress:       logPackageManagerProgress(log),
 		Emit:           installationProgress(cmd.OutOrStdout(), compiled),
+		Materializer:   materializer,
 	})
 	if err != nil {
 		return fmt.Errorf("declarative update failed: %w", err)

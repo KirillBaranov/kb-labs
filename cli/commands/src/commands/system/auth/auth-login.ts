@@ -15,7 +15,7 @@
  */
 
 import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
-import { CredentialsManager, SessionManager } from '@kb-labs/cli-runtime/gateway';
+import { CredentialsManager, hasLocalRuntimeState, resolveLocalGatewayUrl, SessionManager } from '@kb-labs/cli-runtime/gateway';
 import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
 
 type LoginFlags = {
@@ -56,7 +56,7 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
   },
   // eslint-disable-next-line sonarjs/cognitive-complexity
   async handler(ctx, _argv, flags) {
-    const gatewayUrl = flags['gateway-url'];
+    const gatewayUrl = flags['gateway-url'] ?? (hasLocalRuntimeState() ? resolveLocalGatewayUrl() : undefined);
     const clientId = flags['client-id'];
     const clientSecret = flags['client-secret'];
     const email = flags.email;

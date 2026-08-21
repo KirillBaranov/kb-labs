@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 	"github.com/kb-labs/dev/internal/config"
 	"github.com/kb-labs/dev/internal/docker"
 	"github.com/kb-labs/dev/internal/environ"
@@ -69,7 +70,20 @@ type Manager struct {
 }
 
 // SetNetOffset records the virtual-network port offset for spawnEnv passthrough.
-func (m *Manager) SetNetOffset(offset int) { m.netOffset = offset }
+func (m *Manager) SetNetOffset(offset int) {
+	m.netOffset = offset
+	// Persist the effective offset in project-local state so a separately
+	// invoked `kb` process can resolve the same gateway/marketplace endpoints
+	// without requiring the user to export endpoint overrides manually.
+	if m.projectDir == "" {
+		return
+	}
+	dir := filepath.Join(m.projectDir, ".kb")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dir, "net-offset.json"), []byte(fmt.Sprintf("{\"offset\":%d}\n", offset)), 0o600)
+}
 
 // StateDir returns the effective directory for a state category (PIDDir,
 // LogsDir, …) given a rootDir/projectDir pair.
@@ -215,6 +229,42 @@ func (m *Manager) ResolveEnv() {
 	cache = environ.Resolve()
 	_ = cache.Save(cachePath)
 	m.envCache = cache
+}
+
+// ValidateRuntime verifies the Node binary that kb-dev injects into managed
+// services. Keeping the check next to the resolved environment makes every
+// lifecycle command fail before it can start a daemon with an unsupported
+// runtime and produce a downstream dependency error.
+func (m *Manager) ValidateRuntime() error {
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	return m.envCache.ValidateNode()
+}
+
+// UseNode updates the cached runtime used for managed services after the
+// launcher has installed a supported Node.js version interactively.
+func (m *Manager) UseNode(nodePath string) error {
+	if err := sharedtoolchain.ActivateNode(nodePath); err != nil {
+		return err
+	}
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	m.envCache.Node = nodePath
+	binDir := filepath.Dir(nodePath)
+	m.envCache.ExtraPath = append([]string{binDir}, withoutPath(m.envCache.ExtraPath, binDir)...)
+	return m.envCache.Save(filepath.Join(m.stateDir(m.cfg.Settings.PIDDir), "env-cache.json"))
+}
+
+func withoutPath(paths []string, unwanted string) []string {
+	result := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path != unwanted {
+			result = append(result, path)
+		}
+	}
+	return result
 }
 
 // GroupMembers returns the service IDs belonging to the named devservices
@@ -439,28 +489,16 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 	pidInfo := process.NewPIDInfo(svc.ID, result.PID, result.PGID, svc.Config.Command)
 	_ = process.WritePID(pidDir, pidInfo)
 
-	// Reap the child as soon as it exits so a crash is visible immediately
-	// instead of silently waiting out the full health-check timeout below.
-	exited := make(chan *os.ProcessState, 1)
-	go func() {
-		state, _ := result.Process.Wait()
-		exited <- state
-	}()
-
 	// Wait for health check.
 	if svc.Config.HealthCheck != "" {
-		hr := m.waitHealthOrExit(ctx, svc, exited)
+		hr := m.waitHealth(ctx, svc)
 		if !hr.OK {
 			_ = svc.SetState(service.StateFailed, "health check failed")
 			tail, _ := logger.Tail(logsDir, svc.ID, logTailLines)
-			errMsg := fmt.Sprintf("health check timeout after %s", m.startTimeout())
-			if hr.Error != nil {
-				errMsg = hr.Error.Error()
-			}
 			return Action{
 				Service:  svc.ID,
 				Action:   "failed",
-				Error:    errMsg,
+				Error:    fmt.Sprintf("health check timeout after %s", m.startTimeout()),
 				LogsTail: tail,
 				Elapsed:  time.Since(start).Truncate(time.Millisecond).String(),
 			}
@@ -481,33 +519,6 @@ func (m *Manager) waitHealth(ctx context.Context, svc *service.Service) health.R
 		m.startTimeout(),
 	)
 	return checker.WaitHealthy(ctx)
-}
-
-// waitHealthOrExit polls the health probe like waitHealth, but also races
-// against the child process exiting. A crash surfaces immediately with the
-// process's exit status instead of silently burning the full health-check
-// timeout waiting on a port that will never open.
-func (m *Manager) waitHealthOrExit(ctx context.Context, svc *service.Service, exited <-chan *os.ProcessState) health.Result {
-	probe := health.ClassifyServiceProbe(svc.Config.HealthCheck, svc.Config.Socket, 3*time.Second)
-	checker := health.NewChecker(
-		probe,
-		time.Duration(m.cfg.Settings.HealthCheckInterval)*time.Millisecond,
-		m.startTimeout(),
-	)
-
-	healthDone := make(chan health.Result, 1)
-	go func() { healthDone <- checker.WaitHealthy(ctx) }()
-
-	select {
-	case hr := <-healthDone:
-		return hr
-	case state := <-exited:
-		desc := "process exited"
-		if state != nil {
-			desc = fmt.Sprintf("process exited: %s", state.String())
-		}
-		return health.Result{OK: false, Error: fmt.Errorf("%s", desc)}
-	}
 }
 
 func (m *Manager) startTimeout() time.Duration {

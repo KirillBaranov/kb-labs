@@ -97,86 +97,31 @@
       "id": "mind",
       "pkg": "@kb-labs/mind-entry",
       "description": "AI code search (RAG)",
-      "default": false,
-      "config": [
-        {
-          "id": "plugin.mind.vectorStore",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/plugins/mind/vectorStore",
-          "value": "local",
-          "owner": "catalog:default",
-          "doc": "Vector store for embeddings.\n\"local\" = on-disk HNSW index, \"qdrant\" = external Qdrant server."
-        }
-      ]
+      "default": false
     },
     {
       "id": "agents",
       "pkg": "@kb-labs/agent-entry",
       "description": "Autonomous agents",
-      "default": false,
-      "config": [
-        {
-          "id": "plugin.agents.maxSteps",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/plugins/agents/maxSteps",
-          "value": 25,
-          "owner": "catalog:default",
-          "doc": "Max steps per agent run (prevents infinite loops)."
-        }
-      ]
+      "default": false
     },
     {
       "id": "ai-review",
       "pkg": "@kb-labs/review-entry",
       "description": "AI code review",
-      "default": true,
-      "config": [
-        {
-          "id": "plugin.ai-review.mode",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/plugins/ai-review/mode",
-          "value": "full",
-          "owner": "catalog:default",
-          "doc": "Review mode: \"heuristic\" (fast), \"llm\" (smart), \"full\" (both)."
-        }
-      ]
+      "default": true
     },
     {
       "id": "commit",
       "pkg": "@kb-labs/commit-entry",
       "description": "AI commit generation",
-      "default": true,
-      "config": [
-        {
-          "id": "plugin.commit.autoStage",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/plugins/commit/autoStage",
-          "value": false,
-          "owner": "catalog:default",
-          "doc": "Auto-stage changed files before generating commit."
-        }
-      ]
+      "default": true
     },
     {
       "id": "scaffold",
       "pkg": "@kb-labs/scaffold",
       "description": "Scaffold plugins and adapters",
-      "default": true,
-      "config": [
-        {
-          "id": "plugin.scaffold.outDir",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/plugins/scaffold/outDir",
-          "value": "plugins",
-          "owner": "catalog:default",
-          "doc": "Output directory for scaffolded entities."
-        }
-      ]
+      "default": true
     },
     {
       "id": "release",
@@ -211,42 +156,6 @@
       "path": "/adapterOptions/serviceTransport/services",
       "value": {},
       "owner": "catalog:default"
-    },
-    {
-      "id": "adapterOptions.storage.baseDir",
-      "scope": "platform",
-      "operation": "set",
-      "path": "/adapterOptions/storage/baseDir",
-      "value": ".kb/storage",
-      "owner": "catalog:default",
-      "doc": "File storage backend options."
-    },
-    {
-      "id": "adapterOptions.logger.level",
-      "scope": "platform",
-      "operation": "set",
-      "path": "/adapterOptions/logger/level",
-      "value": "info",
-      "owner": "catalog:default",
-      "doc": "Structured logger options."
-    },
-    {
-      "id": "adapterOptions.logRingBuffer.maxSize",
-      "scope": "platform",
-      "operation": "set",
-      "path": "/adapterOptions/logRingBuffer/maxSize",
-      "value": 100,
-      "owner": "catalog:default",
-      "doc": "In-memory log ring buffer for recent log access."
-    },
-    {
-      "id": "adapterOptions.analytics.filename",
-      "scope": "platform",
-      "operation": "set",
-      "path": "/adapterOptions/analytics/filename",
-      "value": ".kb/analytics/events.jsonl",
-      "owner": "catalog:default",
-      "doc": "Analytics — JSONL file, no native dependencies."
     },
     {
       "id": "platform.projects",
@@ -374,10 +283,8 @@
       "scope": "platform",
       "root": "platform",
       "path": ".kb/kb.config.jsonc",
-      "format": "jsonc-commented",
-      "overwrite": "replace",
-      "sectionOrder": ["platform", "adapterOptions", "gateway", "services", "plugins", "projects"],
-      "banner": "// ─── KB Labs Platform Configuration ───────────────────────────────────\n//\n// This file is managed by kb-create. Do not edit by hand.\n// To override settings for your project, add them to:\n//   projectDir/.kb/kb.config.jsonc\n//\n// Docs:  https://docs.kblabs.ru/configuration\n// CLI:   kb config --help"
+      "format": "jsonc",
+      "overwrite": "replace"
     },
     {
       "scope": "project",
@@ -394,7 +301,26 @@
       "overwrite": "createOnly"
     }
   ],
-  "artifacts": [],
+  "artifacts": [
+    {
+      "id": "platform.marketplace-lock",
+      "root": "platform",
+      "path": ".kb/marketplace.lock",
+      "format": "json",
+      "content": {},
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
+    },
+    {
+      "id": "platform.devservices",
+      "root": "platform",
+      "path": ".kb/devservices.yaml",
+      "format": "text",
+      "text": "services:\n",
+      "owner": "kb-create.manifest",
+      "overwrite": "replace"
+    }
+  ],
   "effects": [
     {
       "id": "gateway.access.local",
@@ -434,39 +360,7 @@
           "operation": "set",
           "path": "/gateway/auth/enabled",
           "value": true,
-          "owner": "catalog:effect/gateway.access.secured",
-          "doc": "Bootstrap admin + CLI credential (#271): seeded on first gateway start so\n`kb` commands work without a manual `kb auth login`. Admin password lives\nin .env (GATEWAY_BOOTSTRAP_ADMIN_PASSWORD), never in this file."
-        },
-        {
-          "id": "gateway.access.secured.bootstrap.tenantId",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/gateway/auth/bootstrap/tenantId",
-          "value": "default",
           "owner": "catalog:effect/gateway.access.secured"
-        },
-        {
-          "id": "gateway.access.secured.bootstrap.adminEmail",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/gateway/auth/bootstrap/adminEmail",
-          "value": "admin@bootstrap.local",
-          "owner": "catalog:effect/gateway.access.secured"
-        },
-        {
-          "id": "gateway.access.secured.bootstrap.provisionCliCredentials",
-          "scope": "platform",
-          "operation": "set",
-          "path": "/gateway/auth/bootstrap/provisionCliCredentials",
-          "value": true,
-          "owner": "catalog:effect/gateway.access.secured"
-        }
-      ],
-      "secrets": [
-        {
-          "id": "gateway.bootstrap.adminPassword",
-          "envVar": "GATEWAY_BOOTSTRAP_ADMIN_PASSWORD",
-          "generator": "randomHex32"
         }
       ]
     }

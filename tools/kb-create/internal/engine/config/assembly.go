@@ -32,12 +32,6 @@ const (
 	FormatJSONC  Format = "jsonc"
 	FormatText   Format = "text"
 	FormatDotenv Format = "dotenv"
-	// FormatJSONCCommented renders patches into ordered, hand-documented JSONC
-	// (see RenderOrderedJSONC in jsonc.go) instead of the alphabetical,
-	// comment-free output FormatJSON/FormatJSONC produce today. Used for
-	// outputs where a human reads and hand-edits the file, so field order and
-	// inline documentation are part of the product, not incidental.
-	FormatJSONCCommented Format = "jsonc-commented"
 )
 
 type Operation string
@@ -73,13 +67,6 @@ type ConfigPatch struct {
 	Value     json.RawMessage `json:"value,omitempty"`
 	SchemaRef string          `json:"schemaRef,omitempty"`
 	Owner     string          `json:"owner"`
-	// Doc is an optional one-to-few line inline comment rendered above this
-	// path's key when the output format is FormatJSONCCommented. Ignored by
-	// every other format/consumer — purely a rendering hint, never affects
-	// merge semantics or precedence. When multiple patches touch the same
-	// path, the last one applied (per the ordinary precedence rules) wins,
-	// same as Value.
-	Doc string `json:"doc,omitempty"`
 }
 
 type ConfigOutput struct {
@@ -88,14 +75,6 @@ type ConfigOutput struct {
 	Path      string          `json:"path"`
 	Format    Format          `json:"format"`
 	Overwrite OverwritePolicy `json:"overwrite,omitempty"`
-	// SectionOrder controls top-level key order for FormatJSONCCommented
-	// outputs only (ignored otherwise). Keys not listed here are appended
-	// after, sorted alphabetically, so an unlisted key is never silently
-	// dropped.
-	SectionOrder []string `json:"sectionOrder,omitempty"`
-	// Banner is a verbatim comment block written at the top of the file,
-	// before the opening brace's first key, for FormatJSONCCommented outputs.
-	Banner string `json:"banner,omitempty"`
 }
 
 type ArtifactWrite struct {
@@ -109,54 +88,12 @@ type ArtifactWrite struct {
 	Overwrite   OverwritePolicy `json:"overwrite"`
 	Permissions uint32          `json:"permissions,omitempty"`
 	Required    bool            `json:"required"`
-	// MergeMarker/MergeEndMarker are required when Overwrite == OverwriteMerge
-	// ("merge overwrite requires a typed renderer" — this is that renderer).
-	// Text (or Content for FormatText) must be the complete block including
-	// its own marker lines, e.g.:
-	//
-	//   # kb-labs-ignore
-	//   .env
-	//   # end-kb-labs-ignore
-	//
-	// At apply time (Write, never Assemble — this needs the current file,
-	// which Assemble is documented never to touch), the existing target file
-	// is read; if MergeMarker...MergeEndMarker is found, the text between
-	// them is replaced with the new block; otherwise the block is appended.
-	// Idempotent by construction: re-applying the same block is a no-op byte-
-	// for-byte. Same semantics as scaffold.ensureGitignore, generalized to
-	// any sentinel-delimited section of any text file (not just .gitignore).
-	MergeMarker    string `json:"mergeMarker,omitempty"`
-	MergeEndMarker string `json:"mergeEndMarker,omitempty"`
 }
 
 type ConfigAssembly struct {
-	Patches   []ConfigPatch       `json:"patches,omitempty"`
-	Outputs   []ConfigOutput      `json:"outputs,omitempty"`
-	Artifacts []ArtifactWrite     `json:"artifacts,omitempty"`
-	Secrets   []SecretRequirement `json:"secrets,omitempty"`
-}
-
-// SecretGenerator names a well-known, Go-implemented value-generation
-// strategy — never arbitrary code, per the "no scripts" architecture rule.
-type SecretGenerator string
-
-const (
-	// SecretGeneratorRandomHex32 generates 32 random bytes, hex-encoded (64
-	// chars) — same shape as the bootstrap admin password this replaces.
-	SecretGeneratorRandomHex32 SecretGenerator = "randomHex32"
-)
-
-// SecretRequirement declares that a secret value must exist in a
-// project-scoped dotenv file under EnvVar, generating one with Generator if
-// none is present yet. Deliberately not a ConfigPatch: a patch's Value would
-// have to carry the plaintext secret, which would then flow into the plan,
-// the journal, and any --plan-only preview — this type carries no value at
-// all, only the recipe for producing and storing one at apply time.
-type SecretRequirement struct {
-	ID        string          `json:"id"`
-	EnvVar    string          `json:"envVar"`
-	Generator SecretGenerator `json:"generator"`
-	Owner     string          `json:"owner"`
+	Patches   []ConfigPatch   `json:"patches,omitempty"`
+	Outputs   []ConfigOutput  `json:"outputs,omitempty"`
+	Artifacts []ArtifactWrite `json:"artifacts,omitempty"`
 }
 
 type Roots map[Root]string
@@ -208,13 +145,7 @@ func Assemble(assembly ConfigAssembly, roots Roots, base []byte) (Result, error)
 			return Result{}, err
 		}
 		content := platformConfig
-		switch {
-		case output.Format == FormatJSONCCommented:
-			content, err = RenderOrderedJSONC(assembly.Patches, output.Scope, output.SectionOrder, output.Banner)
-			if err != nil {
-				return Result{}, err
-			}
-		case output.Scope != ScopePlatform:
+		if output.Scope != ScopePlatform {
 			content, err = renderScope(assembly.Patches, output.Scope, []byte("{}"))
 			if err != nil {
 				return Result{}, err
@@ -294,8 +225,8 @@ func validateAssembly(assembly ConfigAssembly) error {
 		if artifact.Root == "" {
 			return fmt.Errorf("artifact %s: root is required", artifact.ID)
 		}
-		if artifact.Overwrite == OverwriteMerge && (artifact.MergeMarker == "" || artifact.MergeEndMarker == "") {
-			return fmt.Errorf("artifact %s: merge overwrite requires MergeMarker and MergeEndMarker (the typed renderer this needs)", artifact.ID)
+		if artifact.Overwrite == OverwriteMerge {
+			return fmt.Errorf("artifact %s: merge overwrite requires a typed renderer", artifact.ID)
 		}
 	}
 	return nil
@@ -483,12 +414,6 @@ func renderArtifact(artifact ArtifactWrite) ([]byte, error) {
 	switch artifact.Format {
 	case FormatText, FormatDotenv:
 		return []byte(artifact.Text), nil
-	case FormatJSONCCommented:
-		// Content was already fully rendered (ordered, with comments) by
-		// RenderOrderedJSONC in Assemble. Re-parsing it as generic JSON here
-		// would both fail (it's JSONC, not JSON) and destroy the ordering and
-		// comments that are the entire point of this format.
-		return artifact.Content, nil
 	case FormatJSON, FormatJSONC:
 		var value any
 		if len(artifact.Content) == 0 {
@@ -612,25 +537,13 @@ func Write(result Result, assembly ConfigAssembly, roots Roots) error {
 		if err := os.MkdirAll(filepath.Dir(artifact.Path), 0o750); err != nil {
 			return err
 		}
-		content := artifact.Content
-		if artifact.Mode == OverwriteMerge {
-			marker, endMarker, ok := mergeMarkers(artifact.ID, assembly)
-			if !ok {
-				return fmt.Errorf("merge artifact %s: no matching ArtifactWrite with MergeMarker/MergeEndMarker", artifact.ID)
-			}
-			existing, readErr := os.ReadFile(artifact.Path) // #nosec G304 -- path was root-validated by config.Assemble.
-			if readErr != nil && !os.IsNotExist(readErr) {
-				return fmt.Errorf("read %s: %w", artifact.Path, readErr)
-			}
-			content = mergeBlock(existing, artifact.Content, marker, endMarker)
-		}
 		tmp, err := os.CreateTemp(filepath.Dir(artifact.Path), ".kb-create-*")
 		if err != nil {
 			return err
 		}
 		name := tmp.Name()
 		mode := os.FileMode(artifactMode(artifact, assembly))
-		if _, err = tmp.Write(content); err == nil {
+		if _, err = tmp.Write(artifact.Content); err == nil {
 			err = tmp.Chmod(mode)
 		}
 		if closeErr := tmp.Close(); err == nil {
@@ -658,33 +571,4 @@ func artifactMode(artifact MaterializedArtifact, assembly ConfigAssembly) uint32
 		return 0o644
 	}
 	return 0o644
-}
-
-func mergeMarkers(id string, assembly ConfigAssembly) (marker, endMarker string, ok bool) {
-	for _, candidate := range assembly.Artifacts {
-		if candidate.ID == id && candidate.Overwrite == OverwriteMerge {
-			return candidate.MergeMarker, candidate.MergeEndMarker, true
-		}
-	}
-	return "", "", false
-}
-
-// mergeBlock replaces the text between marker and endMarker in existing with
-// block (which must contain its own marker...endMarker lines), or appends
-// block if the markers aren't found yet. Same semantics as the pre-cutover
-// scaffold.ensureGitignore, generalized to any sentinel-delimited file.
-func mergeBlock(existing, block []byte, marker, endMarker string) []byte {
-	content := string(existing)
-	if start := strings.Index(content, marker); start >= 0 {
-		if end := strings.Index(content[start:], endMarker); end >= 0 {
-			end += start + len(endMarker)
-			return []byte(content[:start] + string(block) + strings.TrimLeft(content[end:], "\r\n"))
-		}
-		return []byte(content[:start] + string(block))
-	}
-	separator := "\n"
-	if content == "" || strings.HasSuffix(content, "\n") {
-		separator = ""
-	}
-	return []byte(content + separator + string(block))
 }

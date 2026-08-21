@@ -21,6 +21,7 @@ import type { IGatewayClient } from './types.js';
 import { CredentialsManager } from './credentials.js';
 import { HttpSseGatewayTransport } from './http-sse-transport.js';
 import { HostAgentTransport } from './host-agent-transport.js';
+import { hasLocalRuntimeState, resolveLocalGatewayUrl } from './net-offset.js';
 
 /** Default Host Agent IPC socket path */
 const HOST_AGENT_SOCKET = path.join(os.homedir(), '.kb', 'agent.sock');
@@ -43,8 +44,11 @@ export async function resolveTransport(): Promise<IGatewayClient | null> {
     return new HttpSseGatewayTransport({ gatewayUrl }, credentialsManager);
   }
 
-  // 3. No gateway configured — fall back to local execution
-  return null;
+  // 3. Local kb-dev gateway. The project-local offset state keeps this in
+  // sync with `kb-dev --net-offset` without endpoint flags.
+  return hasLocalRuntimeState()
+    ? new HttpSseGatewayTransport({ gatewayUrl: resolveLocalGatewayUrl() }, new CredentialsManager())
+    : null;
 }
 
 /**
