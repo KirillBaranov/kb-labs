@@ -111,27 +111,13 @@ jobs:
   replay-evidence:
     name: Replay CI evidence
     if: github.event_name == 'workflow_dispatch' && inputs.replay-run-id != ''
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/reusable-ci-evidence.yml
+    with:
+      source-run-id: ${{ inputs.replay-run-id }}
+      artifact-pattern: '*platform-logs*'
     permissions:
       actions: read
       contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Download source run diagnostics
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.replay-run-id }}
-        run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern '*platform-logs*' --dir ci-evidence-artifacts
-      - name: Render evidence from source run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.replay-run-id }}
-        run: node scripts/ci/ci-evidence-summary.mjs --repository "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID" --logs-dir ci-evidence-artifacts --output ci-evidence.json >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-evidence-replay-${{ inputs.replay-run-id }}
-          path: ci-evidence.json
-          retention-days: 30
 
   auth-e2e:
     needs: discover
@@ -172,26 +158,9 @@ jobs:
     name: CI evidence
     needs: [discover, docker-e2e, auth-e2e, oauth-e2e]
     if: always()
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/reusable-ci-evidence.yml
+    with:
+      artifact-pattern: '*platform-logs-${{ github.run_id }}*'
     permissions:
       actions: read
       contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Download shard diagnostics
-        if: always()
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          pattern: '*platform-logs-${{ github.run_id }}*'
-          path: ci-evidence-artifacts
-      - name: Summarize every failed job
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci/ci-evidence-summary.mjs --logs-dir ci-evidence-artifacts --output ci-evidence.json >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload CI evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-evidence-${{ github.run_id }}
-          path: ci-evidence.json
-          retention-days: 30

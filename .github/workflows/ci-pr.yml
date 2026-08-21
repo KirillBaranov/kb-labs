@@ -315,6 +315,15 @@ jobs:
       - name: Devkit workspace checks (structure, dependencies, boundaries)
         run: ./tools/kb-devkit/kb-devkit check
 
+  ci-evidence:
+    name: CI evidence
+    needs: [preflight, e2e-test-plan, launcher-v2-contracts, build-tools, build, checks, full-unit-tests, devkit-checks, launcher-e2e]
+    if: always()
+    uses: ./.github/workflows/reusable-ci-evidence.yml
+    permissions:
+      actions: read
+      contents: read
+
   # ── 5. kb-create e2e — only if launcher or kb-dev sources changed ──────────
   #
   # Runs the Go e2e suite for kb-create against a local Verdaccio instance
