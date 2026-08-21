@@ -96,8 +96,10 @@ function main(argv) {
   const output = outputIndex >= 0 ? argv[outputIndex + 1] : undefined;
   const logsIndex = argv.indexOf('--logs-dir');
   const logsDir = logsIndex >= 0 ? argv[logsIndex + 1] : undefined;
-  const repository = process.env.GITHUB_REPOSITORY;
-  const runId = process.env.GITHUB_RUN_ID;
+  const repositoryIndex = argv.indexOf('--repository');
+  const repository = repositoryIndex >= 0 ? argv[repositoryIndex + 1] : process.env.GITHUB_REPOSITORY;
+  const runIndex = argv.indexOf('--run-id');
+  const runId = runIndex >= 0 ? argv[runIndex + 1] : process.env.GITHUB_RUN_ID;
   if (!repository || !runId) throw new Error('GITHUB_REPOSITORY and GITHUB_RUN_ID are required');
   const response = JSON.parse(execFileSync('gh', ['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`], {
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
