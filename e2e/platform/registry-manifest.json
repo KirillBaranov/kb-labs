@@ -78,7 +78,10 @@
   ],
   "adapterConfig": {
     "documentDatabase": "@kb-labs/adapters-sqlite",
-    "kvStore": "@kb-labs/adapters-sqlite/kv"
+    "kvStore": "@kb-labs/adapters-sqlite/kv",
+    "adapters": {
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
+    }
   },
   "plugins": [
     {
