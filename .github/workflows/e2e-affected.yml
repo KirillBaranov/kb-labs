@@ -12,7 +12,11 @@ on:
     inputs:
       pr-number:
         description: Pull request number to evaluate
-        required: true
+        required: false
+        type: string
+      replay-run-id:
+        description: Completed Actions run to replay into CI evidence (no E2E is started)
+        required: false
         type: string
   # Allows validating a newly introduced selector before this workflow reaches
   # the default branch. It is also a useful maintainer escape hatch later.
@@ -26,7 +30,7 @@ permissions:
 jobs:
   discover:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && inputs.replay-run-id == '') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number != '') ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     runs-on: ubuntu-latest
@@ -103,6 +107,31 @@ jobs:
       artifact-prefix: affected
     permissions:
       contents: read
+
+  replay-evidence:
+    name: Replay CI evidence
+    if: github.event_name == 'workflow_dispatch' && inputs.replay-run-id != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Download source run diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.replay-run-id }}
+        run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern '*platform-logs*' --dir ci-evidence-artifacts
+      - name: Render evidence from source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.replay-run-id }}
+        run: node scripts/ci/ci-evidence-summary.mjs --repository "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID" --logs-dir ci-evidence-artifacts --output ci-evidence.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-evidence-replay-${{ inputs.replay-run-id }}
+          path: ci-evidence.json
+          retention-days: 30
 
   auth-e2e:
     needs: discover
