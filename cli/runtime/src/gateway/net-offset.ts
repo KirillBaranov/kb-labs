@@ -5,7 +5,9 @@ const BASE_GATEWAY_PORT = 4000;
 
 export function resolveNetOffset(cwd = process.cwd()): number {
   const env = process.env['KB_NET_OFFSET'];
-  if (env && /^-?\d+$/.test(env)) return Number.parseInt(env, 10);
+  if (env && /^-?\d+$/.test(env)) {
+    return Number.parseInt(env, 10);
+  }
   try {
     const raw = fs.readFileSync(path.join(cwd, '.kb', 'net-offset.json'), 'utf8');
     const parsed = JSON.parse(raw) as { offset?: unknown };
