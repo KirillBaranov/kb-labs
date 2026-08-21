@@ -202,7 +202,7 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	bootstrapEmail := bootstrapEmailForPlan(nil, false)
 	bootstrapPassword := bootstrapPasswordForPlan(nil, false)
 	bootstrapTenant := bootstrapTenantForPlan(nil, false)
-	materializer := &declarativeMaterializer{log: log, source: manifestSource, bootstrapEmail: bootstrapEmail, bootstrapTenant: bootstrapTenant, bootstrapPass: bootstrapPassword}
+	materializer := &declarativeMaterializer{manager: manager, log: log, source: manifestSource, bootstrapEmail: bootstrapEmail, bootstrapTenant: bootstrapTenant, bootstrapPass: bootstrapPassword}
 	journal, err := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: manager,
 		JournalDir:     filepath.Join(platformDir, ".kb", "kb-create", "runs"),

@@ -186,7 +186,7 @@ func runAgentApply(cmd *cobra.Command, _ []string) error {
 		}
 		defer func() { _ = log.Close() }()
 		localMode := planAccessMode(compiled.Values) == "local"
-		installMaterializer = &declarativeMaterializer{log: log, source: manifestSource, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)}
+		installMaterializer = &declarativeMaterializer{manager: manager, log: log, source: manifestSource, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)}
 	}
 	journal, runErr := engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
 		PackageManager: manager,
