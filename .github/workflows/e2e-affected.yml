@@ -12,7 +12,11 @@ on:
     inputs:
       pr-number:
         description: Pull request number to evaluate
-        required: true
+        required: false
+        type: string
+      replay-run-id:
+        description: Completed Actions run to replay into CI evidence (no E2E is started)
+        required: false
         type: string
   # Allows validating a newly introduced selector before this workflow reaches
   # the default branch. It is also a useful maintainer escape hatch later.
@@ -26,7 +30,7 @@ permissions:
 jobs:
   discover:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && inputs.replay-run-id == '') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number != '') ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     runs-on: ubuntu-latest
@@ -104,6 +108,18 @@ jobs:
     permissions:
       contents: read
 
+  replay-evidence:
+    name: Replay CI evidence
+    if: github.event_name == 'workflow_dispatch' && inputs.replay-run-id != ''
+    uses: ./.github/workflows/reusable-ci-evidence.yml
+    with:
+      source-run-id: ${{ inputs.replay-run-id }}
+      artifact-pattern: '*platform-logs*'
+      artifact-name: ci-evidence-replay-${{ inputs.replay-run-id }}
+    permissions:
+      actions: read
+      contents: read
+
   auth-e2e:
     needs: discover
     if: needs.discover.outputs.has-auth == 'true'
@@ -137,4 +153,16 @@ jobs:
       idp: true
       hosts-entry: "127.0.0.1 kb-cloud.kblabs.ru"
     permissions:
+      contents: read
+
+  evidence:
+    name: CI evidence
+    needs: [discover, docker-e2e, auth-e2e, oauth-e2e]
+    if: always() && !(github.event_name == 'workflow_dispatch' && inputs.replay-run-id != '')
+    uses: ./.github/workflows/reusable-ci-evidence.yml
+    with:
+      artifact-pattern: '*platform-logs-${{ github.run_id }}*'
+      artifact-name: ci-evidence-${{ github.run_id }}
+    permissions:
+      actions: read
       contents: read

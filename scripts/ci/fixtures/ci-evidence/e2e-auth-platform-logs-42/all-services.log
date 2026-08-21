@@ -1,0 +1,1 @@
+platform-1 | [ERROR] Service setup failed {"event":"service.failed","error":{"message":"Gateway requires the auth adapter"}}
