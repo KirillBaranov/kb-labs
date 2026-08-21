@@ -82,9 +82,25 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("load declarative manifest: %w", err)
 	}
+	platformDir, err := resolvePlatformRoot(flagInstallPlatform)
+	if err != nil {
+		return fmt.Errorf("resolve platform directory: %w", err)
+	}
+	var current *config.PlatformConfig
+	if saved, readErr := config.Read(platformDir); readErr == nil {
+		current = saved
+	}
 	axes, err := resolveAxisFlags(flagInstallSDKVersion, flagInstallSDKChannel, flagInstallPlatformVersion, flagInstallPlatformChannel)
 	if err != nil {
 		return err
+	}
+	if current != nil {
+		if flagInstallSDKVersion == "" && flagInstallSDKChannel == "" {
+			axes.SDK = persistedInstallAxis(current.Source.SDKChannel, current.Source.SDKVersion)
+		}
+		if flagInstallPlatformVersion == "" && flagInstallPlatformChannel == "" {
+			axes.Platform = persistedInstallAxis(current.Source.PlatformChannel, current.Source.PlatformVersion)
+		}
 	}
 	manager := pm.Detect(pm.DetectOptions{Registry: flagInstallRegistry})
 	if err := ensureToolchain(true, manager.Name()); err != nil {
@@ -94,20 +110,20 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 		return err
 	}
 	platformOverrides := manifest.ApplyAxisResolution(manifestSource, axes)
+	manager = pm.Detect(pm.DetectOptions{
+		Registry:         flagInstallRegistry,
+		PackageOverrides: manifest.PackageManagerOverrides(axes),
+	})
 	catalog, err := enginecatalog.FromManifest(*manifestSource)
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)
-	}
-	platformDir, err := resolvePlatformRoot(flagInstallPlatform)
-	if err != nil {
-		return fmt.Errorf("resolve platform directory: %w", err)
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	persistedCWD := ""
-	if current, readErr := config.Read(platformDir); readErr == nil {
+	if current != nil {
 		if flagInstallPlugins == "" {
 			plugins = append([]string(nil), current.SelectedPlugins...)
 		} else {
@@ -218,6 +234,17 @@ func runDeclarativeInstall(cmd *cobra.Command) error {
 	out.OK(fmt.Sprintf("Installed declaratively (%d actions)", completed))
 	return nil
 
+}
+
+// persistedInstallAxis restores the concrete version behind a previously
+// selected channel without turning it into an exact pin. This keeps both the
+// channel intent and the resolved package-manager override stable across a
+// follow-up `install --plugins/--services` invocation.
+func persistedInstallAxis(channel, version string) manifest.AxisSelection {
+	if channel != "" {
+		return manifest.AxisSelection{Channel: manifest.AxisChannel(channel), Resolved: version}
+	}
+	return manifest.AxisSelection{Version: version}
 }
 
 func defaultBinaryIDs(source *manifest.Manifest) []string {

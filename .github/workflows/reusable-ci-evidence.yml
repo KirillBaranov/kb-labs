@@ -1,0 +1,57 @@
+name: Reusable — CI evidence
+
+on:
+  workflow_call:
+    inputs:
+      source-run-id:
+        description: Completed run to replay; empty means the caller's run
+        type: string
+        required: false
+        default: ''
+      artifact-pattern:
+        description: Artifact glob containing job-scoped diagnostics
+        type: string
+        required: false
+        default: ''
+      artifact-name:
+        description: Name for the evidence artifact
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  evidence:
+    name: CI evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Download caller diagnostics
+        if: inputs.source-run-id == '' && inputs.artifact-pattern != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: ${{ inputs.artifact-pattern }}
+          path: ci-evidence-artifacts
+      - name: Download replay diagnostics
+        if: inputs.source-run-id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+        run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern '${{ inputs.artifact-pattern }}' --dir ci-evidence-artifacts
+      - name: Render evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+        run: |
+          args=(--logs-dir ci-evidence-artifacts --output ci-evidence.json)
+          if [ -n "$SOURCE_RUN_ID" ]; then args+=(--repository "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID"); fi
+          node scripts/ci/ci-evidence-summary.mjs "${args[@]}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ inputs.artifact-name != '' && inputs.artifact-name || format('ci-evidence-{0}', github.run_id) }}
+          path: ci-evidence.json
+          retention-days: 30

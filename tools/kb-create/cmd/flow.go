@@ -85,7 +85,8 @@ var flowRunCmd = &cobra.Command{
 				return fmt.Errorf("load manifest for install materialization: %w", err)
 			}
 			localMode := planAccessMode(compiled.Values) == "local"
-			journal, err := executeFlowPlan(compiled, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled), &declarativeMaterializer{log: log, source: resolvedManifest, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)})
+			manager := pm.Detect()
+			journal, err := executeFlowPlan(compiled, manager, logPackageManagerProgress(log), installationProgress(cmd.OutOrStdout(), compiled), &declarativeMaterializer{manager: manager, log: log, source: resolvedManifest, localMode: localMode, bootstrapEmail: bootstrapEmailForPlan(compiled.Values, localMode), bootstrapTenant: bootstrapTenantForPlan(compiled.Values, localMode), bootstrapPass: bootstrapPasswordForPlan(compiled.Values, localMode)})
 			if err != nil {
 				return err
 			}
@@ -257,6 +258,7 @@ func containsString(values []string, want string) bool {
 }
 
 type declarativeMaterializer struct {
+	manager         pm.PackageManager
 	log             *logger.Logger
 	source          *manifest.Manifest
 	bootstrapEmail  string
@@ -268,7 +270,7 @@ type declarativeMaterializer struct {
 
 func (m *declarativeMaterializer) Materialize(_ context.Context, compiled engineplan.InstallPlan) error {
 	plugins, services := selectedComponentsFromPlan(compiled)
-	result, err := (&installer.Installer{PM: pm.Detect(), Log: m.log}).FinalizeDeclarative(&installer.Selection{
+	result, err := (&installer.Installer{PM: m.manager, Log: m.log}).FinalizeDeclarative(&installer.Selection{
 		PlatformDir:                      compiled.PlatformRoot,
 		ProjectCWD:                       compiled.ProjectRoot,
 		Binaries:                         compiled.Binaries,
@@ -284,9 +286,9 @@ func (m *declarativeMaterializer) Materialize(_ context.Context, compiled engine
 	return err
 }
 
-func executeFlowPlan(compiled engineplan.InstallPlan, progress func(pm.Progress), emit func(executor.Event), materializer handlers.Materializer) (executor.Journal, error) {
+func executeFlowPlan(compiled engineplan.InstallPlan, manager pm.PackageManager, progress func(pm.Progress), emit func(executor.Event), materializer handlers.Materializer) (executor.Journal, error) {
 	return engineruntime.Apply(context.Background(), compiled, engineruntime.Options{
-		PackageManager: pm.Detect(),
+		PackageManager: manager,
 		JournalDir:     filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "runs"),
 		LockPath:       filepath.Join(compiled.PlatformRoot, ".kb", "kb-create", "locks", "install.lock"),
 		Progress:       progress,

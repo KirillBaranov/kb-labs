@@ -76,6 +76,10 @@ func runDeclarativeUpdate(cmd *cobra.Command, platformDir string, yes bool, regi
 		return err
 	}
 	platformOverrides := manifest.ApplyAxisResolution(manifestNow, axes)
+	manager = pm.Detect(pm.DetectOptions{
+		Registry:         registry,
+		PackageOverrides: manifest.PackageManagerOverrides(axes),
+	})
 	catalog, err := enginecatalog.FromManifest(*manifestNow)
 	if err != nil {
 		return fmt.Errorf("compile declarative catalog: %w", err)

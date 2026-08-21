@@ -21,6 +21,19 @@ const SDKPackageName = "@kb-labs/sdk"
 // to query every package individually.
 const PlatformRepresentativePackage = "@kb-labs/core-runtime"
 
+// PlatformOwnedDependencyPackages are the shared KB Labs packages whose
+// versions must follow the selected Platform axis even when they arrive as a
+// transitive dependency of a newly installed plugin or service. Third-party
+// packages are intentionally excluded: platform ownership stops at the KB
+// Labs runtime/gateway boundary.
+var PlatformOwnedDependencyPackages = []string{
+	"@kb-labs/gateway-contracts",
+	"@kb-labs/gateway-auth",
+	"@kb-labs/gateway-core",
+	"@kb-labs/core-runtime",
+	"@kb-labs/core-platform",
+}
+
 // AxisSelection is one axis's resolved intent. Exactly one of Version or
 // Channel is meaningful at a time (validated at the CLI layer); Resolved is
 // filled in later by a pre-flight registry lookup when only a channel was
@@ -37,6 +50,30 @@ type AxisSelection struct {
 type ResolvedAxes struct {
 	SDK      AxisSelection
 	Platform AxisSelection
+}
+
+// PackageManagerOverrides returns only explicit axis selections suitable for
+// pnpm/npm overrides. An unset axis is omitted so a later package-manager call
+// can preserve the platform's already persisted pin; the package manager's
+// normal >=2.0.0 safety floor remains the fallback for fresh stable installs.
+func PackageManagerOverrides(axes ResolvedAxes) map[string]string {
+	overrides := make(map[string]string)
+	if axisIsSelected(axes.SDK) {
+		overrides[SDKPackageName] = axes.SDK.Spec()
+	}
+	if axisIsSelected(axes.Platform) {
+		for _, name := range PlatformOwnedDependencyPackages {
+			overrides[name] = axes.Platform.Spec()
+		}
+	}
+	return overrides
+}
+
+func axisIsSelected(axis AxisSelection) bool {
+	// Resolved is diagnostic state filled by preflight; by itself it must not
+	// turn an otherwise unset/default axis into an explicit override. This is
+	// what lets a follow-up plugin install preserve an existing canary pin.
+	return axis.Version != "" || axis.Channel != ""
 }
 
 // DistTag maps a channel to its npm dist-tag. "stable" maps to npm's

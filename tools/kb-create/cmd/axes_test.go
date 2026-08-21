@@ -85,6 +85,19 @@ func TestStickyAxisPrecedence(t *testing.T) {
 	}
 }
 
+func TestPersistedInstallAxisKeepsChannelAndResolvedPin(t *testing.T) {
+	axis := persistedInstallAxis("canary", "2.119.0-canary.85d060ea")
+	if axis.Channel != manifest.ChannelCanary {
+		t.Errorf("persisted channel = %q, want %q", axis.Channel, manifest.ChannelCanary)
+	}
+	if axis.Resolved != "2.119.0-canary.85d060ea" {
+		t.Errorf("persisted resolved version = %q, want canary pin", axis.Resolved)
+	}
+	if axis.Version != "" {
+		t.Errorf("persisted channel must not become an exact Version, got %q", axis.Version)
+	}
+}
+
 // fakePackageManager is a minimal pm.PackageManager for preflight tests.
 // Embedding fakeVersionResolver (or not) controls whether it also
 // implements pm.VersionResolver.
