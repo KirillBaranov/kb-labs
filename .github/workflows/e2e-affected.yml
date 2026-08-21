@@ -115,6 +115,7 @@ jobs:
     with:
       source-run-id: ${{ inputs.replay-run-id }}
       artifact-pattern: '*platform-logs*'
+      artifact-name: ci-evidence-replay-${{ inputs.replay-run-id }}
     permissions:
       actions: read
       contents: read
@@ -157,10 +158,11 @@ jobs:
   evidence:
     name: CI evidence
     needs: [discover, docker-e2e, auth-e2e, oauth-e2e]
-    if: always()
+    if: always() && !(github.event_name == 'workflow_dispatch' && inputs.replay-run-id != '')
     uses: ./.github/workflows/reusable-ci-evidence.yml
     with:
       artifact-pattern: '*platform-logs-${{ github.run_id }}*'
+      artifact-name: ci-evidence-${{ github.run_id }}
     permissions:
       actions: read
       contents: read

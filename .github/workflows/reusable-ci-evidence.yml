@@ -13,6 +13,11 @@ on:
         type: string
         required: false
         default: ''
+      artifact-name:
+        description: Name for the evidence artifact
+        type: string
+        required: false
+        default: ''
 
 permissions:
   actions: read
@@ -47,6 +52,6 @@ jobs:
       - name: Upload evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ci-evidence-${{ github.run_id }}
+          name: ${{ inputs.artifact-name != '' && inputs.artifact-name || format('ci-evidence-{0}', github.run_id) }}
           path: ci-evidence.json
           retention-days: 30
