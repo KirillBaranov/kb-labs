@@ -6,7 +6,7 @@
 
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -41,6 +41,7 @@ for (const filename of readdirSync(packagesDir).filter(name => name.endsWith('.t
   const tarball = join(packagesDir, filename);
   const packageJSON = JSON.parse(execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], { encoding: 'utf8' }));
   if (wantedSet.has(packageJSON.name)) {
+    copyFileSync(tarball, join(stage, filename));
     packages.set(packageJSON.name, { name: packageJSON.name, version: packageJSON.version, tarball: filename, sha256: sha256(tarball) });
   }
 }
