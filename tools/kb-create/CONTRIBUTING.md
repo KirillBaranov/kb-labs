@@ -78,14 +78,17 @@ staged package manifests and binary checksum manifest; it is the compatibility
 authority consumed by the launcher. Do not publish a platform or binary with a
 separate compatibility file or an ad-hoc latest-version lookup.
 
-Releases are built automatically via GitHub Actions when a release tag is pushed:
+The workflow engine dispatches the candidate builder and promotion workflows.
+GitHub Actions receives an immutable release intent and delivers only the
+resulting candidate bundle:
 
 ```bash
-git tag v0.2.1
-git push origin v0.2.1
+kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform","channel":"canary"}'
 ```
 
-To test a binary build locally:
+Local binary builds are development-only. Production candidate binaries are
+created by `release-build-candidate.yml` and must not be replaced by a local
+GoReleaser build.
 
 ```bash
 goreleaser build --snapshot --clean

@@ -1,5 +1,11 @@
 # ADR-0001: Split release into a local/CI "prepare" step and a tag-triggered "publish" step
 
+> **Superseded:** This historical ADR described the removed tag-triggered
+> delivery paths. The current release contract is defined by
+> [ADR-0042](../../../../docs/adr/0042-release-engine-control-plane.md): the
+> workflow engine owns release decisions and reusable CI workflows deliver an
+> immutable candidate bundle. No implementation in this ADR remains active.
+
 **Date:** 2026-07-22
 **Status:** Accepted
 **Deciders:** KB Labs Team

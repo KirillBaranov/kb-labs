@@ -230,4 +230,4 @@ Do not create duplicate flake tickets yet. First attach the current evidence (`M
 - E2E history: `origin/ci-data:.kb/qa/snapshots/e2e-flaky.json` (23 snapshots; audit window uses the last 10).
 - Flaky tests: `e2e/marketplace/scenarios/default/cases/lifecycle.spec.ts`, `e2e/marketplace/scenarios/default/cases/packages.spec.ts`, `e2e/workflows/scenarios/default/cases/ws/`.
 - Post-publish smoke: `tools/kb-create/e2e/e2e_test.go`.
-- Release orchestration: `.kb/workflows/release-prepare.yml`, `.github/workflows/publish-npm-on-tag.yml`, `.github/workflows/promote-npm-release.yml`.
+- Release orchestration: `.kb/workflows/release-prepare.yml`, `.kb/workflows/release-promote.yml`, `.github/workflows/release-build-candidate.yml`, `.github/workflows/release-deliver-candidate.yml`.
