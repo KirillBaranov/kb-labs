@@ -24,6 +24,7 @@ const packagesDir = resolve(required('--packages-dir'));
 const registryManifest = JSON.parse(readFileSync(resolve(required('--registry-manifest')), 'utf8'));
 const output = resolve(required('--output'));
 const sealer = resolve(required('--sealer'));
+const prepareScript = resolve(value('--prepare-script') ?? '/src/kb-create/scripts/prepare-release-index.mjs');
 const stage = resolve('/tmp/kb-e2e-release-stage');
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
@@ -72,8 +73,15 @@ const platformMembers = (registryManifest.core ?? [])
   .filter(name => name && name !== '@kb-labs/core-runtime' && name !== '@kb-labs/sdk')
   .filter(name => !adapterPackageNames.has(name) && !name.startsWith('@kb-labs/adapters-') && name !== '@kb-labs/data-store')
   .join(',');
+const adapterOverrides = JSON.stringify({
+  '@kb-labs/adapters-service-transport-http': {
+    schema: 'kb.adapter/1',
+    id: 'service-transport-http',
+    implements: 'IServiceTransport',
+  },
+});
 const result = spawnSync(process.execPath, [
-  '/src/kb-create/scripts/prepare-release-index.mjs',
+  prepareScript,
   '--flow', 'platform',
   '--channel', 'stable',
   '--artifacts-dir', stage,
@@ -82,6 +90,7 @@ const result = spawnSync(process.execPath, [
   '--platform-adapter-config', adapterConfig,
   '--platform-adapter-options', adapterOptions,
   '--platform-member-packages', platformMembers,
+  '--adapter-overrides', adapterOverrides,
   '--registry', 'http://verdaccio:4873',
   '--output', output,
   '--sealer-bin', sealer,

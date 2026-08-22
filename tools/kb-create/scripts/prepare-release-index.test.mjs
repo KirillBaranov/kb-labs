@@ -18,7 +18,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
     packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '>=2.0.0 <3.0.0' } }),
     packageArtifact(root, packageRoot, stage, '@kb-labs/commit-entry', '2.0.0', JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/commit', version: '2.0.0', platform: { requires: ['cache'] } })),
     packageArtifact(root, packageRoot, stage, '@kb-labs/workflow-daemon', '2.0.0', JSON.stringify({ schema: 'kb.service/1', id: 'workflow', version: '2.0.0', runtime: { port: 7778 }, dependsOn: [] })),
-    packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:"ILogger"}; export {manifest};'),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:["ILogger"]}; export {manifest};'),
   ];
   writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
   const binaryManifest = join(root, 'binary-manifest.json');

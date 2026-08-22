@@ -49,6 +49,7 @@ const platformMemberPackages = (value('--platform-member-packages') ?? '')
   .split(',')
   .map(item => item.trim())
   .filter(Boolean);
+const adapterOverrides = value('--adapter-overrides') ? JSON.parse(value('--adapter-overrides')) : {};
 
 const readStage = directory => {
   const entries = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
@@ -94,7 +95,10 @@ const manifestFor = item => {
   if (existsSync(javascriptManifest)) {
     const source = readFileSync(javascriptManifest, 'utf8');
     const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
-    const implementsValue = source.match(/\bimplements:\s*["']([^"']+)["']/)?.[1];
+    const implementsSource = source.match(/\bimplements:\s*(\[[^\]]+\]|["'][^"']+["'])/)?.[1];
+    const implementsValue = implementsSource?.startsWith('[')
+      ? [...implementsSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
+      : implementsSource?.slice(1, -1);
     if (id && implementsValue) {
       return { schema: 'kb.adapter/1', id, implements: implementsValue };
     }
@@ -125,7 +129,7 @@ const services = [];
 const plugins = [];
 const adapters = [];
 for (const item of stage) {
-  const manifest = manifestFor(item);
+  const manifest = manifestFor(item) ?? adapterOverrides[item.name];
   const normalizedID = item.name === platformPackage
     ? 'platform'
     : item.name === sdkPackage
@@ -165,8 +169,10 @@ for (const item of stage) {
     const requires = (manifest.platform?.requires ?? []).map(capability => ({ capability, requiredBy: idFor(item.name) }));
     plugins.push({ ...component(item, manifest, idFor(item.name)), requires });
   } else if (manifest.schema === 'kb.adapter/1') {
-    const capability = manifest.implements?.replace(/^I/, '').replace(/[A-Z]/g, letter => letter.toLowerCase());
-    adapters.push({ ...component(item, manifest, manifest.id ?? idFor(item.name)), provides: capability ? [capability] : [] });
+    const capabilities = (Array.isArray(manifest.implements) ? manifest.implements : [manifest.implements])
+      .filter(Boolean)
+      .map(capability => capability.replace(/^I/, '').replace(/[A-Z]/g, letter => letter.toLowerCase()));
+    adapters.push({ ...component(item, manifest, manifest.id ?? idFor(item.name)), provides: capabilities });
   }
 }
 
