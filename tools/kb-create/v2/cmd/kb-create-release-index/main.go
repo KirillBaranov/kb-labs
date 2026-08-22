@@ -1,4 +1,4 @@
-// kb-create-v2-index is the publish-time companion to the V2 launcher. It
+// kb-create-release-index is the publish-time release-index sealer. It
 // turns a normalized manifest export into a sealed immutable release index;
 // it is not an installer and never reads a user's platform directory.
 package main

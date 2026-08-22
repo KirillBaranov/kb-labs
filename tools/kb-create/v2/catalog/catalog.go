@@ -20,32 +20,38 @@ type Catalog struct {
 	Schema        string                       `json:"schema"`
 	Digest        string                       `json:"digest"`
 	Channels      map[contracts.Channel]string `json:"channels"`
-	Compatibility *CompatibilityMarker         `json:"compatibility,omitempty"`
+	Compatibility *CompatibilityMatrix         `json:"compatibility,omitempty"`
 	Platforms     []PlatformBundle             `json:"platforms"`
 	SDKs          []Component                  `json:"sdks"`
 	Plugins       []Component                  `json:"plugins"`
 	Adapters      []Adapter                    `json:"adapters"`
 }
 
-// CompatibilityMarker is release-owned evidence for the platform/SDK pair.
+// CompatibilityMatrix is release-owned evidence for all currently published
+// platform, SDK and binary labels.
 // It intentionally contains concrete versions: semver major/minor equality is
 // not a compatibility guarantee for pre-stable releases.
-type CompatibilityMarker struct {
-	Schema      string                `json:"schema"`
-	Line        string                `json:"line"`
-	Platform    CompatibilityArtifact `json:"platform"`
-	SDK         CompatibilityArtifact `json:"sdk"`
-	Status      string                `json:"status"`
-	ValidatedBy []string              `json:"validatedBy"`
+type CompatibilityMatrix struct {
+	Schema string               `json:"schema"`
+	Labels []CompatibilityLabel `json:"labels"`
 }
 
-type CompatibilityArtifact struct {
-	Package string `json:"package"`
-	Version string `json:"version"`
-	SHA256  string `json:"sha256,omitempty"`
+type CompatibilityLabel struct {
+	ID          string                  `json:"id"`
+	Kind        string                  `json:"kind"`
+	ArtifactID  string                  `json:"artifactId"`
+	Version     string                  `json:"version"`
+	Requires    []CompatibilityRelation `json:"requires,omitempty"`
+	Status      string                  `json:"status"`
+	ValidatedBy []string                `json:"validatedBy"`
 }
 
-const CompatibilitySchema = "kb.release-compatibility/1"
+type CompatibilityRelation struct {
+	Label      string `json:"label"`
+	Constraint string `json:"constraint,omitempty"`
+}
+
+const CompatibilitySchema = "kb.release-compatibility/2"
 
 // Seal normalizes a release index and records the SHA-256 digest of its
 // canonical payload. Publishing calls this after manifest export; consuming
@@ -123,33 +129,57 @@ func Validate(source Catalog) error {
 	return nil
 }
 
-func validateCompatibility(marker CompatibilityMarker, source Catalog) error {
-	if marker.Schema != CompatibilitySchema {
-		return fmt.Errorf("unsupported compatibility marker schema %q", marker.Schema)
+func validateCompatibility(matrix CompatibilityMatrix, source Catalog) error {
+	if matrix.Schema != CompatibilitySchema {
+		return fmt.Errorf("unsupported compatibility matrix schema %q", matrix.Schema)
 	}
-	if marker.Line == "" || marker.Status == "" || len(marker.ValidatedBy) == 0 {
-		return fmt.Errorf("compatibility marker must declare line, status and validation evidence")
+	if len(matrix.Labels) == 0 {
+		return fmt.Errorf("compatibility matrix contains no labels")
 	}
-	if marker.Platform.Package == "" || marker.Platform.Version == "" {
-		return fmt.Errorf("compatibility marker must declare a platform package and version")
+	known := map[string]bool{}
+	for _, label := range matrix.Labels {
+		if label.ID == "" || label.Kind == "" || label.ArtifactID == "" || label.Version == "" || label.Status == "" || len(label.ValidatedBy) == 0 {
+			return fmt.Errorf("compatibility label must declare id, kind, artifactId, version, status and validation evidence")
+		}
+		if known[label.ID] {
+			return fmt.Errorf("duplicate compatibility label %q", label.ID)
+		}
+		known[label.ID] = true
+		if !compatibilityArtifactExists(source, label) {
+			return fmt.Errorf("compatibility label %q references absent %s artifact %q@%s", label.ID, label.Kind, label.ArtifactID, label.Version)
+		}
 	}
-	platform, ok := findPlatform(source.Platforms, marker.Platform.Version)
-	if !ok || platform.Package != marker.Platform.Package {
-		return fmt.Errorf("compatibility marker platform %s@%s is absent from the release index", marker.Platform.Package, marker.Platform.Version)
-	}
-	if marker.SDK.Package == "" || marker.SDK.Version == "" {
-		return fmt.Errorf("compatibility marker must declare an SDK package and version")
-	}
-	if !containsComponent(source.SDKs, marker.SDK.Package, marker.SDK.Version) {
-		return fmt.Errorf("compatibility marker SDK %s@%s is absent from the release index", marker.SDK.Package, marker.SDK.Version)
+	for _, label := range matrix.Labels {
+		for _, relation := range label.Requires {
+			if !known[relation.Label] {
+				return fmt.Errorf("compatibility label %q references absent label %q", label.ID, relation.Label)
+			}
+		}
 	}
 	return nil
 }
 
-func containsComponent(values []Component, packageName, version string) bool {
-	for _, value := range values {
-		if value.Package == packageName && value.Version == version {
-			return true
+func compatibilityArtifactExists(source Catalog, label CompatibilityLabel) bool {
+	switch label.Kind {
+	case "platform":
+		for _, value := range source.Platforms {
+			if value.ID == label.ArtifactID && value.Version == label.Version {
+				return true
+			}
+		}
+	case "sdk":
+		for _, value := range source.SDKs {
+			if value.ID == label.ArtifactID && value.Version == label.Version {
+				return true
+			}
+		}
+	case "binary":
+		for _, platform := range source.Platforms {
+			for _, value := range platform.Binaries {
+				if value.ID == label.ArtifactID && platform.Version == label.Version {
+					return true
+				}
+			}
 		}
 	}
 	return false

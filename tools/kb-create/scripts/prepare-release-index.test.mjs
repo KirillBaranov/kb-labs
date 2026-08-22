@@ -20,18 +20,19 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
     packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:"ILogger"}; export {manifest};'),
   ];
   writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const binaryManifest = join(root, 'binary-manifest.json');
+  writeFileSync(binaryManifest, JSON.stringify({ binaries: [{ id: 'kb-create', os: 'linux', arch: 'amd64', url: 'https://example.test/kb-create', filename: 'kb-create-linux-amd64', sha256: 'binary-sha' }] }));
   const output = join(root, 'release-index.json');
-  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--output', output], { stdio: 'pipe' });
+  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--output', output], { stdio: 'pipe' });
   const index = JSON.parse(readFileSync(output, 'utf8'));
   assert.equal(index.schema, 'kb.create.release-index/v2');
-  assert.deepEqual(index.compatibility, {
-    schema: 'kb.release-compatibility/1',
-    line: 'platform-sdk-2.0.0',
-    platform: { package: '@kb-labs/core-runtime', version: '2.0.0', sha256: artifacts[0].sha256 },
-    sdk: { package: '@kb-labs/sdk', version: '2.0.0', sha256: artifacts[1].sha256 },
-    status: 'prepared',
-    validatedBy: ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'],
-  });
+  assert.equal(index.compatibility.schema, 'kb.release-compatibility/2');
+  assert.deepEqual(index.compatibility.labels.map(({ id, kind, artifactId, version }) => ({ id, kind, artifactId, version })), [
+    { id: 'platform@2.0.0', kind: 'platform', artifactId: 'platform', version: '2.0.0' },
+    { id: 'sdk@2.0.0', kind: 'sdk', artifactId: 'sdk', version: '2.0.0' },
+    { id: 'binary:kb-create@2.0.0:linux/amd64', kind: 'binary', artifactId: 'kb-create', version: '2.0.0' },
+  ]);
+  assert.deepEqual(index.compatibility.labels[0].requires, [{ label: 'sdk@2.0.0', constraint: '>=2.0.0 <3.0.0' }]);
   assert.equal(index.channels.canary, '2.0.0');
   assert.equal(index.plugins[0].id, 'commit');
   assert.equal(index.platforms[0].profiles.default.services[0].id, 'workflow');
@@ -48,8 +49,10 @@ test('fails closed when the SDK rejects the staged platform even in the same maj
     packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.155.2', '', { peerDependencies: { '@kb-labs/core-runtime': '<2.150.0' } }),
   ];
   writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const binaryManifest = join(root, 'binary-manifest.json');
+  writeFileSync(binaryManifest, JSON.stringify({ binaries: [{ id: 'kb-create', os: 'linux', arch: 'amd64', url: 'https://example.test/kb-create', filename: 'kb-create-linux-amd64', sha256: 'binary-sha' }] }));
   const output = join(root, 'release-index.json');
-  const result = spawnSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--output', output], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--output', output], { encoding: 'utf8' });
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}\n${result.stderr}`, /rejects .*core-runtime@2\.155\.2/);
 });

@@ -54,7 +54,7 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if registry := os.Getenv("KB_REGISTRY_URL"); registry != "" {
 		args = append(args, "--registry", registry)
 	}
-	if output, code := run(t, launcher, appendKBDev(args)...); code != 0 {
+	if output, code := run(t, launcher, args...); code != 0 {
 		t.Fatalf("V2 apply exited %d:\n%s", code, output)
 	}
 	for _, path := range []string{filepath.Join(platform, ".kb", "v2", "receipt.json"), filepath.Join(platform, ".kb", "kb.config.jsonc"), filepath.Join(platform, ".kb", "devservices.yaml"), filepath.Join(project, ".kb", "kb.config.jsonc")} {
@@ -62,10 +62,10 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 			t.Fatalf("V2 install artifact %s is missing: %v", path, err)
 		}
 	}
-	if output, code := run(t, launcher, appendKBDev([]string{"status", "--platform-root", platform})...); code != 0 {
+	if output, code := run(t, launcher, "status", "--platform-root", platform); code != 0 {
 		t.Fatalf("V2 status exited %d:\n%s", code, output)
 	}
-	updateOutput, updateCode := run(t, launcher, appendKBDev([]string{"update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict"})...)
+	updateOutput, updateCode := run(t, launcher, "update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict")
 	if updateCode != 0 {
 		t.Fatalf("V2 update exited %d: %s", updateCode, updateOutput)
 	}
@@ -107,13 +107,6 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 
 func run(t *testing.T, binary string, args ...string) (string, int) {
 	return runIn(t, "", binary, args...)
-}
-
-func appendKBDev(args []string) []string {
-	if binary := os.Getenv("KB_DEV_BINARY"); binary != "" {
-		return append(args, "--kb-dev", binary)
-	}
-	return args
 }
 
 func runIn(t *testing.T, dir, command string, args ...string) (string, int) {

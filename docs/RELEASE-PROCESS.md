@@ -5,8 +5,8 @@ KB Labs has independent SDK, platform and binary streams. A release is only prom
 | Stream | Tag | Publishes | Required order |
 | --- | --- | --- | --- |
 | SDK | `sdk-vX.Y.Z` | SDK npm tarballs with V2 launcher manifests | first when SDK changes |
-| Platform | `platform-vX.Y.Z` | platform, services, adapters and sealed V2 release index | after required SDK candidate |
-| Binaries | `vX.Y.Z-binaries` | `kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor` and checksums | when Go tools changed |
+| Platform | `platform-vX.Y.Z` | platform, services, binaries and one sealed release index | after required SDK candidate |
+| Binaries | `vX.Y.Z-binaries` | the binary assets and checksums referenced by that candidate index | as part of the same candidate |
 
 ## Candidate gates
 
@@ -16,21 +16,23 @@ The prepare workflow creates the immutable release metadata before the tag. The 
 2. its `Prepare release index` step reads those exact tarballs and package manifests;
 3. it seals `.kb/release/release-index.json` into the release commit/tag;
 4. the tag workflow verifies and attaches that prepared index while delivering the tarballs;
-5. it verifies the exact Platform/SDK compatibility marker from the prepared index;
+5. it verifies the exact platform/SDK/binary compatibility labels from the prepared index;
 6. it downloads the public npm bytes again and verifies every recorded SHA-256;
 7. it runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered;
 8. it runs the required post-publish workflow/plugin smoke against the public canary packages.
 
-For a binary candidate, `release-binaries.yml` first publishes the immutable
-GoReleaser assets and `binaries-canary`, then downloads that exact published
-`kb-create-linux-amd64` asset, verifies its checksum, and runs the same V2
-install/update/plugin/workflow smoke against a public platform release index.
+For a binary candidate, the release preparation stage first records every
+GoReleaser asset (URL, target and SHA-256) in `binary-manifest.json` and seals
+those entries into the same candidate `release-index.json`. Only then does
+`release-binaries.yml` publish the assets and verify that the published bytes
+match the sealed index before running the V2 install/update/plugin/workflow
+smoke. It never downloads or extends another release's index.
 `promote-binaries.yml` requires the successful binary post-publish smoke run
 before moving the candidate to `binaries-stable`.
 
 The candidate smoke is deliberately a bounded installer/package/config/workflow gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
 
-The compatibility marker is conservative in the first release: it records the
+The compatibility matrix is conservative in the first release: it records the
 exact staged Platform/SDK pair and the SDK's declared runtime peer range. A
 broader compatibility range must be earned by additional release evidence; it
 is never inferred from a shared `2.x` or `3.x` major.

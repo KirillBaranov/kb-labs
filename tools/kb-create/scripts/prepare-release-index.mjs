@@ -31,6 +31,8 @@ const platformPackage = value('--platform-package') ?? '@kb-labs/core-runtime';
 const sdkPackage = value('--sdk-package') ?? '@kb-labs/sdk';
 const platformVersion = value('--platform-version');
 const sdkVersion = value('--sdk-version');
+const binaryManifestPath = value('--binary-manifest') ? resolve(value('--binary-manifest')) : undefined;
+if (flow === 'platform' && !binaryManifestPath) throw new Error('--binary-manifest is required for the unified platform release-index');
 
 const readStage = directory => {
   const entries = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
@@ -46,12 +48,17 @@ const sourceDirByName = new Map(stagedEntries.map(({ item, directory }) => [item
 const platform = byName.get(platformPackage);
 if (!platform) throw new Error(`platform package ${platformPackage} is absent from stage manifest`);
 const resolvedPlatformVersion = platformVersion ?? platform.version;
-const compatibilityLine = value('--compatibility-line') ?? `platform-sdk-${resolvedPlatformVersion}`;
 if (platform.version !== resolvedPlatformVersion) throw new Error(`platform version mismatch: stage=${platform.version}, expected=${resolvedPlatformVersion}`);
 
 const sdk = byName.get(sdkPackage);
 if (sdkVersion && (!sdk || sdk.version !== sdkVersion)) throw new Error(`SDK version mismatch for ${sdkPackage}`);
 if (!sdk) throw new Error(`SDK package ${sdkPackage} is absent from stage manifest; compatibility cannot be validated without an exact SDK artifact`);
+const binaries = binaryManifestPath ? JSON.parse(readFileSync(binaryManifestPath, 'utf8')).binaries : [];
+if (!Array.isArray(binaries)) throw new Error('binary manifest must contain a binaries array');
+for (const binary of binaries) {
+  for (const field of ['id', 'os', 'arch', 'url', 'filename', 'sha256']) if (!binary[field]) throw new Error(`binary manifest entry is missing ${field}`);
+  if (binary.version && binary.version !== resolvedPlatformVersion) throw new Error(`binary ${binary.id} version ${binary.version} does not match platform ${resolvedPlatformVersion}`);
+}
 
 const staging = resolve(`${artifactsDir}/v2-manifest-root`);
 rmSync(staging, { recursive: true, force: true });
@@ -148,20 +155,12 @@ if (!satisfies(resolvedPlatformVersion, sdkPlatformRange)) {
 const exportValue = {
   channels: { [channel]: resolvedPlatformVersion },
   compatibility: {
-    schema: 'kb.release-compatibility/1',
-    line: compatibilityLine,
-    platform: {
-      package: platform.name,
-      version: platform.version,
-      sha256: platform.sha256,
-    },
-    sdk: {
-      package: sdk.name,
-      version: sdk.version,
-      sha256: sdk.sha256,
-    },
-    status: 'prepared',
-    validatedBy: ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'],
+    schema: 'kb.release-compatibility/2',
+    labels: [
+      { id: `platform@${resolvedPlatformVersion}`, kind: 'platform', artifactId: 'platform', version: resolvedPlatformVersion, requires: [{ label: `sdk@${sdk.version}`, constraint: sdkPlatformRange }], status: 'prepared', validatedBy: ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'] },
+      { id: `sdk@${sdk.version}`, kind: 'sdk', artifactId: 'sdk', version: sdk.version, status: 'prepared', validatedBy: ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'] },
+      ...binaries.map(binary => ({ id: `binary:${binary.id}@${resolvedPlatformVersion}:${binary.os}/${binary.arch}`, kind: 'binary', artifactId: binary.id, version: resolvedPlatformVersion, requires: [{ label: `platform@${resolvedPlatformVersion}` }, { label: `sdk@${sdk.version}` }], status: 'prepared', validatedBy: ['release-asset', 'artifact-hash', 'post-publish-smoke'] })),
+    ],
   },
   platforms: [{
     id: 'platform',
@@ -170,6 +169,7 @@ const exportValue = {
     tarball: tarballURL(platform),
     sha256: platform.sha256,
     profiles: { default: { platformVersion: resolvedPlatformVersion, services: services.map(({ packageName, ...service }) => service) } },
+    binaries,
     members: services.map(service => {
       const item = byName.get(service.packageName);
       return item ? component(item, undefined, service.id) : undefined;
@@ -183,7 +183,7 @@ const exportValue = {
 const exportPath = join(artifactsDir, 'manifest-export.json');
 writeFileSync(exportPath, `${JSON.stringify(exportValue, null, 2)}\n`);
 
-const sealer = spawnSync('go', ['run', './v2/cmd/kb-create-v2-index', '--input', exportPath, '--manifest-root', staging, '--output', output], {
+const sealer = spawnSync('go', ['run', './v2/cmd/kb-create-release-index', '--input', exportPath, '--manifest-root', staging, '--output', output], {
   cwd: resolve(new URL('../', import.meta.url).pathname),
   stdio: 'inherit',
 });

@@ -17,11 +17,6 @@ on:
     tags:
       - 'v*-binaries'
   workflow_dispatch:
-    inputs:
-      platform_release_tag:
-        description: Optional platform release tag whose public release-index should be used for binary smoke
-        required: false
-        type: string
 
 permissions:
   contents: write   # create release + upload assets
@@ -90,19 +85,21 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Resolve public platform release index
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
-          REQUESTED_PLATFORM_RELEASE: ${{ inputs.platform_release_tag }}
+      - name: Use candidate release-index
         run: |
           set -euo pipefail
-          tag="$REQUESTED_PLATFORM_RELEASE"
-          if [ -z "$tag" ]; then
-            tag="$(gh release list --repo "$REPOSITORY" --limit 100 --json tagName,publishedAt --jq '[.[] | select(.tagName | test("^platform-v"))] | sort_by(.publishedAt) | last.tagName')"
-          fi
-          test -n "$tag" || { echo "::error::No public platform release is available for binary smoke"; exit 1; }
-          gh release download "$tag" --repo "$REPOSITORY" --pattern release-index.json --dir "$RUNNER_TEMP/kb-create-binary-smoke"
+          test -s .kb/release/release-index.json || { echo "::error::Unified candidate release-index.json is missing"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/kb-create-binary-smoke"
+          cp .kb/release/release-index.json "$RUNNER_TEMP/kb-create-binary-smoke/release-index.json"
+          node - "$RUNNER_TEMP/kb-create-binary-smoke/release-index.json" <<'NODE'
+          const fs = require('node:fs');
+          const index = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (index.schema !== 'kb.create.release-index/v2') throw new Error('candidate index is not release-index/v2');
+          const labels = index.compatibility?.labels ?? [];
+          for (const id of ['kb-create', 'kb-dev']) {
+            if (!labels.some(label => label.kind === 'binary' && label.artifactId === id)) throw new Error(`candidate index has no binary compatibility label for ${id}`);
+          }
+          NODE
       - name: Download and verify published kb-create binary
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -111,14 +108,24 @@ jobs:
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/kb-create-binary-smoke"
-          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern 'kb-create-linux-amd64' --pattern 'kb-dev-linux-amd64' --pattern checksums.txt --dir "$out"
-          (cd "$out" && grep -E '  kb-(create|dev)-linux-amd64$' checksums.txt | sha256sum -c -)
-          chmod +x "$out/kb-create-linux-amd64" "$out/kb-dev-linux-amd64"
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern 'kb-create-linux-amd64' --pattern checksums.txt --dir "$out"
+          (cd "$out" && grep -E '  kb-create-linux-amd64$' checksums.txt | sha256sum -c -)
+          chmod +x "$out/kb-create-linux-amd64"
+          node - "$out/release-index.json" "$out/checksums.txt" "$REPOSITORY" "$RELEASE_TAG" <<'NODE'
+          const fs = require('node:fs');
+          const [indexPath, checksumsPath, repository, tag] = process.argv.slice(2);
+          const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+          const binary = index.platforms.flatMap(platform => platform.binaries ?? []).find(item => item.id === 'kb-create' && item.os === 'linux' && item.arch === 'amd64');
+          if (!binary) throw new Error('candidate index has no linux/amd64 kb-create binary');
+          const checksum = fs.readFileSync(checksumsPath, 'utf8').match(/^([a-f0-9]{64})\s+kb-create-linux-amd64$/m)?.[1];
+          if (!checksum || binary.sha256 !== checksum) throw new Error('candidate index kb-create checksum does not match the published asset');
+          const expectedURL = `https://github.com/${repository}/releases/download/${tag}/kb-create-linux-amd64`;
+          if (binary.url !== expectedURL) throw new Error(`candidate index kb-create URL is not the exact release asset: ${binary.url}`);
+          NODE
       - name: Run published binary smoke against public packages
         working-directory: tools/kb-create
         env:
           KB_CREATE_BINARY: ${{ runner.temp }}/kb-create-binary-smoke/kb-create-linux-amd64
-          KB_DEV_BINARY: ${{ runner.temp }}/kb-create-binary-smoke/kb-dev-linux-amd64
           KB_CREATE_RELEASE_INDEX: ${{ runner.temp }}/kb-create-binary-smoke/release-index.json
           KB_CREATE_PACKAGE_TAG: canary
         run: go test -v -race -count=1 -timeout 12m -run '^TestPublishedV2JourneyReachesPluginWorkflow$' ./v2/e2e/...

@@ -24,20 +24,16 @@ func TestValidateRejectsChannelOutsideIndex(t *testing.T) {
 	}
 }
 
-func TestValidateRejectsCompatibilityMarkerOutsideIndex(t *testing.T) {
+func TestValidateRejectsCompatibilityLabelOutsideIndex(t *testing.T) {
 	_, err := Seal(Catalog{
 		Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"},
-		Compatibility: &CompatibilityMarker{
-			Schema:      CompatibilitySchema,
-			Line:        "platform-sdk-test",
-			Platform:    CompatibilityArtifact{Package: "@kb/platform", Version: "2.0.0"},
-			SDK:         CompatibilityArtifact{Package: "@kb/sdk", Version: "2.1.0"},
-			Status:      "prepared",
-			ValidatedBy: []string{"stage"},
+		Compatibility: &CompatibilityMatrix{
+			Schema: CompatibilitySchema,
+			Labels: []CompatibilityLabel{{ID: "platform@2.0.0", Kind: "platform", ArtifactID: "platform", Version: "2.0.0", Status: "prepared", ValidatedBy: []string{"stage"}}, {ID: "sdk@2.1.0", Kind: "sdk", ArtifactID: "sdk", Version: "2.1.0", Status: "prepared", ValidatedBy: []string{"stage"}}},
 		},
 		Platforms: []PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "artifact", Profiles: map[string]contracts.ServiceGraph{"default": {}}}},
 	})
 	if err == nil {
-		t.Fatal("expected compatibility marker to reference an indexed SDK")
+		t.Fatal("expected compatibility label to reference an indexed SDK")
 	}
 }

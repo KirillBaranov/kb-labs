@@ -235,19 +235,20 @@ jobs:
           KB_CREATE_PACKAGE_TAG: canary
           KB_CREATE_RELEASE_INDEX: ${{ github.workspace }}/.kb/release/release-index.json
 
-      - name: Verify published candidate compatibility marker
+      - name: Verify published candidate compatibility matrix
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('node:fs');
           const index = JSON.parse(fs.readFileSync('.kb/release/release-index.json', 'utf8'));
-          const marker = index.compatibility;
-          if (!marker || marker.schema !== 'kb.release-compatibility/1') throw new Error('release index has no compatibility marker');
-          if (marker.status !== 'prepared') throw new Error(`unexpected compatibility marker status: ${marker.status}`);
-          if (!marker.platform?.version || !marker.sdk?.version) throw new Error('compatibility marker has no exact Platform/SDK pair');
-          if (index.channels?.canary !== marker.platform.version) throw new Error('canary channel does not point at marked platform');
-          console.log(`compatibility marker: ${marker.platform.version} + ${marker.sdk.version} (${marker.line})`);
+          const matrix = index.compatibility;
+          if (!matrix || matrix.schema !== 'kb.release-compatibility/2' || !Array.isArray(matrix.labels)) throw new Error('release index has no compatibility matrix');
+          const platform = matrix.labels.find(label => label.kind === 'platform' && label.version === index.channels?.canary);
+          const sdk = matrix.labels.find(label => label.kind === 'sdk');
+          if (!platform || !sdk) throw new Error('compatibility matrix has no exact canary platform/SDK labels');
+          if (!platform.requires?.some(relation => relation.label === sdk.id)) throw new Error('platform label does not require the selected SDK label');
+          console.log(`compatibility matrix: ${platform.id} requires ${sdk.id}`);
           NODE
 
       - name: Capture release-smoke diagnostics

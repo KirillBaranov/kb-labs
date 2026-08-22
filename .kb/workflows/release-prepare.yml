@@ -170,7 +170,7 @@ jobs:
         timeoutMs: 7200000
         run: pnpm kb release stage --flow ${{ inputs.flow }} --out-dir .kb/release/artifacts --json
 
-      - name: Stage SDK artifact for compatibility marker
+      - name: Stage SDK artifact for compatibility matrix
         id: sdk-stage
         phase: prepare
         if: ${{ inputs.flow == 'platform' }}
@@ -183,11 +183,13 @@ jobs:
         if: ${{ inputs.flow == 'platform' }}
         timeoutMs: 1200000
         run: >-
+          test -s .kb/release/binary-manifest.json &&
           node tools/kb-create/scripts/prepare-release-index.mjs
           --flow ${{ inputs.flow }}
           --channel ${{ inputs.channel }}
           --artifacts-dir .kb/release/artifacts
           --sdk-artifacts-dir .kb/release/sdk-artifacts
+          --binary-manifest .kb/release/binary-manifest.json
           --output .kb/release/release-index.json
 
       - name: Verify release branch before git operations
@@ -230,8 +232,8 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const index = JSON.parse(fs.readFileSync(".kb/release/release-index.json", "utf8"));
-            if (index.channels?.canary !== index.compatibility?.platform?.version) throw new Error("canary channel does not point at the marked platform");
-            if (index.compatibility?.status !== "prepared") throw new Error("release compatibility marker is not prepared");
-            if (!index.compatibility?.sdk?.version) throw new Error("release compatibility marker has no SDK version");
+            const selected = index.channels?.canary;
+            if (selected && !index.compatibility?.labels?.some(label => label.kind === "platform" && label.version === selected)) throw new Error("canary channel has no compatibility platform label");
+            if (!index.compatibility?.labels?.some(label => label.kind === "sdk")) throw new Error("release compatibility matrix has no SDK label");
           '
           make -C tools/kb-create e2e-release-smoke
