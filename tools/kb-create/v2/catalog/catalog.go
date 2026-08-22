@@ -17,14 +17,35 @@ import (
 const Schema = "kb.create.release-index/v2"
 
 type Catalog struct {
-	Schema    string                       `json:"schema"`
-	Digest    string                       `json:"digest"`
-	Channels  map[contracts.Channel]string `json:"channels"`
-	Platforms []PlatformBundle             `json:"platforms"`
-	SDKs      []Component                  `json:"sdks"`
-	Plugins   []Component                  `json:"plugins"`
-	Adapters  []Adapter                    `json:"adapters"`
+	Schema        string                       `json:"schema"`
+	Digest        string                       `json:"digest"`
+	Channels      map[contracts.Channel]string `json:"channels"`
+	Compatibility *CompatibilityMarker         `json:"compatibility,omitempty"`
+	Platforms     []PlatformBundle             `json:"platforms"`
+	SDKs          []Component                  `json:"sdks"`
+	Plugins       []Component                  `json:"plugins"`
+	Adapters      []Adapter                    `json:"adapters"`
 }
+
+// CompatibilityMarker is release-owned evidence for the platform/SDK pair.
+// It intentionally contains concrete versions: semver major/minor equality is
+// not a compatibility guarantee for pre-stable releases.
+type CompatibilityMarker struct {
+	Schema      string                `json:"schema"`
+	Line        string                `json:"line"`
+	Platform    CompatibilityArtifact `json:"platform"`
+	SDK         CompatibilityArtifact `json:"sdk"`
+	Status      string                `json:"status"`
+	ValidatedBy []string              `json:"validatedBy"`
+}
+
+type CompatibilityArtifact struct {
+	Package string `json:"package"`
+	Version string `json:"version"`
+	SHA256  string `json:"sha256,omitempty"`
+}
+
+const CompatibilitySchema = "kb.release-compatibility/1"
 
 // Seal normalizes a release index and records the SHA-256 digest of its
 // canonical payload. Publishing calls this after manifest export; consuming
@@ -51,6 +72,11 @@ func Validate(source Catalog) error {
 	}
 	if len(source.Platforms) == 0 {
 		return fmt.Errorf("release index contains no platform bundles")
+	}
+	if source.Compatibility != nil {
+		if err := validateCompatibility(*source.Compatibility, source); err != nil {
+			return err
+		}
 	}
 	for channel, version := range source.Channels {
 		if channel != contracts.ChannelStable && channel != contracts.ChannelCanary && channel != contracts.ChannelExperimental {
@@ -95,6 +121,38 @@ func Validate(source Catalog) error {
 		}
 	}
 	return nil
+}
+
+func validateCompatibility(marker CompatibilityMarker, source Catalog) error {
+	if marker.Schema != CompatibilitySchema {
+		return fmt.Errorf("unsupported compatibility marker schema %q", marker.Schema)
+	}
+	if marker.Line == "" || marker.Status == "" || len(marker.ValidatedBy) == 0 {
+		return fmt.Errorf("compatibility marker must declare line, status and validation evidence")
+	}
+	if marker.Platform.Package == "" || marker.Platform.Version == "" {
+		return fmt.Errorf("compatibility marker must declare a platform package and version")
+	}
+	platform, ok := findPlatform(source.Platforms, marker.Platform.Version)
+	if !ok || platform.Package != marker.Platform.Package {
+		return fmt.Errorf("compatibility marker platform %s@%s is absent from the release index", marker.Platform.Package, marker.Platform.Version)
+	}
+	if marker.SDK.Package == "" || marker.SDK.Version == "" {
+		return fmt.Errorf("compatibility marker must declare an SDK package and version")
+	}
+	if !containsComponent(source.SDKs, marker.SDK.Package, marker.SDK.Version) {
+		return fmt.Errorf("compatibility marker SDK %s@%s is absent from the release index", marker.SDK.Package, marker.SDK.Version)
+	}
+	return nil
+}
+
+func containsComponent(values []Component, packageName, version string) bool {
+	for _, value := range values {
+		if value.Package == packageName && value.Version == version {
+			return true
+		}
+	}
+	return false
 }
 
 func Verify(source Catalog) error {

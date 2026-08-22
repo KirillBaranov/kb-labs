@@ -11,9 +11,10 @@ name: Publish npm (on release tag)
 #      `pnpm release:platform:prepare` / `release:sdk:prepare`) — checks,
 #      build, version bump, changelog, then commits + tags + pushes git.
 #      Never touches npm, needs no npm credentials.
-#   2. Stage (this workflow, job `stage`) — `kb release stage` packs the
-#      already-committed versions into real npm tarballs, once, and
-#      uploads them as a build artifact. No re-bump, no re-plan.
+#   2. Stage (this workflow, job `stage`) — verifies the prepared
+#      release-index.json and stages the already-committed versions into real
+#      npm tarballs once. No catalog generation, re-bump, or re-plan happens
+#      in CI.
 #   3. Deliver candidate (this workflow, job `deliver-candidate`) — downloads
 #      that exact artifact and publishes it under the `canary` dist-tag.
 #   4. User gate (job `launcher-smoke`) — installs and exercises the candidate.
@@ -107,6 +108,16 @@ jobs:
 
       - name: Stage (pack committed versions into real tarballs, once)
         run: pnpm kb release stage --release-tag "${{ github.ref_name }}"
+
+      - name: Attach prepared release index
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .kb/release/release-index.json || {
+            echo "::error::Prepared release-index.json is missing from the release tag"
+            exit 1
+          }
+          cp .kb/release/release-index.json .kb/release/artifacts/release-index.json
 
       - name: Archive built workspace output for delivery
         shell: bash
@@ -222,6 +233,21 @@ jobs:
           # this override kb-create resolves `latest` and tests the previous
           # stable release instead of the artifacts delivered above.
           KB_CREATE_PACKAGE_TAG: canary
+
+      - name: Verify published candidate compatibility marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const index = JSON.parse(fs.readFileSync('.kb/release/release-index.json', 'utf8'));
+          const marker = index.compatibility;
+          if (!marker || marker.schema !== 'kb.release-compatibility/1') throw new Error('release index has no compatibility marker');
+          if (marker.status !== 'prepared') throw new Error(`unexpected compatibility marker status: ${marker.status}`);
+          if (!marker.platform?.version || !marker.sdk?.version) throw new Error('compatibility marker has no exact Platform/SDK pair');
+          if (index.channels?.canary !== marker.platform.version) throw new Error('canary channel does not point at marked platform');
+          console.log(`compatibility marker: ${marker.platform.version} + ${marker.sdk.version} (${marker.line})`);
+          NODE
 
       - name: Capture release-smoke diagnostics
         if: always()

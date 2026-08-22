@@ -18,6 +18,7 @@ import (
 	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/installed"
 	"github.com/kb-labs/create/v2/logs"
+	"github.com/kb-labs/create/v2/preflight"
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/scenario"
@@ -76,7 +77,13 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		return runDoctor(doctorInput, platformRoot, kbdev, doctorFix, output)
 	}
 	if operation == "wizard" {
-		return runWizard(indexPath, direct.PlatformRoot, output)
+		return runWizard(indexPath, direct.PlatformRoot, scenarioID, output)
+	}
+	if operation == "apply" || operation == "update" {
+		if err := preflight.Ensure(nil); err != nil {
+			write(output, failure("KB_CREATE_TOOLCHAIN_UNSUPPORTED", "runtime preflight failed", "use Node.js 24.x and pnpm 11.x, or update the runtime and retry", err))
+			return 2
+		}
 	}
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
@@ -219,7 +226,7 @@ func compileScenario(id, answers string, resume bool, base contracts.InstallRequ
 	return request, err
 }
 
-func runWizard(indexPath, platformRoot string, output *os.File) int {
+func runWizard(indexPath, platformRoot, scenarioID string, output *os.File) int {
 	if indexPath == "" || platformRoot == "" {
 		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and --request-platform-root are required", "pass the sealed release index and desired platform root", nil))
 		return 2
@@ -229,7 +236,7 @@ func runWizard(indexPath, platformRoot string, output *os.File) int {
 		write(output, failure("KB_CREATE_RELEASE_INDEX_INVALID", "release index could not be loaded", "supply a valid sealed V2 release index", err))
 		return 2
 	}
-	request, err := wizard.Request(source, platformRoot, wizard.IO{In: os.Stdin, Out: os.Stderr})
+	request, err := wizard.RequestScenario(source, platformRoot, scenarioID, wizard.IO{In: os.Stdin, Out: os.Stderr})
 	if err != nil {
 		write(output, failure("KB_CREATE_WIZARD_INPUT_INVALID", "wizard answer is invalid", "choose one of the displayed compatible options", err))
 		return 2

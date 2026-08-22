@@ -29,3 +29,29 @@ func TestRequestRejectsUnknownInteractiveChoice(t *testing.T) {
 		t.Fatal("expected invalid choice")
 	}
 }
+
+func TestRequestScenarioCompilesSameDeclarativeAnswersAsMachineRequest(t *testing.T) {
+	source, err := catalog.Seal(catalog.Catalog{
+		Channels:  map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"},
+		Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}},
+		Plugins:   []catalog.Component{{ID: "commit", Version: "1", Package: "@kb/commit", Tarball: "https://example.test/commit.tgz", SHA256: "commit"}},
+		Adapters:  []catalog.Adapter{{Component: catalog.Component{ID: "state-broker", Version: "1", Package: "@kb/state", Tarball: "https://example.test/state.tgz", SHA256: "state"}, Provides: []string{"cache"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// scenario commit asks for channel, profile, then its cache provider.
+	var output bytes.Buffer
+	request, err := RequestScenario(source, "/platform", "commit", IO{In: bytes.NewBufferString("\n\nstate-broker\n"), Out: &output})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.ScenarioID != "commit" || request.Platform.Channel != contracts.ChannelStable || request.ProviderPreferences["cache"] != "state-broker" {
+		t.Fatalf("request = %#v", request)
+	}
+	machine := request
+	machine.ScenarioID = "commit"
+	if machine.ProviderPreferences["cache"] != request.ProviderPreferences["cache"] || len(machine.Plugins) != 1 || machine.Plugins[0].ID != "commit" {
+		t.Fatalf("human/machine request mismatch: %#v / %#v", request, machine)
+	}
+}

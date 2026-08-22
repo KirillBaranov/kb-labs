@@ -1,0 +1,71 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const script = new URL('./prepare-release-index.mjs', import.meta.url);
+
+test('prepares a sealed index from staged plugin, service and adapter manifests', () => {
+  const root = mkdtempSync(join(tmpdir(), 'kb-release-index-'));
+  const stage = join(root, 'stage');
+  const packageRoot = join(root, 'packages');
+  mkdirSync(stage, { recursive: true });
+  const artifacts = [
+    packageArtifact(root, packageRoot, stage, '@kb-labs/core-runtime', '2.0.0', ''),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '>=2.0.0 <3.0.0' } }),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/commit-entry', '2.0.0', JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/commit', version: '2.0.0', platform: { requires: ['cache'] } })),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/workflow-daemon', '2.0.0', JSON.stringify({ schema: 'kb.service/1', id: 'workflow', version: '2.0.0', runtime: { port: 7778 }, dependsOn: [] })),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:"ILogger"}; export {manifest};'),
+  ];
+  writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const output = join(root, 'release-index.json');
+  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--output', output], { stdio: 'pipe' });
+  const index = JSON.parse(readFileSync(output, 'utf8'));
+  assert.equal(index.schema, 'kb.create.release-index/v2');
+  assert.deepEqual(index.compatibility, {
+    schema: 'kb.release-compatibility/1',
+    line: 'platform-sdk-2.0.0',
+    platform: { package: '@kb-labs/core-runtime', version: '2.0.0', sha256: artifacts[0].sha256 },
+    sdk: { package: '@kb-labs/sdk', version: '2.0.0', sha256: artifacts[1].sha256 },
+    status: 'prepared',
+    validatedBy: ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'],
+  });
+  assert.equal(index.channels.canary, '2.0.0');
+  assert.equal(index.plugins[0].id, 'commit');
+  assert.equal(index.platforms[0].profiles.default.services[0].id, 'workflow');
+  assert.deepEqual(index.adapters[0].provides, ['logger']);
+});
+
+test('fails closed when the SDK rejects the staged platform even in the same major', () => {
+  const root = mkdtempSync(join(tmpdir(), 'kb-release-index-incompatible-'));
+  const stage = join(root, 'stage');
+  const packageRoot = join(root, 'packages');
+  mkdirSync(stage, { recursive: true });
+  const artifacts = [
+    packageArtifact(root, packageRoot, stage, '@kb-labs/core-runtime', '2.155.2', ''),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.155.2', '', { peerDependencies: { '@kb-labs/core-runtime': '<2.150.0' } }),
+  ];
+  writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const output = join(root, 'release-index.json');
+  const result = spawnSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--output', output], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, /rejects .*core-runtime@2\.155\.2/);
+});
+
+function packageArtifact(root, packageRoot, stage, name, version, manifest, extra = {}) {
+  const packageDir = join(packageRoot, 'package');
+  rmSync(packageDir, { recursive: true, force: true });
+  mkdirSync(join(packageDir, 'dist'), { recursive: true });
+  writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name, version, ...extra }));
+  if (manifest) {
+    writeFileSync(join(packageDir, manifest.startsWith('const ') ? 'dist/manifest.js' : 'dist/manifest.json'), manifest);
+  }
+  const filename = `${name.split('/').pop()}-${version}.tgz`;
+  const tarball = join(stage, filename);
+  const result = spawnSync('tar', ['-czf', tarball, '-C', packageRoot, 'package'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const sha256 = execFileSync('shasum', ['-a', '256', tarball], { encoding: 'utf8' }).split(' ')[0];
+  return { name, version, tarball: filename, sha256 };
+}

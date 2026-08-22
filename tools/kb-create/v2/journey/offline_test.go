@@ -3,6 +3,7 @@ package journey_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,5 +111,51 @@ func TestOfflineLifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall(t *te
 	}
 	if len(artifacts.removed) != 1 || artifacts.removed[0].Version != "1.0.0" {
 		t.Fatalf("removed = %#v", artifacts.removed)
+	}
+}
+
+func TestOfflineApplyCompletesPluginAndWorkflowReadyPath(t *testing.T) {
+	root := t.TempDir()
+	source := catalog.Catalog{
+		Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"},
+		Platforms: []catalog.PlatformBundle{{
+			ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform",
+			Profiles: map[string]contracts.ServiceGraph{"default": {
+				Services: []contracts.Service{{ID: "workflow", Command: "kb-workflow", Port: 7778, Required: true}},
+			}},
+		}},
+		Plugins: []catalog.Component{{ID: "commit", Version: "1.0.0", Package: "@kb/commit", SHA256: "commit", PlatformRange: "^2.0.0"}},
+	}
+	plan, err := resolve.Plan(contracts.InstallRequest{
+		PlatformRoot: root, Source: contracts.SourceOffline, ServiceProfile: "default",
+		Plugins: []contracts.ComponentRequest{{ID: "commit"}},
+	}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts := &offlineArtifacts{}
+	services := &lifecycleServices{status: status{{ID: "workflow", State: "alive"}}}
+	receipt, err := runtime.Apply(plan, runtime.Dependencies{Artifacts: artifacts, Status: services, Activator: services})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Plan.PlanHash != plan.PlanHash {
+		t.Fatalf("receipt plan hash = %q, want %q", receipt.Plan.PlanHash, plan.PlanHash)
+	}
+	foundPlugin := false
+	for _, artifact := range artifacts.installed {
+		if artifact.ID == "commit" {
+			foundPlugin = true
+		}
+	}
+	if !foundPlugin {
+		t.Fatalf("installed artifacts = %#v, plugin outcome is missing", artifacts.installed)
+	}
+	config, err := os.ReadFile(filepath.Join(root, ".kb", render.ConfigFilename))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(config), "commit") {
+		t.Fatalf("rendered config = %s, plugin is not projected", config)
 	}
 }

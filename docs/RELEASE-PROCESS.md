@@ -10,16 +10,23 @@ KB Labs has independent SDK, platform and binary streams. A release is only prom
 
 ## Candidate gates
 
-The tag workflow is the source of release evidence. For a platform candidate it:
+The prepare workflow creates the immutable release metadata before the tag. The tag workflow is then the delivery/evidence boundary. For a platform candidate the combined process:
 
-1. builds in topological order and stages immutable npm tarballs;
-2. emits the V2 package manifests from those actual build outputs;
-3. composes the platform topology with the exact SDK artifact already fetched from npm;
-4. seals a `kb.create.release-index/v2` and publishes the tarballs;
-5. downloads the public npm bytes again and verifies every recorded SHA-256;
-6. runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered.
+1. the prepare workflow builds in topological order and stages immutable npm tarballs;
+2. its `Prepare release index` step reads those exact tarballs and package manifests;
+3. it seals `.kb/release/release-index.json` into the release commit/tag;
+4. the tag workflow verifies and attaches that prepared index while delivering the tarballs;
+5. it verifies the exact Platform/SDK compatibility marker from the prepared index;
+6. it downloads the public npm bytes again and verifies every recorded SHA-256;
+7. it runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered;
+8. it runs the required post-publish workflow/plugin smoke against the public canary packages.
 
-The candidate smoke is deliberately a bounded installer/package/config gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
+The candidate smoke is deliberately a bounded installer/package/config/workflow gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
+
+The compatibility marker is conservative in the first release: it records the
+exact staged Platform/SDK pair and the SDK's declared runtime peer range. A
+broader compatibility range must be earned by additional release evidence; it
+is never inferred from a shared `2.x` or `3.x` major.
 
 ## Promotion checklist
 
@@ -40,4 +47,4 @@ The stable pointer is mutable convenience metadata. The fetched index remains im
 - **A service suite fails:** use the owning E2E shard and its scenario report. Do not make the candidate smoke start every service to mask shard ownership.
 - **Stable install fails:** freeze promotion, retain the immutable index and dossier, then repair and publish a new candidate. Never overwrite a released index.
 
-Local preparation (`pnpm release:sdk:prepare` or `pnpm release:platform:prepare`) prepares version/changelog/tag state. npm delivery and index verification happen only in GitHub Actions.
+Local preparation (`pnpm release:sdk:prepare` or `pnpm release:platform:prepare`) prepares version/changelog/tag state and, for platform releases, the sealed index. npm delivery and public-byte verification happen only in GitHub Actions.
