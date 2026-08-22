@@ -41,7 +41,8 @@ $ResolvedVersion = $null
 
 if ($Version -eq "latest") {
     try {
-        # `binaries-stable` is maintained by release-binaries.yml. This is a
+        # `binaries-stable` is maintained by the workflow-engine delivery path.
+        # This is a
         # direct GitHub Release asset, not a GitHub REST API lookup.
         $channel = Invoke-RestMethod "https://github.com/$Repo/releases/download/binaries-stable/channel.json"
         if (-not $channel.tag -or $channel.tag -notlike "*-binaries") {

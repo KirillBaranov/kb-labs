@@ -24,11 +24,10 @@ what it checks, and how to see the current state.
 │                      ├──────►  Deploy              (paths-only)  │
 │                      └──────►  CodeQL              (every push)  │
 │                                                                 │
-│  Tag v*-binaries   ──┬──────►  Release Binaries                 │
-│                      └──────►  Post-publish Smoke (after delivery)│
-│                      └──────►  E2E Platform Tests  (after build) │
+│  Workflow engine   ──┬──────►  Build candidate (reusable CI)    │
+│                      └──────►  Deliver candidate + smoke        │
 │                                                                 │
-│  Manual dispatch   ─────────►  Release             (full publish)│
+│  Manual dispatch   ─────────►  Release promotion (engine gate)  │
 │                                                                 │
 │  Weekly cron       ──┬──────►  E2E Platform Tests  (Mon 9am UTC) │
 │                      └──────►  Post-publish Smoke (Mon 8am UTC) │
@@ -47,8 +46,8 @@ what it checks, and how to see the current state.
 | **E2E Platform Tests** (`e2e-platform.yml`) | ✅ paths-ignore | ✅ open/sync/reopen, paths-ignore | — | ✅ after Release Binaries | ✅ Mon 9:00 UTC | ✅ |
 | **Post-publish Smoke** (`e2e-user-journey.yml`) | — | — | — | ✅ after binary/npm delivery | ✅ Mon 8:00 UTC | ✅ |
 | **Deploy** (`deploy.yml`) | ✅ paths-only | — | — | — | — | ✅ |
-| **Release Binaries** (`release-binaries.yml`) | — | — | ✅ `v*-binaries` | — | — | ✅ |
-| **Release** (`release.yml`) | — | — | — | — | — | ✅ manual |
+| **Build candidate** (`release-build-candidate.yml`) | — | — | — | — | — | ✅ via engine |
+| **Deliver candidate** (`release-deliver-candidate.yml`) | — | — | — | — | — | ✅ via engine |
 | **CodeQL** ("Push on main") | ✅ every push | ✅ | — | — | ✅ default | — |
 | **KB Deploy — Apply** (`kb-deploy-apply.yml`) | reusable — invoked by other workflows via `workflow_call` |
 
@@ -114,15 +113,16 @@ or manual dispatch.
 **Reuses:** `KB Deploy — Apply` via `workflow_call`.
 **Typical duration:** ~10 min.
 
-### Release Binaries (`release-binaries.yml`)
-**Purpose:** build and publish all KB Labs Go binaries (`kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor`) as a single GitHub Release.
-**When:** tag matching `v*-binaries` (e.g. `v0.4.0-binaries`); manual dispatch.
-**Trigger pattern:** push a tag → public artifacts delivered → triggers Post-publish Smoke and E2E Platform Tests (via `workflow_run`) to validate.
+### Build and deliver candidate workflows
+The workflow engine supplies an immutable release intent to
+`release-build-candidate.yml`. That workflow builds packages and binaries once,
+seals the unified release-index and uploads one candidate bundle. The engine
+then invokes `release-deliver-candidate.yml`, which verifies the bundle digest,
+publishes exact bytes and runs the post-publish launcher journey.
 
-### Release (`release.yml`)
-**Purpose:** full release workflow — cross-compile binaries for 5 OS/arch combos, publish npm packages, create GitHub Release. Use for major releases that need cross-platform binaries.
-**When:** manual dispatch only — never automatic. Releases are intentional acts.
-**Concurrency:** `release-${{ github.ref }}` with `cancel-in-progress: false`. Two simultaneous releases on the same ref serialise instead of clobbering.
+Neither workflow chooses versions, resolves compatibility, performs a second
+build, or has a legacy tag-triggered fallback. Stable promotion is another
+workflow-engine transition using the same candidate ID and bundle.
 
 ### CodeQL ("Push on main")
 **Purpose:** static-analysis security scanning.

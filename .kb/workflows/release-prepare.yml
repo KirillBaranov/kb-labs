@@ -1,10 +1,9 @@
-# Local release "prepare" step — checks, build, review artifacts, version bump, git
-# commit/tag/push, gated on a human sign-off after seeing the plan. Runs
-# only on the developer's own machine (kb-dev start must be up), never in
-# CI — see plugins/release/docs/adr/0001-* and the release plan.
+# Release control-plane step — checks, review, approval and release intent.
+# Candidate build, bundle creation, delivery and post-publish smoke run on the
+# controlled reusable GitHub workflows dispatched below.
 #
-# Deliberately a thin wrapper around the existing, already-tested atomic
-# release commands — no release logic is reimplemented here.
+# This workflow owns release decisions; CI owns only candidate execution and
+# delivery of the exact bundle returned to this state machine.
 #
 # Run: kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform"}'
 #
@@ -17,7 +16,7 @@
 
 name: release-prepare
 version: 1.0.0
-description: Prepare a release with a human approval gate. channel=stable versions/tags/pushes and never touches npm itself (CI publishes off the tag); channel=canary publishes straight to npm right after approval instead.
+description: Prepare a release intent with a human approval gate and dispatch an immutable candidate build.
 on:
   manual: true
 
@@ -41,12 +40,6 @@ inputs:
     description: Skip the pre-release Checks step (dist-exports/pack-install/typecheck/lint/tests). Escape hatch for shipping when Checks itself is broken/too slow — the packages still get built and reviewed, just not gate-checked. Re-run checks manually before trusting the release.
     required: false
     default: false
-  binaryManifest:
-    type: string
-    description: Path to the binary manifest generated from the exact GoReleaser candidate assets; required for platform releases
-    required: false
-    default: .kb/release/binary-manifest.json
-
 phases:
   preview:
     label: Preview
@@ -161,42 +154,6 @@ jobs:
         timeoutMs: 1200000
         run: pnpm kb release version --flow ${{ inputs.flow }} --json
 
-      - name: Build release artifacts for release index
-        id: v2-build
-        phase: prepare
-        if: ${{ inputs.flow == 'platform' }}
-        timeoutMs: 7200000
-        run: pnpm kb release build --flow ${{ inputs.flow }} --json
-
-      - name: Stage release artifacts for release index
-        id: v2-stage
-        phase: prepare
-        if: ${{ inputs.flow == 'platform' }}
-        timeoutMs: 7200000
-        run: pnpm kb release stage --flow ${{ inputs.flow }} --out-dir .kb/release/artifacts --json
-
-      - name: Stage SDK artifact for compatibility matrix
-        id: sdk-stage
-        phase: prepare
-        if: ${{ inputs.flow == 'platform' }}
-        timeoutMs: 7200000
-        run: pnpm kb release stage --flow sdk --out-dir .kb/release/sdk-artifacts --json
-
-      - name: Prepare release index
-        id: v2-index
-        phase: prepare
-        if: ${{ inputs.flow == 'platform' }}
-        timeoutMs: 1200000
-        run: >-
-          test -s "${{ inputs.binaryManifest }}" &&
-          node tools/kb-create/scripts/prepare-release-index.mjs
-          --flow ${{ inputs.flow }}
-          --channel ${{ inputs.channel }}
-          --artifacts-dir .kb/release/artifacts
-          --sdk-artifacts-dir .kb/release/sdk-artifacts
-          --binary-manifest "${{ inputs.binaryManifest }}"
-          --output .kb/release/release-index.json
-
       - name: Verify release branch before git operations
         id: git-branch
         phase: git
@@ -216,29 +173,19 @@ jobs:
         timeoutMs: 1200000
         run: pnpm kb release git --flow ${{ inputs.flow }} --bump auto --json
 
-      # No CI leg exists for canary (no tag is ever pushed to trigger one), so
-      # approval above is the only gate before this publishes to real npm —
-      # unlike stable, where nothing here touches npm and CI does it later.
-      - name: Publish canary
-        id: publish
+      - name: Build immutable candidate in controlled CI
+        id: candidate
         phase: git
-        if: ${{ inputs.channel == 'canary' }}
-        timeoutMs: 3600000
-        run: pnpm kb release run --flow ${{ inputs.flow }} --channel canary --skip-checks --skip-build --yes --json
-
-      - name: Smoke published canary
-        id: canary-smoke
-        phase: git
-        if: ${{ inputs.channel == 'canary' && inputs.flow == 'platform' }}
-        timeoutMs: 1800000
+        timeoutMs: 7200000
         run: |
-          set -e
-          test -s .kb/release/release-index.json
-          node -e '
-            const fs = require("node:fs");
-            const index = JSON.parse(fs.readFileSync(".kb/release/release-index.json", "utf8"));
-            const selected = index.channels?.canary;
-            if (selected && !index.compatibility?.labels?.some(label => label.kind === "platform" && label.version === selected)) throw new Error("canary channel has no compatibility platform label");
-            if (!index.compatibility?.labels?.some(label => label.kind === "sdk")) throw new Error("release compatibility matrix has no SDK label");
-          '
-          make -C tools/kb-create e2e-release-smoke
+          set -euo pipefail
+          version='${{ steps.plan.outputs.version }}'
+          test -n "$version"
+          candidate_id="${{ inputs.flow }}-${version}-${{ inputs.channel }}-$(date -u +%Y%m%dT%H%M%SZ)"
+          node .kb/workflows/scripts/dispatch-release-candidate.mjs \
+            --candidate-id "$candidate_id" \
+            --commit "$(git rev-parse HEAD)" \
+            --flow '${{ inputs.flow }}' \
+            --version "$version" \
+            --channel '${{ inputs.channel }}' \
+            --repository "${GITHUB_REPOSITORY:-kb-labs-team/kb-labs}"

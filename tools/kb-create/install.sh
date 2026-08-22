@@ -123,8 +123,8 @@ esac
 
 if [ "$VERSION" = "latest" ]; then
   # `binaries-stable`/`binaries-canary` are tiny mutable GitHub Release assets
-  # maintained by release-binaries.yml (canary) and promote-binaries.yml
-  # (stable). Using the direct asset URL avoids GitHub REST API lookup and
+  # maintained by the workflow-engine release delivery path. Using the direct
+  # asset URL avoids GitHub REST API lookup and
   # cannot accidentally select a platform/npm release.
   CHANNEL_JSON="$(curl -fsSL "https://github.com/${REPO}/releases/download/binaries-${CHANNEL}/channel.json" 2>/dev/null)" || {
     err "Unable to resolve the ${CHANNEL} binaries channel from GitHub Releases."

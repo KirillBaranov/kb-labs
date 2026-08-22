@@ -241,5 +241,5 @@ logs → edit → rerun → remove/disable`; результат подтверж
   — детали marketplace, adapters и workflow внутри journeys, но не замена
   полного пользовательского пути. Они запускаются на platform, собранной из
   текущего checkout и установленной из Verdaccio.
-- `.github/workflows/publish-npm-on-tag.yml` — обязательный post-publish V2
+- `.github/workflows/release-deliver-candidate.yml` — обязательный post-publish V2
   smoke, который запускает journey на точном release-index и сохраняет log.
