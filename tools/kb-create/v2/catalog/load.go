@@ -21,5 +21,8 @@ func LoadFile(path string) (Catalog, error) {
 	if err := Verify(result); err != nil {
 		return Catalog{}, fmt.Errorf("validate release index: %w", err)
 	}
+	if result.Compatibility == nil {
+		return Catalog{}, fmt.Errorf("validate release index: compatibility matrix is required")
+	}
 	return result, nil
 }
