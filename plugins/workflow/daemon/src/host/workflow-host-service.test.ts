@@ -85,7 +85,7 @@ describe('WorkflowHostService', () => {
   });
 
   // BUG-04: `kb workflow runs status --run-id ...` (backed by getRun()) returned
-  // the engine's internal 'success' status verbatim, while e2e/install-flow/test.sh
+  // the engine's internal 'success' status verbatim, while the launcher V2 E2E
   // and the docs poll for a terminal 'completed' — the same status this same
   // service already returns from getJob/listJobs for the very same run. The
   // polling loop never exited early and burned all 30 retries.

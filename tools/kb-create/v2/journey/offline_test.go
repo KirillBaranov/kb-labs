@@ -1,8 +1,11 @@
 package journey_test
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +17,9 @@ import (
 	"github.com/kb-labs/create/v2/render"
 	"github.com/kb-labs/create/v2/resolve"
 	"github.com/kb-labs/create/v2/runtime"
+	"github.com/kb-labs/create/v2/transport"
 	"github.com/kb-labs/create/v2/verify"
+	"github.com/kb-labs/create/v2/wizard"
 )
 
 type status []verify.ObservedService
@@ -158,4 +163,88 @@ func TestOfflineApplyCompletesPluginAndWorkflowReadyPath(t *testing.T) {
 	if !strings.Contains(string(config), "commit") {
 		t.Fatalf("rendered config = %s, plugin is not projected", config)
 	}
+}
+
+// TestTransportMatrixUsesOneResolvedPluginWorkflowPath proves that the three
+// supported frontends differ only in request acquisition. It deliberately
+// crosses real V2 package boundaries (wizard -> request, agent JSON ->
+// transport, CI request -> resolver) before applying each resulting plan.
+// The artifact and service doubles are the public runtime ports; package
+// resolution, rendering, receipt and graph verification are never mocked.
+func TestTransportMatrixUsesOneResolvedPluginWorkflowPath(t *testing.T) {
+	source := catalog.Catalog{
+		Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0", contracts.ChannelCanary: "2.1.0"},
+		Platforms: []catalog.PlatformBundle{
+			{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform-2.0.0.tgz", SHA256: "platform-stable", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0", Profile: "default", Services: []contracts.Service{{ID: "workflow", Command: "kb-workflow", Port: 7778, Required: true}}}}},
+			{ID: "platform", Version: "2.1.0", Package: "@kb/platform", Tarball: "https://example.test/platform-2.1.0.tgz", SHA256: "platform-canary", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.1.0", Profile: "default", Services: []contracts.Service{{ID: "workflow", Command: "kb-workflow", Port: 7778, Required: true}}}}},
+		},
+		Plugins: []catalog.Component{{ID: "user-plugin", Version: "1.0.0", Package: "@kb/user-plugin", Tarball: "https://example.test/user-plugin.tgz", SHA256: "user-plugin", PlatformRange: "^2.0.0"}},
+	}
+	sealed, err := catalog.Seal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source = sealed
+
+	humanRoot := filepath.Join(t.TempDir(), "human")
+	human, err := wizard.Request(source, humanRoot, wizard.IO{In: strings.NewReader("stable\ndefault\nuser-plugin\n\n"), Out: io.Discard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentRoot := filepath.Join(t.TempDir(), "agent")
+	agentRequest := contracts.InstallRequest{PlatformRoot: agentRoot, Platform: contracts.VersionSelector{Channel: contracts.ChannelStable}, ServiceProfile: "default", Plugins: []contracts.ComponentRequest{{ID: "user-plugin"}}, Policy: contracts.PolicyCompatible}
+	agentData, err := json.Marshal(agentRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentResponse := transport.Plan(agentData, source)
+	if !agentResponse.OK {
+		t.Fatalf("agent plan = %#v", agentResponse.Error)
+	}
+	ciRoot := filepath.Join(t.TempDir(), "ci")
+	ci, err := (contracts.InstallRequest{PlatformRoot: ciRoot, Platform: contracts.VersionSelector{Channel: contracts.ChannelStable}, ServiceProfile: "default", Plugins: []contracts.ComponentRequest{{ID: "user-plugin"}}, Policy: contracts.PolicyCompatible}).Normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ciPlan, err := resolve.Plan(ci, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	humanPlan, err := resolve.Plan(human, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(artifactIDs(humanPlan.Artifacts), artifactIDs(agentResponse.Plan.Artifacts)) || !reflect.DeepEqual(artifactIDs(humanPlan.Artifacts), artifactIDs(ciPlan.Artifacts)) {
+		t.Fatalf("transport artifact sets differ: human=%v agent=%v ci=%v", artifactIDs(humanPlan.Artifacts), artifactIDs(agentResponse.Plan.Artifacts), artifactIDs(ciPlan.Artifacts))
+	}
+	for _, plan := range []contracts.ResolvedInstallPlan{humanPlan, *agentResponse.Plan, ciPlan} {
+		artifacts := &offlineArtifacts{}
+		services := &lifecycleServices{status: status{{ID: "workflow", State: "alive"}}}
+		if _, err := runtime.Apply(plan, runtime.Dependencies{Artifacts: artifacts, Status: services, Activator: services}); err != nil {
+			t.Fatalf("%s apply: %v", plan.Request.PlatformRoot, err)
+		}
+		if !containsArtifact(artifacts.installed, "user-plugin") {
+			t.Fatalf("%s did not install selected plugin: %#v", plan.Request.PlatformRoot, artifacts.installed)
+		}
+		if _, err := receipt.Read(plan.Request.PlatformRoot); err != nil {
+			t.Fatalf("%s missing verified receipt: %v", plan.Request.PlatformRoot, err)
+		}
+	}
+}
+
+func artifactIDs(artifacts []contracts.Artifact) []string {
+	ids := make([]string, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		ids = append(ids, artifact.ID+"@"+artifact.Version)
+	}
+	return ids
+}
+
+func containsArtifact(artifacts []contracts.Artifact, id string) bool {
+	for _, artifact := range artifacts {
+		if artifact.ID == id {
+			return true
+		}
+	}
+	return false
 }

@@ -257,5 +257,5 @@ fi
 ok "Installation completed in ${ELAPSED}s"
 echo ""
 printf "%sGet started:%s\n" "$C_BOLD" "$C_RESET"
-printf "  %skb-create my-project%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-create status%s\n" "$C_DIM" "$C_RESET"
+printf "  %skb-create wizard --index release-index.json --request-platform-root ./kb-platform%s\n" "$C_DIM" "$C_RESET"
+printf "  %skb-create status --platform-root ./kb-platform%s\n" "$C_DIM" "$C_RESET"

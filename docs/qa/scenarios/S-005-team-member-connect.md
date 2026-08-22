@@ -28,7 +28,7 @@ without managing their own LLM credentials.
 | # | Action | Expected | Actual | Status |
 |---|--------|----------|--------|--------|
 | 1 | `curl -fsSL https://kblabs.ru/install.sh \| sh` | `kb-create` installed | | ⬜ |
-| 2 | `kb-create my-project --yes --platform https://<team-domain>` | Project bootstrapped, connected to team platform (not local) | | ⬜ |
+| 2 | `kb-create apply --index <release-index> --request-platform-root <platform> --project-root <project>` | Project pointer generated and selected platform applied from the sealed index | | ⬜ |
 | 3 | `.env` or config contains team platform URL, no personal LLM key | Member is not using their own key | | ⬜ |
 
 ### Phase 2 — Authentication

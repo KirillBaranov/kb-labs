@@ -1,24 +1,23 @@
 name: 'KB Labs CLI Install'
 description: >-
-  Installs specific KB Labs plugins/services via kb-create's non-interactive
-  install command, without building kb-create from source — downloads the
-  matching binary for the runner's OS/arch from a KB Labs binaries release
-  (same release channel kb-create's own self-update uses) and runs
-  `kb-create install`.
+  Applies a sealed V2 release index with the published kb-create binary and a
+  non-interactive request. The same request contract is used by CI, agents and
+  the human wizard.
 author: 'KB Labs'
 
 inputs:
   plugins:
     description: >-
-      Comma-separated plugin IDs to install, each optionally pinned to a
-      version (e.g. "release@0.2.0,commit"). Must exist in the manifest
-      catalog — unknown IDs fail fast before any install action.
+      Comma-separated V2 plugin IDs, each optionally pinned to an exact version.
     required: false
     default: ''
-  services:
-    description: 'Comma-separated service IDs to install, same syntax as plugins.'
+  release-index:
+    description: 'Path to the sealed kb.create.release-index/v2 JSON.'
+    required: true
+  project-dir:
+    description: 'Project root receiving the user-owned V2 config pointer.'
     required: false
-    default: ''
+    default: '${{ github.workspace }}'
   adapters:
     description: >-
       Comma-separated "role=pkg[@version]" adapter overrides (e.g.
@@ -110,17 +109,17 @@ runs:
       shell: bash
       env:
         PLUGINS: ${{ inputs.plugins }}
-        SERVICES: ${{ inputs.services }}
         ADAPTERS: ${{ inputs.adapters }}
         PLATFORM_DIR: ${{ inputs.platform-dir }}
+        PROJECT_DIR: ${{ inputs.project-dir }}
+        RELEASE_INDEX: ${{ inputs.release-index }}
         REGISTRY: ${{ inputs.registry }}
         EXT: ${{ steps.platform.outputs.ext }}
       run: |
         set -euo pipefail
         bin="${RUNNER_TEMP}/kb-create${EXT}"
-        args=(install --platform "$PLATFORM_DIR")
+        args=(apply --index "$RELEASE_INDEX" --request-platform-root "$PLATFORM_DIR" --project-root "$PROJECT_DIR")
         [ -n "$PLUGINS" ] && args+=(--plugins "$PLUGINS")
-        [ -n "$SERVICES" ] && args+=(--services "$SERVICES")
         [ -n "$ADAPTERS" ] && args+=(--adapters "$ADAPTERS")
         [ -n "$REGISTRY" ] && args+=(--registry "$REGISTRY")
         "$bin" "${args[@]}"

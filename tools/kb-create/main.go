@@ -1,6 +1,10 @@
 package main
 
-import "github.com/kb-labs/create/cmd"
+import (
+	"os"
+
+	v2cli "github.com/kb-labs/create/v2/cmd/kb-create-v2"
+)
 
 // Build-time variables injected by goreleaser / go build -ldflags.
 var (
@@ -10,6 +14,6 @@ var (
 )
 
 func main() {
-	cmd.SetVersionInfo(version, commit, date)
-	cmd.Execute()
+	v2cli.SetVersionInfo(version, commit, date)
+	os.Exit(v2cli.Execute())
 }

@@ -1,4 +1,4 @@
-package main
+package v2cli
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/receipt"
+	"github.com/kb-labs/create/v2/render"
 	"github.com/kb-labs/create/v2/secrets"
 )
 
@@ -193,5 +195,39 @@ func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	}
 	if !strings.Contains(string(result), `"path":"/gateway/access/mode"`) || !strings.Contains(string(result), `"json":"\"local\""`) {
 		t.Fatalf("plan = %s", result)
+	}
+}
+
+func TestRunStatusVerifiesTheReceiptOwnedGraph(t *testing.T) {
+	dir := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{
+		Schema:       contracts.ResolvedPlanSchema,
+		PlanHash:     "status-plan",
+		Request:      contracts.InstallRequest{PlatformRoot: dir},
+		ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "workflow", Command: "workflow", Required: true}}},
+	}
+	if _, err := render.Write(plan); err != nil {
+		t.Fatal(err)
+	}
+	if err := receipt.Write(dir, contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "receipt", Plan: plan}); err != nil {
+		t.Fatal(err)
+	}
+	kbdev := filepath.Join(dir, "kb-dev")
+	if err := os.WriteFile(kbdev, []byte("#!/bin/sh\nprintf '%s\\n' '{\"services\":{\"workflow\":{\"state\":\"alive\"}}}'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	output, err := os.CreateTemp(dir, "status-output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := runStatus(dir, kbdev, output); code != 0 {
+		t.Fatalf("status exit code = %d", code)
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(output.Name())
+	if err != nil || !strings.Contains(string(data), `"operation":"status"`) {
+		t.Fatalf("status output = %s, error = %v", data, err)
 	}
 }

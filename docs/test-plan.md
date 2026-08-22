@@ -1,7 +1,8 @@
 # Test plan — current critical paths
 
-The previous test-gap inventory described the removed pre-V2 installer and is
-not a release contract. The current executable plan is
+The legacy launcher package is not a public execution path. It remains only
+while its unrelated delivery utilities and historical E2E fixtures are being
+retired; it is not release evidence. The current executable plan is
 [QA and E2E strategy](qa/TESTING-STRATEGY.md).
 
 ## Release-critical paths
@@ -15,6 +16,25 @@ not a release contract. The current executable plan is
 | diagnostics | opaque failure, leaked secret, unsafe automatic repair | `v2/doctor`, `v2/diagnostics`, `v2/logs` tests |
 | fresh candidate | released npm artifact is not installable | platform publish workflow `launcher-smoke` |
 | running services | process/readiness/cross-service regressions | affected E2E shards under `e2e/` |
+
+## Shared transport matrix
+
+Human wizard, Agent JSON and CI flags are three input transports for one
+`kb.create/v2` request. They must not acquire separate install semantics or
+have separate acceptance criteria.
+
+| Transport | Input boundary | Required common assertions |
+| --- | --- | --- |
+| Human | wizard prompts → normalized request | stable/canary and exact selection, provider choice, compatible rejection, generated config, selected plugin, service readiness |
+| Agent | JSON request/flow session → transport plan | same resolved artifacts and diagnostics as Human; no secret value in transcript or response |
+| CI | direct flags or request file → normalized request | same resolved artifacts and diagnostics as Agent; non-interactive update/rollback is receipt-owned |
+
+`TestTransportMatrixUsesOneResolvedPluginWorkflowPath` is the deterministic
+cross-transport integration proof. It exercises the actual wizard, JSON
+transport, resolver, renderer, receipt and verifier; only the two external
+ports (exact-artifact installer and `kb-dev`) are fixture adapters. It is not
+a substitute for the published-artifact E2E gate: that gate must also create a
+user plugin and execute a workflow through the installed `kb` CLI.
 
 ## Required commands before a launcher change
 

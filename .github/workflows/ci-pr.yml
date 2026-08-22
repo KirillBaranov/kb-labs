@@ -110,7 +110,7 @@ jobs:
       matrix:
         include:
           - shard: resolver-config
-            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
+            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/flow ./v2/preflight ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
           - shard: runtime-recovery
             packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
           - shard: doctor-diagnostics
@@ -426,22 +426,6 @@ jobs:
         if: steps.gate-result.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Build launcher package closure
-        if: steps.gate-result.outputs.run == 'true'
-        run: |
-          packages=$(node -e '
-            const manifest = require("./tools/kb-create/internal/manifest/manifest.json");
-            const names = [
-              ...(manifest.core ?? []).map((item) => item.name),
-              ...(manifest.services ?? []).map((item) => item.pkg),
-              ...(manifest.services ?? []).map((item) => item.plugin),
-              ...(manifest.adapters ?? []).map((item) => item.name),
-              ...(manifest.plugins ?? []).map((item) => item.pkg),
-            ].filter(Boolean);
-            process.stdout.write([...new Set(names)].join(","));
-          ')
-          ./tools/kb-devkit/kb-devkit run build --packages "$packages" --no-cache
-
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
       - name: Pack @kb-labs/* packages
@@ -492,12 +476,11 @@ jobs:
         run: docker compose run --rm publisher
 
       # ── Run kb-create Go e2e tests ───────────────────────────────────────
-      # KB_REGISTRY_URL is read by pm.Detect() — pnpm inside kb-create install
-      # will point to local Verdaccio instead of npm.org.
+      # The V2 release-index path and registry are explicit operation inputs.
 
       - name: Run kb-create e2e via devkit
         if: steps.gate-result.outputs.run == 'true'
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        run: cd tools/kb-create && go test -v -race -count=1 ./v2/e2e/...
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}

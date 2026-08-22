@@ -1,7 +1,7 @@
-// kb-create-v2 is the standalone V2 machine entrypoint. It deliberately does
-// not expose or import legacy commands; a later root cutover can promote this
-// command without inheriting legacy state semantics.
-package main
+// Package v2cli is the public V2 kb-create frontend. Both the released root
+// binary and package-local tests enter through Execute, so there is exactly one
+// launcher command surface and no legacy dispatcher to keep in sync.
+package v2cli
 
 import (
 	"encoding/json"
@@ -26,16 +26,35 @@ import (
 	"github.com/kb-labs/create/v2/services"
 	"github.com/kb-labs/create/v2/telemetry"
 	"github.com/kb-labs/create/v2/transport"
+	"github.com/kb-labs/create/v2/verify"
 	"github.com/kb-labs/create/v2/wizard"
 )
 
 var telemetryEndpoint string
 var telemetryConsent bool
+var buildVersion = "dev"
 
-func main() {
+// SetVersionInfo preserves the released binary's version contract without
+// exposing the retired command dispatcher to V2.
+func SetVersionInfo(version, _ string, _ string) {
+	if version != "" {
+		buildVersion = version
+	}
+}
+
+// Execute runs the public kb-create command and returns its process status.
+// A positional operation is accepted for human use while the explicit
+// --operation form remains the stable CI/agent protocol.
+func Execute() int {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Fprintf(os.Stdout, "kb-create %s\n", buildVersion)
+		return 0
+	}
+	normalizeOperationArgument()
 	index := flag.String("index", "", "path to immutable V2 release index JSON")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
 	requestRoot := flag.String("request-platform-root", "", "platform root for direct CI/agent request")
+	projectRoot := flag.String("project-root", "", "project root for the user-owned V2 config pointer")
 	platformVersion := flag.String("platform-version", "", "exact platform version for direct request")
 	platformChannel := flag.String("platform-channel", "", "platform channel: stable, canary, experimental")
 	sdkVersion := flag.String("sdk-version", "", "exact SDK version for direct request")
@@ -50,7 +69,7 @@ func main() {
 	scenarioAnswers := flag.String("scenario-answers", "", "JSON object of V2 scenario field answers")
 	scenarioResume := flag.Bool("resume", false, "resume persisted non-secret V2 scenario answers")
 	doctorFix := flag.Bool("fix", false, "apply only manifest-declared safe doctor defaults")
-	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update")
+	operation := flag.String("operation", "plan", "V2 operation: plan, apply, update, status")
 	platformRoot := flag.String("platform-root", "", "platform root for uninstall or rollback")
 	snapshotID := flag.String("snapshot", "", "V2 snapshot ID for rollback")
 	registry := flag.String("registry", "", "npm registry for exact artifact installation")
@@ -59,22 +78,36 @@ func main() {
 	telemetryAllowed := flag.Bool("telemetry-consent", false, "allow anonymous operational telemetry")
 	flag.Parse()
 	telemetryEndpoint, telemetryConsent = *telemetryURL, *telemetryAllowed
-	direct := directRequest{PlatformRoot: *requestRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
-	os.Exit(run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout))
+	direct := directRequest{PlatformRoot: *requestRoot, ProjectRoot: *projectRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
+	return run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout)
+}
+
+func normalizeOperationArgument() {
+	if len(os.Args) < 2 {
+		return
+	}
+	operation := os.Args[1]
+	switch operation {
+	case "plan", "apply", "update", "uninstall", "rollback", "doctor", "wizard", "status":
+		os.Args = append([]string{os.Args[0], "--operation", operation}, os.Args[2:]...)
+	}
 }
 
 type directRequest struct {
-	PlatformRoot, PlatformVersion, PlatformChannel, SDKVersion, ServiceProfile, Plugins, Adapters, Policy string
-	Offline                                                                                               bool
+	PlatformRoot, ProjectRoot, PlatformVersion, PlatformChannel, SDKVersion, ServiceProfile, Plugins, Adapters, Policy string
+	Offline                                                                                                            bool
 }
 
 func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev, secretEnv string, doctorFix bool, scenarioID, scenarioAnswers string, scenarioResume bool, direct directRequest, output *os.File) int {
-	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" {
-		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, or wizard", nil))
+	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" && operation != "status" {
+		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, wizard, or status", nil))
 		return 2
 	}
 	if operation == "doctor" {
 		return runDoctor(doctorInput, platformRoot, kbdev, doctorFix, output)
+	}
+	if operation == "status" {
+		return runStatus(platformRoot, kbdev, output)
 	}
 	if operation == "wizard" {
 		return runWizard(indexPath, direct.PlatformRoot, scenarioID, output)
@@ -171,6 +204,28 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	return 1
 }
 
+// runStatus verifies the receipt-owned graph without resolving a new release.
+// That makes status safe for stable, canary and exact-version installations:
+// it reports the immutable decision that was actually applied.
+func runStatus(platformRoot, kbdev string, output *os.File) int {
+	if platformRoot == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required", "pass the V2 platform root that owns the active receipt", nil))
+		return 2
+	}
+	active, err := receipt.Read(platformRoot)
+	if err != nil {
+		write(output, failure("KB_CREATE_RECEIPT_UNAVAILABLE", "active V2 receipt could not be read", "run apply first or restore a named V2 snapshot", err))
+		return 2
+	}
+	check, err := verify.Run(active.Plan, services.KBDev{Binary: kbdev}, time.Now().UTC())
+	if err != nil {
+		write(output, failure("KB_CREATE_STATUS_UNHEALTHY", "installed V2 service graph is not ready", "inspect kb-dev status or run doctor --fix", err))
+		return 1
+	}
+	write(output, map[string]any{"ok": true, "operation": "status", "receipt": active, "verification": check})
+	return 0
+}
+
 func populateSecrets(store secrets.Store, mappings string) error {
 	if strings.TrimSpace(mappings) == "" {
 		return nil
@@ -246,7 +301,7 @@ func runWizard(indexPath, platformRoot, scenarioID string, output *os.File) int 
 }
 
 func (value directRequest) normalize() (contracts.InstallRequest, error) {
-	request := contracts.InstallRequest{Schema: contracts.RequestSchema, PlatformRoot: value.PlatformRoot, Platform: contracts.VersionSelector{Version: value.PlatformVersion, Channel: contracts.Channel(value.PlatformChannel)}, SDK: contracts.VersionSelector{Version: value.SDKVersion}, ServiceProfile: value.ServiceProfile, Policy: contracts.CompatibilityPolicy(value.Policy), Source: contracts.SourceRegistry}
+	request := contracts.InstallRequest{Schema: contracts.RequestSchema, PlatformRoot: value.PlatformRoot, ProjectRoot: value.ProjectRoot, Platform: contracts.VersionSelector{Version: value.PlatformVersion, Channel: contracts.Channel(value.PlatformChannel)}, SDK: contracts.VersionSelector{Version: value.SDKVersion}, ServiceProfile: value.ServiceProfile, Policy: contracts.CompatibilityPolicy(value.Policy), Source: contracts.SourceRegistry}
 	if value.Offline {
 		request.Source = contracts.SourceOffline
 	}

@@ -13,7 +13,6 @@ const zones = [
     watch: [
       'core/**',
       'pnpm-lock.yaml',
-      'e2e/install-flow/**',
       'e2e/scripts/**',
       'e2e/tests/**',
       'package.json',
@@ -30,7 +29,7 @@ test('glob matching accepts zero or more directories for **', () => {
 });
 
 test('zone runner is carried into the shared E2E plan', () => {
-  const plan = buildPlan(parseNameStatus('M\ttools/kb-create/internal/manifest/manifest.json\n'), zones);
+  const plan = buildPlan(parseNameStatus('M\ttools/kb-create/v2/catalog/catalog.go\n'), zones);
   assert.deepEqual(plan.selected.map(({ zone, runner, suites }) => ({ zone, runner, suites })), [
     { zone: 'launcher', runner: 'launcher', suites: ['e2e-kb-create'] },
   ]);
@@ -51,7 +50,6 @@ test('global changes select every zone and docs are ignored', () => {
 
 test('shared install and packaging infrastructure is covered globally', () => {
   const plan = buildPlan(parseNameStatus([
-    'M\te2e/install-flow/Dockerfile',
     'M\te2e/scripts/pack-all.sh',
     'M\te2e/tests/Dockerfile',
     'M\tpackage.json',

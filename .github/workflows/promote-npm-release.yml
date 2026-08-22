@@ -203,19 +203,6 @@ jobs:
           echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build immutable installer manifest
-        if: steps.notes.outputs.flow == 'platform'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          binaries_tag="$(gh api 'repos/${{ github.repository }}/releases?per_page=100' --paginate --jq '.[] | select(.tag_name | endswith("-binaries")) | .tag_name' | head -n1)"
-          test -n "$binaries_tag"
-          node scripts/generate-installer-manifest.mjs \
-            --release-tag "${{ inputs.release_tag }}" \
-            --binaries-tag "$binaries_tag" \
-            --output .kb/release/installer-manifest.json
-
       - name: Build immutable release receipt
         shell: bash
         env:
@@ -284,39 +271,5 @@ jobs:
           prerelease: false
           files: |
             release-receipt.json
-            ${{ needs.promote.outputs.flow == 'platform' && '.kb/release/installer-manifest.json' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  installer-channel:
-    name: Publish installer stable channel
-    if: needs.promote.outputs.flow == 'platform'
-    needs: [promote, github-release]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Publish stable channel pointer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          mkdir -p .kb/release/channel
-          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern installer-manifest.json --dir .kb/release/channel
-          checksum="$(sha256sum .kb/release/channel/installer-manifest.json | awk '{print $1}')"
-          manifest_url="https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG/installer-manifest.json"
-          jq -n \
-            --arg releaseTag "$RELEASE_TAG" \
-            --arg manifestUrl "$manifest_url" \
-            --arg sha256 "$checksum" \
-            '{schema: 1, channel: "stable", releaseTag: $releaseTag, manifestUrl: $manifestUrl, sha256: $sha256}' \
-            > .kb/release/channel/channel.json
-          if ! gh release view installer-stable --repo "$REPOSITORY" >/dev/null 2>&1; then
-            gh release create installer-stable --repo "$REPOSITORY" \
-              --title "KB Labs installer stable channel" \
-              --notes "Mutable stable channel pointer for kb-create."
-          fi
-          gh release upload installer-stable .kb/release/channel/channel.json \
-            --repo "$REPOSITORY" --clobber

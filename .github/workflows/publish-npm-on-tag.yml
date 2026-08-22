@@ -233,6 +233,7 @@ jobs:
           # this override kb-create resolves `latest` and tests the previous
           # stable release instead of the artifacts delivered above.
           KB_CREATE_PACKAGE_TAG: canary
+          KB_CREATE_RELEASE_INDEX: ${{ github.workspace }}/.kb/release/release-index.json
 
       - name: Verify published candidate compatibility marker
         shell: bash

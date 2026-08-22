@@ -4,7 +4,8 @@ title: AI Commit — with real LLM
 persona: solo-developer
 priority: P0
 automation: e2e-done
-e2e: e2e/install-flow/test.sh (steps 6–6b)
+e2e: domain workflow E2E; the V2 post-publish journey covers the installed
+  plugin/workflow path, while LLM credentials remain a domain concern
 ---
 
 ## Goal

@@ -1,11 +1,11 @@
 name: kb-create-install action smoke test
 
 # Ad-hoc verification that the reusable .github/actions/kb-create-install
-# composite action actually works end to end: downloads the real released
-# kb-create binary (no build-from-source) and installs a plugin with it.
+# composite action applies a sealed V2 release index with the real released
+# kb-create binary and installs a plugin with it.
 #
 # This is deliberately separate from the Go-level e2e suite (tools/kb-create/
-# e2e/), which tests kb-create itself built from source on every PR — this
+# v2/e2e/), which tests kb-create itself built from source on every PR — this
 # workflow instead proves the *packaged, reusable action* wrapping a released
 # binary works, the way an external consumer repo would actually use it.
 
@@ -16,6 +16,9 @@ on:
         description: 'Plugin ID to install (must be in the manifest catalog)'
         required: true
         default: 'release'
+      release_index:
+        description: 'Path to a sealed V2 release-index.json in the checked-out ref'
+        required: true
 
 permissions:
   contents: read
@@ -33,6 +36,7 @@ jobs:
         uses: ./.github/actions/kb-create-install
         with:
           plugins: ${{ inputs.plugin }}
+          release-index: ${{ inputs.release_index }}
           platform-dir: ${{ runner.temp }}/kb-platform-action-smoke
 
       - name: Verify the plugin package is actually there

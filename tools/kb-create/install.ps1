@@ -127,6 +127,6 @@ Write-Ok "Checksum verified ($File)"
 if ($ResolvedVersion) { Write-Ok "Version: $ResolvedVersion" }
 Write-Host ""
 Write-Host "Get started:" -ForegroundColor White
-Write-Host "  kb-create my-project" -ForegroundColor DarkGray
+Write-Host "  kb-create wizard --index release-index.json --request-platform-root ./kb-platform" -ForegroundColor DarkGray
 Write-Host "  kb-create status" -ForegroundColor DarkGray
 Write-Host ""

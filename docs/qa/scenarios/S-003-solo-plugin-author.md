@@ -4,7 +4,7 @@ title: Solo — Create & Run Plugin
 persona: plugin-author
 priority: P1
 automation: e2e-done
-e2e: e2e/install-flow/test.sh (steps 7–9)
+e2e: tools/kb-create/v2/e2e/release_smoke_test.go
 ---
 
 ## Goal

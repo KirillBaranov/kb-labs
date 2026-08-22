@@ -177,8 +177,8 @@ jobs:
           fi
 
       # ── Run kb-create Go e2e tests ────────────────────────────────────
-      # KB_REGISTRY_URL is read by pm.Detect() — pnpm inside kb-create install
-      # will point to local Verdaccio instead of npm.org.
+      # V2 receives the registry as an explicit apply flag; pnpm transcript
+      # remains private to the operation log.
       # NPM_CONFIG_REGISTRY is intentionally NOT set here: pm.Detect() only
       # falls back to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
 
@@ -188,7 +188,7 @@ jobs:
 
       - name: Run kb-create e2e via devkit
         if: inputs.gate == false || steps.gate.outputs.run == 'true'
-        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        run: cd tools/kb-create && go test -v -race -count=1 ./v2/e2e/...
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}

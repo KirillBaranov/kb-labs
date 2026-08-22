@@ -4,7 +4,7 @@ title: Platform Team — Composition Validated Before Ship
 persona: platform-team
 priority: P0
 automation: e2e-done
-e2e: tools/kb-create/internal/validate/validate_test.go
+e2e: tools/kb-create/v2/catalog/load_test.go
 ---
 
 ## Goal

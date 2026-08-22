@@ -2,9 +2,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-// kb-create merges this snippet into a fresh project's CLAUDE.md during
-// install (tools/kb-create/internal/claude/claudemd.go), so a stale command
-// here reaches every new user's onboarding doc verbatim.
+// The platform onboarding surface consumes this snippet during project setup;
+// keep it independent from the launcher's V2 artifact application boundary.
 const snippetPath = fileURLToPath(new URL('./CLAUDE.md.snippet', import.meta.url))
 const snippet = readFileSync(snippetPath, 'utf8')
 

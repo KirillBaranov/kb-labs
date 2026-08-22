@@ -1,7 +1,0 @@
-{
-  "schema": "kb.scenario/2",
-  "id": "release",
-  "title": "Release automation",
-  "install": {"components": [{"id": "plugin:release"}]},
-  "pages": [{"id": "summary", "sections": []}]
-}

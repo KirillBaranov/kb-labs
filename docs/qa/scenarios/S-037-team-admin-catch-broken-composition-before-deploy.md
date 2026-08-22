@@ -4,7 +4,7 @@ title: Team Admin — Catch a Broken Composition Before Deploying
 persona: team-admin
 priority: P0
 automation: e2e-done
-e2e: tools/kb-create/internal/validate/validate_test.go
+e2e: tools/kb-create/v2/catalog/load_test.go
 ---
 
 ## Goal
@@ -53,7 +53,7 @@ is an admin using the same tool before their own deploy.
 
 ## Notes
 
-- Fully covered by `tools/kb-create/internal/validate/validate_test.go`
+- Covered by V2 release-index/catalog validation tests.
   (`TestValidate_UnknownSlot_Errors`, `TestValidate_LockCrossCheck_MissingPackage`).
   Run: `go test ./internal/validate/...` from `tools/kb-create/`.
 - An admin won't usually have a service's `marketplace.lock` on hand unless

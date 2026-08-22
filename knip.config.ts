@@ -30,8 +30,6 @@ const config: KnipConfig = {
     'plugins/release/manager-changelog/src/templates/builtin/**',
     // release/manager-cli studio — loaded via Module Federation (rspack.studio.config.mjs exposes them)
     'plugins/release/manager-cli/src/studio/**',
-    // tools/kb-create Go scanner helper — standalone Node.js script, not imported
-    'tools/kb-create/internal/scan/scanner.js',
     // AI review test file (core/types) — not a real test, not imported
     'core/types/src/test-review.ts',
   ],

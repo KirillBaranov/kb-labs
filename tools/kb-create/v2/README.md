@@ -1,9 +1,10 @@
 # kb-create V2 — launcher contract reset
 
-**Status:** active replacement implementation
-**Scope:** a self-contained launcher chain under `tools/kb-create/v2/`. V2
-does not import legacy launcher state, manifests, package manager or execution
-engine. At cutover V2 moves to the package root and legacy is removed.
+**Status:** active public implementation
+**Scope:** V2 packages remain under `tools/kb-create/v2/` to keep their import
+boundary explicit. The released root binary is `kb-create` and imports only
+this V2 command surface; V2 does not import legacy launcher state, manifests,
+package manager or execution engine.
 
 ## Implemented vertical slice
 
@@ -21,14 +22,12 @@ The V2 boundary is executable and covered by an offline journey test:
 - `artifacts/`, `runtime/`, `receipt/`, `doctor/` and `diagnostics/` establish
   exact artifact application, recovery, manifest-gap
   reporting and redacted dossiers before CLI cutover exposes the flow.
-- `cmd/kb-create-v2/` is the standalone machine frontend today: `plan`,
+- `cmd/kb-create-v2/` is the root binary's machine frontend: `plan`,
   `apply`, `update`, `uninstall`, explicit `rollback`, and manifest-aware
   `doctor` all use V2 contracts and emit one JSON envelope.
 
-This is intentionally not wired to legacy `install` yet. Connecting two
-resolvers or lifecycle owners to one production command would recreate the
-split-brain V2 removes. Cutover replaces the legacy root rather than adapting
-V2 to legacy state.
+There is no legacy `install` fallback. Connecting two resolvers or lifecycle
+owners to one production command would recreate the split-brain V2 removes.
 
 `apply` and `update` require an immutable release index and request. Recovery
 operations deliberately require only `--platform-root` (and a snapshot for
@@ -43,7 +42,7 @@ as `--request-platform-root`, `--platform-version`/`--platform-channel`,
 the same `InstallRequest` before resolution; flags never build a separate
 shell-level install sequence.
 
-For a human, `kb-create-v2 --operation wizard --index release-index.json
+For a human, `kb-create wizard --index release-index.json
 --request-platform-root /path/to/platform` asks only for product axes and
 returns the same JSON request on stdout. It does not apply anything or own a
 second resolver; feed that request into `plan` or `apply` to continue.
@@ -67,8 +66,8 @@ manifest-export.json --manifest-root staging-root --output release-index.json`.
 The command reads the exact V2 manifests staged with each artifact and replaces
 any hand-authored config projection; missing/mismatched manifests fail the
 release. It then rejects an index whose channel points outside its platform
-set and seals the canonical payload with a digest. `kb-create-v2` verifies
-that digest before resolving.
+set and seals the canonical payload with a digest. `kb-create` verifies that
+digest before resolving.
 
 Secret input uses `--secret-env requirement.id=ENV_VAR`, so CI/agents pass a
 reference to process environment rather than secret text through argv/JSON.
