@@ -2,7 +2,7 @@
 # Test suite for install.sh — the curl|sh entry point that installation-flow.md
 # documents as Phase 1 ("A: curl install.sh" -> "B: SHA-256 checksum OK?" ->
 # "C: kb-create binary in ~/.local/bin"), and that no existing test exercises:
-# every e2e test (tools/kb-create/e2e/*_test.go) builds the Go binary directly
+# the published V2 e2e journey builds the Go binary in a temporary directory
 # with `go build` and skips install.sh entirely.
 #
 # Runs fully offline by stubbing `curl` (a shim placed first on PATH) so no

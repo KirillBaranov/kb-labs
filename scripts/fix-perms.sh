@@ -19,7 +19,6 @@ FILES=(
   scripts/merge-coverage.sh
 
   # E2E
-  e2e/install-flow/test.sh
   e2e/platform/entrypoint.sh
   e2e/delivery/scripts/build-binaries.sh
   e2e/delivery/scripts/publish-fixtures.sh

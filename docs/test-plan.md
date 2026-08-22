@@ -1,7 +1,8 @@
 # Test plan — current critical paths
 
-The previous test-gap inventory described the removed pre-V2 installer and is
-not a release contract. The current executable plan is
+The old launcher implementation is not a public execution path and is not
+release evidence. Unrelated platform delivery utilities remain outside this
+launcher cutover. The current executable plan is
 [QA and E2E strategy](qa/TESTING-STRATEGY.md).
 
 ## Release-critical paths
@@ -10,11 +11,39 @@ not a release contract. The current executable plan is
 | --- | --- | --- |
 | release index | wrong package/version/bytes reach an installer | staged-manifest extraction, sealing and registry-binding tests |
 | request resolution | incompatible platform/SDK/plugin/adapter selection | `tools/kb-create/v2/catalog` and `resolve` tests |
+| prerequisite failures | incompatible versions, registry/network failure, unsupported Node.js or pnpm | V2 negative-path E2E plus `preflight`/artifact executor tests |
 | config rendering | missing or incoherent `kb.config.jsonc` / `devservices.yaml` | `v2/render`, service-graph validation and `v2/verify` tests |
 | lifecycle | partial apply/update and unsafe recovery | `v2/runtime`, `v2/lifecycle`, receipt/snapshot tests |
 | diagnostics | opaque failure, leaked secret, unsafe automatic repair | `v2/doctor`, `v2/diagnostics`, `v2/logs` tests |
 | fresh candidate | released npm artifact is not installable | platform publish workflow `launcher-smoke` |
 | running services | process/readiness/cross-service regressions | affected E2E shards under `e2e/` |
+
+## Shared transport matrix
+
+Human wizard, Agent JSON and CI flags are three input transports for one
+`kb.create/v2` request. They must not acquire separate install semantics or
+have separate acceptance criteria.
+
+| Transport | Input boundary | Required common assertions |
+| --- | --- | --- |
+| Human | wizard prompts → normalized request | stable/canary and exact selection, provider choice, compatible rejection, generated config, selected plugin, service readiness |
+| Agent | JSON request/flow session → transport plan | same resolved artifacts and diagnostics as Human; no secret value in transcript or response |
+| CI | direct flags or request file → normalized request | same resolved artifacts and diagnostics as Agent; non-interactive update/rollback is receipt-owned |
+
+`TestTransportMatrixUsesOneResolvedPluginWorkflowPath` is the deterministic
+cross-transport integration proof. It exercises the actual wizard, JSON
+transport, resolver, renderer, receipt and verifier; only the two external
+ports (exact-artifact installer and `kb-dev`) are fixture adapters. It is not
+a substitute for the published-artifact E2E gate: that gate must also create a
+user plugin and execute a workflow through the installed `kb` CLI.
+
+The negative-path matrix must also prove that failures stop before claiming
+success: incompatible component ranges are rejected by the resolver, registry
+5xx/download failures do not start pnpm mutation, unsupported Node.js/pnpm
+versions fail preflight with remediation, and a failed update restores the
+previous receipt/package state. The published smoke additionally runs V2
+`update` and requires a committed recovery snapshot before continuing to the
+plugin/workflow assertions.
 
 ## Required commands before a launcher change
 

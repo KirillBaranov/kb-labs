@@ -666,7 +666,7 @@ export class WorkflowHostService {
     const run = (await this.options.engine.getRun(resolved)) as WorkflowRun | null;
     if (!run) { return null; }
     // Same REST-facing status mapping as getJob/listJobs/listActiveExecutions
-    // below — `kb workflow runs status` and e2e/install-flow/test.sh both poll
+    // below — `kb workflow runs status` and the launcher V2 E2E both poll
     // for a terminal 'completed', not the engine's internal 'success'.
     return { ...run, status: mapRunStatusToJobStatus(run.status) as WorkflowRun['status'] };
   }

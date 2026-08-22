@@ -42,7 +42,7 @@ jobs:
       matrix:
         include:
           - shard: resolver-config
-            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-v2-index ./v2/contracts ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
+            packages: ./v2/catalog ./v2/cmd/kb-create-v2 ./v2/cmd/kb-create-release-index ./v2/contracts ./v2/flow ./v2/preflight ./v2/release ./v2/resolve ./v2/render ./v2/scenario ./v2/secrets ./v2/telemetry ./v2/transport ./v2/wizard
           - shard: runtime-recovery
             packages: ./v2/artifacts ./v2/logs ./v2/receipt ./v2/lifecycle ./v2/runtime
           - shard: doctor-diagnostics
@@ -170,7 +170,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, type-check, test, test:cli]
+        task: [lint, type-check, test, 'test:cli']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -380,8 +380,8 @@ jobs:
 
       - name: Run kb-create e2e via devkit
         run: |
-          ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache \
-            2>&1 | tee /tmp/kb-create-e2e-devkit.log; exit "${PIPESTATUS[0]}"
+          cd tools/kb-create
+          go test -v -race -count=1 -run "$E2E_RUN" ./v2/e2e/... ./v2/journey/...
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}
@@ -390,7 +390,7 @@ jobs:
           NPM_CONFIG_REGISTRY: http://localhost:4873
           KB_DEVKIT_FAIL_LINES: 0
           E2E_RUN: >-
-            ${{ matrix.shard == 'core-a' && '^Test(DeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply|Help|Version|SubcommandHelp|StatusMissingPlatform|DoctorNoArgs|InstallYes|FirstCommitNoChanges|FirstCommitPromptShown|Update|ReinstallIdempotent|LogsCommand|KbCliSmoke|ServicesStartStop|LLMFlagRemoved|NoLLMByDefault|DefaultKeepsAuthOn|LocalModeWritesAuthOff)$' || matrix.shard == 'core-b' && '^Test(NoPeerDepWarnings|PlatformFilesGenerated|GitignoreEntries|DemoReviewSkipsUntrackedOnly|DemoHintShownAfterZeroFindings|KbConfigShowSplitRoot|GeneratedWorkflowsUseWorkflowIdFlag|GeneratedDemoWorkflowUsesRealCommands|DemoFlagDoesNotChangeInstalledPackages|DoctorDockerCheckIsAdvisoryNotFatal|InstallScopedPlugin|InstallUnknownPluginFailsFast)$' || matrix.shard == 'journeys' && '^Test(TwoProjectsShareOnePlatformIsolated|NoPlaceholderValuesInGeneratedConfigs|SoloDeveloperJourney|LegacyProjectMigrationJourney|CIInstallJourney_PinnedPluginsServicesAndAdapters|CIInstallJourney_UnconfiguredRequiredCapabilityWarns|CIInstallJourney_ExecutesInstalledPlugin|PlatformUpdateAndUninstallPreservesUserArtifacts|AdapterSwitchJourney|KbDevRegistrySwitch_MultiProjectSharedPlatform)$' || '^Test(Lifecycle_InstallSwapRollback|PlatformDirMkdirFailsHardAbort|UninstallRetryThenHardFail)$' }}
+            ${{ matrix.shard == 'core-a' && '^TestV2(CompatibilityFailureIsRejectedBeforeArtifactExecution|NetworkFailureIsReportedBeforePnpmMutation)$' || matrix.shard == 'core-b' && '^TestV2ToolchainFailureIsActionableForNodeAndPnpm$' || matrix.shard == 'journeys' && '^Test(OfflineApplyCompletesPluginAndWorkflowReadyPath|TransportMatrixUsesOneResolvedPluginWorkflowPath)$' || '^TestOffline(LifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall|UpdateFailureRestoresPreviousReceiptAndPackageState)$' }}
 
       - name: Upload kb-create e2e log on failure
         if: failure()

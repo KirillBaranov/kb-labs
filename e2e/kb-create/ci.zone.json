@@ -1,6 +1,13 @@
 {
   "zone": "kb-create",
   "runner": "launcher",
-  "watch": ["tools/kb-create/**", "e2e/kb-create/**"],
+  "watch": [
+    "tools/kb-create/**",
+    "e2e/kb-create/**",
+    ".github/actions/kb-create-install/**",
+    ".kb/release/**",
+    ".kb/compatibility.json",
+    "e2e/install-flow/**"
+  ],
   "suites": ["e2e-kb-create"]
 }

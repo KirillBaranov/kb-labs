@@ -18,14 +18,14 @@ artifact.
 
 ## Canonical first-value journey
 
-The main source/CI E2E runs this journey against packages published to local
-Verdaccio. The separate `e2e/install-flow/test.sh` repeats the install-to-first
-value path against public artifacts as a post-publish smoke:
+The main source/CI E2E runs the deterministic V2 contract journey. The
+post-publish V2 E2E consumes the sealed release-index and exact public
+artifacts:
 
 ```text
-official installer
-  → fresh project bootstrap
-  → required artifacts and install manifest
+kb-create apply + sealed release-index
+  → fresh platform/project roots
+  → generated receipt, config and project pointer
   → kb CLI and kb-dev
   → all services alive and reachable
   → human login + service-account registration
@@ -58,9 +58,9 @@ catalog also covers:
 |---|---|---|
 | Unit/integration | Diagnose a subsystem quickly | `pnpm --filter ... test` |
 | Domain E2E | Exercise a running service or plugin domain | `kb-devkit run e2e --packages @kb-labs/e2e-workflows` |
-| Launcher journey | Exercise install/bootstrap/user CLI flow from Verdaccio | `kb-devkit run e2e --packages kb-create` |
+| Launcher journey | Exercise V2 request/apply/status/plugin/workflow flow | `go test ./v2/e2e/...` |
 | Domain user journeys | Exercise services, marketplace, adapters and workflow examples | `kb-devkit run e2e --packages @kb-labs/e2e-workflows` |
-| Post-publish smoke | Exercise published installer and public artifacts | Docker job running `e2e/install-flow/test.sh` |
+| Post-publish smoke | Exercise published V2 artifacts and release-index | `make e2e-release-smoke` |
 
 ## No silent skips
 

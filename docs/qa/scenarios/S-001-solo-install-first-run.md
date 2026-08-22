@@ -4,7 +4,7 @@ title: Solo — install and first verified run
 persona: solo-developer
 priority: P0
 automation: e2e-done
-e2e: tools/kb-create/v2/journey/offline_test.go; .github/workflows/publish-npm-on-tag.yml (launcher-smoke)
+e2e: tools/kb-create/v2/journey/offline_test.go; .github/workflows/release-deliver-candidate.yml (launcher-smoke)
 ---
 
 ## Goal

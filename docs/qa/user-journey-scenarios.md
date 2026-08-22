@@ -121,7 +121,8 @@ publish/register → marketplace install → run → remove`; удаление �
 **Путь:**
 
 1. Зафиксировать список доступных команд и установленных пакетов.
-2. Установить сторонний плагин через marketplace CLI или `kb-create install`.
+2. Установить сторонний плагин через marketplace CLI или V2 `kb-create apply`
+   с pinned plugin в sealed release-index.
 3. Проверить, что новый пакет и его команда появились.
 4. Повторить установку/обновление плагина идемпотентно.
 5. Удалить только сторонний плагин.
@@ -234,15 +235,11 @@ logs → edit → rerun → remove/disable`; результат подтверж
 
 ## Разделение автоматизации
 
-- `e2e/install-flow/test.sh` — отдельный post-publish smoke на опубликованных
-  бинарях/npm в чистом Docker runner. Он не заменяет основной E2E-контур и
-  нужен для проверки доставки release artifacts через официальный installer.
-- Go E2E в `tools/kb-create/e2e` — быстрые lifecycle-проверки launcher,
-  install/update/uninstall/rollback, раздельных platform/project directory и
-  CI-specific варианты journey 4 через Verdaccio.
+- V2 E2E в `tools/kb-create/v2/e2e` — post-publish journey с apply/status,
+  project pointer, plugin scaffold и workflow run.
 - доменные Playwright E2E в `e2e/{auth,marketplace,plugins,services,workflows}`
   — детали marketplace, adapters и workflow внутри journeys, но не замена
   полного пользовательского пути. Они запускаются на platform, собранной из
   текущего checkout и установленной из Verdaccio.
-- `.github/workflows/e2e-user-journey.yml` — обязательный post-publish smoke,
-  который запускает journey на публичном installer и сохраняет лог.
+- `.github/workflows/release-deliver-candidate.yml` — обязательный post-publish V2
+  smoke, который запускает journey на точном release-index и сохраняет log.

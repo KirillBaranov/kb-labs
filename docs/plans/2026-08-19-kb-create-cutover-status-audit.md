@@ -5,6 +5,11 @@
 "Фактический результат"). Таблица фаз ниже обновлена по факту; текст TL;DR/разделов 1-4 оставлен как
 исторический снимок состояния ДО работы этого дня — не переписывался задним числом.
 **Дата:** 2026-08-19
+
+> Историческая заметка: этот документ описывает pre-V2 состояние. Упомянутые
+> `cmd/`, `internal/manifest`, `internal/installer` и legacy E2E paths удалены
+> в последующем breaking cutover; актуальный контракт находится в
+> `tools/kb-create/v2/` и `docs/test-plan.md`.
 **Триггер:** послерелизный post-publish user-journey smoke test (v2.116.16-binaries + platform canary) вскрыл, что
 `kb-create` работает по двум параллельным, не до конца совместимым движкам конфигурации; чинился в PR #400
 (`fix(kb-create): restore gateway bootstrap password + project install.json`).

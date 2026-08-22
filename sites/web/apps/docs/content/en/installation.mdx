@@ -1,7 +1,7 @@
 ---
 title: "Installation"
 description: "Install KB Labs via kb-create, pin versions, verify checksums, and upgrade."
-updatedAt: "2026-08-12"
+updatedAt: "2026-08-22"
 order: 2
 ---
 
@@ -87,24 +87,21 @@ The interactive wizard:
 - Generates scoped `.kb/kb.config.jsonc` platform/project configuration
 - Runs `pnpm install`
 
-The declarative flow engine is available during the migration cutover:
+The wizard and the agent/CI JSON protocol compile into the same V2 request.
+For CI, use a sealed release index and the deterministic `apply` operation; it
+does not run interactive scenarios:
 
 ```bash
-kb-create my-project --engine
+kb-create apply --index ./release-index.json \
+  --request-platform-root ./ci-platform --project-root "$GITHUB_WORKSPACE" \
+  --plugins=release
 ```
 
-It renders the same scenario pages and validation for Human mode that Agents
-receive through the JSON protocol. For CI, use the deterministic scoped
-installer; it does not run interactive scenarios:
-
-```bash
-kb-create install --plugins=release --services=workflow --platform ./ci-platform
-```
-
-Technical compatibility is resolved from package-declared `kb.manifest`
-metadata. The launcher uses the embedded catalog only for bootstrap defaults;
-requirements, adapter capabilities, and provider config defaults come from the
-exact package artifacts or versions being installed.
+The release index is the authority for the release train. It contains the
+platform, SDK and published binary labels plus their explicit compatibility
+relations. The launcher verifies the index digest and refuses to plan or apply
+an index without that matrix. Package manifests remain the source of truth for
+artifact requirements and provider capabilities.
 
 When finished, the workspace is ready:
 
@@ -126,20 +123,20 @@ kb-create my-project --yes --platform-channel canary
 # Pin a reproducible Platform release while leaving the SDK at its default.
 kb-create my-project --yes --platform-version 2.118.1
 
-# Use channels with a scoped CI install too.
-kb-create install --plugins=release --sdk-channel stable --platform-channel canary
+# Use the selected train with a CI request too.
+kb-create apply --index ./release-index.json \
+  --request-platform-root ./ci-platform --platform-channel canary
 ```
 
-`stable` maps to npm's `latest` tag and `canary` maps to the npm `canary` tag.
+Channels are labels in the selected release index, not direct npm tag lookups.
 An exact `--sdk-version` or `--platform-version` cannot be combined with the
-channel flag for that same axis. `kb-create` resolves selected channels to
-concrete versions before installing and stores them in the installation state.
-Use `kb-create status` to see both the channel and resolved version.
+channel flag for that same axis. `kb-create` resolves the selected label to a
+concrete version before installing and stores the result in the installation
+state. Use `kb-create status` to see the selected train and resolved versions.
 
-If a release manifest publishes compatibility rules, kb-create validates the
-resolved SDK/Platform pair before installation. It refuses an incompatible
-pair without writing packages; `--force-compat` is available for deliberate
-testing or recovery overrides.
+`kb-create` validates the complete selected platform/SDK/binary relation before
+installation. An incompatible or incomplete relation fails before packages are
+written; there is no production bypass flag.
 
 ## Verify the installation
 
@@ -194,9 +191,9 @@ See [Configuration → kb.config](/configuration/kb-config) for all adapter opti
 # Upgrade kb-create to latest
 curl -fsSL https://kblabs.ru/install.sh | sh
 
-# Upgrade the platform packages inside a workspace, keeping its selected channels
+# Upgrade the platform packages inside a workspace using the next sealed index.
 cd my-project
-kb-create update
+kb-create update --index ./release-index.json
 ```
 
 ## Enterprise

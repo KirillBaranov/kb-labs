@@ -1,4 +1,4 @@
-package main
+package v2cli
 
 import (
 	"encoding/json"
@@ -9,15 +9,27 @@ import (
 
 	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
+	"github.com/kb-labs/create/v2/receipt"
+	"github.com/kb-labs/create/v2/render"
 	"github.com/kb-labs/create/v2/secrets"
 )
+
+func testCompatibility(version string) *catalog.CompatibilityMatrix {
+	return &catalog.CompatibilityMatrix{
+		Schema: catalog.CompatibilitySchema,
+		Labels: []catalog.CompatibilityLabel{{
+			ID: "platform@" + version, Kind: "platform", ArtifactID: "platform", Version: version,
+			Status: "prepared", ValidatedBy: []string{"test"},
+		}},
+	}
+}
 
 func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	dir := t.TempDir()
 	index := filepath.Join(dir, "index.json")
 	input := filepath.Join(dir, "request.json")
 	output := filepath.Join(dir, "output.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "abc", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0"}}}}})
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "abc", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0"}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +151,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 	dir := t.TempDir()
 	index := filepath.Join(dir, "index.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.2.0", Package: "@kb/review", Tarball: "https://example.test/review.tgz", SHA256: "review"}}})
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.2.0", Package: "@kb/review", Tarball: "https://example.test/review.tgz", SHA256: "review"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +177,7 @@ func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	dir := t.TempDir()
 	index := filepath.Join(dir, "index.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "gateway.access.mode", Path: "/gateway/access/mode", Default: `"secured"`}}}}})
+	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "gateway.access.mode", Path: "/gateway/access/mode", Default: `"secured"`}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,5 +205,39 @@ func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	}
 	if !strings.Contains(string(result), `"path":"/gateway/access/mode"`) || !strings.Contains(string(result), `"json":"\"local\""`) {
 		t.Fatalf("plan = %s", result)
+	}
+}
+
+func TestRunStatusVerifiesTheReceiptOwnedGraph(t *testing.T) {
+	dir := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{
+		Schema:       contracts.ResolvedPlanSchema,
+		PlanHash:     "status-plan",
+		Request:      contracts.InstallRequest{PlatformRoot: dir},
+		ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "workflow", Command: "workflow", Required: true}}},
+	}
+	if _, err := render.Write(plan); err != nil {
+		t.Fatal(err)
+	}
+	if err := receipt.Write(dir, contracts.InstallReceipt{Schema: contracts.ReceiptSchema, ID: "receipt", Plan: plan}); err != nil {
+		t.Fatal(err)
+	}
+	kbdev := filepath.Join(dir, "kb-dev")
+	if err := os.WriteFile(kbdev, []byte("#!/bin/sh\nprintf '%s\\n' '{\"services\":{\"workflow\":{\"state\":\"alive\"}}}'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	output, err := os.CreateTemp(dir, "status-output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := runStatus(dir, kbdev, output); code != 0 {
+		t.Fatalf("status exit code = %d", code)
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(output.Name())
+	if err != nil || !strings.Contains(string(data), `"operation":"status"`) {
+		t.Fatalf("status output = %s, error = %v", data, err)
 	}
 }

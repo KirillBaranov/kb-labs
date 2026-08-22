@@ -30,6 +30,24 @@ type Scenario struct {
 	Adapters []string `json:"adapters,omitempty"`
 	Profiles []string `json:"profiles,omitempty"`
 	Fields   []Field  `json:"fields,omitempty"`
+	Pages    []Page   `json:"pages,omitempty"`
+}
+
+// Page and Section are declarative presentation groups. They contain no
+// executable installer behavior; the launcher remains the sole owner of
+// resolution and application.
+type Page struct {
+	ID       string     `json:"id"`
+	Title    string     `json:"title,omitempty"`
+	Sections []Section  `json:"sections,omitempty"`
+	When     *Predicate `json:"when,omitempty"`
+}
+
+type Section struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Fields      []Field `json:"fields"`
 }
 
 type Field struct {
@@ -37,18 +55,39 @@ type Field struct {
 	Requirement string          `json:"requirement,omitempty"`
 	ProviderFor string          `json:"providerFor,omitempty"`
 	Type        string          `json:"type"`
+	Label       string          `json:"label,omitempty"`
+	Description string          `json:"description,omitempty"`
 	Required    bool            `json:"required,omitempty"`
 	Secret      bool            `json:"secret,omitempty"`
 	Default     json.RawMessage `json:"default,omitempty"`
 	Options     []Option        `json:"options,omitempty"`
+	When        *Predicate      `json:"when,omitempty"`
+	Validators  []Validator     `json:"validators,omitempty"`
 }
 type Option struct {
 	Value string `json:"value"`
 	Label string `json:"label,omitempty"`
 }
+
+type Validator struct {
+	Kind string `json:"kind"`
+	Arg  string `json:"arg,omitempty"`
+}
+
+type Predicate struct {
+	Path   string      `json:"path,omitempty"`
+	Equals interface{} `json:"equals,omitempty"`
+	Exists *bool       `json:"exists,omitempty"`
+	AllOf  []Predicate `json:"allOf,omitempty"`
+	AnyOf  []Predicate `json:"anyOf,omitempty"`
+	Not    *Predicate  `json:"not,omitempty"`
+}
+
 type State struct {
 	ScenarioID string                     `json:"scenarioId"`
 	Answers    map[string]json.RawMessage `json:"answers"`
+	PageIndex  int                        `json:"pageIndex,omitempty"`
+	Done       bool                       `json:"done,omitempty"`
 }
 
 func Load(id string) (Scenario, error) {
@@ -85,7 +124,7 @@ func Validate(value Scenario) error {
 		return fmt.Errorf("scenario requires schema %q and ID", Schema)
 	}
 	seen := map[string]bool{}
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		if field.ID == "" || seen[field.ID] {
 			return fmt.Errorf("scenario has missing or duplicate field ID")
 		}
@@ -100,6 +139,18 @@ func Validate(value Scenario) error {
 			return fmt.Errorf("scenario secret field %q cannot have default", field.ID)
 		}
 	}
+	pageIDs := map[string]bool{}
+	for _, page := range value.Pages {
+		if page.ID == "" || pageIDs[page.ID] {
+			return fmt.Errorf("scenario has duplicate or empty page ID")
+		}
+		pageIDs[page.ID] = true
+		for _, section := range page.Sections {
+			if section.ID == "" {
+				return fmt.Errorf("page %q has empty section ID", page.ID)
+			}
+		}
+	}
 	return nil
 }
 func New(value Scenario) (State, error) {
@@ -107,7 +158,7 @@ func New(value Scenario) (State, error) {
 		return State{}, err
 	}
 	state := State{ScenarioID: value.ID, Answers: map[string]json.RawMessage{}}
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		if len(field.Default) > 0 {
 			state.Answers[field.ID] = append(json.RawMessage(nil), field.Default...)
 		}
@@ -143,7 +194,7 @@ func SaveState(platformRoot string, value Scenario, state State) error {
 		return fmt.Errorf("state does not belong to scenario %q", value.ID)
 	}
 	copy := State{ScenarioID: state.ScenarioID, Answers: map[string]json.RawMessage{}}
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		if field.Secret {
 			continue
 		}
@@ -169,7 +220,7 @@ func statePath(platformRoot, id string) string {
 }
 func StateDigest(value Scenario, state State) (string, error) {
 	copy := State{ScenarioID: state.ScenarioID, Answers: map[string]json.RawMessage{}}
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		if field.Secret {
 			continue
 		}
@@ -201,6 +252,85 @@ func Answer(value Scenario, state State, id string, raw json.RawMessage) (State,
 	state.Answers[id] = append(json.RawMessage(nil), raw...)
 	return state, nil
 }
+
+func (p Predicate) Evaluate(values map[string]json.RawMessage) bool {
+	for _, child := range p.AllOf {
+		if !child.Evaluate(values) {
+			return false
+		}
+	}
+	if len(p.AnyOf) > 0 {
+		matched := false
+		for _, child := range p.AnyOf {
+			if child.Evaluate(values) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	if p.Not != nil && p.Not.Evaluate(values) {
+		return false
+	}
+	if p.Path == "" {
+		return true
+	}
+	raw, exists := values[p.Path]
+	if p.Exists != nil {
+		return exists == *p.Exists
+	}
+	if !exists {
+		return false
+	}
+	if p.Equals == nil {
+		return true
+	}
+	var left any
+	if json.Unmarshal(raw, &left) != nil {
+		return false
+	}
+	return fmt.Sprint(left) == fmt.Sprint(p.Equals)
+}
+
+func allFields(value Scenario) []Field {
+	if len(value.Pages) == 0 {
+		return append([]Field(nil), value.Fields...)
+	}
+	result := make([]Field, 0)
+	for _, page := range value.Pages {
+		for _, section := range page.Sections {
+			result = append(result, section.Fields...)
+		}
+	}
+	return result
+}
+
+func VisiblePages(value Scenario, state State) []Page {
+	if len(value.Pages) == 0 {
+		return []Page{{ID: "setup", Title: value.Title, Sections: []Section{{ID: "setup", Fields: value.Fields}}}}
+	}
+	result := make([]Page, 0, len(value.Pages))
+	for _, page := range value.Pages {
+		if page.When == nil || page.When.Evaluate(state.Answers) {
+			result = append(result, page)
+		}
+	}
+	return result
+}
+
+func VisibleFields(page Page, state State) []Field {
+	result := make([]Field, 0)
+	for _, section := range page.Sections {
+		for _, field := range section.Fields {
+			if field.When == nil || field.When.Evaluate(state.Answers) {
+				result = append(result, field)
+			}
+		}
+	}
+	return result
+}
 func Compile(value Scenario, state State, base contracts.InstallRequest) (contracts.InstallRequest, error) {
 	if state.ScenarioID != value.ID {
 		return contracts.InstallRequest{}, fmt.Errorf("state does not belong to scenario %q", value.ID)
@@ -229,7 +359,7 @@ func Compile(value Scenario, state State, base contracts.InstallRequest) (contra
 	if base.ProviderPreferences == nil {
 		base.ProviderPreferences = map[string]string{}
 	}
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		raw, exists := state.Answers[field.ID]
 		if !exists {
 			raw = field.Default
@@ -238,6 +368,9 @@ func Compile(value Scenario, state State, base contracts.InstallRequest) (contra
 			return contracts.InstallRequest{}, fmt.Errorf("required scenario field %q is missing", field.ID)
 		}
 		if len(raw) == 0 {
+			continue
+		}
+		if field.When != nil && !field.When.Evaluate(state.Answers) {
 			continue
 		}
 		if err := validateField(field, raw); err != nil {
@@ -260,7 +393,7 @@ func Compile(value Scenario, state State, base contracts.InstallRequest) (contra
 	return base.Normalize()
 }
 func fieldByID(value Scenario, id string) (Field, bool) {
-	for _, field := range value.Fields {
+	for _, field := range allFields(value) {
 		if field.ID == id {
 			return field, true
 		}
@@ -281,13 +414,25 @@ func validateField(field Field, raw json.RawMessage) error {
 		}
 	}
 	if len(field.Options) > 0 {
-		value := decoded.(string)
+		value, ok := decoded.(string)
+		if !ok {
+			return fmt.Errorf("field %q option value must be a string", field.ID)
+		}
 		for _, option := range field.Options {
 			if value == option.Value {
 				return nil
 			}
 		}
 		return fmt.Errorf("field %q option %q is not declared", field.ID, value)
+	}
+	for _, validator := range field.Validators {
+		if validator.Kind == "nonEmpty" {
+			if value, ok := decoded.(string); !ok || strings.TrimSpace(value) == "" {
+				return fmt.Errorf("field %q must not be empty", field.ID)
+			}
+		} else {
+			return fmt.Errorf("field %q uses unknown validator %q", field.ID, validator.Kind)
+		}
 	}
 	return nil
 }

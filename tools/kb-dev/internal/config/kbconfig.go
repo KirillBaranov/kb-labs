@@ -22,7 +22,7 @@ var reComment = regexp.MustCompile(`(?m)^[ \t]*//[^\n]*\n?`)
 // closing "}" or "]". kb-create's generated kb.config.jsonc legitimately
 // contains these (e.g. the plugins section always ends with a trailing comma
 // before the following section) — its own reader strips them too (see
-// stripGeneratedJsonc in tools/kb-create/internal/scaffold/scaffold.go); any
+// the V2 launcher renderer); any
 // reader in this file must do the same or json.Unmarshal fails.
 var reTrailingComma = regexp.MustCompile(`,(\s*[}\]])`)
 

@@ -31,8 +31,8 @@ guessed compatibility.
 
 ## Implementation
 
-See `tools/kb-create/v2/release/emit-manifests.mjs`,
-`tools/kb-create/v2/release/manifests.go` and
-`tools/kb-create/v2/catalog/`. Package identity, version, manifest digest and
-source path are retained by the sealed release index for deterministic planning
-and diagnostics.
+The release-index boundary is defined by
+`docs/adr/0041-v2-release-index-is-published-release-output.md` and the release
+manager. `kb-create` only consumes the resulting contract. Package identity,
+version, manifest digest and source artifact are retained by the sealed release
+index for deterministic planning and diagnostics.

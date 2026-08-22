@@ -5,30 +5,47 @@ KB Labs has independent SDK, platform and binary streams. A release is only prom
 | Stream | Tag | Publishes | Required order |
 | --- | --- | --- | --- |
 | SDK | `sdk-vX.Y.Z` | SDK npm tarballs with V2 launcher manifests | first when SDK changes |
-| Platform | `platform-vX.Y.Z` | platform, services, adapters and sealed V2 release index | after required SDK candidate |
-| Binaries | `vX.Y.Z-binaries` | `kb-create`, `kb-dev`, `kb-devkit`, `kb-deploy`, `kb-monitor` and checksums | when Go tools changed |
+| Platform | `platform-vX.Y.Z` | platform, services, binaries and one sealed release index | after required SDK candidate |
+| Binaries | `vX.Y.Z-binaries` | the binary assets and checksums referenced by that candidate index | as part of the same candidate |
 
 ## Candidate gates
 
-The tag workflow is the source of release evidence. For a platform candidate it:
+The workflow engine creates a release intent and dispatches the candidate
+builder. The candidate workflow creates the immutable bundle; the delivery
+workflow only verifies and publishes that bundle. For a platform candidate:
 
-1. builds in topological order and stages immutable npm tarballs;
-2. emits the V2 package manifests from those actual build outputs;
-3. composes the platform topology with the exact SDK artifact already fetched from npm;
-4. seals a `kb.create.release-index/v2` and publishes the tarballs;
-5. downloads the public npm bytes again and verifies every recorded SHA-256;
-6. runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered.
+1. the engine runs checks, approval and creates a release intent;
+2. `release-build-candidate.yml` builds packages and Go binaries once, stages
+   exact npm tarballs and generates the binary manifest from GoReleaser's
+   checksums;
+3. the same workflow seals `.kb/release/release-index.json` and uploads one
+   immutable candidate bundle with provenance and digests;
+4. `release-deliver-candidate.yml` downloads and verifies that exact bundle;
+5. it publishes the exact npm tarballs and binary assets to the requested
+   channel;
+6. it runs a clean `kb-create apply` against the public candidate and asserts
+   that `kb.config.jsonc`, `devservices.yaml` and the plugin workflow are
+   functional.
 
-The candidate smoke is deliberately a bounded installer/package/config gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
+Binary assets are part of the same candidate bundle as the platform index.
+There is no independent binary release workflow or separate binary promotion
+path. The workflow engine invokes delivery for `canary` or `stable` only after
+the candidate identity and smoke evidence are valid.
+
+The candidate smoke is deliberately a bounded installer/package/config/workflow gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
+
+The compatibility matrix is conservative in the first release: it records the
+exact staged Platform/SDK pair and the SDK's declared runtime peer range. A
+broader compatibility range must be earned by additional release evidence; it
+is never inferred from a shared `2.x` or `3.x` major.
 
 ## Promotion checklist
 
-1. Confirm the SDK candidate is published if the platform index references a new SDK version.
-2. Confirm the platform candidate's stage, npm delivery, index binding and launcher smoke are successful. Do not promote a failed, pending or skipped required check.
-3. Run the promotion workflow for the candidate tag.
-4. Confirm it attaches `release-index.json` to the platform GitHub Release.
-5. Confirm the `installer-stable` release's `channel.json` points to that index URL and its SHA-256.
-6. Perform the stable clean-install acceptance run using the released binary and stable index pointer; retain its log/dossier with the release evidence.
+1. Confirm the candidate bundle and post-publish smoke are successful.
+2. Approve the `release-promote` workflow-engine transition for `stable`.
+3. Confirm delivery used the same candidate ID and bundle digest.
+4. Perform the stable clean-install acceptance run using the released binary
+   and stable index pointer; retain its log/dossier with the release evidence.
 
 The stable pointer is mutable convenience metadata. The fetched index remains immutable and hash-verified by the consumer.
 
@@ -40,4 +57,6 @@ The stable pointer is mutable convenience metadata. The fetched index remains im
 - **A service suite fails:** use the owning E2E shard and its scenario report. Do not make the candidate smoke start every service to mask shard ownership.
 - **Stable install fails:** freeze promotion, retain the immutable index and dossier, then repair and publish a new candidate. Never overwrite a released index.
 
-Local preparation (`pnpm release:sdk:prepare` or `pnpm release:platform:prepare`) prepares version/changelog/tag state. npm delivery and index verification happen only in GitHub Actions.
+Local preparation through `kb workflow:run` creates only release intent and
+approval state. Candidate build, bundle creation, delivery and public-byte
+verification happen on controlled GitHub runners.

@@ -17,14 +17,41 @@ import (
 const Schema = "kb.create.release-index/v2"
 
 type Catalog struct {
-	Schema    string                       `json:"schema"`
-	Digest    string                       `json:"digest"`
-	Channels  map[contracts.Channel]string `json:"channels"`
-	Platforms []PlatformBundle             `json:"platforms"`
-	SDKs      []Component                  `json:"sdks"`
-	Plugins   []Component                  `json:"plugins"`
-	Adapters  []Adapter                    `json:"adapters"`
+	Schema        string                       `json:"schema"`
+	Digest        string                       `json:"digest"`
+	Channels      map[contracts.Channel]string `json:"channels"`
+	Compatibility *CompatibilityMatrix         `json:"compatibility,omitempty"`
+	Platforms     []PlatformBundle             `json:"platforms"`
+	SDKs          []Component                  `json:"sdks"`
+	Plugins       []Component                  `json:"plugins"`
+	Adapters      []Adapter                    `json:"adapters"`
 }
+
+// CompatibilityMatrix is release-owned evidence for all currently published
+// platform, SDK and binary labels.
+// It intentionally contains concrete versions: semver major/minor equality is
+// not a compatibility guarantee for pre-stable releases.
+type CompatibilityMatrix struct {
+	Schema string               `json:"schema"`
+	Labels []CompatibilityLabel `json:"labels"`
+}
+
+type CompatibilityLabel struct {
+	ID          string                  `json:"id"`
+	Kind        string                  `json:"kind"`
+	ArtifactID  string                  `json:"artifactId"`
+	Version     string                  `json:"version"`
+	Requires    []CompatibilityRelation `json:"requires,omitempty"`
+	Status      string                  `json:"status"`
+	ValidatedBy []string                `json:"validatedBy"`
+}
+
+type CompatibilityRelation struct {
+	Label      string `json:"label"`
+	Constraint string `json:"constraint,omitempty"`
+}
+
+const CompatibilitySchema = "kb.release-compatibility/2"
 
 // Seal normalizes a release index and records the SHA-256 digest of its
 // canonical payload. Publishing calls this after manifest export; consuming
@@ -51,6 +78,11 @@ func Validate(source Catalog) error {
 	}
 	if len(source.Platforms) == 0 {
 		return fmt.Errorf("release index contains no platform bundles")
+	}
+	if source.Compatibility != nil {
+		if err := validateCompatibility(*source.Compatibility, source); err != nil {
+			return err
+		}
 	}
 	for channel, version := range source.Channels {
 		if channel != contracts.ChannelStable && channel != contracts.ChannelCanary && channel != contracts.ChannelExperimental {
@@ -95,6 +127,109 @@ func Validate(source Catalog) error {
 		}
 	}
 	return nil
+}
+
+// CheckCompatibility is the runtime decision boundary for the release-owned
+// matrix. Package ranges remain useful for plugin/provider declarations, but
+// platform, SDK and binary selection is accepted only when the candidate
+// labels are explicitly related in the sealed index.
+func CheckCompatibility(source Catalog, platformVersion, sdkVersion, binaryID, os, arch string) error {
+	if source.Compatibility == nil {
+		return fmt.Errorf("release index has no compatibility matrix")
+	}
+	platformID := "platform@" + platformVersion
+	platform, ok := compatibilityLabel(source.Compatibility.Labels, platformID, "platform")
+	if !ok {
+		return fmt.Errorf("compatibility matrix has no platform label %q", platformID)
+	}
+	if sdkVersion != "" {
+		sdkID := "sdk@" + sdkVersion
+		if _, ok := compatibilityLabel(source.Compatibility.Labels, sdkID, "sdk"); !ok || !requiresLabel(platform, sdkID) {
+			return fmt.Errorf("compatibility matrix does not relate %s to %s", platformID, sdkID)
+		}
+	}
+	if binaryID != "" {
+		binaryIDPrefix := "binary:" + binaryID + "@" + platformVersion + ":" + os + "/" + arch
+		binary, ok := compatibilityLabel(source.Compatibility.Labels, binaryIDPrefix, "binary")
+		if !ok || !requiresLabel(binary, platformID) || (sdkVersion != "" && !requiresLabel(binary, "sdk@"+sdkVersion)) {
+			return fmt.Errorf("compatibility matrix does not relate binary %s to the selected platform/SDK", binaryID)
+		}
+	}
+	return nil
+}
+
+func compatibilityLabel(labels []CompatibilityLabel, id, kind string) (CompatibilityLabel, bool) {
+	for _, label := range labels {
+		if label.ID == id && label.Kind == kind {
+			return label, true
+		}
+	}
+	return CompatibilityLabel{}, false
+}
+
+func requiresLabel(label CompatibilityLabel, wanted string) bool {
+	for _, relation := range label.Requires {
+		if relation.Label == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+func validateCompatibility(matrix CompatibilityMatrix, source Catalog) error {
+	if matrix.Schema != CompatibilitySchema {
+		return fmt.Errorf("unsupported compatibility matrix schema %q", matrix.Schema)
+	}
+	if len(matrix.Labels) == 0 {
+		return fmt.Errorf("compatibility matrix contains no labels")
+	}
+	known := map[string]bool{}
+	for _, label := range matrix.Labels {
+		if label.ID == "" || label.Kind == "" || label.ArtifactID == "" || label.Version == "" || label.Status == "" || len(label.ValidatedBy) == 0 {
+			return fmt.Errorf("compatibility label must declare id, kind, artifactId, version, status and validation evidence")
+		}
+		if known[label.ID] {
+			return fmt.Errorf("duplicate compatibility label %q", label.ID)
+		}
+		known[label.ID] = true
+		if !compatibilityArtifactExists(source, label) {
+			return fmt.Errorf("compatibility label %q references absent %s artifact %q@%s", label.ID, label.Kind, label.ArtifactID, label.Version)
+		}
+	}
+	for _, label := range matrix.Labels {
+		for _, relation := range label.Requires {
+			if !known[relation.Label] {
+				return fmt.Errorf("compatibility label %q references absent label %q", label.ID, relation.Label)
+			}
+		}
+	}
+	return nil
+}
+
+func compatibilityArtifactExists(source Catalog, label CompatibilityLabel) bool {
+	switch label.Kind {
+	case "platform":
+		for _, value := range source.Platforms {
+			if value.ID == label.ArtifactID && value.Version == label.Version {
+				return true
+			}
+		}
+	case "sdk":
+		for _, value := range source.SDKs {
+			if value.ID == label.ArtifactID && value.Version == label.Version {
+				return true
+			}
+		}
+	case "binary":
+		for _, platform := range source.Platforms {
+			for _, value := range platform.Binaries {
+				if value.ID == label.ArtifactID && platform.Version == label.Version {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func Verify(source Catalog) error {

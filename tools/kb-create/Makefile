@@ -20,11 +20,11 @@ test:
 
 ## e2e: run full end-to-end suite (installs platform from npm — requires network)
 e2e:
-	go test -v -race -count=1 -timeout 35m $(if $(E2E_RUN),-run "$(E2E_RUN)",) ./e2e/...
+	go test -v -race -count=1 -timeout 35m $(if $(E2E_RUN),-run "$(E2E_RUN)",) ./v2/e2e/...
 
 ## e2e-release-smoke: bounded public-artifact promotion gate
 e2e-release-smoke:
-	go test -v -race -count=1 -timeout 12m -run '^TestReleaseCandidateJourney$$' ./e2e/...
+	go test -v -race -count=1 -timeout 12m -run '^TestPublishedV2JourneyReachesPluginWorkflow$$' ./v2/e2e/...
 
 ## cover: run tests and open coverage report in browser (skips network-bound e2e — use `make e2e` separately)
 cover:

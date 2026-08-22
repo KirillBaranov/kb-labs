@@ -1,0 +1,154 @@
+name: Release — build immutable candidate
+
+# This workflow is the execution boundary for the KB workflow engine. It does
+# not choose versions, channels or package membership. The caller supplies an
+# immutable release intent; this job produces one candidate bundle from it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_id:
+        description: Immutable candidate identifier from the workflow engine
+        required: true
+        type: string
+      commit_sha:
+        description: Full source commit to build
+        required: true
+        type: string
+      flow:
+        description: Release flow selected by the workflow engine
+        required: true
+        type: choice
+        options: [platform, sdk]
+      version:
+        description: Exact release version selected by the workflow engine
+        required: true
+        type: string
+      channel:
+        description: Candidate channel selected by the workflow engine
+        required: true
+        type: choice
+        options: [canary, stable]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ inputs.candidate_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build candidate ${{ inputs.candidate_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact intent commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-go@b7ad1dad31d06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Install exact workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build selected release flow
+        env:
+          FLOW: ${{ inputs.flow }}
+        run: pnpm kb release build --flow "$FLOW" --json
+
+      - name: Stage exact npm artifacts
+        env:
+          FLOW: ${{ inputs.flow }}
+        run: pnpm kb release stage --flow "$FLOW" --out-dir .kb/release/artifacts --json
+
+      - name: Stage SDK artifact for platform compatibility
+        if: inputs.flow == 'platform'
+        run: pnpm kb release stage --flow sdk --out-dir .kb/release/sdk-artifacts --json
+
+      - name: Build exact Go binary assets
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29
+        if: inputs.flow == 'platform'
+        with:
+          version: latest
+          args: release --snapshot --clean --skip=publish
+
+      - name: Generate binary manifest from checksums
+        if: inputs.flow == 'platform'
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          VERSION: ${{ inputs.version }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test -s dist/checksums.txt
+          node tools/kb-create/scripts/prepare-binary-manifest.mjs \
+            --checksums dist/checksums.txt \
+            --repository "$REPOSITORY" \
+            --release-tag "v${VERSION}-binaries" \
+            --output .kb/release/binary-manifest.json
+
+      - name: Seal unified release index
+        if: inputs.flow == 'platform'
+        env:
+          FLOW: ${{ inputs.flow }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          node tools/kb-create/scripts/prepare-release-index.mjs \
+            --flow "$FLOW" \
+            --channel "$CHANNEL" \
+            --artifacts-dir .kb/release/artifacts \
+            --sdk-artifacts-dir .kb/release/sdk-artifacts \
+            --binary-manifest .kb/release/binary-manifest.json \
+            --output .kb/release/release-index.json
+
+      - name: Create candidate provenance
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          FLOW: ${{ inputs.flow }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .kb/release/bundle
+          cp -R .kb/release/artifacts .kb/release/bundle/npm
+          if [ -f .kb/release/release-index.json ]; then cp .kb/release/release-index.json .kb/release/bundle/; fi
+          if [ -f .kb/release/binary-manifest.json ]; then cp .kb/release/binary-manifest.json .kb/release/bundle/; fi
+          if [ -d dist ]; then cp -R dist .kb/release/bundle/binaries; fi
+          node -e '
+            const fs = require("node:fs");
+            const out = {
+              schema: "kb.release-provenance/1",
+              candidateId: process.env.CANDIDATE_ID,
+              commit: process.env.COMMIT_SHA,
+              flow: process.env.FLOW,
+              version: process.env.VERSION,
+              channel: process.env.CHANNEL,
+              workflowRunId: process.env.RUN_ID,
+            };
+            fs.writeFileSync(".kb/release/bundle/provenance.json", JSON.stringify(out, null, 2) + "\n");
+          '
+          (cd .kb/release/bundle && find . -type f -print0 | sort -z | xargs -0 sha256sum > bundle.sha256)
+
+      - name: Upload immutable candidate bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-candidate-${{ inputs.candidate_id }}
+          path: .kb/release/bundle
+          if-no-files-found: error
+          retention-days: 30

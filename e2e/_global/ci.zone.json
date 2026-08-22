@@ -18,7 +18,6 @@
     "e2e/publisher/**",
     "e2e/delivery/**",
     "e2e/deploy/config-override/**",
-    "e2e/install-flow/**",
     "e2e/scripts/**",
     "e2e/tests/**",
     "e2e/docker-compose*.yml",

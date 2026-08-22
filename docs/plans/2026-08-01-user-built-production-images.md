@@ -43,7 +43,7 @@ gateway-prod/
   Dockerfile
   kb.config.json
   marketplace.lock
-  compatibility.json
+  release-index.json
   deployment.json
   kb-create
 ```
@@ -64,14 +64,14 @@ FROM ${KB_BASE_IMAGE}
 
 COPY kb-create /usr/local/bin/kb-create
 
-COPY kb.config.json marketplace.lock deployment.json compatibility.json /app/.kb/
+COPY kb.config.json marketplace.lock deployment.json release-index.json /app/.kb/
 
 RUN kb-create deployment provision \
   --root /app \
   --composition /app/.kb/deployment.json \
   --config /app/.kb/kb.config.json \
   --lock /app/.kb/marketplace.lock \
-  --matrix /app/.kb/compatibility.json
+  --matrix /app/.kb/release-index.json
 ```
 
 The user builds and publishes this image in their own CI or locally:
