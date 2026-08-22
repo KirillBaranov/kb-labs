@@ -1,64 +1,72 @@
 ---
-title: "Scoped Installs in CI"
-description: "Install exactly the plugins/services a CI job needs with kb-create install, and the reusable GitHub Action that wraps it."
-updatedAt: "2026-08-12"
+title: "V2 Installs in CI"
+description: "Apply a sealed KB Labs release index non-interactively with kb-create and the reusable GitHub Action."
+updatedAt: "2026-08-22"
 order: 8
 ---
 
-Most workflows only need a thin slice of the platform — a release job needs the `release` plugin, not the gateway, workflow engine, or marketplace. `kb-create install` and the `kb-create-install` GitHub Action exist to make that slice explicit and fast, instead of pulling in the full onboarding wizard's default footprint.
+Most workflows only need a thin slice of the platform — a release job needs the `release` plugin, not the gateway, workflow engine, or marketplace. V2 `kb-create apply` and the `kb-create-install` GitHub Action make that slice explicit while using the same release-index contract as the human wizard and agent protocol.
 
-## `kb-create install`
+## `kb-create apply`
 
-A non-interactive command that installs exactly the plugins/services you name — no wizard, no default footprint beyond the platform baseline (core packages + the always-installed baseline adapters).
+A non-interactive command that applies exactly the plugins/services you name — no wizard, no default footprint beyond the platform baseline.
 
 ```bash
-kb-create install --plugins=release --platform ./ci-platform
+kb-create apply --index ./release-index.json \
+  --request-platform-root ./ci-platform \
+  --project-root "$GITHUB_WORKSPACE" \
+  --plugins=release
 ```
 
-Every ID is validated against the manifest catalog **before any network action** — an unknown plugin/service name fails fast with the list of valid IDs, rather than partway through an install.
+The index digest and compatibility matrix are validated before any package is
+written. An unknown plugin, missing provider, incompatible version, or missing
+platform/SDK/binary relation fails during planning with structured diagnostics.
+The same request can be passed unchanged by CI, an agent, or the wizard.
 
 ### Pin versions
 
 Append `@version` to any plugin or service ID:
 
 ```bash
-kb-create install --plugins=release@0.2.0 --services=rest@1.4.0 --platform ./ci-platform
+kb-create apply --index ./release-index.json --plugins=release@0.2.0 \
+  --services=rest@1.4.0 --request-platform-root ./ci-platform
 ```
 
 Omit the version to install `@latest`. Pins are independent per catalog (plugins and services are separate maps), since an ID like `marketplace` can exist in both.
 
 ### Select an SDK or Platform release
 
-`kb-create` has two release axes: the SDK (`@kb-labs/sdk`) and the Platform
+`kb-create` has two release axes in the shared index: the SDK (`@kb-labs/sdk`) and the Platform
 (core packages, adapters, services, plugins, and service companion CLI
 packages). Select a channel on either axis, or pin it to an exact version:
 
 ```bash
 # Track the next platform train while keeping the default SDK channel.
-kb-create install --plugins=release --platform-channel=canary --platform ./ci-platform
+kb-create apply --index ./release-index.json --plugins=release \
+  --platform-channel=canary --request-platform-root ./ci-platform
 
 # Reproduce a known platform release exactly.
-kb-create install --plugins=release --platform-version=2.118.1 --platform ./ci-platform
+kb-create apply --index ./release-index.json --plugins=release \
+  --platform-version=2.118.1 --request-platform-root ./ci-platform
 ```
 
-Supported channels are `stable` (the npm `latest` tag) and `canary`. On an
+Supported channels are labels in the sealed release index. On an
 axis, `--*-version` and `--*-channel` are mutually exclusive. A channel is
 resolved to a concrete version before installation, then recorded in the
 installation state so `kb-create status` can show what actually landed.
 
-The release manifest can carry an SDK/Platform compatibility matrix. It is
-checked before packages are written; an incompatible pair stops the command.
-Use `--force-compat` only when deliberately testing or recovering a release
-combination that the matrix rejects.
+The release index carries the shared platform/SDK/binary compatibility matrix.
+It is checked before packages are written; an incompatible or incomplete
+relation stops the command. Production has no compatibility bypass.
 
 ### Configure adapters
 
 Adapters back the capabilities plugins declare (`llm`, `storage`, `cache`, ...). Wire one explicitly with `--adapters`:
 
 ```bash
-kb-create install --plugins=release \
+kb-create apply --index ./release-index.json --plugins=release \
   --adapters "cache=@kb-labs/adapters-redis@0.3.0" \
-  --platform ./ci-platform
+  --request-platform-root ./ci-platform
 ```
 
 Role names are validated against the platform's canonical capability list — a typo'd role fails before any package installs. Most common roles (`llm`, `storage`, `logger`, `analytics`, ...) already have a sane default wired from the manifest catalog. Cache consumers can use the built-in StateBroker adapter without provisioning Redis, or select `@kb-labs/adapters-redis` for a shared external cache. If a plugin declares a capability as required and nothing backs it, planning fails before any package installs.
@@ -95,6 +103,7 @@ For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the bina
 ```yaml
 - uses: kb-labs-team/kb-labs/.github/actions/kb-create-install@main
   with:
+    release-index: ./.kb/release/release-index.json
     plugins: release@0.2.0
     platform-dir: ${{ runner.temp }}/kb-platform
 ```
@@ -106,14 +115,13 @@ For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the bina
 | `adapters`     | Comma-separated `role=pkg[@version]` pairs                             |
 | `platform-dir` | Where the platform installs to (default: a runner temp dir)            |
 | `registry`     | Override the npm registry (e.g. a local Verdaccio for testing)         |
-| `sdk-version` / `sdk-channel` | Select an exact SDK release or `stable`/`canary` channel       |
-| `platform-version` / `platform-channel` | Select an exact uniform Platform release or channel  |
-| `force-compat` | Continue when the manifest compatibility check rejects the selected axes |
-| `version`      | Pin the `kb-create` binary itself, instead of using the latest release |
+| `release-index` | Required sealed `kb.create.release-index/v2` file for the release train |
+| `version`      | Pin the `kb-create` binary release; use an exact tag in production |
 
 Outputs: `platform-dir` (resolved install path) and `config-path` (generated `kb.config.jsonc`), for chaining into later steps that need to `cd` into the platform or read its config.
 
-The action downloads the `kb-create` binary directly from GitHub Releases (same convention as `kb-create`'s own self-update) — no separate install script step needed.
+The action downloads the `kb-create` binary directly from GitHub Releases and
+applies the supplied release index — no separate install script step is needed.
 
 ## What's next
 

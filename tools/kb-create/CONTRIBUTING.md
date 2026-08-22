@@ -72,14 +72,20 @@ Tests are table-driven and live alongside the code they test (`*_test.go`).
 
 ## Building a Release
 
-Releases are built automatically via goreleaser on GitHub Actions when a tag is pushed:
+The release train publishes one sealed `release-index.json` together with the
+platform, SDK and binary artifacts. The index is prepared from the exact
+staged package manifests and binary checksum manifest; it is the compatibility
+authority consumed by the launcher. Do not publish a platform or binary with a
+separate compatibility file or an ad-hoc latest-version lookup.
+
+Releases are built automatically via GitHub Actions when a release tag is pushed:
 
 ```bash
 git tag v0.2.1
 git push origin v0.2.1
 ```
 
-To test the release build locally:
+To test a binary build locally:
 
 ```bash
 goreleaser build --snapshot --clean

@@ -62,13 +62,17 @@ declares that requirement and JSON Pointer. Secret fields become secret-store
 references and cannot have a scenario default. The migrated built-ins are
 `commit`, `custom`, `explore`, `plugin-author`, and `release`.
 
-Release automation creates the index with `go run ./v2/cmd/kb-create-release-index --input
-manifest-export.json --manifest-root staging-root --output release-index.json`.
-The command reads the exact V2 manifests staged with each artifact and replaces
-any hand-authored config projection; missing/mismatched manifests fail the
-release. It then rejects an index whose channel points outside its platform
-set and seals the canonical payload with a digest. `kb-create` verifies that
-digest before resolving.
+Release automation creates the index with
+`go run ./v2/cmd/kb-create-release-index --input manifest-export.json
+--manifest-root staging-root --output release-index.json` after generating the
+binary manifest from the exact published checksums with
+`node scripts/prepare-binary-manifest.mjs`. The command reads the exact V2
+manifests staged with each artifact and replaces any hand-authored config
+projection; missing/mismatched manifests fail the release. The resulting
+index contains the shared compatibility matrix for platform, SDK and binaries,
+rejects channels that point outside its platform set, and seals the canonical
+payload with a digest. `kb-create` verifies both the digest and matrix before
+resolving.
 
 Secret input uses `--secret-env requirement.id=ENV_VAR`, so CI/agents pass a
 reference to process environment rather than secret text through argv/JSON.
