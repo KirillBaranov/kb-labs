@@ -35,6 +35,7 @@ const wanted = [
   ...(registryManifest.adapters ?? []).map(item => item.name),
 ].filter(Boolean);
 const wantedSet = new Set(wanted);
+const adapterPackageNames = new Set((registryManifest.adapters ?? []).map(item => item.name).filter(Boolean));
 const packages = new Map();
 
 for (const filename of readdirSync(packagesDir).filter(name => name.endsWith('.tgz'))) {
@@ -69,6 +70,7 @@ const adapterOptions = JSON.stringify({
 const platformMembers = (registryManifest.core ?? [])
   .map(item => item.name)
   .filter(name => name && name !== '@kb-labs/core-runtime' && name !== '@kb-labs/sdk')
+  .filter(name => !adapterPackageNames.has(name) && !name.startsWith('@kb-labs/adapters-') && name !== '@kb-labs/data-store')
   .join(',');
 const result = spawnSync(process.execPath, [
   '/src/kb-create/scripts/prepare-release-index.mjs',
