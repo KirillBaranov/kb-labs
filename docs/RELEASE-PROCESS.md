@@ -21,6 +21,13 @@ The prepare workflow creates the immutable release metadata before the tag. The 
 7. it runs a clean `kb-create apply` against the canary index and asserts that `kb.config.jsonc` and `devservices.yaml` are rendered;
 8. it runs the required post-publish workflow/plugin smoke against the public canary packages.
 
+For a binary candidate, `release-binaries.yml` first publishes the immutable
+GoReleaser assets and `binaries-canary`, then downloads that exact published
+`kb-create-linux-amd64` asset, verifies its checksum, and runs the same V2
+install/update/plugin/workflow smoke against a public platform release index.
+`promote-binaries.yml` requires the successful binary post-publish smoke run
+before moving the candidate to `binaries-stable`.
+
 The candidate smoke is deliberately a bounded installer/package/config/workflow gate. Actual service startup remains covered by the sharded integration suites; a green smoke does not replace them.
 
 The compatibility marker is conservative in the first release: it records the

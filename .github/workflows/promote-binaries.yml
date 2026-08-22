@@ -13,6 +13,10 @@ on:
         description: Release tag (for example v0.5.0-binaries)
         required: true
         type: string
+      candidate_run_id:
+        description: Successful release-binaries workflow run that passed binary post-publish smoke
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -45,6 +49,31 @@ jobs:
         run: |
           set -euo pipefail
           gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null
+
+      - name: Verify candidate binary smoke
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+        run: |
+          set -euo pipefail
+          test "$CANDIDATE_RUN_ID" =~ ^[0-9]+$ || {
+            echo "::error::candidate_run_id must be a numeric GitHub Actions run id"
+            exit 1
+          }
+          run_json="$(gh run view "$CANDIDATE_RUN_ID" --json event,headBranch,status,conclusion,workflowName,jobs)"
+          jq -e --arg tag "$RELEASE_TAG" '
+            .workflowName == "Release Binaries" and
+            .event == "push" and
+            .headBranch == $tag and
+            .status == "completed" and
+            .conclusion == "success" and
+            ([.jobs[] | select(.name == "kb-create binary post-publish smoke") | .conclusion] | . == ["success"])
+          ' <<<"$run_json" >/dev/null || {
+            echo "::error::Candidate run did not complete a successful binary post-publish smoke"
+            gh run view "$CANDIDATE_RUN_ID" --json status,conclusion,workflowName,jobs
+            exit 1
+          }
 
       - name: Verify canary points at the candidate tag
         env:
