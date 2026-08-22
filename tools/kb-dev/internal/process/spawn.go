@@ -13,6 +13,7 @@ import (
 // SpawnOpts configures how a process is started.
 type SpawnOpts struct {
 	Command  string            // shell command to execute
+	Title    string            // optional argv[0] label visible in ps for simple commands
 	Env      map[string]string // additional environment variables
 	Dir      string            // working directory (defaults to current)
 	LogFile  string            // stdout+stderr redirect (file path)
@@ -37,6 +38,9 @@ type SpawnResult struct {
 // If EnvCache is provided, uses resolved PATH instead of login shell (-l).
 func Spawn(opts SpawnOpts) (*SpawnResult, error) {
 	shellArgs := buildShellArgs(opts.Command)
+	if opts.Title != "" && !strings.ContainsAny(opts.Command, "&|;") {
+		shellArgs = []string{"bash", "-c", "exec -a '" + strings.ReplaceAll(opts.Title, "'", "") + "' " + opts.Command}
+	}
 
 	cmd := exec.Command(shellArgs[0], shellArgs[1:]...)
 	setProcAttrs(cmd)

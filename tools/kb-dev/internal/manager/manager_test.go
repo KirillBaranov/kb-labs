@@ -1,7 +1,9 @@
 package manager
 
 import (
+	"context"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -62,6 +64,39 @@ func TestStatusReportsPortOccupantForFailedService(t *testing.T) {
 	}
 	if status.Cleanup != "kb-dev stop gateway --force" {
 		t.Errorf("cleanup command = %q", status.Cleanup)
+	}
+}
+
+func TestStartCleansProcessWhenHealthCheckFails(t *testing.T) {
+	root := t.TempDir()
+	cfg := &config.Config{
+		Services: map[string]config.Service{
+			"stuck": {
+				Name:        "Stuck",
+				Type:        config.ServiceTypeNode,
+				Command:     "sleep 60",
+				HealthCheck: "http://127.0.0.1:1/health",
+			},
+		},
+		Settings: config.Settings{
+			PIDDir:              filepath.Join(root, "pids"),
+			LogsDir:             filepath.Join(root, "logs"),
+			StartTimeout:        100,
+			HealthCheckInterval: 10,
+		},
+	}
+	m := New(cfg, root, root)
+	m.ResolveEnv()
+
+	result := m.Start(context.Background(), []string{"stuck"}, false)
+	if result.OK {
+		t.Fatal("start should fail when health check never becomes ready")
+	}
+	if m.services["stuck"].PID != 0 || m.services["stuck"].PGID != 0 {
+		t.Fatalf("failed start retained process ownership: pid=%d pgid=%d", m.services["stuck"].PID, m.services["stuck"].PGID)
+	}
+	if _, err := os.Stat(filepath.Join(root, "pids", "stuck.pid")); !os.IsNotExist(err) {
+		t.Fatalf("failed start PID file still exists: %v", err)
 	}
 }
 

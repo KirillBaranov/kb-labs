@@ -116,6 +116,62 @@ func TestIsAlive(t *testing.T) {
 	}
 }
 
+func TestProcessIdentityMatchesCurrentProcess(t *testing.T) {
+	identity := ProcessIdentity(os.Getpid())
+	if identity == "" {
+		t.Skip("process start identity is unavailable on this platform")
+	}
+	if got := ProcessIdentity(os.Getpid()); got != identity {
+		t.Fatalf("process identity changed: first %q, second %q", identity, got)
+	}
+}
+
+func TestReconcileRejectsPIDReuse(t *testing.T) {
+	dir := t.TempDir()
+	info := NewPIDInfo("reused-svc", os.Getpid(), os.Getpid(), "self")
+	info.ProcessIdentity = "not-the-current-process"
+	if err := WritePID(dir, info); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := Reconcile(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := result["reused-svc"]; ok {
+		t.Fatal("PID with mismatched process identity must not be reconciled as alive")
+	}
+}
+
+func TestRuntimeCatalogRoundTrip(t *testing.T) {
+	t.Setenv("KB_DEV_RUNTIME_DIR", t.TempDir())
+	info := NewPIDInfo("workflow", 1234, 1234, "node workflow.js")
+	info.ProjectID = "project-a"
+	info.ProjectRoot = "/tmp/project-a"
+	info.InstanceID = "instance-a"
+	info.NetOffset = 1200
+	if err := UpdateRuntime(info); err != nil {
+		t.Fatal(err)
+	}
+	records, err := ListRuntime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].InstanceID != "instance-a" {
+		t.Fatalf("catalog records = %#v", records)
+	}
+	if err := RemoveRuntime("project-a", "workflow"); err != nil {
+		t.Fatal(err)
+	}
+	records, err = ListRuntime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 0 {
+		t.Fatalf("catalog records after remove = %#v", records)
+	}
+}
+
 func TestPIDRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 

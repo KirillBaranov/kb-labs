@@ -229,6 +229,20 @@ postgres:
 | `kb-dev ready <targets...>` | Block until all services are alive |
 | `kb-dev watch` | Stream lifecycle events as JSONL |
 
+Every command uses the project discovered from the current working directory by
+default. Use `--project <alias-or-path>` to address another registered project
+without changing directories. Fleet inspection is explicit: `kb-dev status
+--all` shows every registered project and its service summary.
+
+Managed processes carry a project/service/instance ownership marker and are
+also recorded in a host runtime catalog. A missing PID file, removed worktree,
+zombie, or PID reuse is reported as stale/orphaned/detached state; it is never
+silently treated as a reason to kill an unrelated process.
+
+Docker-backed services also record the inspected container ID when a
+`container:` name is configured. Container labels are optional and an unlabeled
+container is not considered owned just because its name matches.
+
 ### Flags
 
 | Flag | Description |
@@ -238,6 +252,22 @@ postgres:
 | `--cascade` | Stop/restart dependent services too |
 | `--no-cascade` | Skip dependent cascade on restart |
 | `--config <path>` | Explicit config file path |
+| `--project <alias-or-path>` | Run against a specific registered project |
+| `--all` | Inspect all known projects (fleet commands) |
+
+Fleet operations are explicit and support safe planning:
+
+```bash
+kb-dev logs --all workflow                 # tail one service across projects
+kb-dev watch --all --json                  # multiplex lifecycle events
+kb-dev stop --all --except agent-working --dry-run
+kb-dev stop --all --except agent-working
+```
+
+`logs --all --follow` is intentionally rejected because multiplexed follow
+streams are ambiguous; select one project with `--project` instead. `stop
+--all` never stops an unmanaged/detached runtime implicitly and reports it for
+explicit follow-up.
 
 ### Start
 
@@ -254,6 +284,8 @@ kb-dev start --watch            # stay alive, auto-restart on crash
 ```bash
 kb-dev status
 kb-dev status --json
+kb-dev status --project agent-a --json
+kb-dev status --all --json
 ```
 
 ```

@@ -4,6 +4,26 @@ import (
 	"testing"
 )
 
+func TestParseContainerInspect(t *testing.T) {
+	info, err := ParseContainerInspect("abc123\t/redis\ttrue\tproject-a\tredis\tinstance-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.ID != "abc123" || info.Name != "redis" || !info.Running || info.ProjectID != "project-a" || info.Service != "redis" || info.Instance != "instance-1" {
+		t.Fatalf("unexpected container info: %#v", info)
+	}
+}
+
+func TestParseContainerInspectMissingLabels(t *testing.T) {
+	info, err := ParseContainerInspect("abc123\t/redis\tfalse\t<no value>\t<no value>\t<no value>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Running || info.ProjectID != "" || info.Service != "" || info.Instance != "" {
+		t.Fatalf("unexpected unlabeled container info: %#v", info)
+	}
+}
+
 func TestAvailable(t *testing.T) {
 	// This test depends on the host environment.
 	// We just verify it doesn't panic.

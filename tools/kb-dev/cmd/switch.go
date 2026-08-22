@@ -173,7 +173,7 @@ func stopIfRunning(ctx context.Context, path string) (bool, error) {
 		return false, nil
 	}
 
-	mgr.Stop(ctx, targets, true)
+	mgr.Stop(ctx, targets, true, false)
 	_ = mgr.Reconcile()
 
 	if anyRunning(mgr, targets) {

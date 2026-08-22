@@ -44,23 +44,27 @@ type ServiceHealth struct {
 
 // ServiceStatus is a snapshot of a service's full state for JSON output.
 type ServiceStatus struct {
-	State        string            `json:"state"`
-	PID          int               `json:"pid,omitempty"`
-	PGID         int               `json:"pgid,omitempty"`
-	StartedBy    string            `json:"startedBy,omitempty"`
-	StartedAt    string            `json:"startedAt,omitempty"`
-	Uptime       string            `json:"uptime,omitempty"`
-	Health       *ServiceHealth    `json:"health,omitempty"`
-	Resources    *ResourceUsage    `json:"resources,omitempty"`
-	Port         int               `json:"port,omitempty"`
-	URL          string            `json:"url,omitempty"`
-	Deps         []string          `json:"deps,omitempty"`
-	DepsState    map[string]string `json:"depsState,omitempty"`
-	Detail       string            `json:"detail,omitempty"`
-	Cleanup      string            `json:"cleanupCommand,omitempty"`
-	LogFile      string            `json:"logFile,omitempty"`
-	PortOccupant *PortOccupant     `json:"portOccupant,omitempty"`
-	LogsTail     []string          `json:"logsTail,omitempty"`
+	State            string            `json:"state"`
+	PID              int               `json:"pid,omitempty"`
+	PGID             int               `json:"pgid,omitempty"`
+	StartedBy        string            `json:"startedBy,omitempty"`
+	StartedAt        string            `json:"startedAt,omitempty"`
+	Uptime           string            `json:"uptime,omitempty"`
+	Health           *ServiceHealth    `json:"health,omitempty"`
+	Resources        *ResourceUsage    `json:"resources,omitempty"`
+	Port             int               `json:"port,omitempty"`
+	URL              string            `json:"url,omitempty"`
+	Deps             []string          `json:"deps,omitempty"`
+	DepsState        map[string]string `json:"depsState,omitempty"`
+	Detail           string            `json:"detail,omitempty"`
+	Cleanup          string            `json:"cleanupCommand,omitempty"`
+	LogFile          string            `json:"logFile,omitempty"`
+	PortOccupant     *PortOccupant     `json:"portOccupant,omitempty"`
+	LogsTail         []string          `json:"logsTail,omitempty"`
+	ContainerID      string            `json:"containerId,omitempty"`
+	ContainerName    string            `json:"containerName,omitempty"`
+	ContainerRunning bool              `json:"containerRunning,omitempty"`
+	ContainerOwned   bool              `json:"containerOwned,omitempty"`
 }
 
 // ResourceUsage tracks CPU and memory for a running process.
@@ -78,9 +82,22 @@ type PortOccupant struct {
 
 // StatusResult is the full status response.
 type StatusResult struct {
-	OK       bool                     `json:"ok"`
-	Services map[string]ServiceStatus `json:"services"`
-	Summary  StatusSummary            `json:"summary"`
+	OK             bool                     `json:"ok"`
+	Services       map[string]ServiceStatus `json:"services"`
+	Summary        StatusSummary            `json:"summary"`
+	RuntimeAnomaly []RuntimeAnomaly         `json:"runtimeAnomalies,omitempty"`
+}
+
+// RuntimeAnomaly explains a catalog/process mismatch without authorizing a
+// destructive action. Agents can use the suggested action after inspection.
+type RuntimeAnomaly struct {
+	Service  string `json:"service"`
+	PID      int    `json:"pid"`
+	PGID     int    `json:"pgid,omitempty"`
+	Instance string `json:"instanceId,omitempty"`
+	State    string `json:"state"` // orphaned or stale-runtime
+	Reason   string `json:"reason"`
+	Action   string `json:"action"`
 }
 
 // StatusSummary provides aggregate counts.
