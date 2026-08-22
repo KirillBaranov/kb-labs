@@ -33,6 +33,22 @@ const platformVersion = value('--platform-version');
 const sdkVersion = value('--sdk-version');
 const binaryManifestPath = value('--binary-manifest') ? resolve(value('--binary-manifest')) : undefined;
 if (flow === 'platform' && !binaryManifestPath) throw new Error('--binary-manifest is required for the unified platform release-index');
+const sealerBin = value('--sealer-bin') ? resolve(value('--sealer-bin')) : undefined;
+const platformRequires = (value('--platform-requires') ?? '')
+  .split(',')
+  .map(item => item.trim())
+  .filter(Boolean)
+  .map(capability => ({ capability, requiredBy: 'platform' }));
+const platformAdapterConfig = value('--platform-adapter-config')
+  ? JSON.parse(value('--platform-adapter-config'))
+  : undefined;
+const platformAdapterOptions = value('--platform-adapter-options')
+  ? JSON.parse(value('--platform-adapter-options'))
+  : undefined;
+const platformMemberPackages = (value('--platform-member-packages') ?? '')
+  .split(',')
+  .map(item => item.trim())
+  .filter(Boolean);
 
 const readStage = directory => {
   const entries = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
@@ -119,12 +135,21 @@ for (const item of stage) {
         : manifest?.schema === 'kb.adapter/1'
           ? manifest.id
         : idFor(item.name);
+  const generatedRequirements = item.name === platformPackage
+    ? [
+        ...(platformAdapterConfig ? [{ id: 'platform.adapters', path: '/platform/adapters', default: platformAdapterConfig }] : []),
+        ...(platformAdapterOptions ? [{ id: 'platform.adapterOptions', path: '/platform/adapterOptions', default: platformAdapterOptions }] : []),
+      ]
+    : [];
   writeFileSync(join(staging, 'node_modules', item.name, 'kb-create.manifest.json'), `${JSON.stringify({
     schema: 'kb.create.artifact-manifest/v2',
     id: normalizedID,
     package: item.name,
     version: item.version,
-    requirements: manifest?.schema === 'kb.create.artifact-manifest/v2' ? manifest.requirements ?? [] : [],
+    requirements: [
+      ...(manifest?.schema === 'kb.create.artifact-manifest/v2' ? manifest.requirements ?? [] : []),
+      ...generatedRequirements,
+    ],
   })}\n`);
   if (!manifest) continue;
   if (manifest.schema === 'kb.service/1') {
@@ -168,11 +193,27 @@ const exportValue = {
     package: platform.name,
     tarball: tarballURL(platform),
     sha256: platform.sha256,
+    requires: platformRequires,
+    config: [
+      ...(platformAdapterConfig ? [{
+        id: 'platform.adapters',
+        path: '/platform/adapters',
+        default: JSON.stringify(platformAdapterConfig),
+      }] : []),
+      ...(platformAdapterOptions ? [{
+        id: 'platform.adapterOptions',
+        path: '/platform/adapterOptions',
+        default: JSON.stringify(platformAdapterOptions),
+      }] : []),
+    ],
     profiles: { default: { platformVersion: resolvedPlatformVersion, services: services.map(({ packageName, ...service }) => service) } },
     binaries,
-    members: services.map(service => {
-      const item = byName.get(service.packageName);
-      return item ? component(item, undefined, service.id) : undefined;
+    members: [...new Set([
+      ...services.map(service => service.packageName),
+      ...platformMemberPackages,
+    ])].map(packageName => {
+      const item = byName.get(packageName);
+      return item ? component(item, undefined, services.find(service => service.packageName === packageName)?.id ?? idFor(packageName)) : undefined;
     }).filter(Boolean),
   }],
   sdks: sdk ? [component(sdk, undefined, 'sdk')] : [],
@@ -183,10 +224,12 @@ const exportValue = {
 const exportPath = join(artifactsDir, 'manifest-export.json');
 writeFileSync(exportPath, `${JSON.stringify(exportValue, null, 2)}\n`);
 
-const sealer = spawnSync('go', ['run', './v2/cmd/kb-create-release-index', '--input', exportPath, '--manifest-root', staging, '--output', output], {
-  cwd: resolve(new URL('../', import.meta.url).pathname),
-  stdio: 'inherit',
-});
+const sealer = sealerBin
+  ? spawnSync(sealerBin, ['--input', exportPath, '--manifest-root', staging, '--output', output], { stdio: 'inherit' })
+  : spawnSync('go', ['run', './v2/cmd/kb-create-release-index', '--input', exportPath, '--manifest-root', staging, '--output', output], {
+      cwd: resolve(new URL('../', import.meta.url).pathname),
+      stdio: 'inherit',
+    });
 if (sealer.status !== 0) process.exit(sealer.status ?? 1);
 
 function idFor(packageName) {

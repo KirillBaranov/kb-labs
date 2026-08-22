@@ -29,8 +29,25 @@ COPY tools/kb-dev    /src/kb-dev
 COPY tools/kb-devkit /src/kb-devkit
 
 RUN cd /src/kb-create && go build -o /out/kb-create .
+RUN cd /src/kb-create && go build -o /out/kb-create-release-index ./v2/cmd/kb-create-release-index
 RUN cd /src/kb-dev    && go build -o /out/kb-dev .
 RUN cd /src/kb-devkit && go build -o /out/kb-devkit .
+
+# Build the sealed V2 index from the exact package tarballs that the publisher
+# exposes through Verdaccio. This uses the same sealer as the release pipeline.
+FROM node:24-bookworm AS release-index-builder
+
+WORKDIR /src
+COPY e2e/packages /src/packages
+COPY e2e/platform/registry-manifest.json /src/registry-manifest.json
+COPY e2e/platform/prepare-release-index.mjs /src/prepare-release-index.mjs
+COPY tools/kb-create/scripts/prepare-release-index.mjs /src/kb-create/scripts/prepare-release-index.mjs
+COPY --from=go-builder /out/kb-create-release-index /usr/local/bin/kb-create-release-index
+RUN node /src/prepare-release-index.mjs \
+      --packages-dir /src/packages \
+      --registry-manifest /src/registry-manifest.json \
+      --sealer /usr/local/bin/kb-create-release-index \
+      --output /out/release-index.json
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────
 FROM node:24-bookworm
@@ -47,6 +64,7 @@ RUN git config --global user.email "e2e@kblabs.test" && \
 COPY --from=go-builder /out/kb-create /usr/local/bin/kb-create
 COPY --from=go-builder /out/kb-dev    /usr/local/bin/kb-dev
 COPY --from=go-builder /out/kb-devkit /usr/local/bin/kb-devkit
+COPY --from=release-index-builder /out/release-index.json /release-index.json
 
 # Manifest that points kb-create at the local Verdaccio registry
 COPY e2e/platform/registry-manifest.json /e2e-registry-manifest.json

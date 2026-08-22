@@ -21,11 +21,19 @@ echo "    kb-create $(kb-create --version 2>&1 | head -1)"
 echo "==> [2/3] Bootstrapping project..."
 mkdir -p /workspace && cd /workspace
 
-# Use registry-manifest.json to install from local Verdaccio (http://verdaccio:4873)
-# instead of npmjs.org. Verdaccio is pre-populated with monorepo build artifacts
-# by the publisher container (see docker-compose.yml).
-kb-create kb-e2e --yes --dev-manifest /e2e-registry-manifest.json
-cd kb-e2e
+# The V2 launcher consumes a sealed release index. The registry manifest still
+# controls the E2E composition, while the index carries the platform wiring.
+PLATFORM_ROOT=/workspace/kb-e2e
+kb-create apply \
+  --index /release-index.json \
+  --request-platform-root "$PLATFORM_ROOT" \
+  --project-root "$PLATFORM_ROOT" \
+  --platform-channel stable \
+  --service-profile default \
+  --plugins "$(jq -r '[.plugins[] | select(.default == true) | .id] | join(",")' /e2e-registry-manifest.json)" \
+  --adapters "$(jq -r '[.adapters[].id] | join(",")' /release-index.json)" \
+  --registry http://verdaccio:4873
+cd "$PLATFORM_ROOT"
 
 # Bootstrap admin for E2E — gateway creates this user on first start.
 # Tests obtain machine-client credentials by logging in as admin and calling
