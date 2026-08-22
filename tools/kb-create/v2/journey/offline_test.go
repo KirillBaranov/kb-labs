@@ -2,6 +2,7 @@ package journey_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,9 +30,13 @@ func (s status) ServiceStatuses(string) ([]verify.ObservedService, error) { retu
 type offlineArtifacts struct {
 	installed, removed []contracts.Artifact
 	restores           int
+	installErr         error
 }
 
 func (a *offlineArtifacts) Install(items []contracts.Artifact) error {
+	if a.installErr != nil {
+		return a.installErr
+	}
 	a.installed = append(a.installed, items...)
 	return nil
 }
@@ -104,6 +109,10 @@ func TestOfflineLifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall(t *te
 	if err != nil || second.SnapshotID != snapshot.ID {
 		t.Fatalf("update = %#v / %#v / %v", second, snapshot, err)
 	}
+	active, err := receipt.Read(root)
+	if err != nil || active.Plan.Artifacts[0].Version != "1.1.0" || active.SnapshotID != snapshot.ID {
+		t.Fatalf("updated receipt = %#v / %v", active, err)
+	}
 	if _, err := receipt.RestoreSnapshot(root, snapshot.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +125,37 @@ func TestOfflineLifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall(t *te
 	}
 	if len(artifacts.removed) != 1 || artifacts.removed[0].Version != "1.0.0" {
 		t.Fatalf("removed = %#v", artifacts.removed)
+	}
+}
+
+func TestOfflineUpdateFailureRestoresPreviousReceiptAndPackageState(t *testing.T) {
+	root := t.TempDir()
+	plan := contracts.ResolvedInstallPlan{
+		Schema: contracts.ResolvedPlanSchema, PlanHash: "first-plan",
+		Request:      contracts.InstallRequest{PlatformRoot: root},
+		Artifacts:    []contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "1.0.0"}},
+		ServiceGraph: contracts.ServiceGraph{Services: []contracts.Service{{ID: "gateway", Command: "gateway", Required: true}}},
+	}
+	artifacts := &offlineArtifacts{}
+	managed := &lifecycleServices{status: status{{ID: "gateway", State: "alive"}}}
+	deps := runtime.Dependencies{Artifacts: artifacts, Status: managed, Activator: managed, Clock: journeyClock{time.Unix(10, 0)}}
+	first, err := runtime.Apply(plan, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := plan
+	updated.PlanHash, updated.Artifacts[0].Version = "second-plan", "1.1.0"
+	artifacts.installErr = errors.New("registry timeout")
+	deps.Clock = journeyClock{time.Unix(11, 0)}
+	if _, snapshot, updateErr := runtime.Update(updated, deps); updateErr == nil || snapshot.ID == "" {
+		t.Fatalf("update error/snapshot = %v / %q", updateErr, snapshot.ID)
+	}
+	active, err := receipt.Read(root)
+	if err != nil || active.ID != first.ID || active.Plan.Artifacts[0].Version != "1.0.0" {
+		t.Fatalf("receipt after failed update = %#v / %v", active, err)
+	}
+	if artifacts.restores != 1 {
+		t.Fatalf("restore count = %d, want 1", artifacts.restores)
 	}
 }
 

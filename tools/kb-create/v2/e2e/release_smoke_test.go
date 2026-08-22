@@ -60,6 +60,19 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if output, code := run(t, launcher, "status", "--platform-root", platform); code != 0 {
 		t.Fatalf("V2 status exited %d:\n%s", code, output)
 	}
+	updateOutput, updateCode := run(t, launcher, "update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict")
+	if updateCode != 0 {
+		t.Fatalf("V2 update exited %d: %s", updateCode, updateOutput)
+	}
+	var updateResponse struct {
+		OK      bool `json:"ok"`
+		Receipt struct {
+			SnapshotID string `json:"snapshotId"`
+		} `json:"receipt"`
+	}
+	if err := json.Unmarshal([]byte(updateOutput), &updateResponse); err != nil || !updateResponse.OK || updateResponse.Receipt.SnapshotID == "" {
+		t.Fatalf("V2 update did not commit a recovery snapshot: %s", updateOutput)
+	}
 
 	cli := filepath.Join(platform, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
 	if _, err := os.Stat(cli); err != nil {

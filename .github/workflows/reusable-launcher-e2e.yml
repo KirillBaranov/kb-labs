@@ -188,7 +188,7 @@ jobs:
 
       - name: Run kb-create e2e via devkit
         if: inputs.gate == false || steps.gate.outputs.run == 'true'
-        run: cd tools/kb-create && go test -v -race -count=1 ./v2/e2e/...
+        run: cd tools/kb-create && go test -v -race -count=1 ./v2/e2e/... ./v2/journey/...
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}

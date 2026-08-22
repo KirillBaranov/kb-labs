@@ -381,7 +381,7 @@ jobs:
       - name: Run kb-create e2e via devkit
         run: |
           cd tools/kb-create
-          go test -v -race -count=1 ./v2/e2e/...
+          go test -v -race -count=1 -run "$E2E_RUN" ./v2/e2e/... ./v2/journey/...
         env:
           KB_REGISTRY_URL: http://localhost:4873
           GITHUB_TOKEN: ${{ github.token }}
@@ -390,7 +390,7 @@ jobs:
           NPM_CONFIG_REGISTRY: http://localhost:4873
           KB_DEVKIT_FAIL_LINES: 0
           E2E_RUN: >-
-            ${{ matrix.shard == 'core-a' && '^Test(DeclarativeEngineScenarioDiscoveryInspectPlanAndPlanOnlyApply|Help|Version|SubcommandHelp|StatusMissingPlatform|DoctorNoArgs|InstallYes|FirstCommitNoChanges|FirstCommitPromptShown|Update|ReinstallIdempotent|LogsCommand|KbCliSmoke|ServicesStartStop|LLMFlagRemoved|NoLLMByDefault|DefaultKeepsAuthOn|LocalModeWritesAuthOff)$' || matrix.shard == 'core-b' && '^Test(NoPeerDepWarnings|PlatformFilesGenerated|GitignoreEntries|DemoReviewSkipsUntrackedOnly|DemoHintShownAfterZeroFindings|KbConfigShowSplitRoot|GeneratedWorkflowsUseWorkflowIdFlag|GeneratedDemoWorkflowUsesRealCommands|DemoFlagDoesNotChangeInstalledPackages|DoctorDockerCheckIsAdvisoryNotFatal|InstallScopedPlugin|InstallUnknownPluginFailsFast)$' || matrix.shard == 'journeys' && '^Test(TwoProjectsShareOnePlatformIsolated|NoPlaceholderValuesInGeneratedConfigs|SoloDeveloperJourney|LegacyProjectMigrationJourney|CIInstallJourney_PinnedPluginsServicesAndAdapters|CIInstallJourney_UnconfiguredRequiredCapabilityWarns|CIInstallJourney_ExecutesInstalledPlugin|PlatformUpdateAndUninstallPreservesUserArtifacts|AdapterSwitchJourney|KbDevRegistrySwitch_MultiProjectSharedPlatform)$' || '^Test(Lifecycle_InstallSwapRollback|PlatformDirMkdirFailsHardAbort|UninstallRetryThenHardFail)$' }}
+            ${{ matrix.shard == 'core-a' && '^TestV2(CompatibilityFailureIsRejectedBeforeArtifactExecution|NetworkFailureIsReportedBeforePnpmMutation)$' || matrix.shard == 'core-b' && '^TestV2ToolchainFailureIsActionableForNodeAndPnpm$' || matrix.shard == 'journeys' && '^Test(OfflineApplyCompletesPluginAndWorkflowReadyPath|TransportMatrixUsesOneResolvedPluginWorkflowPath)$' || '^TestOffline(LifecycleUsesReceiptSnapshotsForUpdateRollbackAndUninstall|UpdateFailureRestoresPreviousReceiptAndPackageState)$' }}
 
       - name: Upload kb-create e2e log on failure
         if: failure()
