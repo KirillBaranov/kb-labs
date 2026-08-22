@@ -111,16 +111,20 @@ jobs:
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern 'kb-create-linux-amd64' --pattern checksums.txt --dir "$out"
           (cd "$out" && grep -E '  kb-create-linux-amd64$' checksums.txt | sha256sum -c -)
           chmod +x "$out/kb-create-linux-amd64"
-          node - "$out/release-index.json" "$out/checksums.txt" "$REPOSITORY" "$RELEASE_TAG" <<'NODE'
+          node tools/kb-create/scripts/prepare-binary-manifest.mjs \
+            --checksums "$out/checksums.txt" \
+            --repository "$REPOSITORY" \
+            --release-tag "$RELEASE_TAG" \
+            --output "$out/published-binary-manifest.json"
+          node - "$out/release-index.json" "$out/published-binary-manifest.json" <<'NODE'
           const fs = require('node:fs');
-          const [indexPath, checksumsPath, repository, tag] = process.argv.slice(2);
+          const [indexPath, manifestPath] = process.argv.slice(2);
           const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
           const binary = index.platforms.flatMap(platform => platform.binaries ?? []).find(item => item.id === 'kb-create' && item.os === 'linux' && item.arch === 'amd64');
+          const published = manifest.binaries.find(item => item.id === 'kb-create' && item.os === 'linux' && item.arch === 'amd64');
           if (!binary) throw new Error('candidate index has no linux/amd64 kb-create binary');
-          const checksum = fs.readFileSync(checksumsPath, 'utf8').match(/^([a-f0-9]{64})\s+kb-create-linux-amd64$/m)?.[1];
-          if (!checksum || binary.sha256 !== checksum) throw new Error('candidate index kb-create checksum does not match the published asset');
-          const expectedURL = `https://github.com/${repository}/releases/download/${tag}/kb-create-linux-amd64`;
-          if (binary.url !== expectedURL) throw new Error(`candidate index kb-create URL is not the exact release asset: ${binary.url}`);
+          if (!published || JSON.stringify(binary) !== JSON.stringify(published)) throw new Error('candidate index kb-create metadata does not match the published asset');
           NODE
       - name: Run published binary smoke against public packages
         working-directory: tools/kb-create

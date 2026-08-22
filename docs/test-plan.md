@@ -1,8 +1,8 @@
 # Test plan — current critical paths
 
-The legacy launcher package is not a public execution path. It remains only
-while its unrelated delivery utilities and historical E2E fixtures are being
-retired; it is not release evidence. The current executable plan is
+The old launcher implementation is not a public execution path and is not
+release evidence. Unrelated platform delivery utilities remain outside this
+launcher cutover. The current executable plan is
 [QA and E2E strategy](qa/TESTING-STRATEGY.md).
 
 ## Release-critical paths

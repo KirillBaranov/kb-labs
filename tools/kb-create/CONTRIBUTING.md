@@ -30,17 +30,10 @@ go build -o kb-create .
 
 ## Project Layout
 
-```
-cmd/                  CLI commands (cobra). One file per command.
-internal/manifest/    Manifest types, embedded JSON, loader with fallback chain.
-internal/pm/          PackageManager interface + npm/pnpm implementations.
-internal/wizard/      Bubble Tea TUI — wizard stages and rendering.
-internal/installer/   Install and update orchestration.
-internal/config/      PlatformConfig read/write.
-internal/logger/      Dual-output logger (stderr + file).
-```
-
-All business logic lives in `internal/`. The `cmd/` layer only parses flags, calls `internal/` functions, and formats output.
+The public launcher lives under `v2/`: `catalog` owns the sealed
+release-index, `resolve` creates the immutable plan, `runtime` applies and
+recovers it, and `cmd/kb-create-v2` exposes the human/agent/CI transports.
+Publisher-only sealing lives in `v2/cmd/kb-create-release-index`.
 
 ## Conventions
 
@@ -63,24 +56,11 @@ refactor(pm): extract shared run() helper
 chore: bump bubbletea to v1.4.0
 ```
 
-### Adding a new package manager
+### Changing a launcher contract
 
-1. Create `internal/pm/<name>.go` implementing `pm.PackageManager`.
-2. Add detection logic to `pm.Detect()` in `internal/pm/pm.go`.
-3. Update the FAQ in `README.md`.
-
-### Adding a new manifest section
-
-1. Add the new struct to `internal/manifest/types.go`.
-2. Add the field to `Manifest` with a `json` tag.
-3. Update `internal/manifest/manifest.json`.
-4. Handle the new field in `internal/installer/installer.go`.
-
-### Changing the config schema
-
-1. Increment `configVersion` constant in `internal/config/config.go`.
-2. Add a migration case in `config.Read()` (switch on `cfg.Version`).
-3. Update `config.NewConfig()` to populate the new field.
+Update the V2 contract package, catalog validation, resolver and the shared
+Human/Agent/CI tests together. Do not add a second installer path, manifest
+format or package-manager owner.
 
 ## Running Tests
 

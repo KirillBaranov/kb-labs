@@ -82,12 +82,10 @@ binary asset. V2 verifies its SHA-256 and installs it in `.kb/v2/bin`; a CLI
 
 ## Why V2
 
-The current launcher contains valuable capabilities — a declarative action
-engine, catalog, journal, recovery primitives, wizard, agent protocol and
-direct CI flow — but the ownership of an installation is split between legacy
-installer code, plan execution and a scan of the final `node_modules` tree.
-That makes service/configuration output an incidental effect rather than a
-proved result of the user's choice.
+The launcher owns one declarative action engine, catalog, journal, recovery
+primitives, wizard, agent protocol and direct CI flow. Installation state is
+resolved from the sealed release index and request before any filesystem or
+package-manager mutation.
 
 V2 makes one promise: a user, CI job and agent ask for the same installation;
 the launcher resolves the same compatible artifacts, applies the same action

@@ -129,6 +129,53 @@ func Validate(source Catalog) error {
 	return nil
 }
 
+// CheckCompatibility is the runtime decision boundary for the release-owned
+// matrix. Package ranges remain useful for plugin/provider declarations, but
+// platform, SDK and binary selection is accepted only when the candidate
+// labels are explicitly related in the sealed index.
+func CheckCompatibility(source Catalog, platformVersion, sdkVersion, binaryID, os, arch string) error {
+	if source.Compatibility == nil {
+		return fmt.Errorf("release index has no compatibility matrix")
+	}
+	platformID := "platform@" + platformVersion
+	platform, ok := compatibilityLabel(source.Compatibility.Labels, platformID, "platform")
+	if !ok {
+		return fmt.Errorf("compatibility matrix has no platform label %q", platformID)
+	}
+	if sdkVersion != "" {
+		sdkID := "sdk@" + sdkVersion
+		if _, ok := compatibilityLabel(source.Compatibility.Labels, sdkID, "sdk"); !ok || !requiresLabel(platform, sdkID) {
+			return fmt.Errorf("compatibility matrix does not relate %s to %s", platformID, sdkID)
+		}
+	}
+	if binaryID != "" {
+		binaryIDPrefix := "binary:" + binaryID + "@" + platformVersion + ":" + os + "/" + arch
+		binary, ok := compatibilityLabel(source.Compatibility.Labels, binaryIDPrefix, "binary")
+		if !ok || !requiresLabel(binary, platformID) || (sdkVersion != "" && !requiresLabel(binary, "sdk@"+sdkVersion)) {
+			return fmt.Errorf("compatibility matrix does not relate binary %s to the selected platform/SDK", binaryID)
+		}
+	}
+	return nil
+}
+
+func compatibilityLabel(labels []CompatibilityLabel, id, kind string) (CompatibilityLabel, bool) {
+	for _, label := range labels {
+		if label.ID == id && label.Kind == kind {
+			return label, true
+		}
+	}
+	return CompatibilityLabel{}, false
+}
+
+func requiresLabel(label CompatibilityLabel, wanted string) bool {
+	for _, relation := range label.Requires {
+		if relation.Label == wanted {
+			return true
+		}
+	}
+	return false
+}
+
 func validateCompatibility(matrix CompatibilityMatrix, source Catalog) error {
 	if matrix.Schema != CompatibilitySchema {
 		return fmt.Errorf("unsupported compatibility matrix schema %q", matrix.Schema)

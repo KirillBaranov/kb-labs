@@ -96,7 +96,7 @@ jobs:
           retention-days: 14
 
   # ── 0b. kb-create V2 contract matrix — no registry, Docker or shared HOME ─
-  # These are not aliases for the legacy launcher E2E shards below. Each shard
+  # These are the public launcher contract shards. Each shard
   # owns one V2 contract and only deterministic fixtures, making configuration
   # and recovery failures fast, diagnosable PR feedback.
   launcher-v2-contracts:

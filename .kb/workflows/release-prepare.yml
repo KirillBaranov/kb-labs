@@ -41,6 +41,11 @@ inputs:
     description: Skip the pre-release Checks step (dist-exports/pack-install/typecheck/lint/tests). Escape hatch for shipping when Checks itself is broken/too slow — the packages still get built and reviewed, just not gate-checked. Re-run checks manually before trusting the release.
     required: false
     default: false
+  binaryManifest:
+    type: string
+    description: Path to the binary manifest generated from the exact GoReleaser candidate assets; required for platform releases
+    required: false
+    default: .kb/release/binary-manifest.json
 
 phases:
   preview:
@@ -183,13 +188,13 @@ jobs:
         if: ${{ inputs.flow == 'platform' }}
         timeoutMs: 1200000
         run: >-
-          test -s .kb/release/binary-manifest.json &&
+          test -s "${{ inputs.binaryManifest }}" &&
           node tools/kb-create/scripts/prepare-release-index.mjs
           --flow ${{ inputs.flow }}
           --channel ${{ inputs.channel }}
           --artifacts-dir .kb/release/artifacts
           --sdk-artifacts-dir .kb/release/sdk-artifacts
-          --binary-manifest .kb/release/binary-manifest.json
+          --binary-manifest "${{ inputs.binaryManifest }}"
           --output .kb/release/release-index.json
 
       - name: Verify release branch before git operations

@@ -28,6 +28,15 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if !ok {
 		return contracts.ResolvedInstallPlan{}, incompatible("platform", platformVersion, "is not present in the release index")
 	}
+	sdkVersion := request.SDK.Version
+	if sdkVersion == "" {
+		sdkVersion = source.Channels[request.SDK.Channel]
+	}
+	if source.Compatibility != nil {
+		if err := catalog.CheckCompatibility(source, platform.Version, sdkVersion, "", "", ""); err != nil {
+			return contracts.ResolvedInstallPlan{}, incompatible("release set", platform.Version, err.Error())
+		}
+	}
 	graph, ok := platform.Profiles[request.ServiceProfile]
 	if !ok {
 		if request.ServiceProfile == "" {
@@ -44,14 +53,15 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	}
 	for _, binary := range platform.Binaries {
 		if binary.OS == runtime.GOOS && binary.Arch == runtime.GOARCH {
+			if source.Compatibility != nil {
+				if err := catalog.CheckCompatibility(source, platform.Version, sdkVersion, binary.ID, binary.OS, binary.Arch); err != nil {
+					return contracts.ResolvedInstallPlan{}, incompatible("binary", binary.ID, err.Error())
+				}
+			}
 			artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.Filename})
 		}
 	}
 	if request.SDK.Version != "" || request.SDK.Channel != "" {
-		sdkVersion := request.SDK.Version
-		if sdkVersion == "" {
-			sdkVersion = source.Channels[request.SDK.Channel]
-		}
 		sdk, found := findComponentVersion(source.SDKs, sdkVersion)
 		if !found {
 			return contracts.ResolvedInstallPlan{}, incompatible("SDK", sdkVersion, "is not present in the release index")

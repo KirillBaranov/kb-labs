@@ -37,3 +37,17 @@ func TestValidateRejectsCompatibilityLabelOutsideIndex(t *testing.T) {
 		t.Fatal("expected compatibility label to reference an indexed SDK")
 	}
 }
+
+func TestCheckCompatibilityRequiresExplicitPlatformSDKRelation(t *testing.T) {
+	source := Catalog{Compatibility: &CompatibilityMatrix{Schema: CompatibilitySchema, Labels: []CompatibilityLabel{
+		{ID: "platform@2.0.0", Kind: "platform", ArtifactID: "platform", Version: "2.0.0", Requires: []CompatibilityRelation{{Label: "sdk@2.1.0"}}, Status: "prepared", ValidatedBy: []string{"stage"}},
+		{ID: "sdk@2.1.0", Kind: "sdk", ArtifactID: "sdk", Version: "2.1.0", Status: "prepared", ValidatedBy: []string{"stage"}},
+		{ID: "binary:kb-dev@2.0.0:linux/amd64", Kind: "binary", ArtifactID: "kb-dev", Version: "2.0.0", Requires: []CompatibilityRelation{{Label: "platform@2.0.0"}, {Label: "sdk@2.1.0"}}, Status: "prepared", ValidatedBy: []string{"stage"}},
+	}}}
+	if err := CheckCompatibility(source, "2.0.0", "2.1.0", "kb-dev", "linux", "amd64"); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckCompatibility(source, "2.0.0", "2.2.0", "", "", ""); err == nil {
+		t.Fatal("expected unrelated SDK to be rejected")
+	}
+}
