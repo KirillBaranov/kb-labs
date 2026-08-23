@@ -169,7 +169,7 @@
       }
     },
     "execution": {
-      "mode": "in-process"
+      "mode": "worker-pool"
     }
   },
   "profiles": [
@@ -266,7 +266,7 @@
                   "args": [
                     "scripts/gates/check-pack-install.sh"
                   ],
-                  "timeoutMs": 60000,
+                  "timeoutMs": 120000,
                   "runIn": "perPackage"
                 }
               ]
@@ -287,7 +287,7 @@
                 ]
               },
               "build": {
-                "script": "build:affected"
+                "script": "build:release-ci"
               },
               "checks": [
                 {
@@ -308,8 +308,7 @@
                     "scripts/gates/check-pack-install.sh"
                   ],
                   "timeoutMs": 120000,
-                  "runIn": "perPackage",
-                  "optional": true
+                  "runIn": "perPackage"
                 }
               ]
             }
@@ -404,9 +403,8 @@
               "args": [
                 "scripts/gates/check-pack-install.sh"
               ],
-              "timeoutMs": 60000,
-              "runIn": "perPackage",
-              "optional": true
+              "timeoutMs": 120000,
+              "runIn": "perPackage"
             },
             {
               "id": "typecheck",

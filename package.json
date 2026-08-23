@@ -13,6 +13,7 @@
     "bootstrap": "./bootstrap.sh",
     "build": "./tools/kb-devkit/kb-devkit run build",
     "build:affected": "./tools/kb-devkit/kb-devkit run build --affected",
+    "build:release-ci": "./tools/kb-devkit/kb-devkit run build --affected --concurrency 2",
     "build:clean": "pnpm clean && pnpm build",
     "check": "./tools/kb-devkit/kb-devkit run build lint type-check test",
     "check:affected": "./tools/kb-devkit/kb-devkit run build lint type-check test --affected",
