@@ -64,6 +64,15 @@ jobs:
           go-version-file: tools/kb-create/go.mod
           cache-dependency-path: tools/kb-create/go.sum
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+          cache-dependency-path: tools/kb-devkit/go.sum
+
+      - name: Build kb-devkit
+        run: go build -o kb-devkit .
+        working-directory: tools/kb-devkit
+
       - name: Download candidate bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:

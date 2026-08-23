@@ -61,6 +61,10 @@ jobs:
           go-version: '1.25'
           cache: false
 
+      - name: Build kb-devkit
+        run: go build -o kb-devkit .
+        working-directory: tools/kb-devkit
+
       - name: Install exact workspace dependencies
         run: pnpm install --frozen-lockfile
 
