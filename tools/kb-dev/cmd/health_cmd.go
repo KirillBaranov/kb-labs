@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/kb-labs/dev/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,9 @@ func init() {
 }
 
 func runHealth(_ *cobra.Command, _ []string) error {
+	if allProjects {
+		return runFleetHealth()
+	}
 	mgr, err := loadManager()
 	if err != nil {
 		return err
@@ -65,6 +69,61 @@ func runHealth(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Println()
 
+	if !result.OK {
+		return errSilent
+	}
+	return nil
+}
+
+type fleetHealth struct {
+	OK       bool                       `json:"ok"`
+	Projects map[string]fleetHealthItem `json:"projects"`
+}
+
+type fleetHealthItem struct {
+	Path   string                `json:"path"`
+	Health *manager.HealthResult `json:"health,omitempty"`
+	Error  string                `json:"error,omitempty"`
+}
+
+func runFleetHealth() error {
+	items, err := loadFleetManagers()
+	if err != nil {
+		return err
+	}
+	result := fleetHealth{OK: true, Projects: make(map[string]fleetHealthItem, len(items))}
+	for _, item := range items {
+		entry := fleetHealthItem{Path: item.Path, Error: item.Error}
+		if item.Mgr != nil {
+			health := item.Mgr.Health()
+			entry.Health = health
+			if !health.OK {
+				result.OK = false
+			}
+		} else {
+			result.OK = false
+		}
+		result.Projects[item.Alias] = entry
+	}
+	if jsonMode {
+		return JSONOut(result)
+	}
+	out := newOutput()
+	fmt.Println()
+	fmt.Println(out.label.Render("KB Labs Fleet Health"))
+	for _, item := range items {
+		if item.Mgr == nil {
+			fmt.Printf("  %s %s  %s\n", out.StatusIcon("failed"), Pad(item.Alias, 22), out.failed.Render(item.Error))
+			continue
+		}
+		health := item.Mgr.Health()
+		state := "alive"
+		if !health.OK {
+			state = "failed"
+		}
+		fmt.Printf("  %s %s %s\n", out.StatusIcon(state), Pad(item.Alias, 22), out.StatusColor(state))
+	}
+	fmt.Println()
 	if !result.OK {
 		return errSilent
 	}

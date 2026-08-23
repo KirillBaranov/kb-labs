@@ -20,6 +20,9 @@ func runRestart(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := ensureSupportedRuntime(cmd, mgr); err != nil {
+		return err
+	}
 
 	target := ""
 	if len(args) > 0 {

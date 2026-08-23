@@ -18,6 +18,17 @@ type PIDInfo struct {
 	Command   string    `json:"command"`
 	Service   string    `json:"service"`
 	StartedAt time.Time `json:"startedAt"`
+	// Ownership fields make a PID record attributable across worktrees and
+	// protect reconciliation from PID reuse.
+	ProjectID          string `json:"projectId,omitempty"`
+	ProjectRoot        string `json:"projectRoot,omitempty"`
+	ConfigPath         string `json:"configPath,omitempty"`
+	InstanceID         string `json:"instanceId,omitempty"`
+	NetOffset          int    `json:"netOffset,omitempty"`
+	ProcessIdentity    string `json:"processIdentity,omitempty"`
+	ContainerID        string `json:"containerId,omitempty"`
+	ContainerName      string `json:"containerName,omitempty"`
+	ContainerProjectID string `json:"containerProjectId,omitempty"`
 }
 
 // WritePID writes a rich PID file as JSON.
@@ -96,11 +107,12 @@ func Reconcile(pidDir string) (map[string]*PIDInfo, error) {
 			continue
 		}
 
-		if IsAlive(info.PID) {
+		if IsAlive(info.PID) && (info.ProcessIdentity == "" || info.ProcessIdentity == ProcessIdentity(info.PID)) {
 			alive[service] = info
 		} else {
 			// Stale PID file — remove it.
 			_ = RemovePID(pidDir, service)
+			_ = RemoveRuntime(info.ProjectID, info.Service)
 		}
 	}
 

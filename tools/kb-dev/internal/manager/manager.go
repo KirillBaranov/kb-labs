@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 	"github.com/kb-labs/dev/internal/config"
 	"github.com/kb-labs/dev/internal/docker"
 	"github.com/kb-labs/dev/internal/environ"
@@ -55,6 +56,8 @@ type Manager struct {
 	services   map[string]*service.Service
 	rootDir    string
 	projectDir string
+	projectID  string
+	configPath string
 	envCache   *environ.EnvCache
 	events     chan Event
 
@@ -70,6 +73,11 @@ type Manager struct {
 
 // SetNetOffset records the virtual-network port offset for spawnEnv passthrough.
 func (m *Manager) SetNetOffset(offset int) { m.netOffset = offset }
+
+// SetConfigPath records the exact service definition used for this instance.
+// It lets fleet inspection recover runtimes started with an explicit config
+// such as .kb/devservices.dev.yaml after the worktree is no longer cwd.
+func (m *Manager) SetConfigPath(path string) { m.configPath = path }
 
 // StateDir returns the effective directory for a state category (PIDDir,
 // LogsDir, …) given a rootDir/projectDir pair.
@@ -96,6 +104,15 @@ func (m *Manager) stateDir(base string) string {
 	return StateDir(m.rootDir, m.projectDir, base)
 }
 
+func (m *Manager) processTitle(service, instanceID string) string {
+	label := filepath.Base(filepath.Clean(m.projectDir))
+	if label == "." || label == string(filepath.Separator) || label == "" {
+		label = m.projectID
+	}
+	label = strings.NewReplacer(" ", "_", ":", "_", "'", "_").Replace(label)
+	return fmt.Sprintf("kbdev:%s:%s:%s:%s", label, m.projectID, service, instanceID)
+}
+
 // New creates a Manager from a parsed config.
 // rootDir is the platform/config directory (where devservices.yaml lives).
 // projectDir is the user's project directory (injected as KB_PROJECT_ROOT).
@@ -105,6 +122,7 @@ func New(cfg *config.Config, rootDir, projectDir string) *Manager {
 		services:   make(map[string]*service.Service),
 		rootDir:    rootDir,
 		projectDir: projectDir,
+		projectID:  computeSocketHash(projectDir),
 		events:     make(chan Event, 100),
 		svcLocks:   make(map[string]*sync.Mutex),
 	}
@@ -131,8 +149,22 @@ func New(cfg *config.Config, rootDir, projectDir string) *Manager {
 // KB_SOCKET_PATH) so that services can locate the user's .kb/kb.config.json
 // and bind to the correct unix socket when configured.
 func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
+	merged := m.spawnEnvFor(svcCfg, "", "")
+	// Keep the historical helper contract for callers/tests that use it to
+	// inspect only the platform injection. Managed spawns use spawnEnvFor.
+	delete(merged, "KB_DEV_PROJECT_ID")
+	delete(merged, "KB_DEV_PROJECT_ROOT")
+	delete(merged, "KB_DEV_SERVICE")
+	delete(merged, "KB_DEV_INSTANCE")
+	return merged
+}
+
+// spawnEnvFor adds ownership metadata to every managed process. The metadata
+// is the cross-worktree identity used by fleet inspection; process titles and
+// command lines are only human-facing diagnostics.
+func (m *Manager) spawnEnvFor(svcCfg config.Service, serviceID, instanceID string) map[string]string {
 	svcEnv := svcCfg.Env
-	merged := make(map[string]string, len(svcEnv)+2)
+	merged := make(map[string]string, len(svcEnv)+8)
 	for k, v := range svcEnv {
 		merged[k] = v
 	}
@@ -159,6 +191,22 @@ func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
 			merged["KB_NET_OFFSET"] = strconv.Itoa(m.netOffset)
 		}
 	}
+	if _, ok := merged["KB_DEV_PROJECT_ID"]; !ok {
+		merged["KB_DEV_PROJECT_ID"] = m.projectID
+	}
+	if _, ok := merged["KB_DEV_PROJECT_ROOT"]; !ok {
+		merged["KB_DEV_PROJECT_ROOT"] = m.projectDir
+	}
+	if serviceID != "" {
+		if _, ok := merged["KB_DEV_SERVICE"]; !ok {
+			merged["KB_DEV_SERVICE"] = serviceID
+		}
+	}
+	if instanceID != "" {
+		if _, ok := merged["KB_DEV_INSTANCE"]; !ok {
+			merged["KB_DEV_INSTANCE"] = instanceID
+		}
+	}
 	return merged
 }
 
@@ -179,6 +227,13 @@ func (m *Manager) Reconcile() error {
 		svc.PID = info.PID
 		svc.PGID = info.PGID
 		svc.StartedAt = info.StartedAt
+		// A manager reconstructed for a project (for example by `switch` or
+		// fleet cleanup) may not have the original offset on its command line.
+		// Recover it from the owned PID record before Docker stop/status actions
+		// derive the container name; otherwise an offset container could leak.
+		if m.netOffset == 0 && info.NetOffset != 0 {
+			m.netOffset = info.NetOffset
+		}
 
 		// Check health to determine if alive or degraded.
 		if svc.Config.HealthCheck != "" {
@@ -215,6 +270,38 @@ func (m *Manager) ResolveEnv() {
 	cache = environ.Resolve()
 	_ = cache.Save(cachePath)
 	m.envCache = cache
+}
+
+// ValidateRuntime verifies the Node binary injected into managed services.
+func (m *Manager) ValidateRuntime() error {
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	return m.envCache.ValidateNode()
+}
+
+// UseNode activates and persists a supported Node binary for this project.
+func (m *Manager) UseNode(nodePath string) error {
+	if err := sharedtoolchain.ActivateNode(nodePath); err != nil {
+		return err
+	}
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	m.envCache.Node = nodePath
+	binDir := filepath.Dir(nodePath)
+	m.envCache.ExtraPath = append([]string{binDir}, withoutPath(m.envCache.ExtraPath, binDir)...)
+	return m.envCache.Save(filepath.Join(m.stateDir(m.cfg.Settings.PIDDir), "env-cache.json"))
+}
+
+func withoutPath(paths []string, unwanted string) []string {
+	result := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path != unwanted {
+			result = append(result, path)
+		}
+	}
+	return result
 }
 
 // GroupMembers returns the service IDs belonging to the named devservices
@@ -364,12 +451,15 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	_ = svc.SetState(service.StateStarting, "")
 
 	logsDir := m.stateDir(m.cfg.Settings.LogsDir)
+	_ = logger.EnsureDir(logsDir)
 	_ = logger.Clear(logsDir, svc.ID)
 
 	// Run docker command via spawn.
+	instanceID := process.NewInstanceID()
 	spawnResult, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Env:      m.spawnEnv(svc.Config),
+		Title:    m.processTitle(svc.ID, instanceID),
+		Env:      m.spawnEnvFor(svc.Config, svc.ID, instanceID),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
 		EnvCache: m.envCache,
@@ -385,7 +475,14 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 
 	pidDir := m.stateDir(m.cfg.Settings.PIDDir)
 	pidInfo := process.NewPIDInfo(svc.ID, spawnResult.PID, spawnResult.PGID, svc.Config.Command)
+	pidInfo.ProjectID = m.projectID
+	pidInfo.ProjectRoot = m.projectDir
+	pidInfo.ConfigPath = m.configPath
+	pidInfo.InstanceID = instanceID
+	pidInfo.NetOffset = m.netOffset
+	pidInfo.ProcessIdentity = process.ProcessIdentity(spawnResult.PID)
 	_ = process.WritePID(pidDir, pidInfo)
+	_ = process.UpdateRuntime(pidInfo)
 
 	// Wait for health.
 	if svc.Config.HealthCheck != "" {
@@ -393,6 +490,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 		result := m.waitHealth(ctx, svc)
 		if !result.OK {
 			_ = svc.SetState(service.StateFailed, "health check failed")
+			m.cleanupFailedStart(svc, pidDir)
 			tail, _ := logger.Tail(logsDir, svc.ID, logTailLines)
 			return Action{
 				Service:  svc.ID,
@@ -400,6 +498,15 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 				Error:    "health check timeout",
 				LogsTail: tail,
 				Elapsed:  time.Since(start).Truncate(time.Millisecond).String(),
+			}
+		}
+		if svc.Config.Container != "" {
+			if container, inspectErr := docker.InspectContainer(ctx, m.dockerContainerName(svc)); inspectErr == nil {
+				pidInfo.ContainerID = container.ID
+				pidInfo.ContainerName = container.Name
+				pidInfo.ContainerProjectID = container.ProjectID
+				_ = process.WritePID(pidDir, pidInfo)
+				_ = process.UpdateRuntime(pidInfo)
 			}
 		}
 		svc.LastLatency = result.Latency
@@ -419,9 +526,11 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 	_ = logger.EnsureDir(logsDir)
 	_ = logger.Clear(logsDir, svc.ID)
 
+	instanceID := process.NewInstanceID()
 	result, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Env:      m.spawnEnv(svc.Config),
+		Title:    m.processTitle(svc.ID, instanceID),
+		Env:      m.spawnEnvFor(svc.Config, svc.ID, instanceID),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
 		EnvCache: m.envCache,
@@ -437,7 +546,14 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 
 	// Write rich PID file.
 	pidInfo := process.NewPIDInfo(svc.ID, result.PID, result.PGID, svc.Config.Command)
+	pidInfo.ProjectID = m.projectID
+	pidInfo.ProjectRoot = m.projectDir
+	pidInfo.ConfigPath = m.configPath
+	pidInfo.InstanceID = instanceID
+	pidInfo.NetOffset = m.netOffset
+	pidInfo.ProcessIdentity = process.ProcessIdentity(result.PID)
 	_ = process.WritePID(pidDir, pidInfo)
+	_ = process.UpdateRuntime(pidInfo)
 
 	// Reap the child as soon as it exits so a crash is visible immediately
 	// instead of silently waiting out the full health-check timeout below.
@@ -452,6 +568,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 		hr := m.waitHealthOrExit(ctx, svc, exited)
 		if !hr.OK {
 			_ = svc.SetState(service.StateFailed, "health check failed")
+			m.cleanupFailedStart(svc, pidDir)
 			tail, _ := logger.Tail(logsDir, svc.ID, logTailLines)
 			errMsg := fmt.Sprintf("health check timeout after %s", m.startTimeout())
 			if hr.Error != nil {
@@ -471,6 +588,38 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 
 	_ = svc.SetState(service.StateAlive, "")
 	return Action{Service: svc.ID, Action: "started", Elapsed: time.Since(start).Truncate(time.Millisecond).String()}
+}
+
+// cleanupFailedStart makes a failed start transactional: once health startup
+// fails, its process group must not survive as an untracked retrying clone.
+func (m *Manager) cleanupFailedStart(svc *service.Service, pidDir string) {
+	if svc.Config.Type == config.ServiceTypeDocker && svc.Config.StopCommand != "" {
+		if stopResult, err := process.Spawn(process.SpawnOpts{Command: svc.Config.StopCommand, Dir: m.rootDir}); err == nil {
+			_, _ = stopResult.Process.Wait()
+		}
+	}
+	if svc.Config.Type == config.ServiceTypeDocker && svc.Config.StopCommand == "" && svc.Config.Container != "" {
+		_ = docker.StopContainer(context.Background(), m.dockerContainerName(svc))
+	}
+	if svc.PGID > 0 {
+		_ = process.KillGroupWithPID(svc.PGID, svc.PID, defaultGracePeriod)
+	} else if svc.Config.Port > 0 {
+		_ = process.KillPort(svc.Config.Port)
+	}
+	_ = process.RemovePID(pidDir, svc.ID)
+	_ = process.RemoveRuntime(m.projectID, svc.ID)
+	svc.PID = 0
+	svc.PGID = 0
+}
+
+// dockerContainerName follows the devservices convention used by offset
+// configs: container names are suffixed with KB_NET_OFFSET so parallel
+// projects never inspect or stop the base project's container.
+func (m *Manager) dockerContainerName(svc *service.Service) string {
+	if svc.Config.Container == "" || m.netOffset == 0 {
+		return svc.Config.Container
+	}
+	return svc.Config.Container + strconv.Itoa(m.netOffset)
 }
 
 func (m *Manager) waitHealth(ctx context.Context, svc *service.Service) health.Result {
@@ -515,9 +664,9 @@ func (m *Manager) startTimeout() time.Duration {
 }
 
 // Stop stops the specified services.
-func (m *Manager) Stop(ctx context.Context, targets []string, cascade bool) *Result {
+func (m *Manager) Stop(ctx context.Context, targets []string, cascade, force bool) *Result {
 	return m.withLock(func() *Result {
-		return m.stopInternal(ctx, targets, cascade)
+		return m.stopInternal(ctx, targets, cascade, force)
 	})
 }
 
@@ -537,7 +686,7 @@ func (m *Manager) withDependents(targets []string) []string {
 	return out
 }
 
-func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool) *Result {
+func (m *Manager) stopInternal(_ context.Context, targets []string, cascade, force bool) *Result {
 	toStop := make([]string, len(targets))
 	copy(toStop, targets)
 
@@ -554,7 +703,7 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool
 		svc := m.services[id]
 		state := svc.GetState()
 
-		if state == service.StateDead {
+		if state == service.StateDead && !force {
 			actions = append(actions, Action{Service: id, Action: "skipped", Reason: "already stopped"})
 			continue
 		}
@@ -563,14 +712,20 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool
 
 		switch {
 		case svc.Config.Type == config.ServiceTypeDocker && svc.Config.StopCommand != "":
-			_, _ = process.Spawn(process.SpawnOpts{Command: svc.Config.StopCommand, Dir: m.rootDir})
+			if stopResult, spawnErr := process.Spawn(process.SpawnOpts{Command: svc.Config.StopCommand, Dir: m.rootDir}); spawnErr == nil {
+				// Stop commands may target detached containers. Wait for the
+				// command to finish before reporting the service stopped, otherwise
+				// an immediate restart can race the old container and leak it.
+				_, _ = stopResult.Process.Wait()
+			}
 		case svc.PGID > 0:
 			_ = process.KillGroup(svc.PGID, defaultGracePeriod)
-		case svc.Config.Port > 0:
+		case svc.Config.Port > 0 && force:
 			_ = process.KillPort(svc.Config.Port)
 		}
 
 		_ = process.RemovePID(pidDir, id)
+		_ = process.RemoveRuntime(m.projectID, id)
 		// Remove unix socket file on stop (best-effort — ignore errors).
 		if svc.Config.Socket != "" {
 			_ = os.Remove(svc.Config.Socket)
@@ -611,7 +766,7 @@ func (m *Manager) Restart(ctx context.Context, targets []string, cascade, force 
 			restartSet = m.withDependents(targets)
 		}
 		// Set is already expanded, so stop without re-cascading.
-		stopResult := m.stopInternal(ctx, restartSet, false)
+		stopResult := m.stopInternal(ctx, restartSet, false, force)
 		time.Sleep(500 * time.Millisecond)
 		startResult := m.startInternal(ctx, restartSet, force)
 
@@ -724,6 +879,14 @@ func (m *Manager) Status() *StatusResult {
 			Detail:  svc.GetDetail(),
 			LogFile: logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), id),
 		}
+		if svc.Config.Type == config.ServiceTypeDocker && svc.Config.Container != "" {
+			ss.ContainerName = m.dockerContainerName(svc)
+			ss.ContainerRunning = docker.ContainerRunning(ss.ContainerName)
+			if info, readErr := process.ReadPID(m.stateDir(m.cfg.Settings.PIDDir), id); readErr == nil && info != nil {
+				ss.ContainerID = info.ContainerID
+				ss.ContainerOwned = info.ContainerProjectID == m.projectID && info.ContainerProjectID != ""
+			}
+		}
 
 		// A failed/dead TCP service is often caused by a process outside kb-dev
 		// holding its configured port. Surface the exact PID and command so the
@@ -799,6 +962,40 @@ func (m *Manager) Status() *StatusResult {
 	}
 
 	result.Summary.Total = len(m.services)
+	if records, err := process.ListRuntime(); err == nil {
+		for _, record := range records {
+			if record.ProjectID != m.projectID {
+				continue
+			}
+			managed := m.services[record.Service]
+			if process.IsAlive(record.PID) {
+				if record.ProcessIdentity != "" && record.ProcessIdentity != process.ProcessIdentity(record.PID) {
+					result.RuntimeAnomaly = append(result.RuntimeAnomaly, RuntimeAnomaly{
+						Service: record.Service, PID: record.PID, PGID: record.PGID, Instance: record.InstanceID,
+						State: "stale-runtime", Reason: "PID was reused by another process",
+						Action: fmt.Sprintf("inspect PID %d; remove stale runtime record", record.PID),
+					})
+					continue
+				}
+				if managed == nil || managed.PID != record.PID {
+					result.RuntimeAnomaly = append(result.RuntimeAnomaly, RuntimeAnomaly{
+						Service: record.Service, PID: record.PID, PGID: record.PGID, Instance: record.InstanceID,
+						State: "orphaned", Reason: "owned process has no matching PID state",
+						Action: fmt.Sprintf("kb-dev --project %s stop %s --force", m.projectDir, record.Service),
+					})
+				}
+			} else {
+				result.RuntimeAnomaly = append(result.RuntimeAnomaly, RuntimeAnomaly{
+					Service: record.Service, PID: record.PID, PGID: record.PGID, Instance: record.InstanceID,
+					State: "stale-runtime", Reason: "owned process is no longer alive",
+					Action: "run status again to reconcile and remove the stale record",
+				})
+			}
+		}
+	}
+	if len(result.RuntimeAnomaly) > 0 {
+		result.OK = false
+	}
 	return result
 }
 
@@ -857,6 +1054,13 @@ func (m *Manager) RootDir() string {
 // ProjectDir returns the project root whose runtime config is used by services.
 func (m *Manager) ProjectDir() string {
 	return m.projectDir
+}
+
+// LogPath returns the project-scoped log file for a service. Keeping this on
+// Manager ensures shared platform directories cannot accidentally read another
+// worktree's logs.
+func (m *Manager) LogPath(serviceID string) string {
+	return logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), serviceID)
 }
 
 func contains(slice []string, item string) bool {

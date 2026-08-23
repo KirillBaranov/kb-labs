@@ -50,6 +50,9 @@ func runEnsure(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := ensureSupportedRuntime(cmd, mgr); err != nil {
+		return err
+	}
 
 	result := mgr.Ensure(cmd.Context(), args)
 	return emitEnsureResult(result)

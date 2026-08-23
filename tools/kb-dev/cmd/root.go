@@ -24,6 +24,8 @@ var (
 	configPath      string
 	netOffset       int
 	platformDirFlag string
+	projectSelector string
+	allProjects     bool
 )
 
 // SetVersionInfo is called from main.go with values injected at build time via -ldflags.
@@ -100,6 +102,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
 	rootCmd.PersistentFlags().IntVar(&netOffset, "net-offset", 0, "shift all TCP ports by this amount (overrides KB_NET_OFFSET); for isolated parallel environments. Socket services untouched.")
 	rootCmd.PersistentFlags().StringVar(&platformDirFlag, "platform-dir", "", "override the KB Labs platform directory (default: current project's platform.dir, then ~/.kb/active-platform)")
+	rootCmd.PersistentFlags().StringVar(&projectSelector, "project", "", "target a registered project by alias or path (default: project in cwd)")
+	rootCmd.PersistentFlags().BoolVar(&allProjects, "all", false, "inspect all known projects (fleet commands)")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")

@@ -2,11 +2,15 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/kb-labs/dev/internal/config"
 	"github.com/kb-labs/dev/internal/manager"
 	"github.com/kb-labs/dev/internal/netoffset"
+	"github.com/kb-labs/dev/internal/process"
 )
 
 // errSilent is returned when the command has already printed an error message.
@@ -20,7 +24,10 @@ var errSilent = errors.New("")
 // > 0. The alias case keeps ports stable and non-colliding whether the project
 // is entered via `kb-dev switch <alias>` or a plain `cd project && kb-dev start`.
 func loadManager() (*manager.Manager, error) {
-	result, err := FindConfig()
+	if allProjects {
+		return nil, fmt.Errorf("--all is supported by fleet commands; use --project for lifecycle operations")
+	}
+	result, err := findScopedConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +57,7 @@ func loadManager() (*manager.Manager, error) {
 
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
 	mgr.SetNetOffset(offset)
+	mgr.SetConfigPath(result.ConfigPath)
 
 	// Resolve environment (node/pnpm paths).
 	mgr.ResolveEnv()
@@ -58,6 +66,136 @@ func loadManager() (*manager.Manager, error) {
 	_ = mgr.Reconcile()
 
 	return mgr, nil
+}
+
+// findScopedConfig preserves CWD as the default while allowing any command to
+// address a registered project from another worktree.
+func findScopedConfig() (config.DiscoverResult, error) {
+	if projectSelector == "" {
+		return FindConfig()
+	}
+
+	if info, err := os.Stat(projectSelector); err == nil && info.IsDir() {
+		return config.Discover(projectSelector)
+	}
+
+	platformDir, err := config.ResolvePlatformDir(platformDirFlag)
+	if err != nil {
+		return config.DiscoverResult{}, fmt.Errorf("resolve project %q: %w", projectSelector, err)
+	}
+	projects, err := config.ReadProjects(platformDir)
+	if err != nil {
+		return config.DiscoverResult{}, err
+	}
+	path, ok := projects[projectSelector]
+	if !ok {
+		return config.DiscoverResult{}, fmt.Errorf("unknown project %q — use `kb-dev projects --json`", projectSelector)
+	}
+	return config.Discover(path)
+}
+
+type fleetManager struct {
+	Alias string
+	Path  string
+	Mgr   *manager.Manager
+	Error string
+}
+
+// loadFleetManagers loads every registered project and keeps per-project
+// errors visible so one broken worktree cannot hide healthy projects.
+func loadFleetManagers() ([]fleetManager, error) {
+	platformDir, platformErr := config.ResolvePlatformDir(platformDirFlag)
+	projects := map[string]string{}
+	if platformErr == nil {
+		projects, platformErr = config.ReadProjects(platformDir)
+	}
+	runtimeRecords, runtimeErr := process.ListRuntime()
+	if platformErr != nil && runtimeErr != nil {
+		return nil, platformErr
+	}
+	aliases := make([]string, 0, len(projects))
+	for alias := range projects {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
+
+	items := make([]fleetManager, 0, len(aliases))
+	for _, alias := range aliases {
+		path := projects[alias]
+		item := fleetManager{Alias: alias, Path: path}
+		result, discoverErr := config.Discover(path)
+		if discoverErr != nil {
+			item.Error = discoverErr.Error()
+			items = append(items, item)
+			continue
+		}
+		cfg, loadErr := loadConfig(result.ConfigPath)
+		if loadErr != nil {
+			item.Error = loadErr.Error()
+			items = append(items, item)
+			continue
+		}
+		rootDir := config.RootDir(result.ConfigPath)
+		offset, offsetErr := resolveOffsetForAlias(alias, cfg, rootDir, result.ProjectDir)
+		if offsetErr != nil {
+			item.Error = offsetErr.Error()
+			items = append(items, item)
+			continue
+		}
+		item.Mgr, loadErr = loadManagerForProject(result.ConfigPath, result.ProjectDir, offset)
+		if loadErr != nil {
+			item.Error = loadErr.Error()
+		}
+		items = append(items, item)
+	}
+
+	// Include runtime instances that are not present in the editable project
+	// registry. This is how `status --all` surfaces an abandoned worktree or a
+	// project started from a temporary checkout.
+	seenProjects := make(map[string]bool, len(items))
+	for _, item := range items {
+		if abs, absErr := filepath.Abs(item.Path); absErr == nil {
+			seenProjects[abs] = true
+		}
+	}
+	for _, record := range runtimeRecords {
+		if record.ProjectRoot == "" {
+			continue
+		}
+		path, absErr := filepath.Abs(record.ProjectRoot)
+		if absErr != nil || seenProjects[path] {
+			continue
+		}
+		seenProjects[path] = true
+		alias := "runtime:" + record.ProjectID
+		item := fleetManager{Alias: alias, Path: path}
+		result, discoverErr := config.Discover(path)
+		// Explicit --config launches (for example devservices.dev.yaml) are
+		// not discoverable by the conventional filename walk. Prefer the
+		// recorded path when it still exists so fleet commands can recover the
+		// exact runtime definition from any cwd.
+		if record.ConfigPath != "" {
+			if _, statErr := os.Stat(record.ConfigPath); statErr == nil {
+				result = config.DiscoverResult{
+					ConfigPath: record.ConfigPath,
+					ProjectDir: path,
+				}
+				discoverErr = nil
+			}
+		}
+		if discoverErr != nil {
+			item.Error = "detached runtime: " + discoverErr.Error()
+			items = append(items, item)
+			continue
+		}
+		var loadErr error
+		item.Mgr, loadErr = loadManagerForProject(result.ConfigPath, result.ProjectDir, record.NetOffset)
+		if loadErr != nil {
+			item.Error = loadErr.Error()
+		}
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 // loadConfig reads and parses the config from the given path.
@@ -81,6 +219,7 @@ func loadManagerForProject(configPath, projectDir string, offset int) (*manager.
 	rootDir := config.RootDir(configPath)
 	mgr := manager.New(cfg, rootDir, projectDir)
 	mgr.SetNetOffset(offset)
+	mgr.SetConfigPath(configPath)
 	mgr.ResolveEnv()
 	_ = mgr.Reconcile()
 

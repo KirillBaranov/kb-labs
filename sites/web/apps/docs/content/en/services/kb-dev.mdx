@@ -229,6 +229,51 @@ kb-dev doctor                   # environment diagnostics
 
 ### Status output
 
+The current working directory is the default project scope. To inspect another
+registered worktree from anywhere, pass `--project <alias-or-path>`:
+
+```bash
+kb-dev status --project agent-a
+kb-dev logs workflow --project agent-a
+```
+
+Use `--all` for a fleet overview. It reports each project independently, so a
+broken or removed worktree does not hide healthy projects:
+
+```bash
+kb-dev status --all
+kb-dev status --all --json
+```
+
+JSON includes one `projects` entry per alias with its path, service status,
+health summary, PIDs, resource usage, and any project-level error.
+
+Fleet logs and monitoring use the same scope:
+
+```bash
+kb-dev logs --all workflow
+kb-dev watch --all --json
+kb-dev stop --all --except agent-working --dry-run
+```
+
+Use `--project` for a follow stream. `logs --all --follow` is rejected because
+interleaving unbounded streams would be ambiguous for agents.
+
+Every managed process has a project, service, and instance ownership marker.
+`kb-dev` keeps a host runtime catalog so a process started from another
+worktree remains visible to `status --all`. Missing PID files, PID reuse,
+zombies, and removed worktrees are classified as stale, orphaned, or detached;
+they are not killed implicitly.
+
+The catalog stores the exact config path passed through `--config`, so alternate
+configs such as `.kb/devservices.dev.yaml` remain recoverable from fleet
+commands. Process titles include both a readable worktree label and the stable
+project ID, for example `kbdev:agent-a:c83d4175:workflow:...`.
+
+For Docker services with a configured `container:` name, the runtime record
+also stores the inspected container ID. Names alone do not prove ownership;
+Docker labels are optional and unlabeled containers are treated conservatively.
+
 ```
 my-project
 

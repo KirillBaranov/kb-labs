@@ -66,6 +66,25 @@ func switchToAlias(ctx context.Context, platformDir, alias string, keepOthers, q
 		return nil, nil, fmt.Errorf("no project registered under alias %q — see `kb-dev projects` or `kb-dev register`", alias)
 	}
 
+	// Resolve and validate the target before stopping any other project. A
+	// broken Node runtime must never leave the fleet partially switched off.
+	result, err := config.Discover(targetPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("registered path for %q is no longer valid: %w", alias, err)
+	}
+	cfg, err := loadConfig(result.ConfigPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	rootDir := config.RootDir(result.ConfigPath)
+	preflightMgr, err := loadManagerForProject(result.ConfigPath, result.ProjectDir, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := ensureSupportedRuntime(nil, preflightMgr); err != nil {
+		return nil, nil, err
+	}
+
 	out := newOutput()
 	notify := func(msg string) {
 		if !quiet {
@@ -95,21 +114,10 @@ func switchToAlias(ctx context.Context, platformDir, alias string, keepOthers, q
 		}
 	}
 
-	result, err := config.Discover(targetPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("registered path for %q is no longer valid: %w", alias, err)
-	}
-	cfg, err := loadConfig(result.ConfigPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	rootDir := config.RootDir(result.ConfigPath)
-
 	offset, err := resolveOffsetForAlias(alias, cfg, rootDir, result.ProjectDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not find free ports for %q: %w", alias, err)
 	}
-
 	mgr, err := loadManagerForProject(result.ConfigPath, result.ProjectDir, offset)
 	if err != nil {
 		return nil, nil, err
@@ -161,6 +169,7 @@ func stopIfRunning(ctx context.Context, path string) (bool, error) {
 	}
 	rootDir := config.RootDir(result.ConfigPath)
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
+	mgr.SetConfigPath(result.ConfigPath)
 	mgr.ResolveEnv()
 	_ = mgr.Reconcile()
 
@@ -173,7 +182,7 @@ func stopIfRunning(ctx context.Context, path string) (bool, error) {
 		return false, nil
 	}
 
-	mgr.Stop(ctx, targets, true)
+	mgr.Stop(ctx, targets, true, false)
 	_ = mgr.Reconcile()
 
 	if anyRunning(mgr, targets) {

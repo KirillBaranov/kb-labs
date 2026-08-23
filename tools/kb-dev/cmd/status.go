@@ -3,8 +3,11 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/kb-labs/dev/internal/manager"
+	"github.com/kb-labs/dev/internal/process"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +41,9 @@ func init() {
 }
 
 func runStatus(_ *cobra.Command, _ []string) error {
+	if allProjects {
+		return runFleetStatus()
+	}
 	mgr, err := loadManager()
 	if err != nil {
 		return err
@@ -131,5 +137,93 @@ func runStatus(_ *cobra.Command, _ []string) error {
 	)
 	fmt.Println()
 
+	return nil
+}
+
+type fleetStatus struct {
+	OK       bool                         `json:"ok"`
+	Projects map[string]fleetProjectState `json:"projects"`
+}
+
+type fleetProjectState struct {
+	Path      string                `json:"path"`
+	Status    *manager.StatusResult `json:"status,omitempty"`
+	Resources fleetResourceSummary  `json:"resources,omitempty"`
+	Error     string                `json:"error,omitempty"`
+}
+
+type fleetResourceSummary struct {
+	CPUPercent float64 `json:"cpuPercent"`
+	RSSBytes   int64   `json:"rssBytes"`
+}
+
+func summarizeResources(status *manager.StatusResult) fleetResourceSummary {
+	var summary fleetResourceSummary
+	for _, service := range status.Services {
+		if service.Resources == nil {
+			continue
+		}
+		summary.RSSBytes += service.Resources.RSS
+		cpu := strings.TrimSuffix(service.Resources.CPU, "%")
+		if value, err := strconv.ParseFloat(cpu, 64); err == nil {
+			summary.CPUPercent += value
+		}
+	}
+	return summary
+}
+
+func runFleetStatus() error {
+	items, err := loadFleetManagers()
+	if err != nil {
+		return err
+	}
+	result := fleetStatus{OK: true, Projects: make(map[string]fleetProjectState, len(items))}
+	for _, item := range items {
+		state := fleetProjectState{Path: item.Path, Error: item.Error}
+		if item.Mgr != nil {
+			state.Status = item.Mgr.Status()
+			state.Resources = summarizeResources(state.Status)
+			if !state.Status.OK {
+				result.OK = false
+			}
+		} else {
+			result.OK = false
+		}
+		result.Projects[item.Alias] = state
+	}
+
+	if jsonMode {
+		return JSONOut(result)
+	}
+
+	out := newOutput()
+	fmt.Println()
+	fmt.Println(out.label.Render("KB Labs Projects"))
+	for _, item := range items {
+		if item.Mgr == nil {
+			fmt.Printf("  %s %s  %s\n", out.StatusIcon("failed"), Pad(item.Alias, 22), out.failed.Render(item.Error))
+			continue
+		}
+		status := item.Mgr.Status()
+		summary := status.Summary
+		state := "alive"
+		if summary.Alive != summary.Total {
+			state = "degraded"
+		}
+		resources := fleetResourceSummary{}
+		if state, ok := result.Projects[item.Alias]; ok {
+			resources = state.Resources
+		}
+		fmt.Printf("  %s %s %s  %d/%d healthy  cpu=%.1f%% rss=%s  %s\n",
+			out.StatusIcon(state), Pad(item.Alias, 22), out.StatusColor(Pad(state, 10)),
+			summary.Alive, summary.Total, resources.CPUPercent, process.FormatMemory(resources.RSSBytes), out.dim.Render(item.Path))
+		for _, anomaly := range status.RuntimeAnomaly {
+			out.Detail(fmt.Sprintf("%s: %s (pid %d)", anomaly.State, anomaly.Reason, anomaly.PID))
+		}
+	}
+	fmt.Println()
+	if !result.OK {
+		return errSilent
+	}
 	return nil
 }
