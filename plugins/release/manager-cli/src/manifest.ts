@@ -68,8 +68,8 @@ const pluginPermissions = combinePermissions()
     analytics: true,                 // Track release events
   })
   .withQuotas({
-    timeoutMs: 1800000, // 30 min for complex releases (148 packages)
-    memoryMb: 2048,
+    timeoutMs: 1800000, // 30 min for complex releases (167 packages)
+    memoryMb: 4096, // full platform build:affected across 167 packages peaked at ~2.05GB on a CI runner, right at the old 2048 ceiling
     cpuMs: 300000, // 5 min CPU time
   })
   .build();
@@ -274,10 +274,23 @@ export const manifest = {
           tarball: { type: 'string', description: 'Path to the packed tarball to install' },
           name: { type: 'string', description: 'Package name to import after install' },
           json: { type: 'boolean', description: 'Output in JSON format' },
+          additionalTarballs: {
+            type: 'string',
+            description:
+              'Comma-separated tarball paths for workspace siblings. Forces pnpm to install these exact local ' +
+              'artifacts via pnpm.overrides instead of resolving the same package names from the real npm registry ' +
+              '— required with --package-manager pnpm to avoid silently testing an already-published, possibly ' +
+              'stale, version of an in-repo sibling.',
+          },
+          packageManager: {
+            type: 'string',
+            description: '"pnpm" enables the additionalTarballs override path; "npm" (default) keeps the plain Arborist install.',
+          },
         }),
 
         examples: [
           'kb release clean install --tarball ./kb-labs-sdk-2.115.0.tgz --name @kb-labs/sdk',
+          'kb release clean install --tarball ./a.tgz --name @kb-labs/a --package-manager pnpm --additional-tarballs ./b.tgz,./c.tgz',
         ],
       },
 
