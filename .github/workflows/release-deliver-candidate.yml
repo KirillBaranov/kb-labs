@@ -99,6 +99,9 @@ jobs:
       - name: Install delivery tooling
         run: pnpm install --frozen-lockfile
 
+      - name: Build platform tooling
+        run: ./tools/kb-devkit/kb-devkit run build --no-cache
+
       - name: Deliver exact npm tarballs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -64,6 +64,9 @@ jobs:
       - name: Install exact workspace dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build platform tooling
+        run: ./tools/kb-devkit/kb-devkit run build --no-cache
+
       - name: Build selected release flow
         env:
           FLOW: ${{ inputs.flow }}
