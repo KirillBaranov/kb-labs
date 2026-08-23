@@ -105,3 +105,30 @@ func TestBuildPath(t *testing.T) {
 		t.Errorf("BuildPath too short: %q", path)
 	}
 }
+
+func TestValidateNodeUsesResolvedServiceBinary(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{name: "Node 24", version: "v24.18.0"},
+		{name: "Node 20", version: "v20.18.0", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			nodePath := filepath.Join(dir, tc.name+"-node")
+			contents := "#!/bin/sh\nprintf '%s\\n' '" + tc.version + "'\n"
+			if err := os.WriteFile(nodePath, []byte(contents), 0o700); err != nil {
+				t.Fatalf("write node shim: %v", err)
+			}
+			err := (&EnvCache{Node: nodePath}).ValidateNode()
+			if tc.wantErr && err == nil {
+				t.Fatal("expected unsupported Node version to fail")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected supported Node version to pass: %v", err)
+			}
+		})
+	}
+}
