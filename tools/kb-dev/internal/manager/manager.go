@@ -396,6 +396,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	_ = svc.SetState(service.StateStarting, "")
 
 	logsDir := m.stateDir(m.cfg.Settings.LogsDir)
+	_ = logger.EnsureDir(logsDir)
 	_ = logger.Clear(logsDir, svc.ID)
 
 	// Run docker command via spawn.
@@ -444,7 +445,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 			}
 		}
 		if svc.Config.Container != "" {
-			if container, inspectErr := docker.InspectContainer(ctx, svc.Config.Container); inspectErr == nil {
+			if container, inspectErr := docker.InspectContainer(ctx, m.dockerContainerName(svc)); inspectErr == nil {
 				pidInfo.ContainerID = container.ID
 				pidInfo.ContainerName = container.Name
 				pidInfo.ContainerProjectID = container.ProjectID
@@ -541,7 +542,7 @@ func (m *Manager) cleanupFailedStart(svc *service.Service, pidDir string) {
 		}
 	}
 	if svc.Config.Type == config.ServiceTypeDocker && svc.Config.StopCommand == "" && svc.Config.Container != "" {
-		_ = docker.StopContainer(context.Background(), svc.Config.Container)
+		_ = docker.StopContainer(context.Background(), m.dockerContainerName(svc))
 	}
 	if svc.PGID > 0 {
 		_ = process.KillGroupWithPID(svc.PGID, svc.PID, defaultGracePeriod)
@@ -552,6 +553,16 @@ func (m *Manager) cleanupFailedStart(svc *service.Service, pidDir string) {
 	_ = process.RemoveRuntime(m.projectID, svc.ID)
 	svc.PID = 0
 	svc.PGID = 0
+}
+
+// dockerContainerName follows the devservices convention used by offset
+// configs: container names are suffixed with KB_NET_OFFSET so parallel
+// projects never inspect or stop the base project's container.
+func (m *Manager) dockerContainerName(svc *service.Service) string {
+	if svc.Config.Container == "" || m.netOffset == 0 {
+		return svc.Config.Container
+	}
+	return svc.Config.Container + strconv.Itoa(m.netOffset)
 }
 
 func (m *Manager) waitHealth(ctx context.Context, svc *service.Service) health.Result {
@@ -807,8 +818,8 @@ func (m *Manager) Status() *StatusResult {
 			LogFile: logger.LogPath(m.stateDir(m.cfg.Settings.LogsDir), id),
 		}
 		if svc.Config.Type == config.ServiceTypeDocker && svc.Config.Container != "" {
-			ss.ContainerName = svc.Config.Container
-			ss.ContainerRunning = docker.ContainerRunning(svc.Config.Container)
+			ss.ContainerName = m.dockerContainerName(svc)
+			ss.ContainerRunning = docker.ContainerRunning(ss.ContainerName)
 			if info, readErr := process.ReadPID(m.stateDir(m.cfg.Settings.PIDDir), id); readErr == nil && info != nil {
 				ss.ContainerID = info.ContainerID
 				ss.ContainerOwned = info.ContainerProjectID == m.projectID && info.ContainerProjectID != ""
