@@ -239,6 +239,11 @@ also recorded in a host runtime catalog. A missing PID file, removed worktree,
 zombie, or PID reuse is reported as stale/orphaned/detached state; it is never
 silently treated as a reason to kill an unrelated process.
 
+The catalog also stores the exact config path used by `--config`, so an
+explicit config such as `.kb/devservices.dev.yaml` remains discoverable from
+`status --all` after leaving the worktree. `ps` shows a readable worktree label
+plus the stable project ID, for example `kbdev:agent-a:c83d4175:workflow:...`.
+
 Docker-backed services also record the inspected container ID when a
 `container:` name is configured. Container labels are optional and an unlabeled
 container is not considered owned just because its name matches.

@@ -265,6 +265,11 @@ worktree remains visible to `status --all`. Missing PID files, PID reuse,
 zombies, and removed worktrees are classified as stale, orphaned, or detached;
 they are not killed implicitly.
 
+The catalog stores the exact config path passed through `--config`, so alternate
+configs such as `.kb/devservices.dev.yaml` remain recoverable from fleet
+commands. Process titles include both a readable worktree label and the stable
+project ID, for example `kbdev:agent-a:c83d4175:workflow:...`.
+
 For Docker services with a configured `container:` name, the runtime record
 also stores the inspected container ID. Names alone do not prove ownership;
 Docker labels are optional and unlabeled containers are treated conservatively.
