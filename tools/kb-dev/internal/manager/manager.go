@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 	"github.com/kb-labs/dev/internal/config"
 	"github.com/kb-labs/dev/internal/docker"
 	"github.com/kb-labs/dev/internal/environ"
@@ -269,6 +270,38 @@ func (m *Manager) ResolveEnv() {
 	cache = environ.Resolve()
 	_ = cache.Save(cachePath)
 	m.envCache = cache
+}
+
+// ValidateRuntime verifies the Node binary injected into managed services.
+func (m *Manager) ValidateRuntime() error {
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	return m.envCache.ValidateNode()
+}
+
+// UseNode activates and persists a supported Node binary for this project.
+func (m *Manager) UseNode(nodePath string) error {
+	if err := sharedtoolchain.ActivateNode(nodePath); err != nil {
+		return err
+	}
+	if m.envCache == nil {
+		m.ResolveEnv()
+	}
+	m.envCache.Node = nodePath
+	binDir := filepath.Dir(nodePath)
+	m.envCache.ExtraPath = append([]string{binDir}, withoutPath(m.envCache.ExtraPath, binDir)...)
+	return m.envCache.Save(filepath.Join(m.stateDir(m.cfg.Settings.PIDDir), "env-cache.json"))
+}
+
+func withoutPath(paths []string, unwanted string) []string {
+	result := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path != unwanted {
+			result = append(result, path)
+		}
+	}
+	return result
 }
 
 // GroupMembers returns the service IDs belonging to the named devservices

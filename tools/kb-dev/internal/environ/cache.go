@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	sharedtoolchain "github.com/kb-labs/clikit/toolchain"
 )
 
 const cacheMaxAge = 24 * time.Hour
@@ -18,6 +20,20 @@ type EnvCache struct {
 	Docker     string    `json:"docker,omitempty"`
 	Shell      string    `json:"shell"`
 	ExtraPath  []string  `json:"extraPath,omitempty"`
+}
+
+// ValidateNode checks the exact Node binary selected for managed services.
+// It intentionally does not inspect a fresh `node` from PATH: BuildPath puts
+// this resolved binary first for every spawned service.
+func (c *EnvCache) ValidateNode() error {
+	if c == nil {
+		return sharedtoolchain.ValidateNode("")
+	}
+	version, err := sharedtoolchain.Version(c.Node)
+	if err != nil {
+		return err
+	}
+	return sharedtoolchain.ValidateNode(version)
 }
 
 // LoadCache reads a cached environment from the given path.
