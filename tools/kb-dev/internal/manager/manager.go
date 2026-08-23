@@ -211,6 +211,13 @@ func (m *Manager) Reconcile() error {
 		svc.PID = info.PID
 		svc.PGID = info.PGID
 		svc.StartedAt = info.StartedAt
+		// A manager reconstructed for a project (for example by `switch` or
+		// fleet cleanup) may not have the original offset on its command line.
+		// Recover it from the owned PID record before Docker stop/status actions
+		// derive the container name; otherwise an offset container could leak.
+		if m.netOffset == 0 && info.NetOffset != 0 {
+			m.netOffset = info.NetOffset
+		}
 
 		// Check health to determine if alive or degraded.
 		if svc.Config.HealthCheck != "" {
