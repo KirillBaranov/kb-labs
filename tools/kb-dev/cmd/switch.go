@@ -161,6 +161,7 @@ func stopIfRunning(ctx context.Context, path string) (bool, error) {
 	}
 	rootDir := config.RootDir(result.ConfigPath)
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
+	mgr.SetConfigPath(result.ConfigPath)
 	mgr.ResolveEnv()
 	_ = mgr.Reconcile()
 

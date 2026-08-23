@@ -115,6 +115,7 @@ func projectRunning(path string) (bool, error) {
 	}
 	rootDir := config.RootDir(result.ConfigPath)
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
+	mgr.SetConfigPath(result.ConfigPath)
 	_ = mgr.Reconcile()
 
 	targets, err := mgr.Config().ResolveTarget("")

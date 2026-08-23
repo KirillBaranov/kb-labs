@@ -22,6 +22,7 @@ type PIDInfo struct {
 	// protect reconciliation from PID reuse.
 	ProjectID          string `json:"projectId,omitempty"`
 	ProjectRoot        string `json:"projectRoot,omitempty"`
+	ConfigPath         string `json:"configPath,omitempty"`
 	InstanceID         string `json:"instanceId,omitempty"`
 	NetOffset          int    `json:"netOffset,omitempty"`
 	ProcessIdentity    string `json:"processIdentity,omitempty"`

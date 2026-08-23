@@ -57,6 +57,7 @@ func loadManager() (*manager.Manager, error) {
 
 	mgr := manager.New(cfg, rootDir, result.ProjectDir)
 	mgr.SetNetOffset(offset)
+	mgr.SetConfigPath(result.ConfigPath)
 
 	// Resolve environment (node/pnpm paths).
 	mgr.ResolveEnv()
@@ -169,6 +170,19 @@ func loadFleetManagers() ([]fleetManager, error) {
 		alias := "runtime:" + record.ProjectID
 		item := fleetManager{Alias: alias, Path: path}
 		result, discoverErr := config.Discover(path)
+		// Explicit --config launches (for example devservices.dev.yaml) are
+		// not discoverable by the conventional filename walk. Prefer the
+		// recorded path when it still exists so fleet commands can recover the
+		// exact runtime definition from any cwd.
+		if record.ConfigPath != "" {
+			if _, statErr := os.Stat(record.ConfigPath); statErr == nil {
+				result = config.DiscoverResult{
+					ConfigPath: record.ConfigPath,
+					ProjectDir: path,
+				}
+				discoverErr = nil
+			}
+		}
 		if discoverErr != nil {
 			item.Error = "detached runtime: " + discoverErr.Error()
 			items = append(items, item)
@@ -205,6 +219,7 @@ func loadManagerForProject(configPath, projectDir string, offset int) (*manager.
 	rootDir := config.RootDir(configPath)
 	mgr := manager.New(cfg, rootDir, projectDir)
 	mgr.SetNetOffset(offset)
+	mgr.SetConfigPath(configPath)
 	mgr.ResolveEnv()
 	_ = mgr.Reconcile()
 

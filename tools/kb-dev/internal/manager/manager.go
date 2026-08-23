@@ -56,6 +56,7 @@ type Manager struct {
 	rootDir    string
 	projectDir string
 	projectID  string
+	configPath string
 	envCache   *environ.EnvCache
 	events     chan Event
 
@@ -71,6 +72,11 @@ type Manager struct {
 
 // SetNetOffset records the virtual-network port offset for spawnEnv passthrough.
 func (m *Manager) SetNetOffset(offset int) { m.netOffset = offset }
+
+// SetConfigPath records the exact service definition used for this instance.
+// It lets fleet inspection recover runtimes started with an explicit config
+// such as .kb/devservices.dev.yaml after the worktree is no longer cwd.
+func (m *Manager) SetConfigPath(path string) { m.configPath = path }
 
 // StateDir returns the effective directory for a state category (PIDDir,
 // LogsDir, …) given a rootDir/projectDir pair.
@@ -95,6 +101,15 @@ func StateDir(rootDir, projectDir, base string) string {
 // stateDir is the instance-bound convenience wrapper around StateDir.
 func (m *Manager) stateDir(base string) string {
 	return StateDir(m.rootDir, m.projectDir, base)
+}
+
+func (m *Manager) processTitle(service, instanceID string) string {
+	label := filepath.Base(filepath.Clean(m.projectDir))
+	if label == "." || label == string(filepath.Separator) || label == "" {
+		label = m.projectID
+	}
+	label = strings.NewReplacer(" ", "_", ":", "_", "'", "_").Replace(label)
+	return fmt.Sprintf("kbdev:%s:%s:%s:%s", label, m.projectID, service, instanceID)
 }
 
 // New creates a Manager from a parsed config.
@@ -410,7 +425,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	instanceID := process.NewInstanceID()
 	spawnResult, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Title:    fmt.Sprintf("kbdev:%s:%s:%s", m.projectID, svc.ID, instanceID),
+		Title:    m.processTitle(svc.ID, instanceID),
 		Env:      m.spawnEnvFor(svc.Config, svc.ID, instanceID),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
@@ -429,6 +444,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	pidInfo := process.NewPIDInfo(svc.ID, spawnResult.PID, spawnResult.PGID, svc.Config.Command)
 	pidInfo.ProjectID = m.projectID
 	pidInfo.ProjectRoot = m.projectDir
+	pidInfo.ConfigPath = m.configPath
 	pidInfo.InstanceID = instanceID
 	pidInfo.NetOffset = m.netOffset
 	pidInfo.ProcessIdentity = process.ProcessIdentity(spawnResult.PID)
@@ -480,7 +496,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 	instanceID := process.NewInstanceID()
 	result, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Title:    fmt.Sprintf("kbdev:%s:%s:%s", m.projectID, svc.ID, instanceID),
+		Title:    m.processTitle(svc.ID, instanceID),
 		Env:      m.spawnEnvFor(svc.Config, svc.ID, instanceID),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
@@ -499,6 +515,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 	pidInfo := process.NewPIDInfo(svc.ID, result.PID, result.PGID, svc.Config.Command)
 	pidInfo.ProjectID = m.projectID
 	pidInfo.ProjectRoot = m.projectDir
+	pidInfo.ConfigPath = m.configPath
 	pidInfo.InstanceID = instanceID
 	pidInfo.NetOffset = m.netOffset
 	pidInfo.ProcessIdentity = process.ProcessIdentity(result.PID)
@@ -662,7 +679,12 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade, for
 
 		switch {
 		case svc.Config.Type == config.ServiceTypeDocker && svc.Config.StopCommand != "":
-			_, _ = process.Spawn(process.SpawnOpts{Command: svc.Config.StopCommand, Dir: m.rootDir})
+			if stopResult, spawnErr := process.Spawn(process.SpawnOpts{Command: svc.Config.StopCommand, Dir: m.rootDir}); spawnErr == nil {
+				// Stop commands may target detached containers. Wait for the
+				// command to finish before reporting the service stopped, otherwise
+				// an immediate restart can race the old container and leak it.
+				_, _ = stopResult.Process.Wait()
+			}
 		case svc.PGID > 0:
 			_ = process.KillGroup(svc.PGID, defaultGracePeriod)
 		case svc.Config.Port > 0 && force:

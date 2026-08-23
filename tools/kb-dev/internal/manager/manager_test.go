@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -445,6 +446,20 @@ func TestStateDir_SingleProjectMode(t *testing.T) {
 	want := "/workspace/.kb/tmp"
 	if got != want {
 		t.Errorf("StateDir(rootDir==projectDir) = %q, want %q (unnamespaced)", got, want)
+	}
+}
+
+func TestProcessTitleIncludesWorktreeAndStableProjectID(t *testing.T) {
+	m := New(&config.Config{}, "/workspace", "/tmp/agent-a")
+	title := m.processTitle("workflow", "instance-1")
+	if !strings.HasPrefix(title, "kbdev:agent-a:") {
+		t.Fatalf("process title = %q, want worktree label prefix", title)
+	}
+	if !strings.Contains(title, ":workflow:instance-1") {
+		t.Fatalf("process title = %q, want service and instance", title)
+	}
+	if !strings.Contains(title, m.projectID) {
+		t.Fatalf("process title = %q, want stable project ID %q", title, m.projectID)
 	}
 }
 

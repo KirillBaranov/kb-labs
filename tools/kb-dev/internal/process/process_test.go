@@ -148,6 +148,7 @@ func TestRuntimeCatalogRoundTrip(t *testing.T) {
 	info := NewPIDInfo("workflow", 1234, 1234, "node workflow.js")
 	info.ProjectID = "project-a"
 	info.ProjectRoot = "/tmp/project-a"
+	info.ConfigPath = "/tmp/project-a/.kb/devservices.dev.yaml"
 	info.InstanceID = "instance-a"
 	info.NetOffset = 1200
 	if err := UpdateRuntime(info); err != nil {
@@ -157,7 +158,7 @@ func TestRuntimeCatalogRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(records) != 1 || records[0].InstanceID != "instance-a" {
+	if len(records) != 1 || records[0].InstanceID != "instance-a" || records[0].ConfigPath != info.ConfigPath {
 		t.Fatalf("catalog records = %#v", records)
 	}
 	if err := RemoveRuntime("project-a", "workflow"); err != nil {
