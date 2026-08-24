@@ -55,7 +55,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -118,6 +118,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          set +e
           pnpm kb release deliver \
             --flow "$FLOW" \
             --release-tag "${FLOW}-v${VERSION}" \
@@ -125,6 +126,11 @@ jobs:
             --target npm \
             --tag "$TARGET" \
             --json
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 134 ]; then
+            exit "$status"
+          fi
 
       - name: Deliver exact binary assets
         if: inputs.flow == 'platform'
