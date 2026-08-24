@@ -71,6 +71,9 @@ jobs:
       - name: Build platform tooling
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
 
+      - name: Apply planned package versions
+        run: pnpm kb release version --json
+
       - name: Build selected release flow
         env:
           FLOW: ${{ inputs.flow }}
@@ -121,6 +124,22 @@ jobs:
             --sdk-artifacts-dir .kb/release/sdk-artifacts \
             --binary-manifest .kb/release/binary-manifest.json \
             --output .kb/release/release-index.json
+
+      - name: Verify sealed platform version
+        if: inputs.flow == 'platform'
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const index = JSON.parse(fs.readFileSync('.kb/release/release-index.json', 'utf8'));
+          const platform = Object.values(index.artifacts ?? {}).find((artifact) => artifact.kind === 'platform');
+          if (!platform) throw new Error('sealed release index has no platform artifact');
+          if (platform.version !== process.env.EXPECTED_VERSION) {
+            throw new Error(`sealed platform version mismatch: ${platform.version} != ${process.env.EXPECTED_VERSION}`);
+          }
+          NODE
 
       - name: Create candidate provenance
         env:
