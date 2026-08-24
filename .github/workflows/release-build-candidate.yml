@@ -72,7 +72,9 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
 
       - name: Apply planned package versions
-        run: pnpm kb release version --json
+        env:
+          FLOW: ${{ inputs.flow }}
+        run: pnpm kb release version --flow "$FLOW" --json
 
       - name: Build selected release flow
         env:
