@@ -74,6 +74,8 @@ jobs:
       - name: Hydrate release plan paths for candidate workspace
         env:
           FLOW: ${{ inputs.flow }}
+          CHANNEL: ${{ inputs.channel }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
         run: |
           set -euo pipefail
           node - <<'NODE'
@@ -83,6 +85,14 @@ jobs:
           const planPath = path.join(root, '.kb', 'release', 'plans', 'root', 'current', 'plan.json');
           const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
           if (plan.flow !== process.env.FLOW) throw new Error(`release plan flow mismatch: ${plan.flow} != ${process.env.FLOW}`);
+          if (process.env.CHANNEL === 'canary') {
+            const short = process.env.COMMIT_SHA.slice(0, 9);
+            for (const item of plan.packages ?? []) {
+              if (typeof item.nextVersion === 'string' && item.nextVersion.includes('-canary.')) {
+                item.nextVersion = item.nextVersion.replace(/-canary\\.[^.]+$/, `-canary.${short}`);
+              }
+            }
+          }
           const packages = new Map();
           const walk = directory => {
             for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
