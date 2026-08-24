@@ -49,7 +49,7 @@ func TestKBDevEnsuresResolvedGraph(t *testing.T) {
 	if err := (KBDev{Runner: runner}).Ensure("/platform", []string{"gateway", "worker"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"--config", "/platform/.kb/devservices.yaml", "ensure", "gateway", "worker", "--json"}
+	want := []string{"--config", "/platform/.kb/devservices.yaml", "--net-offset", "0", "ensure", "gateway", "worker", "--json"}
 	if !reflect.DeepEqual(runner.args, want) {
 		t.Fatalf("args = %#v", runner.args)
 	}

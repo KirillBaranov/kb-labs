@@ -18,10 +18,18 @@ type Runner interface {
 	Output(context.Context, string, ...string) ([]byte, error)
 }
 
+type combinedRunner interface {
+	CombinedOutput(context.Context, string, ...string) ([]byte, error)
+}
+
 type commandRunner struct{}
 
 func (commandRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
 	return exec.CommandContext(ctx, name, args...).Output()
+}
+
+func (commandRunner) CombinedOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, name, args...).CombinedOutput()
 }
 
 // KBDev reads the public JSON emitted by `kb-dev status --json`.
@@ -68,10 +76,20 @@ func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
 	if runner == nil {
 		runner = commandRunner{}
 	}
-	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "ensure"}
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "--net-offset", "0", "ensure"}
 	args = append(args, serviceIDs...)
 	args = append(args, "--json")
-	if _, err := runner.Output(context.Background(), binary, args...); err != nil {
+	var output []byte
+	var err error
+	if combined, ok := runner.(combinedRunner); ok {
+		output, err = combined.CombinedOutput(context.Background(), binary, args...)
+	} else {
+		output, err = runner.Output(context.Background(), binary, args...)
+	}
+	if err != nil {
+		if len(output) > 0 {
+			return fmt.Errorf("kb-dev ensure: %w: %s", err, output)
+		}
 		return fmt.Errorf("kb-dev ensure: %w", err)
 	}
 	return nil
