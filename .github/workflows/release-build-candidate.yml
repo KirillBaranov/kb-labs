@@ -89,7 +89,7 @@ jobs:
             const short = process.env.COMMIT_SHA.slice(0, 9);
             for (const item of plan.packages ?? []) {
               if (typeof item.nextVersion === 'string' && item.nextVersion.includes('-canary.')) {
-                item.nextVersion = item.nextVersion.replace(/-canary\\.[^.]+$/, `-canary.${short}`);
+                item.nextVersion = item.nextVersion.replace(/-canary\.[^.]+$/, `-canary.${short}`);
               }
             }
           }
