@@ -208,7 +208,7 @@ jobs:
           '
           (
             cd .kb/release/bundle
-            find . -type f ! -name bundle.sha256 -print0 | sort -z | xargs -0 sha256sum > bundle.sha256.tmp
+            find . -type f ! -name bundle.sha256 ! -name bundle.sha256.tmp -print0 | sort -z | xargs -0 sha256sum > bundle.sha256.tmp
             mv bundle.sha256.tmp bundle.sha256
           )
 

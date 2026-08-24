@@ -98,7 +98,7 @@ jobs:
             if (!match) throw new Error(`invalid bundle checksum line: ${line}`);
             // Candidates built before bundle.sha256 was excluded include a
             // self-referential entry, which cannot be validated after write.
-            if (match[2] === './bundle.sha256') continue;
+            if (match[2] === './bundle.sha256' || match[2] === './bundle.sha256.tmp') continue;
             const actual = crypto.createHash('sha256').update(fs.readFileSync(`.kb/release/bundle/${match[2]}`)).digest('hex');
             if (actual !== match[1]) throw new Error(`bundle checksum mismatch: ${match[2]}`);
           }
