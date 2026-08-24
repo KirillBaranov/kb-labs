@@ -157,7 +157,7 @@ jobs:
             if (!filename) continue;
             const destination = path.join(outputDir, filename);
             fs.copyFileSync(source, destination);
-            fs.chmodSync(destination, fs.statSync(source).mode & 0o777);
+  fs.chmodSync(destination, 0o755);
             if ((fs.statSync(destination).mode & 0o111) === 0) {
               throw new Error(`staged binary is not executable: ${filename}`);
             }
