@@ -150,7 +150,11 @@ jobs:
             };
             fs.writeFileSync(".kb/release/bundle/provenance.json", JSON.stringify(out, null, 2) + "\n");
           '
-          (cd .kb/release/bundle && find . -type f -print0 | sort -z | xargs -0 sha256sum > bundle.sha256)
+          (
+            cd .kb/release/bundle
+            find . -type f ! -name bundle.sha256 -print0 | sort -z | xargs -0 sha256sum > bundle.sha256.tmp
+            mv bundle.sha256.tmp bundle.sha256
+          )
 
       - name: Upload immutable candidate bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
