@@ -155,7 +155,12 @@ jobs:
             const digest = crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex');
             const filename = byDigest.get(digest);
             if (!filename) continue;
-            fs.copyFileSync(source, path.join(outputDir, filename));
+            const destination = path.join(outputDir, filename);
+            fs.copyFileSync(source, destination);
+            fs.chmodSync(destination, fs.statSync(source).mode & 0o777);
+            if ((fs.statSync(destination).mode & 0o111) === 0) {
+              throw new Error(`staged binary is not executable: ${filename}`);
+            }
             matched.add(filename);
           }
           if (matched.size !== manifest.binaries.length) {
