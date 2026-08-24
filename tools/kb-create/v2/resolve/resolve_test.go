@@ -57,6 +57,19 @@ func TestPlanInstallsPlatformMembersAtomically(t *testing.T) {
 	}
 }
 
+func TestPlanTargetsReleaseManagedBinaryByLogicalID(t *testing.T) {
+	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelCanary: "2.0.0-canary.abc123456"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0-canary.abc123456", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Binaries: []catalog.Binary{{ID: "kb-dev", OS: "linux", Arch: "amd64", URL: "https://example.test/kb-dev-linux-amd64", Filename: "kb-dev-linux-amd64", SHA256: "binary"}}}}}
+	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x", Platform: contracts.VersionSelector{Channel: contracts.ChannelCanary}}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, artifact := range plan.Artifacts {
+		if artifact.Kind == "binary" && artifact.ID == "kb-dev" && artifact.Target != "kb-dev" {
+			t.Fatalf("binary target = %q, want logical id kb-dev", artifact.Target)
+		}
+	}
+}
+
 func TestPlanRejectsConflictingManifestRequirementOwnership(t *testing.T) {
 	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "shared", Path: "/platform/shared"}}}}, Plugins: []catalog.Component{{ID: "plugin", Version: "1", Package: "@kb/plugin", SHA256: "plugin", Config: []catalog.ConfigRequirement{{ID: "shared", Path: "/plugin/shared"}}}}}
 	_, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x", Plugins: []contracts.ComponentRequest{{ID: "plugin"}}}, source)

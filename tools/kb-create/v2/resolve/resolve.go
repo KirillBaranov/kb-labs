@@ -58,7 +58,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 					return contracts.ResolvedInstallPlan{}, incompatible("binary", binary.ID, err.Error())
 				}
 			}
-			artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.Filename})
+			artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.ID})
 		}
 	}
 	if request.SDK.Version != "" || request.SDK.Channel != "" {
