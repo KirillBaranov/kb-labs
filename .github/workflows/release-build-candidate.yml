@@ -93,6 +93,8 @@ jobs:
       - name: Build exact Go binary assets
         uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29
         if: inputs.flow == 'platform'
+        env:
+          GORELEASER_CURRENT_TAG: v${{ inputs.version }}-binaries
         with:
           version: latest
           args: release --snapshot --clean --skip=publish
