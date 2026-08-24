@@ -137,7 +137,33 @@ jobs:
           set -euo pipefail
           test -s .kb/release/bundle/binary-manifest.json
           binary_tag="v${VERSION}-binaries"
-          mapfile -t assets < <(find .kb/release/bundle/binaries -type f \( -name 'kb-*' -o -name checksums.txt \) -print | sort)
+          rm -rf .kb/release/upload-assets
+          node - <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const sourceDir = '.kb/release/bundle/binaries';
+          const outputDir = '.kb/release/upload-assets';
+          const manifest = JSON.parse(fs.readFileSync('.kb/release/bundle/binary-manifest.json', 'utf8'));
+          const byDigest = new Map(manifest.binaries.map((asset) => [asset.sha256, asset.filename]));
+          const matched = new Set();
+          fs.mkdirSync(outputDir, { recursive: true });
+          for (const entry of fs.readdirSync(sourceDir, { recursive: true, withFileTypes: true })) {
+            if (!entry.isFile()) continue;
+            const source = path.join(entry.parentPath, entry.name);
+            const digest = crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex');
+            const filename = byDigest.get(digest);
+            if (!filename) continue;
+            fs.copyFileSync(source, path.join(outputDir, filename));
+            matched.add(filename);
+          }
+          if (matched.size !== manifest.binaries.length) {
+            throw new Error(`prepared ${matched.size}/${manifest.binaries.length} binary assets`);
+          }
+          fs.copyFileSync(path.join(sourceDir, 'checksums.txt'), path.join(outputDir, 'checksums.txt'));
+          NODE
+          mapfile -t assets < <(find .kb/release/upload-assets -maxdepth 1 -type f -print | sort)
           test "${#assets[@]}" -gt 0
           if gh release view "$binary_tag" --repo "$REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$binary_tag" "${assets[@]}" --repo "$REPOSITORY" --clobber
@@ -161,7 +187,7 @@ jobs:
           KB_CREATE_PACKAGE_TAG: ${{ inputs.target }}
         run: |
           set -euo pipefail
-          binary="$(find "${{ github.workspace }}/.kb/release/bundle/binaries" -type f -name 'kb-create-linux-amd64' -print -quit)"
-          test -n "$binary"
+          binary="${{ github.workspace }}/.kb/release/upload-assets/kb-create-linux-amd64"
+          test -x "$binary"
           KB_CREATE_BINARY="$binary" go test -v -race -count=1 -timeout 12m \
             -run '^TestPublishedV2JourneyReachesPluginWorkflow$' ./v2/e2e/...
