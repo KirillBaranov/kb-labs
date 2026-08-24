@@ -134,7 +134,7 @@ jobs:
           node - <<'NODE'
           const fs = require('node:fs');
           const index = JSON.parse(fs.readFileSync('.kb/release/release-index.json', 'utf8'));
-          const platform = Object.values(index.artifacts ?? {}).find((artifact) => artifact.kind === 'platform');
+          const platform = (index.platforms ?? []).find((artifact) => artifact.id === 'platform');
           if (!platform) throw new Error('sealed release index has no platform artifact');
           if (platform.version !== process.env.EXPECTED_VERSION) {
             throw new Error(`sealed platform version mismatch: ${platform.version} != ${process.env.EXPECTED_VERSION}`);
