@@ -19,7 +19,6 @@ export const manifest: ServiceManifest = {
     // `ws` client, which cannot dial a unix socket (undici.socketPath applies
     // only to HTTP), so rest must stay on TCP for WS proxying to work.
   },
-  dependsOn: ['qdrant'],
   env: {
     PORT: { description: 'HTTP port', default: '5050' },
     REST_API_HOST: { description: 'Bind host', default: '127.0.0.1' },
