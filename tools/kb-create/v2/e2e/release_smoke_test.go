@@ -90,6 +90,7 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if output, code := run(t, kbDev, "--config", config, "--net-offset", "10000", "ensure", "marketplace", "workflow"); code != 0 {
 		t.Fatalf("installed service graph did not start: %s", output)
 	}
+	t.Setenv("KB_NET_OFFSET", "10000")
 	t.Cleanup(func() {
 		_, _ = run(t, kbDev, "--config", config, "--net-offset", "10000", "stop", "marketplace", "workflow")
 	})
