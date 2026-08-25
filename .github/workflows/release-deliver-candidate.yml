@@ -52,7 +52,7 @@ jobs:
           run-id: ${{ inputs.candidate_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           name: release-candidate-${{ inputs.candidate_id }}
-          path: .kb/release/bundle
+          path: ${{ runner.temp }}/candidate-bundle
 
       - name: Resolve candidate commit before checkout
         env:
@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           node - <<'NODE'
           const fs = require('node:fs');
-          const p = JSON.parse(fs.readFileSync('.kb/release/bundle/provenance.json', 'utf8'));
+          const p = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/candidate-bundle/provenance.json`, 'utf8'));
           for (const [key, expected] of [['candidateId', process.env.EXPECTED_ID], ['flow', process.env.EXPECTED_FLOW], ['version', process.env.EXPECTED_VERSION]]) {
             if (p[key] !== expected) throw new Error(`candidate ${key} mismatch: ${p[key]} != ${expected}`);
           }
@@ -76,9 +76,13 @@ jobs:
         with:
           ref: ${{ env.CANDIDATE_COMMIT }}
           fetch-depth: 1
-          # The immutable bundle was downloaded before checkout so its
-          # provenance selects this commit; retain that untracked evidence.
-          clean: false
+          clean: true
+
+      - name: Place immutable candidate bundle after checkout
+        run: |
+          set -euo pipefail
+          mkdir -p .kb/release
+          cp -R "$RUNNER_TEMP/candidate-bundle" .kb/release/bundle
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
         with:
