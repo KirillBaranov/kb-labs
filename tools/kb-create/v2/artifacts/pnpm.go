@@ -128,6 +128,13 @@ func (p Pnpm) specs(items []contracts.Artifact) ([]string, error) {
 		if item.Package == "" || item.Version == "" {
 			return nil, fmt.Errorf("artifact %q must declare package and exact version", item.ID)
 		}
+		// Update is deliberately idempotent: pnpm add file:<tarball> can
+		// rewrite an otherwise healthy lockfile and fail when the exact package
+		// is already linked. Trust the installed package metadata, while still
+		// installing missing or version-different artifacts.
+		if p.installedExact(item.Package, item.Version) {
+			continue
+		}
 		spec := item.Package + "@" + item.Version
 		if item.Tarball != "" {
 			path, err := p.tarball(item)
@@ -143,6 +150,17 @@ func (p Pnpm) specs(items []contracts.Artifact) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+func (p Pnpm) installedExact(pkg, version string) bool {
+	data, err := os.ReadFile(filepath.Join(p.Root, "node_modules", filepath.FromSlash(pkg), "package.json"))
+	if err != nil {
+		return false
+	}
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	return json.Unmarshal(data, &manifest) == nil && manifest.Version == version
 }
 
 func (p Pnpm) tarball(item contracts.Artifact) (string, error) {

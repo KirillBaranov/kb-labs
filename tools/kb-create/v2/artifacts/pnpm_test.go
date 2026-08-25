@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -56,6 +57,24 @@ func TestPnpmInstallsSortedExactArtifactBatch(t *testing.T) {
 	want := []string{"add", "--dir", root, "--reporter=append-only", "@kb/a@1.0.0", "@kb/b@2.0.0", "--registry", "https://registry.test"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
 		t.Fatalf("calls = %#v, want %q", runner.calls, want)
+	}
+}
+
+func TestPnpmSkipsAlreadyInstalledExactArtifact(t *testing.T) {
+	root := t.TempDir()
+	pkg := filepath.Join(root, "node_modules", "@kb", "a")
+	if err := os.MkdirAll(pkg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkg, "package.json"), []byte(`{"name":"@kb/a","version":"1.0.0"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: root, Runner: runner}).Install([]contracts.Artifact{{ID: "a", Package: "@kb/a", Version: "1.0.0"}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("calls = %#v", runner.calls)
 	}
 }
 func TestPnpmDoesNotRunForInvalidArtifact(t *testing.T) {
