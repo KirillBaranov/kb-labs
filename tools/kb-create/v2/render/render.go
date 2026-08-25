@@ -72,7 +72,7 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		if service.ID == "" {
 			return Output{}, fmt.Errorf("service ID is required")
 		}
-		services[service.ID] = Service{Name: service.ID, Command: service.Command, Port: service.Port, DependsOn: service.DependsOn, Env: map[string]string{}}
+		services[service.ID] = Service{Name: service.ID, Command: RuntimeCommand(service.Command), Port: service.Port, DependsOn: service.DependsOn, Env: map[string]string{}}
 	}
 	file := DevservicesFile{Name: "kb-labs", Services: services}
 	if err := file.Validate(); err != nil {
@@ -113,6 +113,23 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		return Output{}, fmt.Errorf("marshal runtime config: %w", err)
 	}
 	return Output{Config: append(data, '\n'), Devservices: file}, nil
+}
+
+// runtimeCommand makes package-provided service binaries resolvable from an
+// installed platform. kb-dev launches services outside pnpm's shell, so a
+// bare manifest command such as "rest-api-app" would otherwise be absent from
+// PATH even though the package's .bin entry is installed in node_modules.
+func RuntimeCommand(command string) string {
+	trimmed := strings.TrimSpace(command)
+	if trimmed == "" || strings.ContainsAny(trimmed, " \t\n") || strings.Contains(trimmed, "/") {
+		return command
+	}
+	switch trimmed {
+	case "node", "pnpm", "npm", "yarn", "bun", "deno", "python", "python3", "go", "docker":
+		return command
+	default:
+		return "pnpm exec " + command
+	}
 }
 
 func setConfigValue(root map[string]any, pointer, raw string) error {

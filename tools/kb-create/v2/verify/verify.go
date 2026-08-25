@@ -64,7 +64,7 @@ func sameGraph(file render.DevservicesFile, graph contracts.ServiceGraph) bool {
 	}
 	for _, expected := range graph.Services {
 		actual, ok := file.Services[expected.ID]
-		if !ok || actual.Command != expected.Command || actual.Port != expected.Port || !sameStrings(actual.DependsOn, expected.DependsOn) {
+		if !ok || actual.Command != render.RuntimeCommand(expected.Command) || actual.Port != expected.Port || !sameStrings(actual.DependsOn, expected.DependsOn) {
 			return false
 		}
 	}
