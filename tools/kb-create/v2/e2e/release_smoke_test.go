@@ -78,6 +78,21 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if err := json.Unmarshal([]byte(updateOutput), &updateResponse); err != nil || !updateResponse.OK || updateResponse.Receipt.SnapshotID == "" {
 		t.Fatalf("V2 update did not commit a recovery snapshot: %s", updateOutput)
 	}
+	// The published journey exercises commands that talk to the installed
+	// marketplace/workflow services.  Bring up the installed graph explicitly;
+	// apply/update intentionally only materialise the platform and must not
+	// implicitly mutate the host's service state.
+	kbDev := filepath.Join(platform, ".kb", "v2", "bin", "kb-dev")
+	if info, err := os.Stat(kbDev); err != nil || info.Mode()&0o111 == 0 {
+		t.Fatalf("installed kb-dev binary is missing or not executable: %s (%v)", kbDev, err)
+	}
+	config := filepath.Join(platform, ".kb", "devservices.yaml")
+	if output, code := run(t, kbDev, "--config", config, "--net-offset", "10000", "ensure", "marketplace", "workflow"); code != 0 {
+		t.Fatalf("installed service graph did not start: %s", output)
+	}
+	t.Cleanup(func() {
+		_, _ = run(t, kbDev, "--config", config, "--net-offset", "10000", "stop", "marketplace", "workflow")
+	})
 
 	cli := filepath.Join(platform, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
 	if _, err := os.Stat(cli); err != nil {
