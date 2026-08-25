@@ -262,9 +262,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # `test` resolves workspace packages through their built exports. The
       # build artifact above contains only affected packages, which is enough
-      # for fast checks but not for this deliberately full unit-test gate.
+      # for fast checks but not for this deliberately full unit-test gate. Keep
+      # the dependency-order build cacheable so the gate is reproducible
+      # without turning every PR into an unbounded cold rebuild.
       - name: Build complete workspace for unit resolution
-        run: ./tools/kb-devkit/kb-devkit run build --no-cache
+        run: ./tools/kb-devkit/kb-devkit run build
       - name: Run all unit tests
         run: ./tools/kb-devkit/kb-devkit run test --no-cache
       - name: Run all CLI handler tests
