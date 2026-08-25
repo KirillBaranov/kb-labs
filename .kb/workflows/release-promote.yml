@@ -38,6 +38,9 @@ phases:
   deliver:
     label: Deliver
     description: Dispatch the immutable bundle to the CI delivery workflow
+  promote:
+    label: Promote
+    description: Atomically advance installable npm and binary channels after CI smoke is green
 
 jobs:
   promote:
@@ -69,4 +72,17 @@ jobs:
             --flow '${{ inputs.flow }}' \
             --version '${{ inputs.version }}' \
             --target '${{ inputs.target }}' \
+            --repository "${GITHUB_REPOSITORY:-kb-labs-team/kb-labs}"
+
+      - name: Advance verified channel
+        phase: promote
+        timeoutMs: 1200000
+        run: |
+          set -euo pipefail
+          node .kb/workflows/scripts/promote-release-channel.mjs \
+            --candidate-run-id '${{ inputs.candidateRunId }}' \
+            --candidate-id '${{ inputs.candidateId }}' \
+            --flow '${{ inputs.flow }}' \
+            --version '${{ inputs.version }}' \
+            --channel '${{ inputs.target }}' \
             --repository "${GITHUB_REPOSITORY:-kb-labs-team/kb-labs}"

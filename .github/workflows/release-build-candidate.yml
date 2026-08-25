@@ -164,13 +164,14 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
+          platform_members="$(node -e 'const c=require("./.kb/kb.config.json"); const m=c.profiles?.find(p => p.id === "default")?.products?.release?.flows?.platform?.platformMembers; if (!Array.isArray(m) || m.length === 0) throw new Error("release.flows.platform.platformMembers must be a non-empty array"); process.stdout.write(m.join(","));')"
           node tools/kb-create/scripts/prepare-release-index.mjs \
             --flow "$FLOW" \
             --channel "$CHANNEL" \
             --artifacts-dir .kb/release/artifacts \
             --sdk-artifacts-dir .kb/release/sdk-artifacts \
             --binary-manifest .kb/release/binary-manifest.json \
-            --platform-member-packages @kb-labs/cli-bin,@kb-labs/scaffold,@kb-labs/workflow-entry,@kb-labs/marketplace-entry,@kb-labs/release-manager-cli,@kb-labs/quality-entry,@kb-labs/review-entry,@kb-labs/commit-entry \
+            --platform-member-packages "$platform_members" \
             --output .kb/release/release-index.json
 
       - name: Verify sealed platform version
@@ -219,6 +220,7 @@ jobs:
           '
           (
             cd .kb/release/bundle
+            find . -type f ! -name bundle.sha256 ! -name bundle.sha256.tmp -printf '%m  %p\n' | sort > bundle.modes
             find . -type f ! -name bundle.sha256 ! -name bundle.sha256.tmp -print0 | sort -z | xargs -0 sha256sum > bundle.sha256.tmp
             mv bundle.sha256.tmp bundle.sha256
           )

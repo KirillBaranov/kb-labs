@@ -64,6 +64,11 @@ const byName = new Map(stage.map(item => [item.name, item]));
 const sourceDirByName = new Map(stagedEntries.map(({ item, directory }) => [item.name, directory]));
 const platform = byName.get(platformPackage);
 if (!platform) throw new Error(`platform package ${platformPackage} is absent from stage manifest`);
+for (const packageName of platformMemberPackages) {
+  if (!byName.has(packageName)) {
+    throw new Error(`required platform member ${packageName} is absent from stage manifest`);
+  }
+}
 const resolvedPlatformVersion = platformVersion ?? platform.version;
 if (platform.version !== resolvedPlatformVersion) throw new Error(`platform version mismatch: stage=${platform.version}, expected=${resolvedPlatformVersion}`);
 
@@ -220,7 +225,7 @@ const exportValue = {
     ])].map(packageName => {
       const item = byName.get(packageName);
       return item ? component(item, undefined, services.find(service => service.packageName === packageName)?.id ?? idFor(packageName)) : undefined;
-    }).filter(Boolean),
+    }),
   }],
   sdks: sdk ? [component(sdk, undefined, 'sdk')] : [],
   plugins,
