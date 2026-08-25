@@ -87,12 +87,13 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 		t.Fatalf("installed kb-dev binary is missing or not executable: %s (%v)", kbDev, err)
 	}
 	config := filepath.Join(platform, ".kb", "devservices.yaml")
-	if output, code := run(t, kbDev, "--config", config, "--net-offset", "10000", "ensure", "marketplace", "workflow"); code != 0 {
+	if output, code := run(t, kbDev, "--config", config, "ensure", "marketplace", "workflow"); code != 0 {
 		t.Fatalf("installed service graph did not start: %s", output)
 	}
-	t.Setenv("KB_NET_OFFSET", "10000")
+	marketplaceURL := installedServiceURL(t, kbDev, config, "marketplace")
+	t.Setenv("KB_MARKETPLACE_URL", marketplaceURL)
 	t.Cleanup(func() {
-		_, _ = run(t, kbDev, "--config", config, "--net-offset", "10000", "stop", "marketplace", "workflow")
+		_, _ = run(t, kbDev, "--config", config, "stop", "marketplace", "workflow")
 	})
 
 	cli := filepath.Join(platform, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
@@ -119,6 +120,35 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if strings.TrimSpace(stringValue(response["runId"])) == "" && strings.TrimSpace(stringValue(response["id"])) == "" {
 		t.Fatalf("workflow response has no run ID: %s", workflowOutput)
 	}
+}
+
+// installedServiceURL obtains the actual kb-dev-resolved address instead of
+// reconstructing it from a base port. That keeps this published-artifact test
+// valid for an automatically derived KB_NET_OFFSET and avoids a hidden gateway
+// dependency: scaffold talks directly to the marketplace service it installed.
+func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
+	t.Helper()
+	output, code := run(t, kbDev, "--config", config, "status", "--json")
+	if code != 0 {
+		t.Fatalf("read installed service status: %s", output)
+	}
+	var status struct {
+		Services map[string]struct {
+			URL   string `json:"url"`
+			State string `json:"state"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal([]byte(output), &status); err != nil {
+		t.Fatalf("decode installed service status: %v\n%s", err, output)
+	}
+	service, ok := status.Services[serviceID]
+	if !ok || strings.TrimSpace(service.URL) == "" {
+		t.Fatalf("installed service %q has no resolved URL: %s", serviceID, output)
+	}
+	if service.State != "alive" {
+		t.Fatalf("installed service %q is not ready (%s): %s", serviceID, service.State, output)
+	}
+	return service.URL
 }
 
 func run(t *testing.T, binary string, args ...string) (string, int) {

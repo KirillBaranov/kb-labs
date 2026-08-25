@@ -29,10 +29,9 @@ inputs:
     type: string
     description: >-
       Release channel — "stable" (default) bumps versions, writes the changelog, and
-      commits/tags/pushes; nothing is published to npm here, CI publishes off the pushed
-      tag. "canary" skips version bump/changelog/git entirely and instead publishes
-      straight to real npm under the canary dist-tag as part of this workflow, gated by
-      the same approval step — there is no CI leg for canary, so approving IS the publish.
+      commits/tags/pushes. "canary" skips those Git mutations. Both channels always
+      build an immutable candidate in CI; neither becomes installable until a separate
+      promotion succeeds after delivery and smoke.
     required: false
     default: stable
   skipChecks:
@@ -145,7 +144,7 @@ jobs:
         uses: builtin:approval
         with:
           title: "Release ${{ inputs.flow }} (${{ inputs.channel }}) — proceed?"
-          instructions: "Review the release plan, package links, and check/build results above. channel=stable: approving versions, tags, and pushes the release — nothing is published to npm here, that happens in CI off the pushed tag. channel=canary: approving publishes straight to real npm under the canary dist-tag as the very next step in this workflow — there is no later gate. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
+          instructions: "Review the release plan, package links, and check/build results above. Approval only prepares the Git state (for stable) and starts immutable candidate CI. Publishing and the installable channel are separate later transitions, and the channel moves only after green smoke. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
 
       - name: Bump versions
         id: version
@@ -181,10 +180,12 @@ jobs:
           set -euo pipefail
           version='${{ steps.plan.outputs.version }}'
           test -n "$version"
-          candidate_id="${{ inputs.flow }}-${version}-${{ inputs.channel }}-$(date -u +%Y%m%dT%H%M%SZ)"
+          commit="$(git rev-parse HEAD)"
+          short_commit="$(git rev-parse --short=12 HEAD)"
+          candidate_id="${{ inputs.flow }}-${version}-${{ inputs.channel }}-${short_commit}"
           node .kb/workflows/scripts/dispatch-release-candidate.mjs \
             --candidate-id "$candidate_id" \
-            --commit "$(git rev-parse HEAD)" \
+            --commit "$commit" \
             --flow '${{ inputs.flow }}' \
             --version "$version" \
             --channel '${{ inputs.channel }}' \

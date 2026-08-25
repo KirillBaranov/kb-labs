@@ -76,7 +76,10 @@ func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
 	if runner == nil {
 		runner = commandRunner{}
 	}
-	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "--net-offset", "0", "ensure"}
+	// Do not pin an offset here. kb-dev resolves the project-specific offset
+	// consistently for ensure, status and stop (or honours KB_NET_OFFSET), so
+	// V2 never starts services on a different network from the caller.
+	args := []string{"--config", filepath.Join(platformRoot, ".kb", "devservices.yaml"), "ensure"}
 	args = append(args, serviceIDs...)
 	args = append(args, "--json")
 	var output []byte

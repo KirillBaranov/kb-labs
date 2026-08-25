@@ -64,6 +64,23 @@ test('fails closed when the SDK rejects the staged platform even in the same maj
   assert.match(`${result.stdout}\n${result.stderr}`, /rejects .*core-runtime@2\.155\.2/);
 });
 
+test('fails closed when a required platform member was not staged', () => {
+  const root = mkdtempSync(join(tmpdir(), 'kb-release-index-members-'));
+  const stage = join(root, 'stage');
+  const packageRoot = join(root, 'packages');
+  mkdirSync(stage, { recursive: true });
+  const artifacts = [
+    packageArtifact(root, packageRoot, stage, '@kb-labs/core-runtime', '2.0.0', ''),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '^2.0.0' } }),
+  ];
+  writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const binaryManifest = join(root, 'binary-manifest.json');
+  writeFileSync(binaryManifest, JSON.stringify({ binaries: [{ id: 'kb-create', os: 'linux', arch: 'amd64', url: 'https://example.test/kb-create', filename: 'kb-create-linux-amd64', sha256: 'binary-sha' }] }));
+  const result = spawnSync(process.execPath, [script.pathname, '--flow', 'platform', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--platform-member-packages', '@kb-labs/cli-bin', '--output', join(root, 'release-index.json')], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, /required platform member @kb-labs\/cli-bin is absent/);
+});
+
 function packageArtifact(root, packageRoot, stage, name, version, manifest, extra = {}) {
   const packageDir = join(packageRoot, 'package');
   rmSync(packageDir, { recursive: true, force: true });
