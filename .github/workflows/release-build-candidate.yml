@@ -170,7 +170,7 @@ jobs:
             --artifacts-dir .kb/release/artifacts \
             --sdk-artifacts-dir .kb/release/sdk-artifacts \
             --binary-manifest .kb/release/binary-manifest.json \
-            --platform-member-packages @kb-labs/cli-bin \
+            --platform-member-packages @kb-labs/cli-bin,@kb-labs/scaffold,@kb-labs/workflow-entry,@kb-labs/marketplace-entry,@kb-labs/release-manager-cli,@kb-labs/quality-entry,@kb-labs/review-entry,@kb-labs/commit-entry \
             --output .kb/release/release-index.json
 
       - name: Verify sealed platform version
