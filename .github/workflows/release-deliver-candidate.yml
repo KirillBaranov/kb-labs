@@ -143,6 +143,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           FLOW: ${{ inputs.flow }}
           VERSION: ${{ inputs.version }}
+          CANDIDATE_TAG: candidate-${{ inputs.candidate_id }}
         run: |
           set -euo pipefail
           set +e
@@ -151,7 +152,7 @@ jobs:
             --release-tag "${FLOW}-v${VERSION}" \
             --artifacts-dir .kb/release/bundle/npm \
             --target npm \
-            --tag canary \
+            --tag "$CANDIDATE_TAG" \
             --json
           status=$?
           set -e
@@ -225,7 +226,7 @@ jobs:
         working-directory: tools/kb-create
         env:
           KB_CREATE_RELEASE_INDEX: ${{ github.workspace }}/.kb/release/bundle/release-index.json
-          KB_CREATE_PACKAGE_TAG: canary
+          KB_CREATE_PACKAGE_TAG: candidate-${{ inputs.candidate_id }}
         run: |
           set -euo pipefail
           binary="${{ github.workspace }}/.kb/release/upload-assets/kb-create-linux-amd64"
