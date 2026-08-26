@@ -104,6 +104,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build (devkit, topological, no cache)
+        env:
+          # Full CI needs production JS artifacts. Development-only Module
+          # Federation DTS workers can deadlock when rspack builds overlap.
+          NODE_ENV: production
         run: ./tools/kb-devkit/kb-devkit run build --no-cache
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -

@@ -245,9 +245,6 @@
                   "@kb-labs/platform-client"
                 ]
               },
-              "build": {
-                "script": "build:affected"
-              },
               "checks": [
                 {
                   "id": "dist-exports",
@@ -295,9 +292,6 @@
                   "@kb-labs/adapters-fs",
                   "@kb-labs/platform-client"
                 ]
-              },
-              "build": {
-                "script": "build:release-ci"
               },
               "checks": [
                 {
