@@ -42,6 +42,13 @@ export interface VerifyAgainstRegistryOptions {
    * Default: 0 (single attempt, matches pre-existing Verdaccio behavior).
    */
   retries?: number;
+  /**
+   * Total time to wait for npm metadata and tarballs to propagate after a
+   * publish. When provided this supersedes the legacy fixed retry count, so
+   * an idempotent re-run resumes verification of already-published tarballs
+   * instead of requiring a new publish or a workflow-owned sleep.
+   */
+  visibilityDeadlineMs?: number;
   retryDelaysMs?: readonly number[];
   logger?: Pick<PluginLogger, 'info' | 'warn'>;
 }
@@ -60,7 +67,7 @@ export async function verifyAgainstRegistry(
   const results: VerifyResult[] = [];
 
   for (const pkg of packages) {
-    results.push(await verifyOneAgainstRegistry(pkg, registry, timeout, retries, retryDelaysMs, logger));
+    results.push(await verifyOneAgainstRegistry(pkg, registry, timeout, retries, retryDelaysMs, options.visibilityDeadlineMs, logger));
   }
 
   return results;
@@ -71,19 +78,23 @@ async function waitUntilPublished(
   registry: string,
   retries: number,
   retryDelaysMs: readonly number[],
+  visibilityDeadlineMs: number | undefined,
   logger?: Pick<PluginLogger, 'info' | 'warn'>,
 ): Promise<boolean> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  const deadline = visibilityDeadlineMs === undefined ? undefined : Date.now() + visibilityDeadlineMs;
+  for (let attempt = 0; deadline === undefined ? attempt <= retries : Date.now() <= deadline; attempt++) {
     if (await isVersionPublished(pkg.name, pkg.version, registry)) {
       return true;
     }
-    if (attempt < retries) {
+    if (deadline === undefined ? attempt < retries : Date.now() < deadline) {
       const delay = retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)]!;
+      const remaining = deadline === undefined ? undefined : deadline - Date.now();
+      const waitMs = remaining === undefined ? delay : Math.min(delay, Math.max(0, remaining));
       logger?.warn?.(
-        `${pkg.name}@${pkg.version} not yet visible on ${registry} (attempt ${attempt + 1}/${retries + 1}), ` +
-        `retrying in ${(delay / 1000).toFixed(0)}s — likely registry propagation lag`,
+        `${pkg.name}@${pkg.version} not yet visible on ${registry} (attempt ${attempt + 1}${deadline === undefined ? `/${retries + 1}` : ''}), ` +
+        `retrying in ${(waitMs / 1000).toFixed(0)}s${remaining === undefined ? '' : `; ${(Math.max(0, remaining) / 1000).toFixed(0)}s remain`} — likely registry propagation lag`,
       );
-      await new Promise<void>(r => { setTimeout(r, delay); });
+      await new Promise<void>(r => { setTimeout(r, waitMs); });
     }
   }
   return false;
@@ -95,11 +106,15 @@ async function verifyOneAgainstRegistry(
   timeout: number,
   retries: number,
   retryDelaysMs: readonly number[],
+  visibilityDeadlineMs: number | undefined,
   logger?: Pick<PluginLogger, 'info' | 'warn'>,
 ): Promise<VerifyResult> {
-  const published = await waitUntilPublished(pkg, registry, retries, retryDelaysMs, logger);
+  const published = await waitUntilPublished(pkg, registry, retries, retryDelaysMs, visibilityDeadlineMs, logger);
   if (!published) {
-    return { name: pkg.name, success: false, issues: [`${pkg.name}@${pkg.version} was not found on ${registry} after publish (waited through ${retries} retr${retries === 1 ? 'y' : 'ies'})`] };
+    const waited = visibilityDeadlineMs === undefined
+      ? `waited through ${retries} retr${retries === 1 ? 'y' : 'ies'}`
+      : `visibility deadline of ${(visibilityDeadlineMs / 1000).toFixed(0)}s elapsed`;
+    return { name: pkg.name, success: false, issues: [`${pkg.name}@${pkg.version} was not found on ${registry} after publish (${waited})`] };
   }
   logger?.info?.(`${pkg.name}@${pkg.version} confirmed on ${registry}`);
 

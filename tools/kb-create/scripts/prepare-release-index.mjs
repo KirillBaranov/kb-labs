@@ -99,6 +99,20 @@ const manifestFor = item => {
   const javascriptManifest = join(packageDir, 'dist', 'manifest.js');
   if (existsSync(javascriptManifest)) {
     const source = readFileSync(javascriptManifest, 'utf8');
+    // Published service packages ship their manifest as compiled JS (rather
+    // than JSON).  The release index is the installation contract, so it
+    // must preserve their service graph instead of silently treating them as
+    // ordinary packages.  Read only the declarative literals we need; never
+    // execute a tarball fetched from the registry while preparing a release.
+    if (/schema:\s*["']kb\.service\/1["']/.test(source)) {
+      const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
+      const port = Number(source.match(/\bport:\s*(\d+)/)?.[1] ?? 0);
+      const dependsOnSource = source.match(/\bdependsOn:\s*\[([^\]]*)\]/)?.[1];
+      const dependsOn = dependsOnSource
+        ? [...dependsOnSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
+        : [];
+      if (id) return { schema: 'kb.service/1', id, runtime: { port }, dependsOn };
+    }
     const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
     const implementsSource = source.match(/\bimplements:\s*(\[[^\]]+\]|["'][^"']+["'])/)?.[1];
     const implementsValue = implementsSource?.startsWith('[')
@@ -162,10 +176,11 @@ for (const item of stage) {
   })}\n`);
   if (!manifest) continue;
   if (manifest.schema === 'kb.service/1') {
+    const packageJSON = packageJSONFor(item);
     services.push({
       id: manifest.id,
       packageName: item.name,
-      command: manifest.bin ? Object.keys(manifest.bin)[0] : item.name.split('/').pop(),
+      command: manifest.bin ? Object.keys(manifest.bin)[0] : Object.keys(packageJSON.bin ?? {})[0] ?? item.name.split('/').pop(),
       port: manifest.runtime?.port ?? 0,
       dependsOn: manifest.dependsOn ?? [],
       required: true,
