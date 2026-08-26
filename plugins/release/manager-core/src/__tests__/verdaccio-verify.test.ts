@@ -54,6 +54,21 @@ describe('verifyAgainstRegistry', () => {
     expect(mockSpawnSync).not.toHaveBeenCalled();
   });
 
+  it('uses the delivery-owned visibility deadline rather than a fixed retry budget', async () => {
+    mockIsVersionPublished
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const results = await verifyAgainstRegistry(
+      [{ name: '@kb-labs/fixture', version: '1.0.0', path: '/pkg' }],
+      { registry: 'http://localhost:4873', retries: 0, visibilityDeadlineMs: 1_000, retryDelaysMs: [0] },
+    );
+
+    expect(mockIsVersionPublished).toHaveBeenCalledTimes(3);
+    expect(results[0]!.success).toBe(true);
+  });
+
   it('pulls the tarball back via npm pack against the given registry once confirmed published', async () => {
     mockIsVersionPublished.mockResolvedValue(true);
 

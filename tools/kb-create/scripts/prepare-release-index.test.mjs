@@ -17,7 +17,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
     packageArtifact(root, packageRoot, stage, '@kb-labs/core-contracts', '2.0.0', ''),
     packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '>=2.0.0 <3.0.0' } }),
     packageArtifact(root, packageRoot, stage, '@kb-labs/commit-entry', '2.0.0', JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/commit', version: '2.0.0', platform: { requires: ['cache'] } })),
-    packageArtifact(root, packageRoot, stage, '@kb-labs/workflow-daemon', '2.0.0', JSON.stringify({ schema: 'kb.service/1', id: 'workflow', version: '2.0.0', runtime: { port: 7778 }, dependsOn: [] })),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/workflow-daemon', '2.0.0', 'var manifest = { schema: "kb.service/1", id: "workflow", runtime: { port: 7778 } }; export { manifest };', { bin: { 'kb-workflow': './dist/index.js' } }),
     packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:["ILogger"]}; export {manifest};'),
   ];
   writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
@@ -37,6 +37,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
   assert.equal(index.channels.canary, '2.0.0');
   assert.equal(index.plugins[0].id, 'commit');
   assert.equal(index.platforms[0].profiles.default.services[0].id, 'workflow');
+  assert.equal(index.platforms[0].profiles.default.services[0].command, 'kb-workflow');
   assert.deepEqual(index.platforms[0].requires, [{ capability: 'serviceTransport', requiredBy: 'platform' }]);
   assert.deepEqual(index.platforms[0].config, [
     { id: 'platform.adapters', path: '/platform/adapters', default: '{"serviceTransport":"@kb-labs/adapters-service-transport-http"}' },
@@ -87,7 +88,7 @@ function packageArtifact(root, packageRoot, stage, name, version, manifest, extr
   mkdirSync(join(packageDir, 'dist'), { recursive: true });
   writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name, version, ...extra }));
   if (manifest) {
-    writeFileSync(join(packageDir, manifest.startsWith('const ') ? 'dist/manifest.js' : 'dist/manifest.json'), manifest);
+    writeFileSync(join(packageDir, /^(?:const|var) /.test(manifest) ? 'dist/manifest.js' : 'dist/manifest.json'), manifest);
   }
   const filename = `${name.split('/').pop()}-${version}.tgz`;
   const tarball = join(stage, filename);

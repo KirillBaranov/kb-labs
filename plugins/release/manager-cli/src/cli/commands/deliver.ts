@@ -33,6 +33,7 @@ import { resolveFlowName, type FlowResolvableFlags } from '../../shared/resolve-
 import type { StagedArtifact } from './stage';
 
 const REGISTRY_VERIFY_RETRIES = 5;
+const REGISTRY_VISIBILITY_DEADLINE_MS = 15 * 60_000;
 
 interface DeliverFlags extends FlowResolvableFlags {
   target?: string;
@@ -221,6 +222,7 @@ export default defineCommand({
       const verifyResults = await verifyAgainstRegistry(verifyTargets, {
         registry,
         retries: REGISTRY_VERIFY_RETRIES,
+        visibilityDeadlineMs: REGISTRY_VISIBILITY_DEADLINE_MS,
         logger: ctx.platform?.logger,
       });
       const verifyIssues = verifyResults.flatMap(r => r.issues);
