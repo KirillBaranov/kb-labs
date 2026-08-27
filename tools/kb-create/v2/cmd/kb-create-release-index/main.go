@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/kb-labs/create/v2/catalog"
-	"github.com/kb-labs/create/v2/release"
 )
 
 func main() {
@@ -36,10 +35,6 @@ func run(input, output, manifestRoot string) error {
 	var source catalog.Catalog
 	if err := json.Unmarshal(data, &source); err != nil {
 		return err
-	}
-	source, err = release.EnrichWithManifests(source, manifestRoot)
-	if err != nil {
-		return fmt.Errorf("export V2 package manifests: %w", err)
 	}
 	// Exports intentionally omit release-controlled fields. Schema and digest
 	// are assigned here, after all manifest data has been collected.

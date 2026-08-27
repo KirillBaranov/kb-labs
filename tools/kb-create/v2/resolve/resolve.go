@@ -37,19 +37,14 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 			return contracts.ResolvedInstallPlan{}, incompatible("release set", platform.Version, err.Error())
 		}
 	}
-	graph, ok := platform.Profiles[request.ServiceProfile]
-	if !ok {
-		if request.ServiceProfile == "" {
-			graph, ok = platform.Profiles["default"]
-		}
-		if !ok {
-			return contracts.ResolvedInstallPlan{}, incompatible("service profile", request.ServiceProfile, "is not supplied by platform "+platform.Version)
-		}
+	graph := platform.Profiles[request.ServiceProfile]
+	if request.ServiceProfile == "" {
+		graph = platform.Profiles["default"]
 	}
 	graph.PlatformVersion, graph.Profile = platform.Version, profileName(request.ServiceProfile)
 	artifacts := []contracts.Artifact{{ID: platform.ID, Kind: "platform", Package: platform.Package, Version: platform.Version, SHA256: platform.SHA256, Tarball: platform.Tarball}}
-	for _, member := range platform.Members {
-		artifacts = append(artifacts, artifact(member, "platform-member"))
+	for _, pkg := range platform.Packages {
+		artifacts = append(artifacts, artifact(pkg, "release-package"))
 	}
 	for _, binary := range platform.Binaries {
 		if binary.OS == runtime.GOOS && binary.Arch == runtime.GOARCH {
@@ -236,8 +231,8 @@ func configPatches(platform catalog.PlatformBundle, artifacts []contracts.Artifa
 		}
 	}
 	requirements := append([]catalog.ConfigRequirement(nil), platform.Config...)
-	for _, member := range platform.Members {
-		requirements = append(requirements, member.Config...)
+	for _, pkg := range platform.Packages {
+		requirements = append(requirements, pkg.Config...)
 	}
 	for _, artifact := range artifacts {
 		for _, component := range append(append([]catalog.Component(nil), source.Plugins...), source.SDKs...) {

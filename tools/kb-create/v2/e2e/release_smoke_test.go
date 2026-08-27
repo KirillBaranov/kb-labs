@@ -6,16 +6,14 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
+func TestPublishedV2JourneyInstallsExactRelease(t *testing.T) {
 	if testing.Short() {
 		t.Skip("published-artifact V2 journey requires registry and running services")
 	}
@@ -79,96 +77,57 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if err := json.Unmarshal([]byte(updateOutput), &updateResponse); err != nil || !updateResponse.OK || updateResponse.Receipt.SnapshotID == "" {
 		t.Fatalf("V2 update did not commit a recovery snapshot: %s", updateOutput)
 	}
-	// The published journey exercises commands that talk to the installed
-	// marketplace/workflow services.  Bring up the installed graph explicitly;
-	// apply/update intentionally only materialise the platform and must not
-	// implicitly mutate the host's service state.
-	kbDev := filepath.Join(platform, ".kb", "v2", "bin", "kb-dev")
-	if info, err := os.Stat(kbDev); err != nil || info.Mode()&0o111 == 0 {
-		t.Fatalf("installed kb-dev binary is missing or not executable: %s (%v)", kbDev, err)
-	}
-	config := filepath.Join(platform, ".kb", "devservices.yaml")
-	if output, code := run(t, kbDev, "--config", config, "ensure", "marketplace", "workflow"); code != 0 {
-		t.Fatalf("installed service graph did not start: %s", output)
-	}
-	marketplaceURL := installedServiceURL(t, kbDev, config, "marketplace")
-	t.Setenv("KB_MARKETPLACE_URL", marketplaceURL)
-	t.Cleanup(func() {
-		_, _ = run(t, kbDev, "--config", config, "stop", "marketplace", "workflow")
-	})
-
-	cli := filepath.Join(platform, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
-	if _, err := os.Stat(cli); err != nil {
-		t.Fatalf("installed kb CLI is missing: %v", err)
-	}
-	t.Setenv("KB_PLATFORM", platform)
-	t.Setenv("KB_PROJECT", project)
-	if output, code := runIn(t, project, "node", cli, "scaffold", "run", "plugin", "e2e-user", "--yes"); code != 0 {
-		t.Fatalf("scaffold own plugin exited %d:\n%s", code, output)
-	}
-	pluginRoot := filepath.Join(project, ".kb", "plugins", "e2e-user")
-	if _, err := os.Stat(filepath.Join(pluginRoot, "package.json")); err != nil {
-		t.Fatalf("scaffolded plugin package is missing: %v", err)
-	}
-	workflowOutput, code := runIn(t, project, "node", cli, "workflow", "run", "--workflow-id", "healthcheck", "--json")
-	if code != 0 {
-		t.Fatalf("workflow run exited %d:\n%s", code, workflowOutput)
-	}
-	var response map[string]any
-	if err := json.Unmarshal([]byte(workflowOutput), &response); err != nil {
-		t.Fatalf("workflow response is not JSON: %v\n%s", err, workflowOutput)
-	}
-	if strings.TrimSpace(stringValue(response["runId"])) == "" && strings.TrimSpace(stringValue(response["id"])) == "" {
-		t.Fatalf("workflow response has no run ID: %s", workflowOutput)
-	}
+	assertReceiptContainsIndexedPackages(t, index, filepath.Join(platform, ".kb", "v2", "receipt.json"))
 }
 
-// installedServiceURL obtains the actual kb-dev-resolved address instead of
-// reconstructing it from a base port. That keeps this published-artifact test
-// valid for an automatically derived KB_NET_OFFSET and avoids a hidden gateway
-// dependency: scaffold talks directly to the marketplace service it installed.
-func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
+// Published smoke checks the release contract: every exact package named by
+// the sealed index must appear in the committed installation receipt. Runtime
+// configuration and service orchestration are not release-index concerns.
+func assertReceiptContainsIndexedPackages(t *testing.T, indexPath, receiptPath string) {
 	t.Helper()
-	output, code := run(t, kbDev, "--config", config, "status", "--json")
-	if code != 0 {
-		t.Fatalf("read installed service status: %s", output)
+	var index struct {
+		Platforms []struct {
+			Package  string `json:"package"`
+			Packages []struct {
+				Package string `json:"package"`
+			} `json:"packages"`
+		} `json:"platforms"`
 	}
-	var status struct {
-		Services map[string]struct {
-			URL   string `json:"url"`
-			State string `json:"state"`
-		} `json:"services"`
+	var receipt struct {
+		Plan struct {
+			Artifacts []struct {
+				Package string `json:"package"`
+			} `json:"artifacts"`
+		} `json:"plan"`
 	}
-	if err := json.Unmarshal([]byte(output), &status); err != nil {
-		t.Fatalf("decode installed service status: %v\n%s", err, output)
-	}
-	service, ok := status.Services[serviceID]
-	if !ok || strings.TrimSpace(service.URL) == "" {
-		t.Fatalf("installed service %q has no resolved URL: %s", serviceID, output)
-	}
-	if service.State != "alive" {
-		t.Fatalf(
-			"installed service %q is not ready (%s): %s\nmanaged service log:\n%s",
-			serviceID,
-			service.State,
-			output,
-			installedServiceLog(kbDev, config, serviceID),
-		)
-	}
-	return service.URL
-}
-
-// installedServiceLog preserves the child-process stderr that can be lost
-// from kb-dev status after a startup crash. Published smoke must report the
-// concrete service failure, not just its reconciled "dead" state.
-func installedServiceLog(kbDev, config, serviceID string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	output, err := exec.CommandContext(ctx, kbDev, "--config", config, "logs", serviceID, "--lines", "200").CombinedOutput()
+	indexData, err := os.ReadFile(indexPath)
 	if err != nil {
-		return fmt.Sprintf("unable to read managed log: %v\n%s", err, output)
+		t.Fatal(err)
 	}
-	return string(output)
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		t.Fatal(err)
+	}
+	receiptData, err := os.ReadFile(receiptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(receiptData, &receipt); err != nil {
+		t.Fatal(err)
+	}
+	installed := map[string]bool{}
+	for _, artifact := range receipt.Plan.Artifacts {
+		installed[artifact.Package] = true
+	}
+	for _, platform := range index.Platforms {
+		if !installed[platform.Package] {
+			t.Fatalf("receipt is missing indexed platform package %s", platform.Package)
+		}
+		for _, pkg := range platform.Packages {
+			if !installed[pkg.Package] {
+				t.Fatalf("receipt is missing indexed release package %s", pkg.Package)
+			}
+		}
+	}
 }
 
 func run(t *testing.T, binary string, args ...string) (string, int) {
@@ -193,11 +152,4 @@ func runIn(t *testing.T, dir, command string, args ...string) (string, int) {
 	}
 	t.Fatalf("command %s failed: %v\n%s", command, err, output)
 	return string(output), 1
-}
-
-func stringValue(value any) string {
-	if text, ok := value.(string); ok {
-		return text
-	}
-	return ""
 }

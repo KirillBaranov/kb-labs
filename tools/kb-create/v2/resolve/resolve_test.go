@@ -45,12 +45,12 @@ func TestPlanPreservesScenarioProvenance(t *testing.T) {
 	}
 }
 
-func TestPlanInstallsPlatformMembersAtomically(t *testing.T) {
-	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Members: []catalog.Component{{ID: "gateway", Version: "2.0.0", Package: "@kb/gateway", Tarball: "https://example.test/gateway.tgz", SHA256: "gateway"}}, Profiles: map[string]contracts.ServiceGraph{"default": {}}}}}
+func TestPlanInstallsReleasePackagesAtomically(t *testing.T) {
+	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Packages: []catalog.Component{{ID: "gateway", Version: "2.0.0", Package: "@kb/gateway", Tarball: "https://example.test/gateway.tgz", SHA256: "gateway"}}, Profiles: map[string]contracts.ServiceGraph{"default": {}}}}}
 	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x"}, source)
 	member := false
 	for _, artifact := range plan.Artifacts {
-		member = member || artifact.Kind == "platform-member" && artifact.ID == "gateway"
+		member = member || artifact.Kind == "release-package" && artifact.ID == "gateway"
 	}
 	if err != nil || len(plan.Artifacts) != 2 || !member {
 		t.Fatalf("plan/error = %#v / %v", plan, err)

@@ -234,7 +234,7 @@ jobs:
           set +e
           for attempt in 1 2 3 4; do
             KB_CREATE_BINARY="$binary" go test -v -race -count=1 -timeout 12m \
-              -run '^TestPublishedV2JourneyReachesPluginWorkflow$' ./v2/e2e/...
+              -run '^TestPublishedV2JourneyInstallsExactRelease$' ./v2/e2e/...
             status=$?
             if [ "$status" -eq 0 ]; then exit 0; fi
             if [ "$attempt" -lt 4 ]; then sleep 30; fi

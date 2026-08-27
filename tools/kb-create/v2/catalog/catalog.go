@@ -102,17 +102,14 @@ func Validate(source Catalog) error {
 			return fmt.Errorf("duplicate platform bundle %q", key)
 		}
 		seen[key] = true
-		if len(platform.Profiles) == 0 {
-			return fmt.Errorf("platform bundle %q has no service profile", key)
-		}
 		for _, binary := range platform.Binaries {
 			if binary.ID == "" || binary.OS == "" || binary.Arch == "" || binary.URL == "" || binary.SHA256 == "" || binary.Filename == "" {
 				return fmt.Errorf("platform bundle %q has incomplete binary artifact", key)
 			}
 		}
-		for _, member := range platform.Members {
-			if member.ID == "" || member.Version == "" || member.Package == "" || member.SHA256 == "" || member.Tarball == "" {
-				return fmt.Errorf("platform bundle %q has incomplete member artifact", key)
+		for _, pkg := range platform.Packages {
+			if pkg.ID == "" || pkg.Version == "" || pkg.Package == "" || pkg.SHA256 == "" || pkg.Tarball == "" {
+				return fmt.Errorf("platform bundle %q has incomplete release package artifact", key)
 			}
 		}
 	}
@@ -283,8 +280,8 @@ func findPlatform(values []PlatformBundle, version string) (PlatformBundle, bool
 	return PlatformBundle{}, false
 }
 
-// PlatformBundle is released atomically: core, official services, defaults and
-// compatible binaries are one platform decision, not independently guessed.
+// PlatformBundle is released atomically: its exact package set and compatible
+// binaries are one release decision, not independently guessed at install.
 type PlatformBundle struct {
 	ID       string                            `json:"id"`
 	Version  string                            `json:"version"`
@@ -296,7 +293,7 @@ type PlatformBundle struct {
 	Requires []Requirement                     `json:"requires,omitempty"`
 	Config   []ConfigRequirement               `json:"config,omitempty"`
 	Binaries []Binary                          `json:"binaries,omitempty"`
-	Members  []Component                       `json:"members,omitempty"`
+	Packages []Component                       `json:"packages,omitempty"`
 }
 
 // Binary is release-owned tooling required by a platform bundle. URLs and

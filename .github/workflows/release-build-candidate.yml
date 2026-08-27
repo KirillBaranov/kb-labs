@@ -168,18 +168,12 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          platform_members="$(node -e 'const c=require("./.kb/kb.config.json"); const m=c.profiles?.find(p => p.id === "default")?.products?.release?.flows?.platform?.platformMembers; if (!Array.isArray(m) || m.length === 0) throw new Error("release.flows.platform.platformMembers must be a non-empty array"); process.stdout.write(m.join(","));')"
-          platform_adapters="$(node -e 'const c=require("./.kb/kb.config.json"); if (!c.platform?.adapters) throw new Error("platform.adapters is required for a platform release index"); process.stdout.write(JSON.stringify(c.platform.adapters));')"
-          platform_adapter_options="$(node -e 'const c=require("./.kb/kb.config.json"); process.stdout.write(JSON.stringify(c.platform?.adapterOptions ?? {}));')"
           node tools/kb-create/scripts/prepare-release-index.mjs \
             --flow "$FLOW" \
             --channel "$CHANNEL" \
             --artifacts-dir .kb/release/artifacts \
             --sdk-artifacts-dir .kb/release/sdk-artifacts \
             --binary-manifest .kb/release/binary-manifest.json \
-            --platform-member-packages "$platform_members" \
-            --platform-adapter-config "$platform_adapters" \
-            --platform-adapter-options "$platform_adapter_options" \
             --output .kb/release/release-index.json
 
       - name: Verify sealed platform version

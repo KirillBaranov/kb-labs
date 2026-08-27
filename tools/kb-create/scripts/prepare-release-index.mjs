@@ -34,22 +34,6 @@ const sdkVersion = value('--sdk-version');
 const binaryManifestPath = value('--binary-manifest') ? resolve(value('--binary-manifest')) : undefined;
 if (flow === 'platform' && !binaryManifestPath) throw new Error('--binary-manifest is required for the unified platform release-index');
 const sealerBin = value('--sealer-bin') ? resolve(value('--sealer-bin')) : undefined;
-const platformRequires = (value('--platform-requires') ?? '')
-  .split(',')
-  .map(item => item.trim())
-  .filter(Boolean)
-  .map(capability => ({ capability, requiredBy: 'platform' }));
-const platformAdapterConfig = value('--platform-adapter-config')
-  ? JSON.parse(value('--platform-adapter-config'))
-  : undefined;
-const platformAdapterOptions = value('--platform-adapter-options')
-  ? JSON.parse(value('--platform-adapter-options'))
-  : undefined;
-const platformMemberPackages = (value('--platform-member-packages') ?? '')
-  .split(',')
-  .map(item => item.trim())
-  .filter(Boolean);
-const adapterOverrides = value('--adapter-overrides') ? JSON.parse(value('--adapter-overrides')) : {};
 
 const readStage = directory => {
   const entries = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
@@ -65,46 +49,6 @@ const sourceDirByName = new Map(stagedEntries.map(({ item, directory }) => [item
 const platform = byName.get(platformPackage);
 if (!platform) throw new Error(`platform package ${platformPackage} is absent from stage manifest`);
 
-// The default adapter map is part of the sealed platform configuration, not a
-// suggestion for an already-installed workspace.  Its packages must therefore
-// travel with the platform members.  Resolve subpath exports (for example
-// "@scope/adapter/kv") back to their staged package, and fail closed when the
-// release plan did not produce that package.
-const stagedPackageForAdapter = configuredPackage => {
-  const matches = stage
-    .filter(item => configuredPackage === item.name || configuredPackage.startsWith(`${item.name}/`))
-    .sort((left, right) => right.name.length - left.name.length);
-  if (matches.length === 0) {
-    throw new Error(`configured platform adapter ${configuredPackage} is absent from stage manifest`);
-  }
-  return matches[0].name;
-};
-const configuredPlatformAdapterPackages = platformAdapterConfig
-  ? [...new Set(Object.values(platformAdapterConfig).map(configuredPackage => {
-      if (typeof configuredPackage !== 'string' || configuredPackage.length === 0) {
-        throw new Error('platform adapter configuration must contain package strings');
-      }
-      return stagedPackageForAdapter(configuredPackage);
-    }))]
-  : [];
-// A release index is a portable installation baseline, not a copy of the
-// maintainer's local development environment.  Keep every configured adapter
-// package in the sealed member set so a consumer can opt into it later, but
-// enable only the transport needed to reach the installed service graph by
-// default.  Remote providers (and their credentials/endpoints) belong in a
-// consumer overlay; otherwise an installed CLI can fail before it can even
-// configure that overlay.
-const portablePlatformAdapterConfig = platformAdapterConfig?.serviceTransport
-  ? { serviceTransport: platformAdapterConfig.serviceTransport }
-  : undefined;
-const portablePlatformAdapterOptions = platformAdapterOptions?.serviceTransport
-  ? { serviceTransport: platformAdapterOptions.serviceTransport }
-  : undefined;
-for (const packageName of platformMemberPackages) {
-  if (!byName.has(packageName)) {
-    throw new Error(`required platform member ${packageName} is absent from stage manifest`);
-  }
-}
 const resolvedPlatformVersion = platformVersion ?? platform.version;
 if (platform.version !== resolvedPlatformVersion) throw new Error(`platform version mismatch: stage=${platform.version}, expected=${resolvedPlatformVersion}`);
 
@@ -122,43 +66,13 @@ const staging = resolve(`${artifactsDir}/v2-manifest-root`);
 rmSync(staging, { recursive: true, force: true });
 mkdirSync(staging, { recursive: true });
 
-const manifestFor = item => {
+const extractArtifact = item => {
   const packageDir = join(staging, 'node_modules', item.name);
   mkdirSync(packageDir, { recursive: true });
   const tarball = resolve(sourceDirByName.get(item.name) ?? artifactsDir, item.tarball);
   if (!existsSync(tarball)) throw new Error(`staged tarball is missing: ${tarball}`);
   const result = spawnSync('tar', ['-xzf', tarball, '-C', packageDir, '--strip-components=1'], { encoding: 'utf8' });
   if (result.status !== 0) throw new Error(`extract ${item.name}: ${result.stderr || result.stdout}`);
-  for (const candidate of [join(packageDir, 'kb-create.manifest.json'), join(packageDir, 'dist', 'kb-create.manifest.json'), join(packageDir, 'dist', 'manifest.json')]) {
-    if (existsSync(candidate)) return JSON.parse(readFileSync(candidate, 'utf8'));
-  }
-  const javascriptManifest = join(packageDir, 'dist', 'manifest.js');
-  if (existsSync(javascriptManifest)) {
-    const source = readFileSync(javascriptManifest, 'utf8');
-    // Published service packages ship their manifest as compiled JS (rather
-    // than JSON).  The release index is the installation contract, so it
-    // must preserve their service graph instead of silently treating them as
-    // ordinary packages.  Read only the declarative literals we need; never
-    // execute a tarball fetched from the registry while preparing a release.
-    if (/schema:\s*["']kb\.service\/1["']/.test(source)) {
-      const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
-      const port = Number(source.match(/\bport:\s*(\d+)/)?.[1] ?? 0);
-      const dependsOnSource = source.match(/\bdependsOn:\s*\[([^\]]*)\]/)?.[1];
-      const dependsOn = dependsOnSource
-        ? [...dependsOnSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
-        : [];
-      if (id) return { schema: 'kb.service/1', id, runtime: { port }, dependsOn };
-    }
-    const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
-    const implementsSource = source.match(/\bimplements:\s*(\[[^\]]+\]|["'][^"']+["'])/)?.[1];
-    const implementsValue = implementsSource?.startsWith('[')
-      ? [...implementsSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
-      : implementsSource?.slice(1, -1);
-    if (id && implementsValue) {
-      return { schema: 'kb.adapter/1', id, implements: implementsValue };
-    }
-  }
-  return undefined;
 };
 
 const packageJSONFor = item => {
@@ -171,65 +85,28 @@ const tarballURL = item => {
   const packageBase = item.name.split('/').pop();
   return `${registry.replace(/\/$/, '')}/${item.name}/-/${packageBase}-${item.version}.tgz`;
 };
-const component = (item, manifest, id = item.name.split('/').pop().replace(/-entry$/, '')) => ({
+const component = (item, id = item.name.split('/').pop().replace(/-entry$/, '')) => ({
   id,
   version: item.version,
   package: item.name,
   tarball: tarballURL(item),
   sha256: item.sha256,
-  config: manifest?.requirements ?? [],
 });
 
-const services = [];
-const plugins = [];
-const adapters = [];
 for (const item of stage) {
-  const manifest = manifestFor(item) ?? adapterOverrides[item.name];
+  extractArtifact(item);
   const normalizedID = item.name === platformPackage
     ? 'platform'
     : item.name === sdkPackage
       ? 'sdk'
-      : manifest?.schema === 'kb.service/1'
-        ? manifest.id
-        : manifest?.schema === 'kb.adapter/1'
-          ? manifest.id
-        : idFor(item.name);
-  const generatedRequirements = item.name === platformPackage
-    ? [
-        ...(portablePlatformAdapterConfig ? [{ id: 'platform.adapters', path: '/platform/adapters', default: portablePlatformAdapterConfig }] : []),
-        ...(portablePlatformAdapterOptions ? [{ id: 'platform.adapterOptions', path: '/platform/adapterOptions', default: portablePlatformAdapterOptions }] : []),
-      ]
-    : [];
+      : idFor(item.name);
   writeFileSync(join(staging, 'node_modules', item.name, 'kb-create.manifest.json'), `${JSON.stringify({
     schema: 'kb.create.artifact-manifest/v2',
     id: normalizedID,
     package: item.name,
     version: item.version,
-    requirements: [
-      ...(manifest?.schema === 'kb.create.artifact-manifest/v2' ? manifest.requirements ?? [] : []),
-      ...generatedRequirements,
-    ],
+    requirements: [],
   })}\n`);
-  if (!manifest) continue;
-  if (manifest.schema === 'kb.service/1') {
-    const packageJSON = packageJSONFor(item);
-    services.push({
-      id: manifest.id,
-      packageName: item.name,
-      command: manifest.bin ? Object.keys(manifest.bin)[0] : Object.keys(packageJSON.bin ?? {})[0] ?? item.name.split('/').pop(),
-      port: manifest.runtime?.port ?? 0,
-      dependsOn: manifest.dependsOn ?? [],
-      required: true,
-    });
-  } else if (manifest.schema === 'kb.plugin/3') {
-    const requires = (manifest.platform?.requires ?? []).map(capability => ({ capability, requiredBy: idFor(item.name) }));
-    plugins.push({ ...component(item, manifest, idFor(item.name)), requires });
-  } else if (manifest.schema === 'kb.adapter/1') {
-    const capabilities = (Array.isArray(manifest.implements) ? manifest.implements : [manifest.implements])
-      .filter(Boolean)
-      .map(capability => capability.replace(/^I/, '').replace(/[A-Z]/g, letter => letter.toLowerCase()));
-    adapters.push({ ...component(item, manifest, manifest.id ?? idFor(item.name)), provides: capabilities });
-  }
 }
 
 const sdkPackageJSON = packageJSONFor(sdk);
@@ -255,37 +132,15 @@ const exportValue = {
     package: platform.name,
     tarball: tarballURL(platform),
     sha256: platform.sha256,
-    requires: platformRequires,
-    config: [
-      ...(portablePlatformAdapterConfig ? [{
-        id: 'platform.adapters',
-        path: '/platform/adapters',
-        default: JSON.stringify(portablePlatformAdapterConfig),
-      }] : []),
-      ...(portablePlatformAdapterOptions ? [{
-        id: 'platform.adapterOptions',
-        path: '/platform/adapterOptions',
-        default: JSON.stringify(portablePlatformAdapterOptions),
-      }] : []),
-    ],
-    profiles: { default: { platformVersion: resolvedPlatformVersion, services: services.map(({ packageName, ...service }) => service) } },
     binaries,
-    members: [...new Set([
-      ...services.map(service => service.packageName),
-      ...platformMemberPackages,
-      ...configuredPlatformAdapterPackages,
-    ])].map(packageName => {
-      const item = byName.get(packageName);
-      return item ? component(item, undefined,
-        services.find(service => service.packageName === packageName)?.id
-        ?? adapters.find(adapter => adapter.package === packageName)?.id
-        ?? idFor(packageName),
-      ) : undefined;
-    }),
+    // The release plan is the sole package authority.  The index carries the
+    // exact staged packages unchanged; it never reclassifies them as services,
+    // adapters, plugins, or runtime defaults.
+    packages: stage
+      .filter(item => item.name !== platformPackage && item.name !== sdkPackage)
+      .map(item => component(item)),
   }],
-  sdks: sdk ? [component(sdk, undefined, 'sdk')] : [],
-  plugins,
-  adapters,
+  sdks: sdk ? [component(sdk, 'sdk')] : [],
 };
 
 const exportPath = join(artifactsDir, 'manifest-export.json');
