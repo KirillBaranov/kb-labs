@@ -6,6 +6,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -146,9 +147,28 @@ func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
 		t.Fatalf("installed service %q has no resolved URL: %s", serviceID, output)
 	}
 	if service.State != "alive" {
-		t.Fatalf("installed service %q is not ready (%s): %s", serviceID, service.State, output)
+		t.Fatalf(
+			"installed service %q is not ready (%s): %s\nmanaged service log:\n%s",
+			serviceID,
+			service.State,
+			output,
+			installedServiceLog(kbDev, config, serviceID),
+		)
 	}
 	return service.URL
+}
+
+// installedServiceLog preserves the child-process stderr that can be lost
+// from kb-dev status after a startup crash. Published smoke must report the
+// concrete service failure, not just its reconciled "dead" state.
+func installedServiceLog(kbDev, config, serviceID string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, kbDev, "--config", config, "logs", serviceID, "--lines", "200").CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("unable to read managed log: %v\n%s", err, output)
+	}
+	return string(output)
 }
 
 func run(t *testing.T, binary string, args ...string) (string, int) {
