@@ -79,7 +79,7 @@ const stagedPackageForAdapter = configuredPackage => {
   }
   return matches[0].name;
 };
-const platformAdapterPackages = platformAdapterConfig
+const configuredPlatformAdapterPackages = platformAdapterConfig
   ? [...new Set(Object.values(platformAdapterConfig).map(configuredPackage => {
       if (typeof configuredPackage !== 'string' || configuredPackage.length === 0) {
         throw new Error('platform adapter configuration must contain package strings');
@@ -87,6 +87,19 @@ const platformAdapterPackages = platformAdapterConfig
       return stagedPackageForAdapter(configuredPackage);
     }))]
   : [];
+// A release index is a portable installation baseline, not a copy of the
+// maintainer's local development environment.  Keep every configured adapter
+// package in the sealed member set so a consumer can opt into it later, but
+// enable only the transport needed to reach the installed service graph by
+// default.  Remote providers (and their credentials/endpoints) belong in a
+// consumer overlay; otherwise an installed CLI can fail before it can even
+// configure that overlay.
+const portablePlatformAdapterConfig = platformAdapterConfig?.serviceTransport
+  ? { serviceTransport: platformAdapterConfig.serviceTransport }
+  : undefined;
+const portablePlatformAdapterOptions = platformAdapterOptions?.serviceTransport
+  ? { serviceTransport: platformAdapterOptions.serviceTransport }
+  : undefined;
 for (const packageName of platformMemberPackages) {
   if (!byName.has(packageName)) {
     throw new Error(`required platform member ${packageName} is absent from stage manifest`);
@@ -183,8 +196,8 @@ for (const item of stage) {
         : idFor(item.name);
   const generatedRequirements = item.name === platformPackage
     ? [
-        ...(platformAdapterConfig ? [{ id: 'platform.adapters', path: '/platform/adapters', default: platformAdapterConfig }] : []),
-        ...(platformAdapterOptions ? [{ id: 'platform.adapterOptions', path: '/platform/adapterOptions', default: platformAdapterOptions }] : []),
+        ...(portablePlatformAdapterConfig ? [{ id: 'platform.adapters', path: '/platform/adapters', default: portablePlatformAdapterConfig }] : []),
+        ...(portablePlatformAdapterOptions ? [{ id: 'platform.adapterOptions', path: '/platform/adapterOptions', default: portablePlatformAdapterOptions }] : []),
       ]
     : [];
   writeFileSync(join(staging, 'node_modules', item.name, 'kb-create.manifest.json'), `${JSON.stringify({
@@ -244,15 +257,15 @@ const exportValue = {
     sha256: platform.sha256,
     requires: platformRequires,
     config: [
-      ...(platformAdapterConfig ? [{
+      ...(portablePlatformAdapterConfig ? [{
         id: 'platform.adapters',
         path: '/platform/adapters',
-        default: JSON.stringify(platformAdapterConfig),
+        default: JSON.stringify(portablePlatformAdapterConfig),
       }] : []),
-      ...(platformAdapterOptions ? [{
+      ...(portablePlatformAdapterOptions ? [{
         id: 'platform.adapterOptions',
         path: '/platform/adapterOptions',
-        default: JSON.stringify(platformAdapterOptions),
+        default: JSON.stringify(portablePlatformAdapterOptions),
       }] : []),
     ],
     profiles: { default: { platformVersion: resolvedPlatformVersion, services: services.map(({ packageName, ...service }) => service) } },
@@ -260,7 +273,7 @@ const exportValue = {
     members: [...new Set([
       ...services.map(service => service.packageName),
       ...platformMemberPackages,
-      ...platformAdapterPackages,
+      ...configuredPlatformAdapterPackages,
     ])].map(packageName => {
       const item = byName.get(packageName);
       return item ? component(item, undefined,
