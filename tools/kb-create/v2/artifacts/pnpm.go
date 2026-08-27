@@ -42,6 +42,13 @@ type Pnpm struct {
 	Log io.Writer
 }
 
+// The platform's shipped SQLite adapters depend on better-sqlite3.  The
+// workspace's existing pnpm policy explicitly permits that native build; the
+// standalone installed platform has no workspace manifest from which pnpm can
+// inherit the policy, so carry the same narrowly-scoped permission into the
+// executor invocation.
+const approvedNativeBuild = "better-sqlite3"
+
 func (p Pnpm) Install(items []contracts.Artifact) error {
 	if err := p.prepare(); err != nil {
 		return err
@@ -79,7 +86,7 @@ func (p Pnpm) run(command string, specs ...string) error {
 	if p.Root == "" {
 		return fmt.Errorf("V2 platform root is required")
 	}
-	args := []string{command, "--dir", p.Root, "--reporter=append-only"}
+	args := []string{command, "--dir", p.Root, "--reporter=append-only", "--allow-build=" + approvedNativeBuild}
 	if p.Offline {
 		args = append(args, "--offline")
 	}

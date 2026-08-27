@@ -32,7 +32,7 @@ func TestPnpmUsesVerifiedTarballInsteadOfRegistrySpec(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := "file:" + filepath.Join(root, ".kb", "v2", "cache", "packages", sum+".tgz")
-	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args[4:], []string{want}) {
+	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3", want}) {
 		t.Fatalf("calls = %#v", runner.calls)
 	}
 }
@@ -54,7 +54,7 @@ func TestPnpmInstallsSortedExactArtifactBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"add", "--dir", root, "--reporter=append-only", "@kb/a@1.0.0", "@kb/b@2.0.0", "--registry", "https://registry.test"}
+	want := []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3", "@kb/a@1.0.0", "@kb/b@2.0.0", "--registry", "https://registry.test"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
 		t.Fatalf("calls = %#v, want %q", runner.calls, want)
 	}
@@ -108,7 +108,7 @@ func TestPnpmUsesOfflineModeWhenRequested(t *testing.T) {
 	if err := (Pnpm{Root: root, Offline: true, Runner: runner}).Install([]contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2"}}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"add", "--dir", root, "--reporter=append-only", "--offline", "@kb/platform@2"}
+	want := []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3", "--offline", "@kb/platform@2"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
 		t.Fatalf("calls = %#v", runner.calls)
 	}
