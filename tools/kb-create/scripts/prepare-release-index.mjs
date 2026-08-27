@@ -64,6 +64,29 @@ const byName = new Map(stage.map(item => [item.name, item]));
 const sourceDirByName = new Map(stagedEntries.map(({ item, directory }) => [item.name, directory]));
 const platform = byName.get(platformPackage);
 if (!platform) throw new Error(`platform package ${platformPackage} is absent from stage manifest`);
+
+// The default adapter map is part of the sealed platform configuration, not a
+// suggestion for an already-installed workspace.  Its packages must therefore
+// travel with the platform members.  Resolve subpath exports (for example
+// "@scope/adapter/kv") back to their staged package, and fail closed when the
+// release plan did not produce that package.
+const stagedPackageForAdapter = configuredPackage => {
+  const matches = stage
+    .filter(item => configuredPackage === item.name || configuredPackage.startsWith(`${item.name}/`))
+    .sort((left, right) => right.name.length - left.name.length);
+  if (matches.length === 0) {
+    throw new Error(`configured platform adapter ${configuredPackage} is absent from stage manifest`);
+  }
+  return matches[0].name;
+};
+const platformAdapterPackages = platformAdapterConfig
+  ? [...new Set(Object.values(platformAdapterConfig).map(configuredPackage => {
+      if (typeof configuredPackage !== 'string' || configuredPackage.length === 0) {
+        throw new Error('platform adapter configuration must contain package strings');
+      }
+      return stagedPackageForAdapter(configuredPackage);
+    }))]
+  : [];
 for (const packageName of platformMemberPackages) {
   if (!byName.has(packageName)) {
     throw new Error(`required platform member ${packageName} is absent from stage manifest`);
@@ -237,9 +260,14 @@ const exportValue = {
     members: [...new Set([
       ...services.map(service => service.packageName),
       ...platformMemberPackages,
+      ...platformAdapterPackages,
     ])].map(packageName => {
       const item = byName.get(packageName);
-      return item ? component(item, undefined, services.find(service => service.packageName === packageName)?.id ?? idFor(packageName)) : undefined;
+      return item ? component(item, undefined,
+        services.find(service => service.packageName === packageName)?.id
+        ?? adapters.find(adapter => adapter.package === packageName)?.id
+        ?? idFor(packageName),
+      ) : undefined;
     }),
   }],
   sdks: sdk ? [component(sdk, undefined, 'sdk')] : [],
