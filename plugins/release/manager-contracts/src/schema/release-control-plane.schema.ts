@@ -123,7 +123,8 @@ export const ReleasePackageClassificationSchema = z.enum([
 ]);
 export type ReleasePackageClassification = z.infer<typeof ReleasePackageClassificationSchema>;
 
-export const ReleaseBinaryOsSchema = z.enum(['linux', 'darwin', 'windows']);
+/** Supported matrix per decision S0.3c: linux/darwin × amd64/arm64 only — Windows is dropped in this cutover. */
+export const ReleaseBinaryOsSchema = z.enum(['linux', 'darwin']);
 export const ReleaseBinaryArchSchema = z.enum(['amd64', 'arm64']);
 
 const ReleaseGraphNodeSchema = z.object({
