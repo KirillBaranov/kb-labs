@@ -1,0 +1,46 @@
+{
+  "schema": "kb.release-bundle/1",
+  "releaseId": "platform-2.119.0",
+  "candidateId": "platform-2.119.0-a",
+  "intentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "indexSha256": "b5f796097645896a6ebbc8b7ddea6d9fb43956ad5213120540e139638fa52b89",
+  "treeSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "files": [
+    {
+      "path": "bin/darwin-arm64/kb-create",
+      "sha256": "843597c781810f4d69854a80dcfe4cea8d15aff9f4fa6d8c26359a388359c955",
+      "size": 41
+    },
+    {
+      "path": "bin/linux-amd64/kb-create",
+      "sha256": "a4e18b6a0da19d8b51ffdf72760698666c9c9c9340241902c1f5371cc1eaab2b",
+      "size": 40
+    },
+    {
+      "path": "npm/kb-labs-core-runtime.tgz",
+      "sha256": "0a9c4983ab308616b9d2b78074417f3918636e8b7f452430d6a2ae34c3c63365",
+      "size": 43
+    },
+    {
+      "path": "npm/kb-labs-plugin-release.tgz",
+      "sha256": "aeeebbafc497b3115ed2cdafdd99e86d66baf4d785f825ca699a0086d2664923",
+      "size": 45
+    },
+    {
+      "path": "npm/kb-labs-sdk.tgz",
+      "sha256": "259a2941ec2af0ecedc72e052c4989e92c6055bcc6dde5d2c4a83bd3e0fb1979",
+      "size": 32
+    },
+    {
+      "path": "provenance.json",
+      "sha256": "d251f295384620ade7c5583143fc9b7532baa4ddaee294350c1e65c0b7bfea8f",
+      "size": 4462
+    },
+    {
+      "path": "release-index.json",
+      "sha256": "b5f796097645896a6ebbc8b7ddea6d9fb43956ad5213120540e139638fa52b89",
+      "size": 184
+    }
+  ],
+  "bundleSha256": "5caece2b6842789336175d18ef6a8cee94a5771dfa3245c887d104f1d23013e9"
+}

@@ -489,6 +489,34 @@ export const manifest = {
         ],
       },
 
+      // release:verify-bundle - Validate an already-sealed bundle directory
+      {
+        path: 'release verify-bundle',
+        category: 'Validation',
+        describe: 'Validate a sealed release bundle directory against every bundle verification rule',
+        operationType: 'analyze' as const,
+        longDescription:
+          'Pure validation of an already-produced bundle directory: npm manifest ↔ tarball correspondence and hashes, '
+          + 'binary targets present in the compatibility graph, cross-artifact version and provenance consistency, '
+          + 'graph edges and platform profiles resolvable, closed file inventory, and mandatory classification of every '
+          + 'planned package. Produces nothing and repairs nothing. Mandatory immediately after `release seal` and before '
+          + 'a bundle locator is handed to Workflow — everything downstream trusts these bytes, so this is the last '
+          + 'cheap place to reject an inconsistency.',
+
+        handler: './cli/commands/verify-bundle.js#default',
+
+        flags: defineCommandFlags({
+          bundle: { type: 'string', description: 'Path to the sealed bundle directory (must contain bundle.json and provenance.json)' },
+          'expected-sha256': { type: 'string', description: 'Bundle digest an approval was granted over — rejects a differently-sealed but internally consistent bundle' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release verify-bundle --bundle .kb/release/bundle --json',
+          'kb release verify-bundle --bundle /tmp/b --expected-sha256 <digest>',
+        ],
+      },
+
       // release:checks - Run pre-release checks
       {
         path: 'release checks',

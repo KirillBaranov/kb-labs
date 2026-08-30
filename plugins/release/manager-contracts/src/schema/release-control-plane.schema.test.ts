@@ -9,8 +9,10 @@ import {
   ReleaseDescriptorSchema,
   ReleaseDiagnosticCode,
   DeliveryEvidenceSchema,
+  ReleaseBundleProvenanceSchema,
   ReleaseBundleSchema,
   ReleaseChannelPointerSchema,
+  releaseGraphNodeKey,
   ReleaseDeliveryRequestSchema,
   ReleaseIntentSchema,
   ReleaseReceiptSchema,
@@ -57,6 +59,7 @@ describe('release control-plane contracts', () => {
     const schemas = {
       releaseIntent: ReleaseIntentSchema,
       releaseBundle: ReleaseBundleSchema,
+      releaseBundleProvenance: ReleaseBundleProvenanceSchema,
       releaseReceipt: ReleaseReceiptSchema,
       deliveryEvidence: DeliveryEvidenceSchema,
       releaseDescriptor: ReleaseDescriptorSchema,
@@ -88,6 +91,24 @@ describe('release control-plane contracts', () => {
     const ids = Object.values(releaseControlPlaneJsonSchemas).map(schema => (schema as { $id?: string }).$id);
     expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('rejects a bundle provenance that claims a release commit', () => {
+    const valid = contractFixtures.releaseBundleProvenance as Record<string, unknown>;
+    const provenance = valid.provenance as Record<string, unknown>;
+    const parsed = ReleaseBundleProvenanceSchema.safeParse({
+      ...valid,
+      provenance: { ...provenance, releaseCommit: 'a'.repeat(40) },
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it('keys graph nodes by kind, version and binary target', () => {
+    expect(releaseGraphNodeKey({ id: '@kb-labs/core-runtime', kind: 'package', version: '2.120.0' }))
+      .toBe('package:@kb-labs/core-runtime@2.120.0');
+    expect(releaseGraphNodeKey({ id: 'kb-create', kind: 'binary', version: '0.9.0', os: 'linux', arch: 'amd64' }))
+      .toBe('binary:kb-create@0.9.0:linux/amd64');
   });
 
   it('exposes the §7.3 release diagnostic error taxonomy', () => {

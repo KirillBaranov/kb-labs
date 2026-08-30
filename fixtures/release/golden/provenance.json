@@ -1,0 +1,170 @@
+{
+  "schema": "kb.release-bundle-provenance/1",
+  "releaseId": "platform-2.119.0",
+  "candidateId": "platform-2.119.0-a",
+  "provenance": {
+    "plannedCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "treeSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "intentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "sealedAt": "2026-08-30T00:00:00Z",
+    "versions": {
+      "platform": "2.119.0",
+      "sdk": "1.4.0"
+    }
+  },
+  "plannedPackages": [
+    {
+      "name": "@kb-labs/core-runtime",
+      "version": "2.119.0"
+    },
+    {
+      "name": "@kb-labs/plugin-release",
+      "version": "2.119.0"
+    },
+    {
+      "name": "@kb-labs/sdk",
+      "version": "1.4.0"
+    },
+    {
+      "name": "@kb-labs/legacy-shim",
+      "version": "2.119.0"
+    }
+  ],
+  "packages": [
+    {
+      "name": "@kb-labs/core-runtime",
+      "version": "2.119.0",
+      "classification": "platform",
+      "tarball": "npm/kb-labs-core-runtime.tgz",
+      "sha256": "0a9c4983ab308616b9d2b78074417f3918636e8b7f452430d6a2ae34c3c63365"
+    },
+    {
+      "name": "@kb-labs/plugin-release",
+      "version": "2.119.0",
+      "classification": "plugin",
+      "tarball": "npm/kb-labs-plugin-release.tgz",
+      "sha256": "aeeebbafc497b3115ed2cdafdd99e86d66baf4d785f825ca699a0086d2664923"
+    },
+    {
+      "name": "@kb-labs/sdk",
+      "version": "1.4.0",
+      "classification": "sdk",
+      "tarball": "npm/kb-labs-sdk.tgz",
+      "sha256": "259a2941ec2af0ecedc72e052c4989e92c6055bcc6dde5d2c4a83bd3e0fb1979"
+    },
+    {
+      "name": "@kb-labs/legacy-shim",
+      "version": "2.119.0",
+      "classification": "deliveryOnly",
+      "tarball": null,
+      "sha256": null
+    }
+  ],
+  "binaries": [
+    {
+      "id": "kb-create",
+      "version": "0.9.3",
+      "os": "linux",
+      "arch": "amd64",
+      "path": "bin/linux-amd64/kb-create",
+      "sha256": "a4e18b6a0da19d8b51ffdf72760698666c9c9c9340241902c1f5371cc1eaab2b"
+    },
+    {
+      "id": "kb-create",
+      "version": "0.9.3",
+      "os": "darwin",
+      "arch": "arm64",
+      "path": "bin/darwin-arm64/kb-create",
+      "sha256": "843597c781810f4d69854a80dcfe4cea8d15aff9f4fa6d8c26359a388359c955"
+    }
+  ],
+  "index": {
+    "path": "release-index.json",
+    "sha256": "b5f796097645896a6ebbc8b7ddea6d9fb43956ad5213120540e139638fa52b89",
+    "version": "2.119.0",
+    "channelLabel": "canary"
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "@kb-labs/core-runtime",
+        "kind": "package",
+        "version": "2.119.0"
+      },
+      {
+        "id": "@kb-labs/plugin-release",
+        "kind": "package",
+        "version": "2.119.0"
+      },
+      {
+        "id": "@kb-labs/sdk",
+        "kind": "package",
+        "version": "1.4.0"
+      },
+      {
+        "id": "kb-create",
+        "kind": "binary",
+        "version": "0.9.3",
+        "os": "linux",
+        "arch": "amd64"
+      },
+      {
+        "id": "kb-create",
+        "kind": "binary",
+        "version": "0.9.3",
+        "os": "darwin",
+        "arch": "arm64"
+      }
+    ],
+    "edges": [
+      {
+        "from": "package:@kb-labs/plugin-release@2.119.0",
+        "to": "package:@kb-labs/core-runtime@2.119.0",
+        "kind": "requires",
+        "range": "^2.119.0"
+      },
+      {
+        "from": "package:@kb-labs/plugin-release@2.119.0",
+        "to": "package:@kb-labs/sdk@1.4.0",
+        "kind": "requires",
+        "range": "^1.4.0"
+      },
+      {
+        "from": "binary:kb-create@0.9.3:linux/amd64",
+        "to": "package:@kb-labs/core-runtime@2.119.0",
+        "kind": "provides",
+        "range": ">=2.119.0 <3.0.0"
+      },
+      {
+        "from": "binary:kb-create@0.9.3:darwin/arm64",
+        "to": "package:@kb-labs/core-runtime@2.119.0",
+        "kind": "provides",
+        "range": ">=2.119.0 <3.0.0"
+      }
+    ],
+    "profiles": [
+      {
+        "id": "linux-amd64",
+        "members": [
+          "package:@kb-labs/core-runtime@2.119.0",
+          "package:@kb-labs/plugin-release@2.119.0",
+          "package:@kb-labs/sdk@1.4.0"
+        ],
+        "providers": [
+          "binary:kb-create@0.9.3:linux/amd64"
+        ]
+      },
+      {
+        "id": "darwin-arm64",
+        "members": [
+          "package:@kb-labs/core-runtime@2.119.0",
+          "package:@kb-labs/plugin-release@2.119.0",
+          "package:@kb-labs/sdk@1.4.0"
+        ],
+        "providers": [
+          "binary:kb-create@0.9.3:darwin/arm64"
+        ]
+      }
+    ]
+  }
+}

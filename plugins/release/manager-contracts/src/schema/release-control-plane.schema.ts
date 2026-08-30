@@ -97,6 +97,131 @@ export const ReleaseBundleSchema = z.object({
 }).strict();
 export type ReleaseBundle = z.infer<typeof ReleaseBundleSchema>;
 
+/**
+ * Companion document to `bundle.json`, sealed into the bundle directory as
+ * `provenance.json`.
+ *
+ * `bundle.json` answers "which exact bytes are in this bundle"; this document
+ * answers "what those bytes mean" — which package each tarball is, how each
+ * package is classified, which binary targets were selected and how everything
+ * relates in the compatibility graph. Bundle verification (cutover plan §6A.2)
+ * cannot enforce classification, graph or version consistency without it, so a
+ * sealed bundle is incomplete until both documents are present.
+ */
+export const ReleasePackageClassificationSchema = z.enum([
+  'platform',
+  'member',
+  'sdk',
+  'plugin',
+  'adapter',
+  /**
+   * Escape hatch for a package that ships in the release but is not part of any
+   * compatibility line. It must be stated explicitly: rule 6 forbids a package
+   * being carried along with no classification at all.
+   */
+  'deliveryOnly',
+]);
+export type ReleasePackageClassification = z.infer<typeof ReleasePackageClassificationSchema>;
+
+export const ReleaseBinaryOsSchema = z.enum(['linux', 'darwin', 'windows']);
+export const ReleaseBinaryArchSchema = z.enum(['amd64', 'arm64']);
+
+const ReleaseGraphNodeSchema = z.object({
+  id: nonEmpty,
+  kind: z.enum(['package', 'binary']),
+  /** Mandatory for every node, including binaries — an unversioned node cannot be resolved. */
+  version: nonEmpty,
+  os: ReleaseBinaryOsSchema.optional(),
+  arch: ReleaseBinaryArchSchema.optional(),
+}).strict();
+
+/**
+ * Stable reference for a graph node. Edges and profiles address nodes by this
+ * key rather than by bare id, because the same binary id ships for several
+ * `{os, arch}` targets and the same package name can appear at more than one
+ * version across a promotion window — a bare id would silently resolve to the
+ * wrong node instead of dangling.
+ */
+export function releaseGraphNodeKey(node: {
+  id: string;
+  kind: 'package' | 'binary';
+  version: string;
+  os?: string;
+  arch?: string;
+}): string {
+  return node.kind === 'binary'
+    ? `binary:${node.id}@${node.version}:${node.os}/${node.arch}`
+    : `package:${node.id}@${node.version}`;
+}
+
+const ReleaseGraphEdgeSchema = z.object({
+  from: nonEmpty,
+  to: nonEmpty,
+  kind: z.enum(['requires', 'provides']),
+  /** SemVer range validated with the shared semver implementation, never ad hoc. */
+  range: nonEmpty,
+}).strict();
+
+const ReleasePlatformProfileSchema = z.object({
+  id: nonEmpty,
+  members: z.array(nonEmpty).min(1),
+  providers: z.array(nonEmpty),
+}).strict();
+
+export const ReleaseCompatibilityGraphSchema = z.object({
+  nodes: z.array(ReleaseGraphNodeSchema).min(1),
+  edges: z.array(ReleaseGraphEdgeSchema),
+  profiles: z.array(ReleasePlatformProfileSchema),
+}).strict();
+export type ReleaseCompatibilityGraph = z.infer<typeof ReleaseCompatibilityGraphSchema>;
+
+export const ReleaseBundleProvenanceSchema = z.object({
+  schema: z.literal('kb.release-bundle-provenance/1'),
+  releaseId: nonEmpty,
+  candidateId: nonEmpty,
+  /**
+   * No `releaseCommit` field exists here on purpose: sealing happens before the
+   * release commit is created, so a bundle claiming one is describing a tree it
+   * could not have been built from. `.strict()` turns that into a hard reject.
+   */
+  provenance: z.object({
+    plannedCommit: z.string().regex(/^[a-f0-9]{40}$/, 'expected full git SHA'),
+    treeSha256: sha256,
+    intentSha256: sha256,
+    sealedAt: rfc3339,
+    versions: z.object({
+      platform: nonEmpty,
+      sdk: nonEmpty.nullable(),
+    }).strict(),
+  }).strict(),
+  /** Verbatim copy of the intent package set; every entry must end up classified. */
+  plannedPackages: z.array(PackageSetEntrySchema).min(1),
+  packages: z.array(z.object({
+    name: nonEmpty,
+    version: nonEmpty,
+    classification: ReleasePackageClassificationSchema,
+    tarball: relativePath.nullable(),
+    sha256: sha256.nullable(),
+  }).strict()).min(1),
+  binaries: z.array(z.object({
+    id: nonEmpty,
+    version: nonEmpty,
+    os: ReleaseBinaryOsSchema,
+    arch: ReleaseBinaryArchSchema,
+    path: relativePath,
+    sha256,
+  }).strict()),
+  index: z.object({
+    path: relativePath,
+    sha256,
+    version: nonEmpty,
+    channelLabel: nonEmpty,
+  }).strict(),
+  graph: ReleaseCompatibilityGraphSchema,
+  signature,
+}).strict();
+export type ReleaseBundleProvenance = z.infer<typeof ReleaseBundleProvenanceSchema>;
+
 export const ReleaseReceiptStateSchema = z.enum([
   'planned',
   'source-checked',
@@ -320,6 +445,7 @@ export function canonicalSha256(value: unknown): string {
 const schemas = {
   ReleaseIntent: ReleaseIntentSchema,
   ReleaseBundle: ReleaseBundleSchema,
+  ReleaseBundleProvenance: ReleaseBundleProvenanceSchema,
   ReleaseReceipt: ReleaseReceiptSchema,
   DeliveryEvidence: DeliveryEvidenceSchema,
   ReleaseDescriptor: ReleaseDescriptorSchema,
@@ -332,6 +458,7 @@ const schemas = {
 const schemaIds: Record<keyof typeof schemas, string> = {
   ReleaseIntent: 'kb.release-intent/1',
   ReleaseBundle: 'kb.release-bundle/1',
+  ReleaseBundleProvenance: 'kb.release-bundle-provenance/1',
   ReleaseReceipt: 'kb.release-receipt/1',
   DeliveryEvidence: 'kb.delivery-evidence/1',
   ReleaseDescriptor: 'kb.release/1',

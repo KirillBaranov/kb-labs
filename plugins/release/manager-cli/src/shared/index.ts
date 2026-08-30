@@ -2,3 +2,4 @@
 export * from './utils';
 export * from './resolve-plan';
 export * from './release-bundle';
+export * from './verify-bundle';
