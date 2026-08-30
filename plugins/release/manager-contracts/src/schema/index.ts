@@ -4,3 +4,4 @@
  */
 
 export * from './rest.schema';
+export * from './release-control-plane.schema';
