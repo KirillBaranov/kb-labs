@@ -13,8 +13,19 @@
  * everything below rather than duplicating it.
  */
 
+/**
+ * PR 6 adds the delivery plane the Workflow reaches through those adapters:
+ * conditional-write CAS primitives for the two mutable documents, narrow
+ * immutable publication targets, and the real adapter implementations.
+ */
+
 export * from './adapters.js';
 export * from './adapters-fake.js';
+export * from './cas-store.js';
+export * from './ci-delivery.js';
+export * from './delivery-clients.js';
+export * from './delivery-targets.js';
+export * from './support-policy-publish.js';
 export * from './approval.js';
 export * from './changelog-freeze.js';
 export * from './journal.js';

@@ -649,6 +649,39 @@ export const manifest = {
         ],
       },
 
+      // release:deliver-request — the entire CI surface of the release train (PR 6)
+      {
+        path: 'release deliver-request',
+        category: 'Pipeline',
+        describe: 'Execute one ReleaseDeliveryRequest and emit DeliveryEvidence',
+        operationType: 'execute' as const,
+        longDescription:
+          'The only command the delivery workflow runs. It takes a kb.release-delivery-request/1 document — '
+          + '{receiptId, candidateId, bundle:{uri,sha256}, operation} plus the pointer preconditions where the '
+          + 'operation needs them — verifies the externally supplied bundle digest before reading any bundle '
+          + 'content, re-verifies the sealed bundle against all seven §6A.2 rules, and then publishes exactly what '
+          + 'it was handed: npm tarballs under a unique candidate dist-tag, immutable binary/index/descriptor '
+          + 'assets, and the already-sealed channel pointer through a conditional write. It reads remote state '
+          + 'before every publish, so identical bytes are a success and different bytes at the same identity are a '
+          + 'hard conflict; nothing is ever overwritten. It is given no receipt store, ledger or lease, so a runner '
+          + 'holding delivery credentials still cannot write operational state.',
+
+        handler: './cli/commands/deliver-request.js#default',
+
+        flags: defineCommandFlags({
+          request: { type: 'string', description: 'Path to the delivery request document, or "-" for stdin' },
+          'cas-dir': { type: 'string', description: 'Mutable-document store root (or KB_RELEASE_CAS_DIR)' },
+          repository: { type: 'string', description: 'owner/repo holding immutable release assets (or GITHUB_REPOSITORY)' },
+          registry: { type: 'string', description: 'npm registry base URL' },
+          'run-id': { type: 'string', description: 'CI run identifier, appended to the request-derived correlation id' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release deliver-request --request delivery-request.json --json',
+        ],
+      },
+
       // release:candidate — drive the candidate receipt state machine (PR 5)
       {
         path: 'release candidate',

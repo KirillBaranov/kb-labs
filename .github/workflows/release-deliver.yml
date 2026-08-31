@@ -1,0 +1,218 @@
+name: Release — deliver
+
+# The whole CI surface of the release train (cutover plan §6A.5, execution PR 6).
+#
+# It replaces release-build-candidate.yml and release-deliver-candidate.yml, and
+# the replacement is not a refactor: those two workflows *were* the release
+# logic. Between them they chose versions, applied them, built the flow, staged
+# npm artifacts, ran a GoReleaser build and generated the release index — 484
+# lines of decisions that no receipt recorded and no approval covered. Anything
+# they got wrong was invisible until a user installed it.
+#
+# Here CI decides nothing. Its inputs are a `ReleaseDeliveryRequest` and nothing
+# else: no flow, no version, no package pattern, no manifest path. Those are
+# absent by design — CI that knows the version can pick a different one, and CI
+# that knows the package set can publish a different one. It fetches the bundle
+# the Workflow sealed, verifies the digest it was told to expect *before* reading
+# any bundle content, and publishes exactly those bytes.
+#
+# Everything below the `kb release deliver-request` call is transport. All the
+# ordering, idempotency and conflict rules of §6A.5 live in the release plugin,
+# where they are unit-tested; a step in this file cannot violate them because it
+# cannot express them.
+#
+# Forbidden here, and enforced by a repository policy test rather than by
+# reviewer memory: `kb release plan|build|stage|version`, `npm pack`, a
+# GoReleaser build, and index generation.
+
+on:
+  workflow_call:
+    inputs:
+      receipt_id:
+        description: Receipt the Workflow is driving; half of the run correlation key
+        required: true
+        type: string
+      candidate_id:
+        description: Immutable candidate identity; the other half of the correlation key
+        required: true
+        type: string
+      bundle_uri:
+        description: Scoped read locator for the sealed bundle. CI never receives a write credential
+        required: true
+        type: string
+      bundle_sha256:
+        description: Externally supplied expected bundle digest, verified before any content is read
+        required: true
+        type: string
+      step_id:
+        description: Journal step this delivery answers
+        required: true
+        type: string
+      operation:
+        description: publish-artifacts | stage-channel | commit-channel | compensate-channel
+        required: true
+        type: string
+      target_channel:
+        description: Channel for stage/commit/compensate operations; empty for immutable publication
+        required: false
+        type: string
+        default: ''
+      expected_previous_pointer_sha256:
+        description: Pointer digest the approved plan was built against; the CAS precondition
+        required: false
+        type: string
+        default: ''
+      pointer_plan_sha256:
+        description: Digest of the sealed pointer bytes this operation is authorised to publish
+        required: false
+        type: string
+        default: ''
+    secrets:
+      NPM_TOKEN:
+        required: false
+      CAS_ENDPOINT_CREDENTIALS:
+        required: false
+  workflow_dispatch:
+    inputs:
+      receipt_id: { description: Receipt id, required: true, type: string }
+      candidate_id: { description: Candidate id, required: true, type: string }
+      bundle_uri: { description: Sealed bundle locator, required: true, type: string }
+      bundle_sha256: { description: Expected bundle digest, required: true, type: string }
+      step_id: { description: Journal step id, required: true, type: string }
+      operation:
+        description: Delivery operation
+        required: true
+        type: choice
+        options: [publish-artifacts, stage-channel, commit-channel, compensate-channel]
+      target_channel: { description: Target channel, required: false, type: string, default: '' }
+      expected_previous_pointer_sha256: { description: CAS precondition, required: false, type: string, default: '' }
+      pointer_plan_sha256: { description: Authorised pointer digest, required: false, type: string, default: '' }
+
+permissions:
+  contents: write
+
+# §6A.5: the concurrency key is candidate + operation + target channel. Never a
+# branch and never a timestamp — the deleted dispatch-release-*.mjs scripts
+# correlated runs by "most recent workflow_dispatch after now()", which is a race
+# with any concurrent release and silently attaches evidence to the wrong run.
+concurrency:
+  group: release-deliver-${{ inputs.candidate_id }}-${{ inputs.operation }}-${{ inputs.target_channel }}
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    name: ${{ inputs.operation }} ${{ inputs.candidate_id }} (receipt ${{ inputs.receipt_id }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # An explicitly recorded revision (§6A.5 permitted step 1). Delivery
+      # tooling is checked out at the ref this workflow file came from, not at
+      # anything derived from the bundle, so a bundle cannot choose the code that
+      # publishes it.
+      - name: Checkout delivery tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Install delivery tooling
+        run: pnpm install --frozen-lockfile
+
+      - name: Build kb-devkit
+        run: go build -o kb-devkit .
+        working-directory: tools/kb-devkit
+
+      - name: Build the release command surface
+        # Only the CLI and the release plugin. Delivery invokes one command; a
+        # full workspace build would serialize hundreds of unrelated packages.
+        run: ./tools/kb-devkit/kb-devkit run build --packages @kb-labs/cli-bin,@kb-labs/release-manager-cli --no-cache
+
+      - name: Fetch the sealed bundle
+        env:
+          BUNDLE_URI: ${{ inputs.bundle_uri }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bundle"
+          case "$BUNDLE_URI" in
+            https://*|http://*)
+              curl -fsSL "$BUNDLE_URI" -o "$RUNNER_TEMP/bundle.tar"
+              tar -xf "$RUNNER_TEMP/bundle.tar" -C "$RUNNER_TEMP/bundle"
+              ;;
+            file://*|/*)
+              cp -R "${BUNDLE_URI#file://}/." "$RUNNER_TEMP/bundle/"
+              ;;
+            *)
+              echo "unsupported bundle locator: $BUNDLE_URI" >&2
+              exit 1
+              ;;
+          esac
+
+      # The request document, assembled verbatim from the inputs. Nothing is
+      # inferred: an absent optional input stays absent rather than being
+      # defaulted, because a defaulted CAS precondition is a blind overwrite.
+      - name: Compose the delivery request
+        env:
+          RECEIPT_ID: ${{ inputs.receipt_id }}
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
+          STEP_ID: ${{ inputs.step_id }}
+          OPERATION: ${{ inputs.operation }}
+          TARGET_CHANNEL: ${{ inputs.target_channel }}
+          EXPECTED_PREVIOUS_POINTER_SHA256: ${{ inputs.expected_previous_pointer_sha256 }}
+          POINTER_PLAN_SHA256: ${{ inputs.pointer_plan_sha256 }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const request = {
+              schema: "kb.release-delivery-request/1",
+              receiptId: process.env.RECEIPT_ID,
+              candidateId: process.env.CANDIDATE_ID,
+              bundle: { uri: `file://${process.env.RUNNER_TEMP}/bundle`, sha256: process.env.BUNDLE_SHA256 },
+              expectedBundleSha256: process.env.BUNDLE_SHA256,
+              stepId: process.env.STEP_ID,
+              operation: process.env.OPERATION,
+            };
+            if (process.env.TARGET_CHANNEL) request.targetChannel = process.env.TARGET_CHANNEL;
+            if (process.env.EXPECTED_PREVIOUS_POINTER_SHA256) request.expectedPreviousPointerSha256 = process.env.EXPECTED_PREVIOUS_POINTER_SHA256;
+            if (process.env.POINTER_PLAN_SHA256) request.pointerPlanSha256 = process.env.POINTER_PLAN_SHA256;
+            fs.writeFileSync(`${process.env.RUNNER_TEMP}/delivery-request.json`, JSON.stringify(request, null, 2) + "\n");
+          '
+
+      - name: Deliver
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          KB_RELEASE_CAS_DIR: ${{ runner.temp }}/cas
+        run: |
+          set -euo pipefail
+          mkdir -p "$KB_RELEASE_CAS_DIR"
+          pnpm -s kb release deliver-request \
+            --request "$RUNNER_TEMP/delivery-request.json" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --json | tee "$RUNNER_TEMP/delivery-evidence.json"
+
+      # Diagnostics are uploaded even on failure: a partial delivery's evidence
+      # is what makes the Workflow's resume decidable, and it is worth more after
+      # a failure than after a success.
+      - name: Upload delivery evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: delivery-evidence-${{ inputs.receipt_id }}-${{ inputs.step_id }}
+          path: ${{ runner.temp }}/delivery-evidence.json
+          if-no-files-found: warn
+          retention-days: 90
