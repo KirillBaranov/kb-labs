@@ -149,58 +149,6 @@ export const manifest = {
         ],
       },
 
-      // release:run - Execute release process
-      {
-        path: 'release run',
-        category: 'Pipeline',
-        describe: 'Execute release process (plan, check, publish)',
-        operationType: 'execute' as const,
-        longDescription: 'Run full release: plan versions, run checks, publish packages',
-
-        handler: './cli/commands/run.js#default',
-
-        flags: defineCommandFlags({
-          scope: { type: 'string', description: 'Package scope or glob pattern (e.g. @my-org/core, packages/*)' },
-          bump: {
-            type: 'string',
-            choices: ['patch', 'minor', 'major', 'auto'] as const,
-            default: 'auto',
-            description: 'Version bump override (default: auto-detect from commits)',
-          },
-          strict: { type: 'boolean', description: 'Fail on any check failure' },
-          channel: {
-            type: 'string',
-            choices: ['stable', 'canary'] as const,
-            default: 'stable',
-            description: 'Release channel — canary publishes straight to npm under a prerelease tag, no git commit/tag',
-          },
-          'dry-run': { type: 'boolean', description: 'Simulate release without publishing or tagging' },
-          'skip-checks': { type: 'boolean', description: 'Skip pre-release checks' },
-          'skip-build': { type: 'boolean', description: 'Skip build step' },
-          'skip-verify': { type: 'boolean', description: 'Skip artifact verification (npm pack check)' },
-          'skip-publish': {
-            type: 'boolean',
-            description: 'Prepare-only: build, version, changelog, git commit/tag — never publish to npm. No npm credentials required. Pair with a tag-triggered CI job running `kb release promote`.',
-          },
-          'no-verify': { type: 'boolean', description: 'Pass --no-verify to git push (bypasses pre-push hooks)' },
-          yes: { type: 'boolean', description: 'Skip confirmation prompt — for CI/headless mode' },
-          json: { type: 'boolean', description: 'Print result as JSON' },
-        }),
-
-        examples: [
-          'kb release run',
-          'kb release run --dry-run',
-          'kb release run --yes',
-          'kb release run --yes --no-verify',
-          'kb release run --bump minor --yes',
-          'kb release run --scope @my-org/core',
-          'kb release run --skip-checks --skip-build',
-          'kb release run --strict --json',
-          'kb release run --channel canary --yes',
-          'kb release run --flow platform --skip-publish --yes',
-        ],
-      },
-
       // release:publish - Publish packages to npm
       {
         path: 'release publish',
@@ -391,46 +339,6 @@ export const manifest = {
         examples: [
           'kb release clean install --tarball ./kb-labs-sdk-2.115.0.tgz --name @kb-labs/sdk',
           'kb release clean install --tarball ./a.tgz --name @kb-labs/a --package-manager pnpm --additional-tarballs ./b.tgz,./c.tgz',
-        ],
-      },
-
-      // release:promote - Promote an already-released version to npm
-      {
-        path: 'release promote',
-        category: 'Publish',
-        describe: 'Promote already-released package versions to npm (no re-bump, no rebuild)',
-        operationType: 'execute' as const,
-        longDescription:
-          'Publishes the CURRENT on-disk package.json versions to npm — no version bump, no rebuild. ' +
-          'Intended to run after `release run --channel stable` (typically targeting Verdaccio via ' +
-          'config.registry): once that run is verified, `release promote` pushes the exact same, ' +
-          'already-committed versions to npm under the stable dist-tag.',
-
-        handler: './cli/commands/promote.js#default',
-
-        flags: defineCommandFlags({
-          scope: { type: 'string', description: 'Package scope (glob pattern)' },
-          flow: { type: 'string', description: 'Named flow — selects packages the same way `release run --flow` does (e.g. excludes sdk from platform)' },
-          tag: { type: 'string', description: 'npm dist-tag override (default: config.publish.stableTag, falls back to "latest")' },
-          registry: { type: 'string', description: 'Registry override (default: config.publish.npmRegistry, falls back to real npm)' },
-          otp: { type: 'string', description: 'One-time password (optional, will prompt if needed)' },
-          'dry-run': { type: 'boolean', description: 'Simulate promote without actually publishing' },
-          access: {
-            type: 'string',
-            choices: ['public', 'restricted'] as const,
-            description: 'Package access level',
-          },
-          token: { type: 'string', description: 'NPM auth token (overrides NPM_TOKEN env)' },
-          json: { type: 'boolean', description: 'Output in JSON format' },
-        }),
-
-        examples: [
-          'kb release promote',
-          'kb release promote --flow platform',
-          'kb release promote --flow sdk',
-          'kb release promote --scope @kb-labs/core',
-          'kb release promote --dry-run',
-          'kb release promote --tag next',
         ],
       },
 

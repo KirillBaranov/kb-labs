@@ -10,6 +10,5 @@ export * from './commands/support-policy';
 export * from './commands/publish';
 export * from './commands/report';
 export * from './commands/rollback';
-export * from './commands/run';
 export * from './commands/verify';
 

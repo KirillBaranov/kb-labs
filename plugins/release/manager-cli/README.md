@@ -12,11 +12,10 @@ Designed to be a single composable step in a workflow: the output artifacts (pub
 # See what would be released (no changes made)
 kb release plan
 
-# Interactive release: shows plan, asks to confirm, then executes
-kb release run
-
-# CI/headless mode — no prompt, uses NODE_AUTH_TOKEN
-NODE_AUTH_TOKEN=<token> kb release run --yes
+# Drive a receipt-driven release candidate through the release control plane
+# (replaces the old `kb release run`/`kb release promote` checkout-based pipeline —
+# see the "kb release candidate" section below and docs/runbooks/release-control-plane.md)
+kb release candidate --flow platform --target canary --dry-run --json
 ```
 
 ---
@@ -44,34 +43,44 @@ kb release plan --json
 
 ---
 
-### `kb release run`
+### `kb release candidate` (replaces `kb release run`)
 
-Full release pipeline: plan → confirm → checks → build → verify → publish → git tag.
+`kb release run` — the checkout-based pipeline that did plan → confirm →
+checks → build → verify → publish → git tag in one shot, with no bundle, no
+receipt and no approval — has been deleted (release control-plane cutover,
+execution plan §11 item 7). So has its publish-only companion
+`kb release promote`.
+
+The replacement is receipt-driven: it runs plan → source checks → stage →
+package → seal → verify-bundle, renders the release map over the already-sealed
+bundle, and stops for one human approval before it commits/delivers/activates
+anything.
 
 ```bash
-kb release run
-kb release run --dry-run
-kb release run --yes
-kb release run --yes --no-verify
-kb release run --scope @my-org/core --bump minor
+kb release candidate --flow platform --target canary --dry-run --json  # rehearse
+kb release candidate --flow platform --target canary --json            # drive it; stops at `bundled`
+kb release approve --receipt <receiptId> --actor "$USER" --json         # the one approval
+kb release candidate --flow platform --target canary --json            # resume; same command
+kb release receipt --receipt <receiptId> --json                        # inspect state/history any time
 ```
 
-**Flags:**
+**Flags (`release candidate`):**
 
 | Flag | Description |
 |------|-------------|
-| `--scope` | Release only packages matching this scope |
-| `--bump` | Override version bump strategy |
-| `--dry-run` | Simulate everything, publish nothing |
-| `--yes`, `-y` | Skip confirmation prompt (CI/headless mode) |
-| `--no-verify` | Pass `--no-verify` to `git push` — bypasses pre-push hooks |
-| `--skip-checks` | Skip pre-release checks |
-| `--skip-build` | Skip build step |
-| `--skip-verify` | Skip artifact verification (npm pack check) |
-| `--strict` | Fail on any check failure (including optional checks) |
+| `--flow` | Named release flow (default: `platform`) |
+| `--target` | Requested channel; only `canary` is a candidate operation (default: `canary`) |
+| `--receipt` | Existing receipt id to resume; omit to start a new operation |
+| `--actor` | Operator identity recorded on every transition (or `KB_RELEASE_ACTOR`) |
+| `--dry-run` | Drive the state machine against the simulated pipeline and fake delivery plane |
 | `--json` | Output result as JSON |
 
-**Exit codes:** `0` = success or cancelled, `1` = failure.
+A non-dry-run currently refuses with a typed diagnostic: the CI half of the
+delivery plane exists, but the Workflow-side adapter that dispatches
+`release-deliver.yml` and the endpoints it writes through are not deployed yet.
+See [docs/runbooks/release-control-plane.md](../../../docs/runbooks/release-control-plane.md).
+
+**Exit codes:** `0` = success, `1` = failure.
 
 ---
 
@@ -119,7 +128,11 @@ kb release changelog --format md --level detailed
 
 ### `kb release rollback`
 
-Restore `package.json` versions from the last snapshot taken before `release run`.
+Restore `package.json` versions from the last pre-mutation snapshot. Applies to
+the standalone version/git building-block commands below, used directly against
+the primary checkout — `release candidate`'s own mutations happen in a
+disposable worktree instead, so there is nothing in the primary checkout for
+this rollback to undo for a candidate operation.
 
 ```bash
 kb release rollback
@@ -280,30 +293,32 @@ All plugin behavior is controlled via the `release` section of your `kb.config.j
 
 ## Artifacts
 
-After a successful `kb release run`, the plugin writes:
+`kb release candidate` writes the operational state a `kb release run`
+execution report used to summarize after the fact — but as durable, resumable
+state, not a one-shot log:
 
 | Artifact | Path | Description |
 |----------|------|-------------|
-| Report | `.kb/release/history/<scope>/<timestamp>/report.json` | Full execution report with timings, published packages, errors |
-| Changelog | `.kb/release/CHANGELOG.md` | Generated changelog for this release |
-| Package changelogs | `<package>/CHANGELOG.md` | Per-package changelog entries |
-| Git tags | In git | `v1.2.3` (lockstep) or `@my-org/core@1.2.3` (independent) |
+| Receipt | `.kb/release/receipts/<receiptId>.jsonl` | Append-only transition history — the single source of truth for a release's state |
+| Version ledger | `.kb/release/ledger/` | Atomic version reservations, never reused |
+| Sealed candidate bundle | `.kb/release/candidates/<candidateId>/bundle/` | The exact artifacts a human approval signs |
+| Changelog | `<package>/CHANGELOG.md`, `.kb/release/CHANGELOG.md` | Generated changelog, frozen at plan time |
+| Git tags | In git | `v1.2.3` (lockstep) or `@my-org/core@1.2.3` (independent), created by `release commit` after approval |
 
-These paths are declared in the plugin manifest as `artifacts` — available for consumption by the next step in your workflow.
+See [docs/runbooks/release-control-plane.md](../../../docs/runbooks/release-control-plane.md)
+§1 for the full state layout, including dry-run isolation.
 
 ---
 
 ## CI / Headless Mode
 
 ```bash
-# Token auth — no OTP prompt
-NODE_AUTH_TOKEN=npm_xxx kb release run --yes
+# Rehearse against the simulated pipeline and fake delivery plane
+kb release candidate --flow platform --target canary --dry-run --json
 
-# If pre-push hooks slow down CI or you manage them separately:
-NODE_AUTH_TOKEN=npm_xxx kb release run --yes --no-verify
-
-# Output machine-readable result
-NODE_AUTH_TOKEN=npm_xxx kb release run --yes --json
+# Drive the real receipt (refuses today until the Workflow-side delivery
+# adapter and its endpoints are deployed — see the runbook)
+NODE_AUTH_TOKEN=npm_xxx kb release candidate --flow platform --target canary --json
 ```
 
 **Exit codes:**

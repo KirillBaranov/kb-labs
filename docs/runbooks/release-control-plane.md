@@ -103,10 +103,12 @@ Phase B (non-public staging) → Phase C (aliases, then the one authoritative
 pointer write) → Phase D (observation window), and creates **no** new package
 version, tarball, binary or index.
 
-> `kb release promote` is **not** this. It is the pre-cutover command that
-> publishes whatever package versions are in the current checkout to the npm
-> stable dist-tag, with no bundle, no receipt and no approval. Do not use it to
-> promote a release.
+> There used to be a `kb release promote` command here — the pre-cutover path
+> that published whatever package versions were in the current checkout to the
+> npm stable dist-tag, with no bundle, no receipt and no approval. It has been
+> deleted (execution plan §11 deletion checklist, item 7); there is no
+> equivalent standalone command to reach for by habit. Stable promotion happens
+> only through the saga described above.
 
 ---
 
