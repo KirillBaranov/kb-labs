@@ -27,7 +27,7 @@ node ./cli/bin/dist/bin.js <command> --json
 ## Release safety
 
 - Treat releases as an explicit user-authorized operation.
-- Use the `release-prepare` workflow with a named flow (`platform` or `sdk`) for an actual release. Do not run `pnpm publish`, manually create/push a tag, or bypass release checks.
+- Use the `release` workflow (`.kb/workflows/release.yml`, replacing the old `release-prepare`/`release-promote` pair) with a named flow (`platform` or `sdk`) and `requestedTarget` (`canary` or `stable`) for an actual release. Do not run `pnpm publish`, manually create/push a tag, or bypass release checks.
 - `release:*:prepare` is an emergency fallback only after explicit approval; it does not publish to npm.
 
 ## Available local context skills
