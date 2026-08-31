@@ -14,13 +14,10 @@ import (
 	"github.com/kb-labs/create/v2/secrets"
 )
 
-func testCompatibility(version string) *catalog.CompatibilityMatrix {
-	return &catalog.CompatibilityMatrix{
-		Schema: catalog.CompatibilitySchema,
-		Labels: []catalog.CompatibilityLabel{{
-			ID: "platform@" + version, Kind: "platform", ArtifactID: "platform", Version: version,
-			Status: "prepared", ValidatedBy: []string{"test"},
-		}},
+func testCompatibility(version string) *catalog.CompatibilityGraph {
+	return &catalog.CompatibilityGraph{
+		Schema: catalog.CompatibilityGraphSchema,
+		Nodes:  []catalog.GraphNode{{ID: "@kb/platform", Kind: catalog.KindPlatform, Version: version}},
 	}
 }
 
@@ -29,7 +26,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	index := filepath.Join(dir, "index.json")
 	input := filepath.Join(dir, "request.json")
 	output := filepath.Join(dir, "output.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "abc", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0"}}}}})
+	release, err := catalog.Seal(catalog.Catalog{Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "abc", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0"}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +44,7 @@ func TestRunEmitsOnlyStructuredPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, input, "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file)
+	code := run("plan", index, "", input, "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file)
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +91,7 @@ func TestRunRequiresBothMachineInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("plan", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("plan", "", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -105,7 +102,7 @@ func TestRunRejectsUnknownOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("destroy-everything", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("destroy-everything", "", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -116,7 +113,7 @@ func TestRecoveryRequiresPlatformRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if code := run("uninstall", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
+	if code := run("uninstall", "", "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 2 {
 		t.Fatalf("exit code = %d", code)
 	}
 }
@@ -132,7 +129,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("doctor", "", "", input, "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 1 {
+	if code := run("doctor", "", "", "", input, "", "", "", "kb-dev", "", false, "", "", false, directRequest{}, file); code != 1 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := file.Close(); err != nil {
@@ -151,7 +148,7 @@ func TestDoctorReturnsStructuredManifestFindings(t *testing.T) {
 func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 	dir := t.TempDir()
 	index := filepath.Join(dir, "index.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.2.0", Package: "@kb/review", Tarball: "https://example.test/review.tgz", SHA256: "review"}}})
+	release, err := catalog.Seal(catalog.Catalog{Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.2.0", Package: "@kb/review", Tarball: "https://example.test/review.tgz", SHA256: "review"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +163,7 @@ func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := run("plan", index, "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
+	if code := run("plan", index, "", "", "", "", "", "", "kb-dev", "", false, "", "", false, directRequest{PlatformRoot: "/tmp/platform", Plugins: "review@1.2.0", Offline: true, Policy: "strict"}, output); code != 0 {
 		t.Fatalf("exit code = %d", code)
 	}
 	if err := output.Close(); err != nil {
@@ -177,7 +174,7 @@ func TestDirectRequestUsesSamePlanTransport(t *testing.T) {
 func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	dir := t.TempDir()
 	index := filepath.Join(dir, "index.json")
-	release, err := catalog.Seal(catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "gateway.access.mode", Path: "/gateway/access/mode", Default: `"secured"`}}}}})
+	release, err := catalog.Seal(catalog.Catalog{Compatibility: testCompatibility("2.0.0"), Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "gateway.access.mode", Path: "/gateway/access/mode", Default: `"secured"`}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +189,7 @@ func TestScenarioAnswersCompileThroughManifestBoundPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := run("plan", index, "", "", "", "", "", "kb-dev", "", false, "custom", `{"access.mode":"local"}`, false, directRequest{PlatformRoot: "/tmp/platform", Offline: true, Policy: "compatible"}, output)
+	code := run("plan", index, "", "", "", "", "", "", "kb-dev", "", false, "custom", `{"access.mode":"local"}`, false, directRequest{PlatformRoot: "/tmp/platform", Offline: true, Policy: "compatible"}, output)
 	if err := output.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +227,7 @@ func TestRunStatusVerifiesTheReceiptOwnedGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := runStatus(dir, kbdev, output); code != 0 {
+	if code := runStatus(dir, "", kbdev, output); code != 0 {
 		t.Fatalf("status exit code = %d", code)
 	}
 	if err := output.Close(); err != nil {

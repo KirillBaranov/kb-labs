@@ -33,15 +33,17 @@ func Request(source catalog.Catalog, platformRoot string, terminal IO) (contract
 		return contracts.InstallRequest{}, fmt.Errorf("wizard input and output are required")
 	}
 	reader := bufio.NewReader(terminal.In)
-	channels := availableChannels(source)
-	channel, err := choose(reader, terminal.Out, "Platform channel", channels, string(contracts.ChannelStable))
+	// The sealed index is channel-independent, so the wizard offers the exact
+	// platform versions it ships. The channel was already spent upstream when
+	// the pointer resolved to this release.
+	versions := availablePlatformVersions(source)
+	version, err := choose(reader, terminal.Out, "Platform version", versions, defaultVersion(versions))
 	if err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	version := source.Channels[contracts.Channel(channel)]
 	platform, ok := findPlatform(source.Platforms, version)
 	if !ok {
-		return contracts.InstallRequest{}, fmt.Errorf("channel %q does not resolve to a platform bundle", channel)
+		return contracts.InstallRequest{}, fmt.Errorf("version %q does not resolve to a platform bundle", version)
 	}
 	profiles := make([]string, 0, len(platform.Profiles))
 	for profile := range platform.Profiles {
@@ -60,7 +62,7 @@ func Request(source catalog.Catalog, platformRoot string, terminal IO) (contract
 	if err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	request := contracts.InstallRequest{Schema: contracts.RequestSchema, Platform: contracts.VersionSelector{Channel: contracts.Channel(channel)}, ServiceProfile: profile, Plugins: components(plugins), Adapters: components(adapters), Policy: contracts.PolicyCompatible, Source: contracts.SourceRegistry, PlatformRoot: platformRoot}
+	request := contracts.InstallRequest{Schema: contracts.RequestSchema, Platform: contracts.VersionSelector{Version: version}, ServiceProfile: profile, Plugins: components(plugins), Adapters: components(adapters), Policy: contracts.PolicyCompatible, Source: contracts.SourceRegistry, PlatformRoot: platformRoot}
 	return request.Normalize()
 }
 
@@ -92,15 +94,17 @@ func RequestScenario(source catalog.Catalog, platformRoot, scenarioID string, te
 	if err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	channels := availableChannels(source)
-	channel, err := choose(reader, terminal.Out, "Platform channel", channels, string(contracts.ChannelStable))
+	// The sealed index is channel-independent, so the wizard offers the exact
+	// platform versions it ships. The channel was already spent upstream when
+	// the pointer resolved to this release.
+	versions := availablePlatformVersions(source)
+	version, err := choose(reader, terminal.Out, "Platform version", versions, defaultVersion(versions))
 	if err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	version := source.Channels[contracts.Channel(channel)]
 	platform, ok := findPlatform(source.Platforms, version)
 	if !ok {
-		return contracts.InstallRequest{}, fmt.Errorf("channel %q does not resolve to a platform bundle", channel)
+		return contracts.InstallRequest{}, fmt.Errorf("version %q does not resolve to a platform bundle", version)
 	}
 	profiles := make([]string, 0, len(platform.Profiles))
 	for profile := range platform.Profiles {
@@ -111,7 +115,7 @@ func RequestScenario(source catalog.Catalog, platformRoot, scenarioID string, te
 	if err != nil {
 		return contracts.InstallRequest{}, err
 	}
-	base := contracts.InstallRequest{PlatformRoot: platformRoot, Platform: contracts.VersionSelector{Channel: contracts.Channel(channel)}, ServiceProfile: profile, Policy: contracts.PolicyCompatible, Source: contracts.SourceRegistry}
+	base := contracts.InstallRequest{PlatformRoot: platformRoot, Platform: contracts.VersionSelector{Version: version}, ServiceProfile: profile, Policy: contracts.PolicyCompatible, Source: contracts.SourceRegistry}
 	session, err := flow.New(definition, nil, nil)
 	if err != nil {
 		return contracts.InstallRequest{}, err
@@ -211,13 +215,20 @@ func chooseMany(reader *bufio.Reader, output io.Writer, label string, options []
 	return result, nil
 }
 
-func availableChannels(source catalog.Catalog) []string {
-	result := make([]string, 0, len(source.Channels))
-	for channel := range source.Channels {
-		result = append(result, string(channel))
+func availablePlatformVersions(source catalog.Catalog) []string {
+	result := make([]string, 0, len(source.Platforms))
+	for _, platform := range source.Platforms {
+		result = append(result, platform.Version)
 	}
 	sort.Strings(result)
 	return result
+}
+
+func defaultVersion(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
 }
 func componentIDs(values []catalog.Component) []string {
 	result := make([]string, 0, len(values))

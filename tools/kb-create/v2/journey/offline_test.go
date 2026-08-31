@@ -59,7 +59,7 @@ type journeyClock struct{ time.Time }
 func (c journeyClock) Now() time.Time { return c.Time }
 func TestOfflineJourneyUsesResolvedGraphAsSingleTruth(t *testing.T) {
 	root := t.TempDir()
-	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {Services: []contracts.Service{{ID: "gateway", Command: "kb-gateway", Port: 4000, Required: true}}}}, Requires: []catalog.Requirement{{Capability: "logging", RequiredBy: "platform"}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.0.0", Package: "@kb/review", SHA256: "review", PlatformRange: "^2.0.0"}}, Adapters: []catalog.Adapter{{Component: catalog.Component{ID: "pino", Version: "1.0.0", Package: "@kb/pino", SHA256: "pino", PlatformRange: "^2.0.0"}, Provides: []string{"logging"}}}}
+	source := catalog.Catalog{Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {Services: []contracts.Service{{ID: "gateway", Command: "kb-gateway", Port: 4000, Required: true}}}}, Requires: []catalog.Requirement{{Capability: "logging", RequiredBy: "platform"}}}}, Plugins: []catalog.Component{{ID: "review", Version: "1.0.0", Package: "@kb/review", SHA256: "review", PlatformRange: "^2.0.0"}}, Adapters: []catalog.Adapter{{Component: catalog.Component{ID: "pino", Version: "1.0.0", Package: "@kb/pino", SHA256: "pino", PlatformRange: "^2.0.0"}, Provides: []string{"logging"}}}}
 	plan, err := resolve.Plan(contracts.InstallRequest{PlatformRoot: root, Source: contracts.SourceOffline, Plugins: []contracts.ComponentRequest{{ID: "review"}}}, source)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,6 @@ func TestOfflineUpdateFailureRestoresPreviousReceiptAndPackageState(t *testing.T
 func TestOfflineApplyCompletesPluginAndWorkflowReadyPath(t *testing.T) {
 	root := t.TempDir()
 	source := catalog.Catalog{
-		Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"},
 		Platforms: []catalog.PlatformBundle{{
 			ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform",
 			Profiles: map[string]contracts.ServiceGraph{"default": {
@@ -213,10 +212,10 @@ func TestOfflineApplyCompletesPluginAndWorkflowReadyPath(t *testing.T) {
 // resolution, rendering, receipt and graph verification are never mocked.
 func TestTransportMatrixUsesOneResolvedPluginWorkflowPath(t *testing.T) {
 	source := catalog.Catalog{
-		Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0", contracts.ChannelCanary: "2.1.0"},
+		// One sealed index describes exactly one release: the channel was
+		// already spent upstream by the pointer that resolved to it.
 		Platforms: []catalog.PlatformBundle{
 			{ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform-2.0.0.tgz", SHA256: "platform-stable", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.0.0", Profile: "default", Services: []contracts.Service{{ID: "workflow", Command: "kb-workflow", Port: 7778, Required: true}}}}},
-			{ID: "platform", Version: "2.1.0", Package: "@kb/platform", Tarball: "https://example.test/platform-2.1.0.tgz", SHA256: "platform-canary", Profiles: map[string]contracts.ServiceGraph{"default": {PlatformVersion: "2.1.0", Profile: "default", Services: []contracts.Service{{ID: "workflow", Command: "kb-workflow", Port: 7778, Required: true}}}}},
 		},
 		Plugins: []catalog.Component{{ID: "user-plugin", Version: "1.0.0", Package: "@kb/user-plugin", Tarball: "https://example.test/user-plugin.tgz", SHA256: "user-plugin", PlatformRange: "^2.0.0"}},
 	}
@@ -227,7 +226,7 @@ func TestTransportMatrixUsesOneResolvedPluginWorkflowPath(t *testing.T) {
 	source = sealed
 
 	humanRoot := filepath.Join(t.TempDir(), "human")
-	human, err := wizard.Request(source, humanRoot, wizard.IO{In: strings.NewReader("stable\ndefault\nuser-plugin\n\n"), Out: io.Discard})
+	human, err := wizard.Request(source, humanRoot, wizard.IO{In: strings.NewReader("2.0.0\ndefault\nuser-plugin\n\n"), Out: io.Discard})
 	if err != nil {
 		t.Fatal(err)
 	}
