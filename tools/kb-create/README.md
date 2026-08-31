@@ -62,11 +62,13 @@ declares that requirement and JSON Pointer. Secret fields become secret-store
 references and cannot have a scenario default. The migrated built-ins are
 `commit`, `custom`, `explore`, `plugin-author`, and `release`.
 
-Release automation creates the index with
+Release automation creates the index through the release plugin: `kb release
+seal --bundle <bundle-dir>` builds the normalized manifest export and the
+binary manifest (from the exact published checksums) and then calls
+`kb-create-release-index` to seal it. The sealer is still the owner of this
+format and can be invoked directly as
 `go run ./v2/cmd/kb-create-release-index --input manifest-export.json
---manifest-root staging-root --output release-index.json` after generating the
-binary manifest from the exact published checksums with
-`node scripts/prepare-binary-manifest.mjs`. The command reads the exact V2
+--manifest-root staging-root --output release-index.json`. The command reads the exact V2
 manifests staged with each artifact and replaces any hand-authored config
 projection; missing/mismatched manifests fail the release. The resulting
 index contains the shared compatibility matrix for platform, SDK and binaries,

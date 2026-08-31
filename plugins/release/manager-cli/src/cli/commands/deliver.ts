@@ -1,23 +1,25 @@
 /**
- * Deliver command — ships the tarballs `release stage` already packed to a
+ * Deliver command — ships a sealed release bundle's exact bytes to a
  * destination ("target"), by name. This is the thin-CI half of the
  * "plugin prepares, CI delivers" release plan: CI's only job is to have
- * the right target credentials and call this one command with the tag —
- * package selection, tag→flow resolution, retry/backoff, and post-delivery
- * verification all live here, not in CI YAML.
+ * the right target credentials and call this one command — package selection,
+ * retry/backoff and post-delivery verification all live here, not in CI YAML.
  *
- * Deliberately reads `manifest.json` from `--artifacts-dir` (written by
- * `release stage`) instead of rediscovering or rebuilding packages — the
- * whole point is to ship the exact bytes that were already packed and
- * validated, not a fresh equivalent pack.
+ * What gets published comes from `--bundle`, and only after that bundle passes
+ * full verification. An earlier version accepted `--artifacts-dir` and treated
+ * whatever `manifest.json` it found there as the authoritative package list;
+ * that made an unverified file on disk a release decision, which the release
+ * control-plane cutover removes outright (execution plan PR 3, item 4). The
+ * package set now comes from `provenance.json` inside a bundle whose digest,
+ * inventory and hashes have all been checked.
  *
  * Not to be confused with `release promote` (`promote.ts`) — that command
  * still re-packs from the working tree at publish time (the older,
  * Verdaccio-pre-flight flow from ADR-0001) and remains in place unchanged.
  */
 
-import { readFileSync, appendFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { appendFileSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv, type CommandResult } from '@kb-labs/sdk';
 import {
   mergeConfigWithFlow,
@@ -30,14 +32,15 @@ import {
 import { findRepoRoot } from '../../shared/utils';
 import { publishPackagesProgrammatic, type PackageToPublish } from '../../shared/publish-programmatic';
 import { resolveFlowName, type FlowResolvableFlags } from '../../shared/resolve-flow';
-import type { StagedArtifact } from './stage';
+import { BUNDLE_PROVENANCE_FILE, verifyBundleDirectory } from '../../shared/verify-bundle.js';
 
 const REGISTRY_VERIFY_RETRIES = 5;
 const REGISTRY_VISIBILITY_DEADLINE_MS = 15 * 60_000;
 
 interface DeliverFlags extends FlowResolvableFlags {
   target?: string;
-  'artifacts-dir'?: string;
+  bundle?: string;
+  'expected-sha256'?: string;
   tag?: string;
   registry?: string;
   otp?: string;
@@ -63,13 +66,39 @@ interface DeliverPayload {
   verifyIssues?: string[];
 }
 
-function loadManifest(artifactsDir: string): StagedArtifact[] | { error: string } {
-  const manifestPath = join(artifactsDir, 'manifest.json');
-  try {
-    return JSON.parse(readFileSync(manifestPath, 'utf-8')) as StagedArtifact[];
-  } catch {
-    return { error: `No manifest.json found at ${manifestPath} — run \`kb release stage\` first` };
+interface DeliverableArtifact {
+  name: string;
+  version: string;
+  /** Bundle-relative tarball path, taken from verified provenance. */
+  tarball: string;
+}
+
+/**
+ * Resolves what to publish from a sealed bundle, refusing anything unverified.
+ *
+ * Verification is not advisory here: it is the only thing that makes the
+ * bundle's own claim about its contents trustworthy, and delivery is the point
+ * where those bytes become public and irreversible.
+ */
+function loadDeliverables(
+  bundleDir: string,
+  expectedSha256: string | undefined,
+): DeliverableArtifact[] | { error: string } {
+  const report = verifyBundleDirectory(bundleDir, expectedSha256);
+  if (!report.ok) {
+    const summary = report.diagnostics
+      .map(diagnostic => `[rule ${diagnostic.rule}] ${diagnostic.code}: ${diagnostic.message}`)
+      .join('; ');
+    return { error: `bundle at ${bundleDir} failed verification and must not be delivered — ${summary}` };
   }
+
+  const provenance = JSON.parse(
+    readFileSync(join(bundleDir, BUNDLE_PROVENANCE_FILE), 'utf-8'),
+  ) as { packages: Array<{ name: string; version: string; tarball: string | null }> };
+
+  return provenance.packages
+    .filter((pkg): pkg is { name: string; version: string; tarball: string } => pkg.tarball !== null)
+    .map(pkg => ({ name: pkg.name, version: pkg.version, tarball: pkg.tarball }));
 }
 
 /**
@@ -106,7 +135,7 @@ function buildFailureSummaryMarkdown(target: string, publishedCount: number, fai
 
 export default defineCommand({
   id: 'release:deliver',
-  description: 'Ship the tarballs `release stage` already packed to a target (npm) — no packing, no rebuild',
+  description: 'Ship a verified sealed bundle\'s exact tarballs to a target (npm) — no packing, no rebuild',
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<DeliverFlags>): Promise<CommandResult<DeliverPayload>> {
@@ -133,14 +162,19 @@ export default defineCommand({
       }
       const config: ReleaseConfig = mergeConfigWithFlow(baseConfig, flowResult);
 
-      const artifactsDir = join(repoRoot, flags['artifacts-dir'] ?? '.kb/release/artifacts');
-      const manifest = loadManifest(artifactsDir);
+      if (!flags.bundle) {
+        const msg = 'release:deliver requires --bundle <sealed-bundle-dir>';
+        if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
+        return { ok: false, error: 'Command failed' };
+      }
+      const artifactsDir = resolve(repoRoot, flags.bundle);
+      const manifest = loadDeliverables(artifactsDir, flags['expected-sha256']);
       if (!Array.isArray(manifest)) {
         if (flags.json) { ctx.ui?.json?.({ error: manifest.error }); } else { ctx.ui?.error?.(manifest.error); }
         return { ok: false, error: 'Command failed' };
       }
       if (manifest.length === 0) {
-        const msg = `manifest.json at ${artifactsDir} lists no packages`;
+        const msg = `sealed bundle at ${artifactsDir} carries no publishable package`;
         if (flags.json) { ctx.ui?.json?.({ error: msg }); } else { ctx.ui?.error?.(msg); }
         return { ok: false, error: 'Command failed' };
       }
@@ -161,9 +195,9 @@ export default defineCommand({
       publishLoader.start();
 
       // Publishing pre-built tarballs via `npm publish <tarball>` specifically
-      // (not pnpm/yarn) — these were packed with `npm pack` in `release
-      // stage`, and npm's tarball-argument publish is the well-established
-      // path; no need to introduce pnpm/yarn tarball-publish behavior here.
+      // (not pnpm/yarn) — these were packed by `release package`, and npm's
+      // tarball-argument publish is the well-established path; no need to
+      // introduce pnpm/yarn tarball-publish behavior here.
       const publishResult = await publishPackagesProgrammatic({
         packages,
         packageManager: 'npm',

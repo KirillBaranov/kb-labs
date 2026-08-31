@@ -225,32 +225,123 @@ export const manifest = {
         ],
       },
 
-      // release:stage - Pack the currently-committed versions into real tarballs, once
+      // release:stage - Apply planned mutations in a disposable worktree
       {
         path: 'release stage',
         category: 'Publish',
-        describe: 'Pack the currently-committed package versions for a flow into real npm tarballs, once, for `release deliver` to ship',
-        operationType: 'execute' as const,
+        describe: 'Apply an intent\'s planned mutations in a disposable worktree and return its treeSha256',
+        operationType: 'mutate' as const,
         longDescription:
-          'Produces the actual npm tarball artifacts for a flow\'s already-committed package.json versions ' +
-          '— no re-bump, no rebuild. Writes a manifest.json (name/version/tarball/sha256) alongside the tarballs. ' +
-          'Intended to run once in CI right after checking out a release tag; every `release deliver` target then ' +
-          'ships these exact bytes instead of re-packing independently. Not the same command as `release pack` ' +
-          '(that one verifies proposed packages before a release is decided; this one packs an already-decided one).',
+          'Creates a one-shot git worktree detached at the intent\'s plannedCommit, applies only the planned '
+          + 'version, changelog and internal dependency mutations there, and returns treeSha256 — the digest of '
+          + 'the tree the release artifacts will actually be built from. `master` and the primary working tree are '
+          + 'never touched, so an abandoned or rejected release costs a temp directory and nothing else. The '
+          + 'derived mutation set is checked against the intent\'s mutationSha256 before anything is written.',
 
         handler: './cli/commands/stage.js#default',
 
         flags: defineCommandFlags({
-          'release-tag': { type: 'string', description: 'Git tag to resolve {flow, channel} from (via release.flows[*].tagPattern) — alternative to --flow' },
-          flow: { type: 'string', description: 'Named flow — selects packages the same way `release run --flow` does (e.g. excludes sdk from platform)' },
-          'out-dir': { type: 'string', description: 'Output directory for tarballs + manifest.json (default: .kb/release/artifacts)' },
+          intent: { type: 'string', description: 'Path to the intent.json `release plan` produced' },
+          changelogs: { type: 'string', description: 'JSON file mapping worktree-relative target path to the frozen changelog file' },
+          discard: { type: 'boolean', description: 'Destroy this candidate\'s staging worktree and forget its state' },
           json: { type: 'boolean', description: 'Output in JSON format' },
         }),
 
         examples: [
-          'kb release stage --flow platform',
-          'kb release stage --release-tag platform-v2.105.0',
-          'kb release stage --flow sdk --out-dir .kb/release/artifacts',
+          'kb release stage --intent .kb/release/intent.json --json',
+          'kb release stage --intent .kb/release/intent.json --discard',
+        ],
+      },
+
+      // release:package - Produce the release's exact bytes from the staged tree
+      {
+        path: 'release package',
+        category: 'Publish',
+        describe: 'Package the intent\'s exact package set from the staged worktree into a bundle directory',
+        operationType: 'execute' as const,
+        longDescription:
+          'Packs tarballs (and copies selected binaries) from the staged worktree into --out. Operates only on '
+          + 'the intent\'s exact package set and rejects a tree digest different from the staged treeSha256, a '
+          + 'changed package list, or a version mismatch between the intent and the staged tree. Produces a '
+          + 'packaging record for `release seal`; it is not yet a sealed bundle.',
+
+        handler: './cli/commands/package.js#default',
+
+        flags: defineCommandFlags({
+          intent: { type: 'string', description: 'Path to the same intent.json `release stage` was run with' },
+          out: { type: 'string', description: 'Bundle directory to write tarballs and binaries into' },
+          'binaries-dir': { type: 'string', description: 'Directory holding built binaries to ship inside the bundle' },
+          'binary-checksums': { type: 'string', description: 'GoReleaser checksums file, normalized into the binary manifest' },
+          'binary-repository': { type: 'string', description: 'owner/repo the binary release assets belong to' },
+          'binary-release-tag': { type: 'string', description: 'Release tag the binary assets were published under' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release package --intent .kb/release/intent.json --out .kb/release/bundle --json',
+        ],
+      },
+
+      // release:seal - Build the index and graph, then seal the bundle
+      {
+        path: 'release seal',
+        category: 'Publish',
+        describe: 'Build the release index and compatibility graph over packaged artifacts and seal the bundle',
+        operationType: 'execute' as const,
+        longDescription:
+          'Reads the exact local artifacts, builds the compatibility graph and the release index over them, and '
+          + 'writes provenance.json plus the canonical bundle.json carrying bundleSha256. Provenance carries no '
+          + 'releaseCommit: the commit does not exist yet at sealing time, so the binding runs the other way and '
+          + '`release commit` checks the commit it creates against provenance.treeSha256. Sealing runs the full '
+          + 'bundle verifier over its own output and fails rather than returning a bundle `release verify-bundle` '
+          + 'would reject.',
+
+        handler: './cli/commands/seal.js#default',
+
+        flags: defineCommandFlags({
+          bundle: { type: 'string', description: 'Bundle directory `release package` wrote' },
+          channel: { type: 'string', description: 'Channel label recorded in the release index (default: canary)' },
+          registry: { type: 'string', description: 'Registry the index resolves tarball URLs against' },
+          'platform-package': { type: 'string', description: 'Package carrying the platform version line (default: @kb-labs/core-runtime)' },
+          'sdk-package': { type: 'string', description: 'Package carrying the SDK version line (default: @kb-labs/sdk)' },
+          'platform-requires': { type: 'string', description: 'Comma-separated capabilities the platform requires at install time' },
+          'platform-member-packages': { type: 'string', description: 'Comma-separated packages that must travel with the platform' },
+          'platform-adapter-config': { type: 'string', description: 'JSON adapter map sealed into the platform configuration' },
+          'platform-adapter-options': { type: 'string', description: 'JSON adapter options sealed into the platform configuration' },
+          'sealer-bin': { type: 'string', description: 'Prebuilt kb-create-release-index binary (defaults to `go run` in tools/kb-create)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release seal --bundle .kb/release/bundle --json',
+          'kb release seal --bundle /tmp/b --channel canary --json',
+        ],
+      },
+
+      // release:commit - Bind a real commit to an already-sealed bundle
+      {
+        path: 'release commit',
+        category: 'Publish',
+        describe: 'Create the release commit from the staged worktree and bind it to the sealed bundle\'s tree digest',
+        operationType: 'mutate' as const,
+        longDescription:
+          'Creates the release commit (and optionally its annotated tag) inside the same staged worktree the '
+          + 'bundle was built in, then refuses the result unless the new commit\'s tree digest equals the sealed '
+          + 'provenance.treeSha256 — which is what proves the commit describes the bytes that were actually built '
+          + 'and verified. Conceptually runs only after approval; the approval gate itself belongs to Workflow.',
+
+        handler: './cli/commands/commit.js#default',
+
+        flags: defineCommandFlags({
+          bundle: { type: 'string', description: 'Sealed bundle directory the commit must match' },
+          tag: { type: 'string', description: 'Annotated tag to anchor the release commit (omitted means commit only)' },
+          message: { type: 'string', description: 'Commit message override' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release commit --bundle .kb/release/bundle --json',
+          'kb release commit --bundle .kb/release/bundle --tag platform-v2.119.0',
         ],
       },
 
@@ -334,15 +425,16 @@ export const manifest = {
         ],
       },
 
-      // release:deliver - Ship a `release stage`d artifact to a target (npm)
+      // release:deliver - Ship a verified sealed bundle to a target (npm)
       {
         path: 'release deliver',
         category: 'Publish',
-        describe: 'Ship the tarballs `release stage` already packed to a target — no packing, no rebuild',
+        describe: 'Ship a verified sealed bundle\'s exact tarballs to a target — no packing, no rebuild',
         operationType: 'execute' as const,
         longDescription:
-          'CI-side half of the "plugin prepares, CI delivers" release flow: reads manifest.json written by ' +
-          '`release stage` and ships those exact tarballs to --target (only "npm" is implemented this pass). ' +
+          'CI-side half of the "plugin prepares, CI delivers" release flow: verifies the sealed bundle at ' +
+          '--bundle and ships exactly the tarballs its provenance lists to --target (only "npm" is implemented ' +
+          'this pass). An unverified manifest path is never accepted as a release decision. ' +
           'Resolves {flow, channel} from --release-tag via release.flows[*].tagPattern so CI never needs to ' +
           'guess the flow itself — just pass the tag. Verifies the delivery against the real registry ' +
           'afterwards (with retry, since real npm has propagation lag); never attempts npm unpublish on a ' +
@@ -354,7 +446,8 @@ export const manifest = {
           'release-tag': { type: 'string', description: 'Git tag to resolve {flow, channel} from (via release.flows[*].tagPattern) — alternative to --flow' },
           flow: { type: 'string', description: 'Named flow — alternative to --release-tag' },
           target: { type: 'string', choices: ['npm'] as const, description: 'Delivery target (default: npm — the only target implemented this pass)' },
-          'artifacts-dir': { type: 'string', description: 'Where `release stage` wrote tarballs + manifest.json (default: .kb/release/artifacts)' },
+          bundle: { type: 'string', description: 'Sealed bundle directory produced by `release package` + `release seal`' },
+          'expected-sha256': { type: 'string', description: 'bundleSha256 the approval was granted over — rejects a differently-sealed bundle' },
           tag: { type: 'string', description: 'npm dist-tag override (default: config.publish.stableTag, falls back to "latest")' },
           registry: { type: 'string', description: 'Registry override (default: config.publish.npmRegistry, falls back to real npm)' },
           otp: { type: 'string', description: 'One-time password (optional, will prompt if needed)' },
@@ -369,9 +462,9 @@ export const manifest = {
         }),
 
         examples: [
-          'kb release deliver --release-tag platform-v2.105.0 --target npm',
-          'kb release deliver --flow sdk --target npm',
-          'kb release deliver --release-tag sdk-v3.2.0 --dry-run',
+          'kb release deliver --release-tag platform-v2.105.0 --bundle .kb/release/bundle --target npm',
+          'kb release deliver --flow sdk --bundle .kb/release/bundle --target npm',
+          'kb release deliver --flow sdk --bundle .kb/release/bundle --dry-run',
         ],
       },
 
