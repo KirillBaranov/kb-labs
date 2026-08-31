@@ -15,6 +15,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { releaseGraphNodeKey } from '@kb-labs/release-manager-contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildReleaseIndex, type StagedArtifactRef } from '../bundle/release-index.js';
@@ -86,7 +87,7 @@ describe('buildReleaseIndex', () => {
     ];
 
     const result = buildReleaseIndex(staged, {
-      channel: 'canary',
+      releaseId: 'platform-2.0.0',
       workDir: join(root, 'work'),
       binaries: [{
         id: 'kb-create', os: 'linux', arch: 'amd64',
@@ -106,16 +107,46 @@ describe('buildReleaseIndex', () => {
     });
 
     const index = result.export;
-    expect(index.compatibility.schema).toBe('kb.release-compatibility/2');
-    expect(index.compatibility.labels.map(({ id, kind, artifactId, version }) => ({ id, kind, artifactId, version })))
-      .toEqual([
-        { id: 'platform@2.0.0', kind: 'platform', artifactId: 'platform', version: '2.0.0' },
-        { id: 'sdk@2.0.0', kind: 'sdk', artifactId: 'sdk', version: '2.0.0' },
-        { id: 'binary:kb-create@2.0.0:linux/amd64', kind: 'binary', artifactId: 'kb-create', version: '2.0.0' },
-      ]);
-    expect(index.compatibility.labels[0]!.requires)
-      .toEqual([{ label: 'sdk@2.0.0', constraint: '>=2.0.0 <3.0.0' }]);
-    expect(index.channels.canary).toBe('2.0.0');
+    // The export carries the compatibility *graph* the Go catalog reads, and no
+    // channel map: a channel is resolved outside the sealed index.
+    expect(index.compatibility.schema).toBe('kb.release-compatibility/3');
+    expect(index).not.toHaveProperty('channels');
+    expect(index.releaseId).toBe('platform-2.0.0');
+    expect(index.compatibility.nodes.map(releaseGraphNodeKey)).toEqual([
+      'package:@kb-labs/adapters-openai@2.0.0',
+      'package:@kb-labs/adapters-pino@2.0.0',
+      'package:@kb-labs/adapters-service-transport-http@2.0.0',
+      'package:@kb-labs/adapters-sqlite@2.0.0',
+      'package:@kb-labs/commit-entry@2.0.0',
+      'package:@kb-labs/core-contracts@2.0.0',
+      'package:@kb-labs/core-runtime@2.0.0',
+      'package:@kb-labs/sdk@2.0.0',
+      'package:@kb-labs/workflow-daemon@2.0.0',
+      'binary:kb-create@2.0.0:linux/amd64',
+    ]);
+
+    // The SDK's declared peer range is the one real constraint edge; the binary
+    // provides the platform it was built for.
+    expect(index.compatibility.edges).toContainEqual({
+      from: 'package:@kb-labs/sdk@2.0.0',
+      to: 'package:@kb-labs/core-runtime@2.0.0',
+      kind: 'requires',
+      range: '>=2.0.0 <3.0.0',
+    });
+    expect(index.compatibility.edges).toContainEqual({
+      from: 'binary:kb-create@2.0.0:linux/amd64',
+      to: 'package:@kb-labs/core-runtime@2.0.0',
+      kind: 'provides',
+      range: '2.0.0',
+    });
+    expect(index.compatibility.profiles.map(profile => profile.id)).toEqual(['linux-amd64']);
+    expect(result.sdkPeerRange).toBe('>=2.0.0 <3.0.0');
+
+    // The graph handed back for `provenance.json` is the same one that was
+    // sealed into the index, only without the schema stamp.
+    const { schema: _schema, ...sealedGraph } = index.compatibility;
+    expect(result.graph).toEqual(sealedGraph);
+
     expect(index.plugins[0]!.id).toBe('commit');
 
     const platform = index.platforms[0] as Record<string, never> & {
@@ -170,7 +201,7 @@ describe('buildReleaseIndex', () => {
     ];
 
     expect(() => buildReleaseIndex(staged, {
-      channel: 'canary',
+      releaseId: 'platform-2.0.0',
       workDir: join(root, 'work'),
       platformAdapterConfig: { cache: '@kb-labs/adapters-redis' },
     })).toThrow(/configured platform adapter @kb-labs\/adapters-redis is absent/);
@@ -183,7 +214,7 @@ describe('buildReleaseIndex', () => {
       artifact(root, '@kb-labs/sdk', '2.155.2', '', { peerDependencies: { '@kb-labs/core-runtime': '<2.150.0' } }),
     ];
 
-    expect(() => buildReleaseIndex(staged, { channel: 'canary', workDir: join(root, 'work') }))
+    expect(() => buildReleaseIndex(staged, { releaseId: 'platform-2.0.0', workDir: join(root, 'work') }))
       .toThrow(/rejects @kb-labs\/core-runtime@2\.155\.2/);
   });
 
@@ -195,7 +226,7 @@ describe('buildReleaseIndex', () => {
     ];
 
     expect(() => buildReleaseIndex(staged, {
-      channel: 'canary',
+      releaseId: 'platform-2.0.0',
       workDir: join(root, 'work'),
       platformMemberPackages: ['@kb-labs/cli-bin'],
     })).toThrow(/required platform member @kb-labs\/cli-bin is absent/);
@@ -208,7 +239,7 @@ describe('buildReleaseIndex', () => {
       artifact(root, '@kb-labs/sdk', '2.0.0', ''),
     ];
 
-    expect(() => buildReleaseIndex(staged, { channel: 'canary', workDir: join(root, 'work') }))
+    expect(() => buildReleaseIndex(staged, { releaseId: 'platform-2.0.0', workDir: join(root, 'work') }))
       .toThrow(/does not declare a peer dependency/);
   });
 });

@@ -29,7 +29,6 @@ import {
   type ReleaseBundleProvenance,
 } from '@kb-labs/release-manager-contracts';
 
-import { buildCompatibilityGraph } from './graph.js';
 import { readPackagingRecord, PACKAGING_FILE, type PackagingRecord } from './package.js';
 import { buildReleaseIndex, type ReleaseIndexExport, type StagedArtifactRef } from './release-index.js';
 import { verifyBundleDirectory, type BundleVerificationReport } from '../verify-bundle.js';
@@ -79,7 +78,11 @@ export function kbCreateReleaseIndexSealer(options: KbCreateSealerOptions = {}):
 
 export interface SealBundleOptions {
   bundleDir: string;
-  /** Channel label recorded in the index; the channel *model* lands in a later PR. */
+  /**
+   * Channel label recorded in `provenance.json` only. The sealed release index
+   * is deliberately channel-independent: a channel is a pointer resolved
+   * outside the index, never a field the index itself carries.
+   */
   channel: string;
   registry?: string;
   platformPackage?: string;
@@ -137,7 +140,7 @@ export function sealBundle(options: SealBundleOptions): SealBundleResult {
   let index: ReturnType<typeof buildReleaseIndex>;
   try {
     index = buildReleaseIndex(stagedRefs(bundleDir, record), {
-      channel: options.channel,
+      releaseId: record.releaseId,
       registry: options.registry,
       platformPackage,
       sdkPackage,
@@ -168,13 +171,6 @@ export function sealBundle(options: SealBundleOptions): SealBundleResult {
 
   const indexPath = resolve(bundleDir, RELEASE_INDEX_FILE);
   const indexSha256 = sha256File(indexPath);
-
-  const sdkPeerRange = (index.export.compatibility.labels[0] as {
-    requires?: Array<{ constraint?: string }>;
-  }).requires?.[0]?.constraint;
-  if (!sdkPeerRange) {
-    throw new Error('release index carries no platform→sdk compatibility constraint');
-  }
 
   const tarballByName = new Map(record.packages.map(pkg => [pkg.name, pkg] as const));
 
@@ -219,18 +215,8 @@ export function sealBundle(options: SealBundleOptions): SealBundleResult {
       version: index.platformVersion,
       channelLabel: options.channel,
     },
-    graph: buildCompatibilityGraph({
-      packages: index.classifications,
-      binaries: record.binaries.map(binary => ({
-        id: binary.id, os: binary.os, arch: binary.arch, version: index.platformVersion,
-      })),
-      platformPackage,
-      platformVersion: index.platformVersion,
-      sdkPackage,
-      sdkVersion: index.sdkVersion,
-      sdkPeerRange,
-      memberPackages: options.platformMemberPackages ?? [],
-    }),
+    // The very graph the index was sealed with, not a second computation of it.
+    graph: index.graph,
   };
 
   const provenance = ReleaseBundleProvenanceSchema.parse(provenanceDraft);

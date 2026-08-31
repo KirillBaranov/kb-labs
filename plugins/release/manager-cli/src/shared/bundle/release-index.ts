@@ -24,7 +24,10 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { ReleasePackageClassification } from '@kb-labs/release-manager-contracts';
+import type {
+  ReleaseCompatibilityGraph,
+  ReleasePackageClassification,
+} from '@kb-labs/release-manager-contracts';
 import semver from 'semver';
 
 import {
@@ -34,6 +37,16 @@ import {
   type PackageManifest,
 } from './artifact-manifest.js';
 import type { NormalizedBinary } from './binary-manifest.js';
+import { buildCompatibilityGraph } from './graph.js';
+
+/**
+ * Schema stamp for the compatibility graph carried by the export.
+ *
+ * It must stay byte-identical to `catalog.CompatibilityGraphSchema` in
+ * `tools/kb-create/v2/catalog/graph.go`: the Go reader rejects any other value
+ * outright, since there is no legacy graph reader.
+ */
+export const RELEASE_COMPATIBILITY_GRAPH_SCHEMA = 'kb.release-compatibility/3';
 
 export interface StagedArtifactRef {
   name: string;
@@ -44,7 +57,12 @@ export interface StagedArtifactRef {
 }
 
 export interface ReleaseIndexOptions {
-  channel: string;
+  /**
+   * The release this index describes. It replaces the old `channels` map: a
+   * channel is an externally resolved pointer at the descriptor layer, never a
+   * field a sealed, immutable index can rewrite.
+   */
+  releaseId: string;
   registry?: string;
   platformPackage?: string;
   sdkPackage?: string;
@@ -74,11 +92,13 @@ export interface ReleaseIndexComponent {
 }
 
 export interface ReleaseIndexExport {
-  channels: Record<string, string>;
-  compatibility: {
-    schema: 'kb.release-compatibility/2';
-    labels: Array<Record<string, unknown>>;
-  };
+  releaseId: string;
+  /**
+   * The compatibility *graph* — the same object that lands in
+   * `provenance.json`, plus the schema stamp the Go catalog reader requires.
+   * Version 2's flat label matrix is gone in both languages.
+   */
+  compatibility: ReleaseCompatibilityGraph & { schema: typeof RELEASE_COMPATIBILITY_GRAPH_SCHEMA };
   platforms: Array<Record<string, unknown>>;
   sdks: ReleaseIndexComponent[];
   plugins: Array<ReleaseIndexComponent & { requires: Array<{ capability: string; requiredBy: string }> }>;
@@ -97,6 +117,14 @@ export interface BuildReleaseIndexResult {
   manifestRoot: string;
   platformVersion: string;
   sdkVersion: string;
+  /**
+   * The compatibility graph the export carries, handed back unstamped so
+   * `provenance.json` records the very same object rather than recomputing a
+   * second graph that could drift from the sealed one.
+   */
+  graph: ReleaseCompatibilityGraph;
+  /** The SDK's declared peer range on the platform — the one real constraint. */
+  sdkPeerRange: string;
   classifications: ClassifiedPackage[];
   services: Array<{ id: string; packageName: string; command: string; port: number; dependsOn: string[]; required: true }>;
 }
@@ -314,40 +342,25 @@ export function buildReleaseIndex(
     throw new Error(`${sdkPackage}@${sdk.version} rejects ${platformPackage}@${platformVersion}: ${sdkPlatformRange}`);
   }
 
-  const validatedByPackage = ['stage', 'package-manifest', 'artifact-hash', 'sdk-peer-dependency'];
+  // One graph, built once, from the classifications and binaries this very
+  // index was built from. `provenance.json` gets the same object back through
+  // the result, so the sealed index and the bundle's provenance cannot drift.
+  const graph = buildCompatibilityGraph({
+    packages: classifications,
+    binaries: binaries.map(binary => ({
+      id: binary.id, os: binary.os, arch: binary.arch, version: platformVersion,
+    })),
+    platformPackage,
+    platformVersion,
+    sdkPackage,
+    sdkVersion: sdk.version,
+    sdkPeerRange: sdkPlatformRange,
+    memberPackages,
+  });
+
   const indexExport: ReleaseIndexExport = {
-    channels: { [options.channel]: platformVersion },
-    compatibility: {
-      schema: 'kb.release-compatibility/2',
-      labels: [
-        {
-          id: `platform@${platformVersion}`,
-          kind: 'platform',
-          artifactId: 'platform',
-          version: platformVersion,
-          requires: [{ label: `sdk@${sdk.version}`, constraint: sdkPlatformRange }],
-          status: 'prepared',
-          validatedBy: validatedByPackage,
-        },
-        {
-          id: `sdk@${sdk.version}`,
-          kind: 'sdk',
-          artifactId: 'sdk',
-          version: sdk.version,
-          status: 'prepared',
-          validatedBy: validatedByPackage,
-        },
-        ...binaries.map(binary => ({
-          id: `binary:${binary.id}@${platformVersion}:${binary.os}/${binary.arch}`,
-          kind: 'binary',
-          artifactId: binary.id,
-          version: platformVersion,
-          requires: [{ label: `platform@${platformVersion}` }, { label: `sdk@${sdk.version}` }],
-          status: 'prepared',
-          validatedBy: ['release-asset', 'artifact-hash', 'post-publish-smoke'],
-        })),
-      ],
-    },
+    releaseId: options.releaseId,
+    compatibility: { schema: RELEASE_COMPATIBILITY_GRAPH_SCHEMA, ...graph },
     platforms: [{
       id: 'platform',
       version: platformVersion,
@@ -399,6 +412,8 @@ export function buildReleaseIndex(
     manifestRoot,
     platformVersion,
     sdkVersion: sdk.version,
+    graph,
+    sdkPeerRange: sdkPlatformRange,
     classifications,
     services,
   };
