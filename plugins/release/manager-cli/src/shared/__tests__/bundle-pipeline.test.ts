@@ -8,16 +8,18 @@
  * that is observable through a mocked filesystem.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+import { releaseGraphNodeKey } from '@kb-labs/release-manager-contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { commitSealedBundle } from '../bundle/commit.js';
 import { loadCandidateIntent } from '../bundle/intent.js';
 import { packageStagedBundle } from '../bundle/package.js';
-import { sealBundle } from '../bundle/seal.js';
+import { kbCreateReleaseIndexSealer, sealBundle } from '../bundle/seal.js';
 import { discardStaging, stageRelease } from '../bundle/stage.js';
 import { readStageState } from '../bundle/stage-state.js';
 import { verifyBundleDirectory } from '../verify-bundle.js';
@@ -289,4 +291,65 @@ describe('release bundle producer', () => {
     expect(() => sealBundle({ ...SEAL_OPTIONS, bundleDir, indexSealer: created.indexSealer }))
       .toThrow(/sealed bundle fails verification/);
   });
+
+  /**
+   * The cross-language regression signal.
+   *
+   * Every other case here uses the deterministic stand-in sealer, which accepts
+   * whatever shape the plugin hands it. This one runs the *real* Go sealer and
+   * then reads its output back through the launcher's only reader, so a plugin
+   * export that the Go catalog cannot decode fails here rather than in a
+   * release.
+   */
+  it('BP-12: the export the plugin builds seals and reads back through the real Go catalog', () => {
+    if (spawnSync('go', ['version']).status !== 0) {
+      // A Go toolchain is not a prerequisite for the plugin's own test suite;
+      // CI runs kb-create's Go tests alongside it and always has one.
+      return;
+    }
+
+    const kbCreateDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../../tools/kb-create');
+    expect(existsSync(join(kbCreateDir, 'go.mod'))).toBe(true);
+
+    const created = fixture();
+    const bundleDir = join(created.repoRoot, '..', 'bundle');
+    const { intent, intentSha256 } = loadCandidateIntent(created.intentPath);
+    const staged = stageRelease({ repoRoot: created.repoRoot, intent, intentSha256, stagedAt: SEALED_AT });
+    packageStagedBundle({
+      intent, intentSha256, state: staged.state, outDir: bundleDir, tarballer: created.tarballer,
+      binaries: { dir: created.binariesDir, binaries: created.binaries },
+    });
+
+    const sealed = sealBundle({
+      ...SEAL_OPTIONS,
+      bundleDir,
+      indexSealer: kbCreateReleaseIndexSealer({ kbCreateDir }),
+    });
+
+    const index = JSON.parse(readFileSync(join(bundleDir, 'release-index.json'), 'utf8')) as {
+      schema: string;
+      digest: string;
+      releaseId: string;
+      channels?: unknown;
+      compatibility: { schema: string; nodes: Array<{ id: string; kind: 'package' | 'binary'; version: string; os?: string; arch?: string }> };
+    };
+
+    expect(index.schema).toBe('kb.create.release-index/v2');
+    expect(index.digest).toMatch(/^[a-f0-9]{64}$/);
+    expect(index.releaseId).toBe(FIXTURE_RELEASE_ID);
+    // A channel is an externally resolved pointer; the sealed index carries none.
+    expect(index.channels).toBeUndefined();
+    expect(index.compatibility.schema).toBe('kb.release-compatibility/3');
+
+    // The index and the bundle's provenance describe one graph, not two.
+    expect(index.compatibility.nodes.map(releaseGraphNodeKey))
+      .toEqual(sealed.provenance.graph.nodes.map(releaseGraphNodeKey));
+
+    // Read back exactly as the launcher does: schema probe, digest verification,
+    // catalog validation and compatibility-graph validation.
+    const verified = spawnSync('go', [
+      'run', './v2/cmd/kb-create-release-index', '--verify', join(bundleDir, 'release-index.json'),
+    ], { cwd: kbCreateDir, encoding: 'utf8' });
+    expect(`${verified.status} ${verified.stderr}`.trim()).toBe('0');
+  }, 300_000);
 });
