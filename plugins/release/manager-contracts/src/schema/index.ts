@@ -5,3 +5,4 @@
 
 export * from './rest.schema';
 export * from './release-control-plane.schema';
+export * from './release-ledger.schema';

@@ -134,6 +134,7 @@ async function _runPipeline(ctx: {
     flow,                                     // already includes defaultFlow fallback
     bumpOverride: config.bump as VersionBump | undefined,
     channel,
+    ...(options.allocatedVersion ? { allocatedVersion: options.allocatedVersion } : {}),
   });
 
   if (plan.packages.length === 0) {
@@ -283,9 +284,13 @@ async function _runPipeline(ctx: {
     progress('verifying', 'Package artifacts verified');
   }
 
-  // 6. Version bump — canary never persists its computed version to
-  // package.json/git; it publishes the in-memory nextVersion directly.
-  if (channel === 'stable') {
+  // 6. Version bump.
+  //
+  // Cutover plan §3 removed the in-memory canary version: every channel now
+  // releases a final, ledger-allocated SemVer that IS persisted to
+  // package.json and committed, because promotion to stable moves the same
+  // bytes rather than republishing under a new name.
+  {
     progress('versioning', 'Updating package versions...');
     if (!dryRun) {
       const versionUpdates = await updatePackageVersions(plan);
@@ -306,11 +311,11 @@ async function _runPipeline(ctx: {
     }
   }
 
-  // 7. Changelog — skipped for canary: there's nothing to changelog against a
-  // registry-only prerelease, and writing CHANGELOG.md would leave dirty,
-  // uncommitted files behind since canary never runs the git stage either.
+  // 7. Changelog. A canary is a real release with a real version, so it gets
+  // real release notes — those exact bytes are what a later stable promotion
+  // publishes, unchanged.
   let changelogMd = '';
-  if (changelogGen && channel === 'stable') {
+  if (changelogGen) {
     progress('versioning', 'Generating changelog...');
     try {
       changelogMd = await changelogGen.generate(plan, { repoRoot, gitCwd: scopeCwd, config, flow });
@@ -373,12 +378,10 @@ async function _runPipeline(ctx: {
     };
   }
 
-  // 8b. Write checkpoint after successful publish — enables git-only retry on failure.
-  // Skipped for canary: there's no git step to resume into, and canary versions
-  // are deterministic per (base version, shortSha) so retries are naturally
-  // idempotent via the publisher's already-published handling. Skipped for
-  // skipPublish: nothing was published, there's nothing to check-point.
-  if (!dryRun && !skipPublish && channel === 'stable') {
+  // 8b. Write checkpoint after successful publish — enables git-only retry on
+  // failure. Skipped for skipPublish: nothing was published, there's nothing
+  // to check-point.
+  if (!dryRun && !skipPublish) {
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const cpVersion = uniqueVersions.size === 1 ? plan.packages[0]!.nextVersion : 'independent';
     writeCheckpoint(repoRoot, {
@@ -398,10 +401,9 @@ async function _runPipeline(ctx: {
   // published to — a hard invariant for stable releases (not opt-in): confirms
   // each package actually landed and re-runs the same static checks against
   // what the registry served back, catching publish-time corruption distinct
-  // from pre-publish source issues. Canary skips this — it never goes through
-  // a Verdaccio pre-promote gate. skipPublish skips it too — nothing landed
-  // on any registry this run; `kb release promote` verifies its own publish.
-  if (!dryRun && !skipPublish && channel === 'stable') {
+  // from pre-publish source issues. skipPublish skips it — nothing landed on
+  // any registry this run; `kb release promote` verifies its own publish.
+  if (!dryRun && !skipPublish) {
     progress('verifying', 'Verifying published artifacts against the registry...');
     const registryVerifyResults = await verifyAgainstRegistry(packagesToPublish, {
       registry: publishRegistry,
@@ -424,11 +426,11 @@ async function _runPipeline(ctx: {
     }
   }
 
-  // 9. Git commit + tag — only after all packages are on npm.
-  // Canary never runs this: its version is never persisted to package.json,
-  // so there's nothing meaningful to commit or tag.
+  // 9. Git commit + tag — only after all packages are on npm. Every channel
+  // reaches here now: a canary's version is committed exactly like a stable
+  // one, which is the precondition for byte-identical promotion.
   let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
-  if (!dryRun && channel === 'stable') {
+  if (!dryRun) {
     progress('verifying', 'Committing and tagging release...');
     gitResult = await commitAndTagRelease({
       cwd: scopeCwd, plan, dryRun, noVerify, repoRoot,

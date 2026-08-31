@@ -4694,6 +4694,9 @@ importers:
 
   plugins/release/manager-core:
     dependencies:
+      '@kb-labs/release-manager-contracts':
+        specifier: workspace:*
+        version: link:../manager-contracts
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../../sdk/sdk

@@ -2,6 +2,8 @@
  * Core types for @kb-labs/release-manager-core
  */
 
+import type { ReleaseControlChannel } from '@kb-labs/release-manager-contracts';
+
 /** Minimal logger interface — structurally compatible with ILogger from @kb-labs/core-platform. */
 export interface PluginLogger {
   info?(message: string, meta?: Record<string, unknown>): void;
@@ -26,13 +28,24 @@ export type VersionBump = 'patch' | 'minor' | 'major' | 'auto';
 /**
  * Release track. Orthogonal to VersionBump — bump decides how much to
  * increment, channel decides which track a release ships on.
- * - 'stable': normal versioned release, committed to git, publishes to
- *   `config.registry` (typically Verdaccio for pre-promote validation).
- * - 'canary': prerelease published straight to real npm under a dist-tag,
- *   with an in-memory `-canary.<shortsha>` version that is never committed
- *   to package.json/git.
+ *
+ * There is exactly one definition of the channel set, and it lives in
+ * `@kb-labs/release-manager-contracts` next to the wire schemas that validate
+ * it (`ReleaseControlChannelSchema`). This alias exists so core keeps a
+ * domain-local name, not so it can carry a second, drifting list.
+ *
+ * Semantics (cutover plan §3):
+ * - `canary`: a release candidate that receives a **final, monotonic SemVer**
+ *   allocated from the release ledger. It is committed, published, and later
+ *   promoted to stable **byte-for-byte**. It is not a prerelease and carries no
+ *   `-canary.<sha>` suffix; the pre-cutover in-memory suffix model is gone.
+ * - `stable`: never creates a version, bytes, bundle or manifest. It moves
+ *   channel pointers onto an already-published, smoke-passed canary.
+ * - `experimental`: reserved opt-in channel. It exists in the contracts and the
+ *   transition table, but the plugin rejects it as a target in this cutover
+ *   (decision S0.3d) and it can never be promoted to stable.
  */
-export type ReleaseChannel = 'stable' | 'canary';
+export type ReleaseChannel = ReleaseControlChannel;
 
 export interface ReleaseContext {
   repo: string;
@@ -232,6 +245,13 @@ export interface ReleaseConfig {
     /** npm dist-tag for stable promote-to-npm. Default: 'latest'. */
     stableTag?: string;
     /**
+     * npm dist-tag for the reserved `experimental` channel. Default:
+     * 'experimental'. Configurable now so the tag is not a launcher-visible
+     * breaking change when the channel is turned on; nothing publishes under
+     * it in this cutover (decision S0.3d).
+     */
+    experimentalTag?: string;
+    /**
      * Real npm registry used for canary publishes and for `kb release
      * promote`. Deliberately separate from `registry` (which controls
      * where a 'stable' `release run` publishes — typically Verdaccio) so a
@@ -383,6 +403,12 @@ export interface PipelineOptions {
   /** Named flow — selects a release config profile. Packages/versioning replace global values; checks are additive. */
   flow?: string;
   config: ReleaseConfig;
+  /**
+   * Version allocated by the release ledger for this run (cutover plan §3).
+   * Overrides the bump computed from the working tree — see
+   * `PlannerOptions.allocatedVersion`.
+   */
+  allocatedVersion?: string;
   dryRun?: boolean;
   skipChecks?: boolean;
   skipBuild?: boolean;

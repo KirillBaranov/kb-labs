@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyVersionStrategy, applyCanarySuffix } from '../versioning-strategies';
+import { applyVersionStrategy, applyAllocatedVersion } from '../versioning-strategies';
 import type { PackageVersion } from '../types';
 
 function pkg(overrides: Partial<PackageVersion>): PackageVersion {
@@ -15,46 +15,45 @@ function pkg(overrides: Partial<PackageVersion>): PackageVersion {
   };
 }
 
-describe('applyCanarySuffix', () => {
-  it('suffixes the already-computed nextVersion with -canary.<shortsha>', () => {
-    const packages = [pkg({ nextVersion: '1.1.0' })];
-    const result = applyCanarySuffix(packages, 'abc1234');
-    expect(result[0]!.nextVersion).toBe('1.1.0-canary.abc1234');
+describe('applyAllocatedVersion', () => {
+  it('replaces the computed nextVersion with the version the ledger allocated', () => {
+    const result = applyAllocatedVersion([pkg({ currentVersion: '1.0.0', nextVersion: '1.0.1' })], '1.22.33');
+    expect(result[0]!.nextVersion).toBe('1.22.33');
   });
 
-  it('applies the suffix independently for patch/minor/major base versions', () => {
+  it('produces a final SemVer with no prerelease suffix — canary is promotable byte-for-byte', () => {
+    const result = applyAllocatedVersion([pkg({ nextVersion: '1.1.0' })], '1.21.0');
+    expect(result[0]!.nextVersion).not.toContain('-canary.');
+    expect(result[0]!.nextVersion).not.toContain('-');
+  });
+
+  it('collapses every package onto the one allocated version', () => {
     const packages = [
-      pkg({ name: 'a', nextVersion: '1.0.1' }),
-      pkg({ name: 'b', nextVersion: '1.1.0' }),
-      pkg({ name: 'c', nextVersion: '2.0.0' }),
+      pkg({ name: 'a', currentVersion: '1.0.0', nextVersion: '1.0.1' }),
+      pkg({ name: 'b', currentVersion: '1.0.0', nextVersion: '2.0.0' }),
     ];
-    const result = applyCanarySuffix(packages, 'deadbee');
-    expect(result.map(p => p.nextVersion)).toEqual([
-      '1.0.1-canary.deadbee',
-      '1.1.0-canary.deadbee',
-      '2.0.0-canary.deadbee',
-    ]);
+    const result = applyAllocatedVersion(packages, '2.1.0');
+    expect(result.map(p => p.nextVersion)).toEqual(['2.1.0', '2.1.0']);
   });
 
-  it('applies the same suffix to all packages after lockstep resolves a shared base version', () => {
-    const packages = [
-      pkg({ name: 'a', currentVersion: '1.0.0', nextVersion: '1.0.0', bump: 'minor' }),
-      pkg({ name: 'b', currentVersion: '1.0.0', nextVersion: '1.0.0', bump: 'major' }),
-    ];
-    const lockstepped = applyVersionStrategy(packages, { strategy: 'lockstep' });
-    const canaried = applyCanarySuffix(lockstepped, 'ffaa001');
-    expect(canaried[0]!.nextVersion).toBe(canaried[1]!.nextVersion);
-    expect(canaried[0]!.nextVersion).toBe('2.0.0-canary.ffaa001');
+  it('marks the version as pinned so lockstep cannot bump on top of the allocation', () => {
+    const result = applyAllocatedVersion([pkg({ nextVersion: '1.0.1' })], '1.5.0');
+    expect(result[0]!.versionPinned).toBe(true);
+    expect(applyVersionStrategy(result, { strategy: 'lockstep' })[0]!.nextVersion).toBe('1.5.0');
   });
 
-  it('is idempotent-shaped: re-suffixing the same base version with the same SHA reproduces the same output', () => {
-    const first = applyCanarySuffix([pkg({ nextVersion: '1.2.3' })], 'aaa1111');
-    const second = applyCanarySuffix([pkg({ nextVersion: '1.2.3' })], 'aaa1111');
-    expect(first[0]!.nextVersion).toBe(second[0]!.nextVersion);
+  it('reports the bump implied by the allocation rather than the one computed locally', () => {
+    expect(applyAllocatedVersion([pkg({ currentVersion: '1.0.0', bump: 'patch' })], '2.0.0')[0]!.bump).toBe('major');
+    expect(applyAllocatedVersion([pkg({ currentVersion: '1.0.0', bump: 'patch' })], '1.1.0')[0]!.bump).toBe('minor');
   });
 
-  it('throws when shortSha is empty', () => {
-    expect(() => applyCanarySuffix([pkg({})], '')).toThrow();
+  it('refuses an allocation that is not ahead of a package on disk — republishing an immutable version', () => {
+    expect(() => applyAllocatedVersion([pkg({ currentVersion: '2.0.0' })], '1.9.0')).toThrow(/not ahead of/);
+    expect(() => applyAllocatedVersion([pkg({ currentVersion: '2.0.0' })], '2.0.0')).toThrow(/not ahead of/);
+  });
+
+  it('rejects a non-SemVer allocation', () => {
+    expect(() => applyAllocatedVersion([pkg({})], 'latest')).toThrow(/not a valid SemVer/);
   });
 });
 
