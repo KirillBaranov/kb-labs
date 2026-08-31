@@ -1,3 +1,4 @@
+import { ReleaseControlChannelSchema } from '@kb-labs/release-manager-contracts';
 import { z } from 'zod';
 
 export const ReleasePlanSchema = z
@@ -16,7 +17,7 @@ export const ReleasePlanSchema = z
     strategy: z.string(),
     registry: z.string(),
     rollbackEnabled: z.boolean(),
-    channel: z.enum(['stable', 'canary'] as const),
+    channel: ReleaseControlChannelSchema,
   })
   .passthrough();
 

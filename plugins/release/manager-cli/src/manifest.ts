@@ -103,13 +103,17 @@ export const manifest = {
       { path: 'release', describe: 'Release management commands' },
     ],
     commands: [
-      // release:plan - Analyze changes and prepare release plan
+      // release:plan - Reserve a version and prepare a release candidate intent
       {
         path: 'release plan',
         category: 'Pipeline',
-        describe: 'Analyze changes and prepare release plan',
+        describe: 'Analyze changes, reserve a version and prepare a release candidate intent',
         operationType: 'analyze' as const,
-        longDescription: 'Detect modified packages and compute version bumps based on changes',
+        longDescription:
+          'Resolves the requested channel, allocates a final monotonic SemVer from the release version ledger '
+          + '(never reusing a version, even one that was reserved and abandoned), freezes the changelog bytes, and '
+          + 'writes the candidate intent that `release stage` consumes. `--target experimental` is rejected: the '
+          + 'channel is reserved in the contracts but has no implementation in this release contract.',
 
         handler: './cli/commands/plan.js#default',
 
@@ -122,21 +126,26 @@ export const manifest = {
             default: 'auto',
             description: 'Version bump strategy',
           },
+          target: {
+            type: 'string',
+            choices: ['canary', 'stable', 'experimental'] as const,
+            default: 'canary',
+            description:
+              'Requested release channel. canary allocates a final version; stable is a promotion, not a candidate; '
+              + 'experimental is reserved and rejected.',
+          },
           channel: {
             type: 'string',
-            choices: ['stable', 'canary'] as const,
-            default: 'stable',
-            description: 'Release channel — canary previews the -canary.<shortsha> version shape',
+            choices: ['canary', 'stable', 'experimental'] as const,
+            description: 'Deprecated alias for --target',
           },
-          json: { type: 'boolean', description: 'Print plan as JSON' },
+          json: { type: 'boolean', description: 'Print the candidate as JSON' },
         }),
 
         examples: [
-          'kb release plan',
+          'kb release plan --flow platform --target canary --json',
           'kb release plan --scope packages/*',
           'kb release plan --bump minor',
-          'kb release plan --channel canary',
-          'kb release plan --json',
         ],
       },
 
@@ -607,6 +616,61 @@ export const manifest = {
         examples: [
           'kb release verify-bundle --bundle .kb/release/bundle --json',
           'kb release verify-bundle --bundle /tmp/b --expected-sha256 <digest>',
+        ],
+      },
+
+      // release:exception:create - break-glass, replaces --skip-checks
+      {
+        path: 'release exception create',
+        category: 'Validation',
+        describe: 'Create a break-glass check exception (replaces --skip-checks)',
+        operationType: 'execute' as const,
+        longDescription:
+          'Waives named checks for one candidate. Requires a reason, an operator identity and a TTL, and writes an '
+          + 'exception document rather than flipping a flag. Creating one irreversibly forbids stable promotion of '
+          + 'that candidate — expiry does not restore eligibility. No second approval is required; the permanent '
+          + 'loss of stable eligibility is the control. CI never receives an override flag.',
+
+        handler: './cli/commands/exception.js#default',
+
+        flags: defineCommandFlags({
+          candidate: { type: 'string', description: 'Candidate id the exception applies to' },
+          flow: { type: 'string', description: 'Release flow' },
+          check: { type: 'string', array: true, description: 'Check id(s) to waive (repeatable or comma-separated)' },
+          reason: { type: 'string', description: 'Why the gate is being waived — recorded verbatim' },
+          operator: { type: 'string', description: 'Operator identity accepting the trade-off' },
+          ttlHours: { type: 'number', description: 'Exception lifetime in hours (default 24, max 168)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release exception create --flow platform --candidate platform-abc123 '
+          + '--check source.pack-clean-install --reason "registry outage, canary only" --operator kirill --ttl-hours 6',
+        ],
+      },
+
+      // release:support-policy - generate and seal kb.release-support/1
+      {
+        path: 'release support-policy',
+        category: 'Validation',
+        describe: 'Generate and seal the release support policy from the version ledger',
+        operationType: 'execute' as const,
+        longDescription:
+          'Derives supported/retired release lists from the version ledger. minimumSupported may only move forward, '
+          + 'and versions that were reserved but never activated appear in neither list. Channel resolution never '
+          + 'reads this document, so it can never block the primary install path.',
+
+        handler: './cli/commands/support-policy.js#default',
+
+        flags: defineCommandFlags({
+          flow: { type: 'string', default: 'platform', description: 'Release flow the policy covers' },
+          minimumSupported: { type: 'string', description: 'Oldest supported release id, e.g. platform-2.120.0' },
+          legacyNotice: { type: 'string', description: 'Release-owned text the launcher renders for legacy installs' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release support-policy --flow platform --minimum-supported platform-2.120.0 --json',
         ],
       },
 
