@@ -53,8 +53,11 @@ behavior.
 
 - [`task-to-pr`](.kb/workflows/task-to-pr.yaml): issue or ClickUp task → plan
   approval → implementation → review and QA loops → CI → final approval → merge.
-- [`release-prepare`](.kb/workflows/release-prepare.yml): preview → checks and
-  build → approval → changelog and versions → commit and tag → CI publish.
+- [`release`](.kb/workflows/release.yml): plan and check → stage, package and seal
+  in a disposable worktree → one human approval over the already-sealed bundle →
+  commit and tag → immutable artifact delivery → public smoke → channel activation.
+  The state lives in an append-only receipt, so a crashed run resumes by re-running
+  the same command.
 
 These are the workflows used to build and release this repository. People make the
 decisions; the workflow executes and records the repeatable work.

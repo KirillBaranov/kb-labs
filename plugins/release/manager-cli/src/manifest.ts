@@ -649,6 +649,98 @@ export const manifest = {
         ],
       },
 
+      // release:candidate — drive the candidate receipt state machine (PR 5)
+      {
+        path: 'release candidate',
+        category: 'Pipeline',
+        describe: 'Drive a release candidate receipt to its next gate or terminal state',
+        operationType: 'execute' as const,
+        longDescription:
+          'The Workflow calls this twice — before and after the approval step — with identical arguments, because '
+          + 'the receipt, not argv, knows where the operation is. It runs plan → source checks → stage → package → '
+          + 'seal → verify-bundle, renders the release map over the sealed bundle, and stops for the single human '
+          + 'approval. After `kb release approve` records that approval it continues through commit, artifact '
+          + 'delivery, public smoke and canary activation. A transient delivery failure parks the receipt in '
+          + 'needs-attention with the version intact; an artifact or functional failure rejects it and burns the '
+          + 'version. Live CI delivery adapters land in PR 6, so today only --dry-run runs end to end.',
+
+        handler: './cli/commands/candidate.js#default',
+
+        flags: defineCommandFlags({
+          flow: { type: 'string', default: 'platform', description: 'Named release flow' },
+          target: { type: 'string', default: 'canary', description: 'Requested channel; only canary is a candidate operation' },
+          receipt: { type: 'string', description: 'Existing receipt id to resume; omit to start a new operation' },
+          actor: { type: 'string', description: 'Operator identity recorded on every transition (or KB_RELEASE_ACTOR)' },
+          'dry-run': { type: 'boolean', description: 'Drive the state machine against the simulated pipeline and fake delivery plane' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release candidate --flow platform --target canary --dry-run --json',
+          'kb release candidate --receipt rcpt-platform-1.0.0-canary --dry-run --json',
+        ],
+      },
+
+      // release:approve — the one immutable approval per operation (PR 5)
+      {
+        path: 'release approve',
+        category: 'Pipeline',
+        describe: 'Record the single human approval (or refusal) for a release operation',
+        operationType: 'execute' as const,
+        longDescription:
+          'Turns a human decision into an immutable receipt transition carrying actor, time and the digest of what '
+          + 'was signed — for a candidate that is {intentSha256, bundleSha256, requestedTarget} over the already-sealed '
+          + 'bundle; for a promotion it is the sealed StablePromotionPlan digest. There is deliberately no boolean '
+          + 'input anywhere that means "approved". Refusing a candidate cancels it: the staging worktree is destroyed '
+          + 'and the reserved version is burned, and nothing has been published.',
+
+        handler: './cli/commands/approve.js#default',
+
+        flags: defineCommandFlags({
+          receipt: { type: 'string', description: 'Receipt id being decided' },
+          actor: { type: 'string', description: 'Operator identity (or KB_RELEASE_ACTOR); an approval is never anonymous' },
+          decision: { type: 'string', choices: ['approve', 'reject'] as const, default: 'approve', description: 'The decision to record' },
+          comment: { type: 'string', description: 'Free-text reason recorded on the transition' },
+          plan: { type: 'string', description: 'Sealed StablePromotionPlan JSON a promotion approval signs' },
+          intent: { type: 'string', description: 'Intent digest, when the receipt does not already carry it' },
+          'dry-run': { type: 'boolean', description: 'Act on the dry-run receipt store' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release approve --receipt rcpt-platform-1.0.0-canary --actor kirill --dry-run --json',
+          'kb release approve --receipt rcpt-platform-1.0.0-canary --actor kirill --decision reject --comment "smoke looked wrong"',
+        ],
+      },
+
+      // release:receipt — read the operational truth (PR 5)
+      {
+        path: 'release receipt',
+        category: 'Validation',
+        describe: 'Show a release receipt, or list receipts by state',
+        operationType: 'analyze' as const,
+        longDescription:
+          'Read-only view of the append-only receipt store: state, transition history with actor and time, and the '
+          + 'evidence behind each move. `--blocking` answers "why can I not promote to stable" by listing receipts '
+          + 'parked in rollback-needs-attention, which block every subsequent stable operation until reconciled.',
+
+        handler: './cli/commands/receipt.js#default',
+
+        flags: defineCommandFlags({
+          receipt: { type: 'string', description: 'Receipt id to show' },
+          state: { type: 'string', description: 'List only receipts in this state' },
+          blocking: { type: 'boolean', description: 'List receipts blocking stable promotion' },
+          'dry-run': { type: 'boolean', description: 'Read the dry-run receipt store' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release receipt --receipt rcpt-platform-1.0.0-canary --json',
+          'kb release receipt --state needs-attention',
+          'kb release receipt --blocking',
+        ],
+      },
+
       // release:support-policy - generate and seal kb.release-support/1
       {
         path: 'release support-policy',

@@ -7,7 +7,25 @@
  * bytes a candidate gets, and emits the `intent.json` that pipeline consumes.
  */
 
+/**
+ * PR 5 adds the Workflow layer on top: the receipt state machine, the single
+ * approval, the candidate saga and the stable promotion saga. It orchestrates
+ * everything below rather than duplicating it.
+ */
+
+export * from './adapters.js';
+export * from './adapters-fake.js';
+export * from './approval.js';
 export * from './changelog-freeze.js';
+export * from './journal.js';
+export * from './lease.js';
+export * from './pipeline.js';
+export * from './pipeline-simulated.js';
+export * from './receipt.js';
+export * from './receipt-file-store.js';
+export * from './saga-candidate.js';
+export * from './saga-promotion.js';
+export * from './workflow-runtime.js';
 export * from './check-executors.js';
 export * from './checks.js';
 export * from './exception.js';

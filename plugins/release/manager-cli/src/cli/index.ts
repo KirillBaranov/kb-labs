@@ -1,5 +1,8 @@
 // CLI commands exports for release plugin
+export * from './commands/approve';
+export * from './commands/candidate';
 export * from './commands/changelog';
+export * from './commands/receipt';
 export * from './commands/exception';
 export * from './commands/plan';
 export * from './commands/support-policy';
