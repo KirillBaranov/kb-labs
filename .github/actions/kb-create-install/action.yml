@@ -1,9 +1,24 @@
 name: 'KB Labs CLI Install'
 description: >-
-  Applies a sealed V2 release index with the published kb-create binary and a
-  non-interactive request. The same request contract is used by CI, agents and
-  the human wizard.
+  Installs the KB Labs platform in CI through the published release control
+  plane: the launcher is bootstrapped from a channel pointer and resolves the
+  release the same way a human installation does. The same request contract is
+  used by CI, agents and the human wizard.
 author: 'KB Labs'
+
+# Before the release control-plane cutover this action took `release-index:
+# <path>` and ran `kb-create apply --index`. That input is gone. It required the
+# caller to already possess a sealed index, which meant either a workspace
+# checkout or an artifact hand-carried between jobs — exactly the "local-index-only
+# UX" the cutover deleted (deletion checklist §11). A consumer repository has
+# neither, and the flag would have broken the moment the launcher stopped
+# accepting it.
+#
+# `--index` still exists on the launcher, but as a deliberate exact/offline
+# escape hatch with no fallback relationship to remote resolution. This action
+# does not expose it: a CI job that wants a specific release names it with
+# `platform-version`, which is resolved through the same published documents and
+# is subject to the support policy.
 
 inputs:
   plugins:
@@ -11,9 +26,28 @@ inputs:
       Comma-separated V2 plugin IDs, each optionally pinned to an exact version.
     required: false
     default: ''
-  release-index:
-    description: 'Path to the sealed kb.create.release-index/v2 JSON.'
-    required: true
+  platform-channel:
+    description: >-
+      Release channel to install from: stable, canary or experimental. Resolving
+      the channel pointer is itself the statement that the release is supported,
+      so this path does not read the support policy and cannot be blocked by that
+      document being unavailable.
+    required: false
+    default: 'stable'
+  platform-version:
+    description: >-
+      Exact platform version, e.g. "2.119.0". Overrides platform-channel when
+      set. This path reads the published support policy and fails closed when it
+      cannot be read — an exact version carries no channel pointer vouching for
+      it.
+    required: false
+    default: ''
+  release-base:
+    description: >-
+      Trusted release endpoint publishing channel pointers, release descriptors
+      and the support policy. Override only to target a non-production namespace.
+    required: false
+    default: 'https://releases.kb-labs.dev'
   project-dir:
     description: 'Project root receiving the user-owned V2 config pointer.'
     required: false
@@ -32,17 +66,6 @@ inputs:
     description: 'npm registry URL override (e.g. for a local Verdaccio in CI).'
     required: false
     default: ''
-  version:
-    description: >-
-      KB Labs binaries release tag to install kb-create from (e.g.
-      "v2.105.0-binaries"). Defaults to the repo''s latest non-prerelease
-      release.
-    required: false
-    default: 'latest'
-  repo:
-    description: 'GitHub "owner/repo" to download the kb-create binary from.'
-    required: false
-    default: 'kb-labs-team/kb-labs'
 
 outputs:
   platform-dir:
@@ -51,58 +74,33 @@ outputs:
   config-path:
     description: 'Path to the generated kb.config.jsonc.'
     value: ${{ steps.install.outputs.config-path }}
+  release-id:
+    description: 'The exact release the launcher resolved and installed.'
+    value: ${{ steps.install.outputs.release-id }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Resolve OS/Arch
-      id: platform
-      shell: bash
-      run: |
-        set -euo pipefail
-        os="$(uname -s)"
-        arch="$(uname -m)"
-        case "$os" in
-          Linux)  goos=linux ;;
-          Darwin) goos=darwin ;;
-          MINGW*|MSYS*|CYGWIN*) goos=windows ;;
-          *) echo "::error::Unsupported OS: $os"; exit 1 ;;
-        esac
-        case "$arch" in
-          x86_64|amd64) goarch=amd64 ;;
-          aarch64|arm64) goarch=arm64 ;;
-          *) echo "::error::Unsupported architecture: $arch"; exit 1 ;;
-        esac
-        if [ "$goos" = "windows" ] && [ "$goarch" = "arm64" ]; then
-          echo "::error::windows/arm64 is not published (see .goreleaser.yaml ignore list)"
-          exit 1
-        fi
-        echo "goos=$goos" >> "$GITHUB_OUTPUT"
-        echo "goarch=$goarch" >> "$GITHUB_OUTPUT"
-        ext=""
-        [ "$goos" = "windows" ] && ext=".exe"
-        echo "ext=$ext" >> "$GITHUB_OUTPUT"
-
-    - name: Download kb-create
+    # The launcher is bootstrapped by the same public script a human runs, from
+    # the same endpoint, speaking the same pointer -> descriptor protocol. There
+    # is no CI-specific download path: a CI-only bootstrap is a second installer
+    # that can drift from the documented one without anyone noticing.
+    #
+    # Windows is not handled here because it is not supported (decision S0.3c);
+    # a windows runner fails inside install.sh with a typed diagnostic naming the
+    # four supported targets.
+    - name: Bootstrap the kb-create launcher
       shell: bash
       env:
-        REPO: ${{ inputs.repo }}
-        VERSION: ${{ inputs.version }}
-        GOOS: ${{ steps.platform.outputs.goos }}
-        GOARCH: ${{ steps.platform.outputs.goarch }}
-        EXT: ${{ steps.platform.outputs.ext }}
+        RELEASE_BASE: ${{ inputs.release-base }}
+        PLATFORM_CHANNEL: ${{ inputs.platform-channel }}
       run: |
         set -euo pipefail
-        asset="kb-create-${GOOS}-${GOARCH}${EXT}"
-        if [ "$VERSION" = "latest" ]; then
-          url="https://github.com/${REPO}/releases/latest/download/${asset}"
-        else
-          url="https://github.com/${REPO}/releases/download/${VERSION}/${asset}"
-        fi
-        echo "Downloading kb-create from $url"
-        dest="${RUNNER_TEMP}/kb-create${EXT}"
-        curl -fsSL "$url" -o "$dest"
-        chmod +x "$dest"
+        curl -fsSL "https://kblabs.ru/install.sh" -o "${RUNNER_TEMP}/install.sh"
+        KB_CREATE_DEST="${RUNNER_TEMP}/kb-create" \
+          sh "${RUNNER_TEMP}/install.sh" \
+            --release-base "$RELEASE_BASE" \
+            --channel "$PLATFORM_CHANNEL"
 
     - name: Install
       id: install
@@ -112,16 +110,35 @@ runs:
         ADAPTERS: ${{ inputs.adapters }}
         PLATFORM_DIR: ${{ inputs.platform-dir }}
         PROJECT_DIR: ${{ inputs.project-dir }}
-        RELEASE_INDEX: ${{ inputs.release-index }}
+        PLATFORM_CHANNEL: ${{ inputs.platform-channel }}
+        PLATFORM_VERSION: ${{ inputs.platform-version }}
+        RELEASE_BASE: ${{ inputs.release-base }}
         REGISTRY: ${{ inputs.registry }}
-        EXT: ${{ steps.platform.outputs.ext }}
       run: |
         set -euo pipefail
-        bin="${RUNNER_TEMP}/kb-create${EXT}"
-        args=(apply --index "$RELEASE_INDEX" --request-platform-root "$PLATFORM_DIR" --project-root "$PROJECT_DIR")
+        bin="${RUNNER_TEMP}/kb-create"
+        args=(apply --release-base "$RELEASE_BASE" \
+          --request-platform-root "$PLATFORM_DIR" --project-root "$PROJECT_DIR")
+        # Exactly one of the two resolution modes. Passing both would leave the
+        # launcher to break the tie, and the two modes have different support
+        # semantics — the caller has to have chosen.
+        if [ -n "$PLATFORM_VERSION" ]; then
+          args+=(--platform-version "$PLATFORM_VERSION")
+        else
+          args+=(--platform-channel "$PLATFORM_CHANNEL")
+        fi
         [ -n "$PLUGINS" ] && args+=(--plugins "$PLUGINS")
         [ -n "$ADAPTERS" ] && args+=(--adapters "$ADAPTERS")
         [ -n "$REGISTRY" ] && args+=(--registry "$REGISTRY")
         "$bin" "${args[@]}"
+
         echo "platform-dir=$PLATFORM_DIR" >> "$GITHUB_OUTPUT"
         echo "config-path=$PLATFORM_DIR/.kb/kb.config.jsonc" >> "$GITHUB_OUTPUT"
+        # Read back what was actually installed rather than echoing the request:
+        # a channel install does not know its release id until it resolves one.
+        # `status` reports the same id twice — once on the receipt's plan and
+        # once on the support decision — so taking the first is unambiguous.
+        release_id="$("$bin" status --platform-root "$PLATFORM_DIR" \
+          | tr ',' '\n' \
+          | sed -n 's/.*"releaseId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+        echo "release-id=$release_id" >> "$GITHUB_OUTPUT"

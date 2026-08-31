@@ -11,11 +11,21 @@
  *   prove nothing about resume. Nothing is built, published or pointed at.
  *
  * - **live** — the same stores with `createRepoCandidatePipeline` and the real
- *   CI adapters. The pipeline half exists (PR 3/PR 4); the adapter half is
- *   PR 6's `workflow_dispatch` delivery. Until it lands, `liveAdaptersUnavailable`
- *   refuses with a typed diagnostic rather than silently falling back to fakes —
- *   a "successful" release that published nothing would be far worse than a
- *   refusal.
+ *   CI adapters. Two of the three halves exist: the pipeline (PR 3/PR 4) and the
+ *   adapters themselves (PR 6's `CiDeliveryAdapter`/`CiSmokeAdapter`/
+ *   `CiActivationAdapter`, which CI runs today through `kb release
+ *   deliver-request`). What is still missing is the *Workflow-side* half — an
+ *   `ActivationAdapter`/`DeliveryAdapter` that dispatches
+ *   `.github/workflows/release-deliver.yml`, waits for the run and reads back its
+ *   `DeliveryEvidence` artifact — together with the two endpoints it would talk
+ *   to: the conditional-write pointer/support store (decision S0.1) and the
+ *   durable receipt store on vm-1 (S0.2). Neither is deployed.
+ *
+ *   Until that exists, `liveAdaptersUnavailable` refuses with a typed diagnostic
+ *   rather than silently falling back to fakes — a "successful" release that
+ *   published nothing would be far worse than a refusal. That refusal is the
+ *   whole reason a production release cannot yet be driven from this repository,
+ *   and it is deliberately loud rather than a TODO.
  */
 
 import { join } from 'node:path';
@@ -91,8 +101,12 @@ export function createLiveStores(repoRoot: string): {
 export function liveAdaptersUnavailable(operation: string): ReleaseReceiptError {
   return new ReleaseReceiptError(
     ReleaseControlDiagnosticCode.DeliveryTransient,
-    `${operation} needs the real CI delivery adapters, which land with PR 6 (thin CI delivery). `
-    + 'Run with --dry-run to drive the receipt state machine against the fake delivery plane, '
-    + 'or wait for the delivery workflow. Falling back to fakes here would report a release that published nothing.',
+    `${operation} needs a Workflow-side delivery adapter that dispatches `
+    + '.github/workflows/release-deliver.yml and reads back its DeliveryEvidence, plus the two endpoints '
+    + 'it writes through: the conditional-write pointer/support store (decision S0.1) and the durable '
+    + 'receipt store on vm-1 (S0.2). The CI half of the delivery plane exists and is exercised by '
+    + '`kb release deliver-request`; the dispatch half and the infrastructure do not. '
+    + 'Run with --dry-run to drive the receipt state machine against the fake delivery plane. '
+    + 'Falling back to fakes here would report a release that published nothing.',
   );
 }

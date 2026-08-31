@@ -166,6 +166,48 @@ describe('release bundle producer', () => {
     // The intermediate packaging record must not survive into the sealed bundle.
     expect(existsSync(join(bundleDir, 'packaging.json'))).toBe(false);
     expect(verifyBundleDirectory(bundleDir, sealed.bundle.bundleSha256).ok).toBe(true);
+
+    // §5.3: no `workspace:` specifier survives into a published dependency.
+    //
+    // `rewriteWorkspaceDeps` is unit-tested, but that proves the rewrite is
+    // correct on the inputs it was handed — not that every dependency in every
+    // packed tarball actually went through it. This opens the sealed tarballs
+    // and looks, which is the only form of the claim that can catch a package
+    // the staging step never visited. The fixture ships a real `workspace:*`
+    // dependency (`release-workspace.ts`), so a rewrite that silently stopped
+    // running would fail here rather than pass vacuously.
+    // The archive root is one directory, but it is not always named `package/`
+    // (the test tarballer names it after the source dir, `npm pack` uses
+    // `package`), and `--wildcards` is GNU-only. Listing and matching keeps this
+    // working on both tars.
+    const readPackedManifest = (tarballPath: string): {
+      dependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
+    } => {
+      const entry = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf8' })
+        .split('\n')
+        .find(line => /^[^/]+\/package\.json$/.test(line.trim()));
+      if (!entry) { throw new Error(`no top-level package.json in ${tarballPath}`); }
+      return JSON.parse(execFileSync('tar', ['-xOzf', tarballPath, entry.trim()], { encoding: 'utf8' }));
+    };
+
+    const packedManifests = sealed.provenance.packages
+      .filter(pkg => pkg.tarball !== null)
+      .map(pkg => ({ name: pkg.name, manifest: readPackedManifest(join(bundleDir, pkg.tarball!)) }));
+    expect(packedManifests.length).toBeGreaterThan(0);
+
+    const unpublishable = packedManifests.flatMap(({ name, manifest }) =>
+      Object.entries({ ...manifest.dependencies, ...manifest.peerDependencies })
+        .filter(([, range]) => range.startsWith('workspace:') || range.startsWith('link:'))
+        .map(([dependency, range]) => `${name} → ${dependency}@${range}`));
+    expect(unpublishable).toEqual([]);
+
+    // And the rewrite resolved to something concrete rather than dropping the
+    // dependency. `workspace:*` means "whatever ships alongside me", which
+    // materializes as a caret range on the version this bundle ships.
+    const rewritten = packedManifests.find(entry => entry.name === '@kb-labs/commit-entry');
+    expect(rewritten?.manifest.dependencies?.['@kb-labs/core-runtime'])
+      .toBe(`^${FIXTURE_RELEASE_VERSION}`);
   });
 
   it('BP-05: two full runs over the same intent produce byte-identical bundle documents', () => {

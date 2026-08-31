@@ -85,4 +85,49 @@ describe('release workflow policy: .github/workflows must not decide release dom
       expect(globSync(relativePath, { cwd: repoRoot }), relativePath).toEqual([]);
     }
   });
+
+  // ── PR 8: the reusable action is a CI surface too ─────────────────────────
+  //
+  // `.github/actions/**` is not `.github/workflows/**`, and it escaped the scan
+  // above for exactly that reason. It is the surface an *external* repository
+  // consumes, so a legacy input left standing there breaks somebody else's CI
+  // rather than ours, which is the harder failure to notice.
+
+  it('the kb-create-install action resolves through the control plane, not a hand-carried index', async () => {
+    const repoRoot = await findRepoRoot(process.cwd());
+    const action = readFileSync(join(repoRoot, '.github/actions/kb-create-install/action.yml'), 'utf8');
+    const executable = action.split('\n').filter(isExecutableLine).join('\n');
+
+    // The retired input and the call it fed. `--index` still exists on the
+    // launcher as an explicit offline escape hatch, but a reusable action that
+    // *requires* a sealed index is the local-index-only UX §11 deletes.
+    expect(executable).not.toMatch(/^\s*release-index:/m);
+    expect(executable).not.toMatch(/apply\s+--index\b/);
+    expect(executable).not.toMatch(/-binaries\b/);
+
+    // …and it does resolve the documented way.
+    expect(executable).toMatch(/--platform-channel/);
+    expect(executable).toMatch(/--release-base/);
+  });
+
+  it('no CI surface installs a Windows launcher', async () => {
+    // Decision S0.3c. The old action branched on MINGW/MSYS/CYGWIN and mapped it
+    // to a `windows` GOOS, so a windows runner used to get an install attempt
+    // instead of a typed refusal.
+    const repoRoot = await findRepoRoot(process.cwd());
+    const files = [
+      ...globSync('.github/workflows/*.yml', { cwd: repoRoot, absolute: true }),
+      ...globSync('.github/actions/*/action.yml', { cwd: repoRoot, absolute: true }),
+    ];
+    const violations: string[] = [];
+    for (const file of files) {
+      readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+        if (!isExecutableLine(line)) { return; }
+        if (/kb-create.*windows|install\.ps1|goos=windows/i.test(line)) {
+          violations.push(`${file.replace(`${repoRoot}/`, '')}:${index + 1}: ${line.trim()}`);
+        }
+      });
+    }
+    expect(violations).toEqual([]);
+  });
 });

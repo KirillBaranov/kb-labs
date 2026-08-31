@@ -121,8 +121,8 @@ publish/register → marketplace install → run → remove`; удаление �
 **Путь:**
 
 1. Зафиксировать список доступных команд и установленных пакетов.
-2. Установить сторонний плагин через marketplace CLI или V2 `kb-create apply`
-   с pinned plugin в sealed release-index.
+2. Установить сторонний плагин через marketplace CLI или V2
+   `kb-create apply --platform-channel stable --plugins <id>@<version>`.
 3. Проверить, что новый пакет и его команда появились.
 4. Повторить установку/обновление плагина идемпотентно.
 5. Удалить только сторонний плагин.
@@ -241,5 +241,8 @@ logs → edit → rerun → remove/disable`; результат подтверж
   — детали marketplace, adapters и workflow внутри journeys, но не замена
   полного пользовательского пути. Они запускаются на platform, собранной из
   текущего checkout и установленной из Verdaccio.
-- `.github/workflows/release-deliver-candidate.yml` — обязательный post-publish V2
-  smoke, который запускает journey на точном release-index и сохраняет log.
+- candidate smoke внутри самого релиза — обязательный публичный V2 smoke на
+  точном candidate id и bundle digest. Это шаг receipt state machine
+  (`artifacts-published` → `candidate-smoke-passed`), а не отдельный workflow
+  рядом с релизом: провалившийся smoke отклоняет кандидата и сжигает версию.
+  См. [docs/RELEASE-PROCESS.md](../RELEASE-PROCESS.md).

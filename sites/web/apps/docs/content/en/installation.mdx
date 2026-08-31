@@ -9,7 +9,7 @@ KB Labs is installed through `kb-create` — a Go binary that downloads the plat
 
 ## Prerequisites
 
-- **macOS** or **Linux** (Windows support coming)
+- **macOS** or **Linux**, on `amd64` or `arm64`. Windows is not supported and is not planned; use WSL2.
 - **curl** (for the one-line install)
 - **Git**
 - **Node.js** 20+ and **pnpm** 9+ (installed automatically if missing, or you can pre-install)
@@ -88,20 +88,29 @@ The interactive wizard:
 - Runs `pnpm install`
 
 The wizard and the agent/CI JSON protocol compile into the same V2 request.
-For CI, use a sealed release index and the deterministic `apply` operation; it
-does not run interactive scenarios:
+For CI, use the deterministic `apply` operation; it does not run interactive
+scenarios:
 
 ```bash
-kb-create apply --index ./release-index.json \
+kb-create apply --platform-channel stable \
   --request-platform-root ./ci-platform --project-root "$GITHUB_WORKSPACE" \
   --plugins=release
 ```
 
-The release index is the authority for the release train. It contains the
-platform, SDK and published binary labels plus their explicit compatibility
-relations. The launcher verifies the index digest and refuses to plan or apply
-an index without that matrix. Package manifests remain the source of truth for
-artifact requirements and provider capabilities.
+`kb-create` resolves a release through the published control plane: a channel
+pointer names an immutable release descriptor, which names the sealed release
+index and every artifact by digest. Every hop is verified against the digest the
+previous document declared before the next one is read.
+
+The resolved index is the authority for the release train. It carries the
+platform, SDK and binary labels plus their explicit compatibility relations, and
+the launcher refuses to plan or apply an index without that matrix. Package
+manifests remain the source of truth for artifact requirements and provider
+capabilities.
+
+There is no fallback between resolution modes. A failed remote resolution is a
+failure — it never degrades into reading a local file or discovering a version
+from an npm tag.
 
 When finished, the workspace is ready:
 
@@ -124,11 +133,10 @@ kb-create my-project --yes --platform-channel canary
 kb-create my-project --yes --platform-version 2.118.1
 
 # Use the selected train with a CI request too.
-kb-create apply --index ./release-index.json \
-  --request-platform-root ./ci-platform --platform-channel canary
+kb-create apply --request-platform-root ./ci-platform --platform-channel canary
 ```
 
-Channels are labels in the selected release index, not direct npm tag lookups.
+Channels are published pointers, not npm tag lookups.
 An exact `--sdk-version` or `--platform-version` cannot be combined with the
 channel flag for that same axis. `kb-create` resolves the selected label to a
 concrete version before installing and stores the result in the installation
@@ -191,10 +199,17 @@ See [Configuration → kb.config](/configuration/kb-config) for all adapter opti
 # Upgrade kb-create to latest
 curl -fsSL https://kblabs.ru/install.sh | sh
 
-# Upgrade the platform packages inside a workspace using the next sealed index.
+# Upgrade the platform packages inside a workspace to the current channel release.
 cd my-project
-kb-create update --index ./release-index.json
+kb-create update --platform-channel stable
 ```
+
+`update` refuses to run against a platform root installed before the release
+control-plane cutover: the resolution protocol and the installed-state format
+are both different, so there is nothing to update. It reports
+`KB_CREATE_RELEASE_LEGACY_UNSUPPORTED` with the reinstall command. The supported
+move is a fresh `apply` into a new platform root; `kb-create status` keeps
+working on the old one and shows `contract: legacy`.
 
 ## Enterprise
 

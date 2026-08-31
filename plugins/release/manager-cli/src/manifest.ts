@@ -695,7 +695,9 @@ export const manifest = {
           + 'approval. After `kb release approve` records that approval it continues through commit, artifact '
           + 'delivery, public smoke and canary activation. A transient delivery failure parks the receipt in '
           + 'needs-attention with the version intact; an artifact or functional failure rejects it and burns the '
-          + 'version. Live CI delivery adapters land in PR 6, so today only --dry-run runs end to end.',
+          + 'version. Today only --dry-run runs end to end: the CI half of the delivery plane exists, but the '
+          + 'Workflow-side adapter that dispatches release-deliver.yml and the endpoints it writes through are '
+          + 'not deployed, so a live run refuses rather than silently using fakes.',
 
         handler: './cli/commands/candidate.js#default',
 

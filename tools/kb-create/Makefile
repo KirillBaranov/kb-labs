@@ -1,4 +1,4 @@
-.PHONY: build test test-race e2e e2e-release-smoke cover vet lint clean snapshot help
+.PHONY: build test test-race test-install e2e e2e-release-smoke cover vet lint clean snapshot help
 
 BINARY   := kb-create
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -14,9 +14,17 @@ build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 	chmod +x $(BINARY)
 
-## test: run fast unit tests (skips network-bound e2e)
-test:
+## test: run fast unit tests plus the install.sh suite (skips network-bound e2e)
+test: test-install
 	go test -race -count=1 -short ./...
+
+## test-install: exercise install.sh against a stubbed descriptor endpoint (offline)
+# Wired into `test` deliberately. This suite spent the whole control-plane
+# cutover asserting the behaviour of a script that had already been replaced,
+# because nothing ran it; install.sh is the one artifact every user executes and
+# it must not be the one artifact with an unrun test.
+test-install:
+	bash install_test.sh
 
 ## e2e: run full end-to-end suite (installs platform from npm — requires network)
 e2e:
