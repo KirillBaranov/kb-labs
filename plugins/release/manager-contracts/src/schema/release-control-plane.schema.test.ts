@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
   canonicalJson,
   canonicalSha256,
+  ReleaseApprovalSchema,
+  ReleaseReceiptTransitions,
+  TERMINAL_RECEIPT_STATES,
   isAllowedReceiptTransition,
   ReleaseDescriptorSchema,
   ReleaseDiagnosticCode,
@@ -85,6 +88,43 @@ describe('release control-plane contracts', () => {
     });
     expect(isAllowedReceiptTransition('bundled', 'approved')).toBe(true);
     expect(isAllowedReceiptTransition('bundled', 'completed')).toBe(false);
+  });
+
+  it('publishes the PR 5 workflow documents alongside the PR 1 set', () => {
+    // The approval and the compensation journal cross the same boundaries the
+    // PR 1 documents do — an operator reads the first, a recovering process
+    // reads the second — so they are published contracts, not internal shapes.
+    const approval = ReleaseApprovalSchema.safeParse({
+      schema: 'kb.release-approval/1',
+      approvalId: 'rcpt-platform-1.0.0-abc123',
+      receiptId: 'rcpt-platform-1.0.0',
+      decision: 'approved',
+      subject: {
+        operation: 'candidate',
+        intentSha256: 'a'.repeat(64),
+        bundleSha256: 'b'.repeat(64),
+        requestedTarget: 'canary',
+      },
+      subjectSha256: 'c'.repeat(64),
+      actor: 'kirill',
+      at: '2026-08-31T09:00:00Z',
+      signature: null,
+    });
+    expect(approval.success).toBe(true);
+    expect(releaseControlPlaneJsonSchemas.ReleaseApproval).toBeDefined();
+    expect(releaseControlPlaneJsonSchemas.StablePromotionJournal).toBeDefined();
+  });
+
+  it('records the failure edges §6A.1.5 states in prose beneath the grid', () => {
+    // The version-burning split is a contract, not an implementation choice:
+    // artifact failure burns, infrastructure failure parks.
+    expect(isAllowedReceiptTransition('artifacts-published', 'rejected')).toBe(true);
+    expect(isAllowedReceiptTransition('artifacts-published', 'needs-attention')).toBe(true);
+    expect(isAllowedReceiptTransition('rollback-requested', 'rollback-needs-attention')).toBe(true);
+    // A cancelled/rejected/rolled-back receipt is terminal and has no way out.
+    for (const terminal of TERMINAL_RECEIPT_STATES) {
+      expect(ReleaseReceiptTransitions.some(([from]) => from === terminal)).toBe(false);
+    }
   });
 
   it('assigns every published contract a distinct $id', () => {

@@ -324,6 +324,36 @@ export const ReleaseControlDiagnosticCode = {
   SupportPolicyBurnedVersion: 'KB_RELEASE_SUPPORT_POLICY_BURNED_VERSION',
   /** A required check failed and no exception covers it. */
   RequiredCheckFailed: 'KB_RELEASE_CHECK_REQUIRED_FAILED',
+
+  // ── Workflow control plane (cutover §6A.4, execution PR 5) ──────────────
+  /** A receipt state change that the §6A.1.5 transition table does not permit. */
+  IllegalReceiptTransition: 'KB_RELEASE_RECEIPT_TRANSITION_ILLEGAL',
+  /** No receipt exists for the id the caller is resuming. */
+  ReceiptNotFound: 'KB_RELEASE_RECEIPT_NOT_FOUND',
+  /** Two receipts, or two events, claim the same append-only identity. */
+  ReceiptConflict: 'KB_RELEASE_RECEIPT_CONFLICT',
+  /** The approval covers different digests than the receipt now carries. */
+  ApprovalSubjectMismatch: 'KB_RELEASE_APPROVAL_SUBJECT_MISMATCH',
+  /** The operation reached a state that needs an approval which was never recorded. */
+  ApprovalMissing: 'KB_RELEASE_APPROVAL_MISSING',
+  /** A resumed adapter call changed `{receiptId, candidateId, bundleSha256, target}`. */
+  ResumeIdentityMismatch: 'KB_RELEASE_RESUME_IDENTITY_MISMATCH',
+  /** `plan`/`stage`/`package`/`seal` after `bundled`, or any rebuild after `approved`. */
+  ForbiddenRebuild: 'KB_RELEASE_FORBIDDEN_REBUILD',
+  /** The single global stable-promotion lease is held by another operation. */
+  StableLeaseHeld: 'KB_RELEASE_STABLE_LEASE_HELD',
+  /** An unreconciled `rollback-needs-attention` receipt blocks every stable operation. */
+  StablePromotionBlocked: 'KB_RELEASE_STABLE_PROMOTION_BLOCKED',
+  /** The authoritative pointer no longer matches the CAS precondition the plan sealed. */
+  PointerPreconditionMismatch: 'KB_RELEASE_POINTER_PRECONDITION_MISMATCH',
+  /** Evidence that belongs to another receipt/candidate/bundle, or arrives late. */
+  EvidenceMismatch: 'KB_RELEASE_EVIDENCE_MISMATCH',
+  /** Infrastructure failure: retryable, and it must never burn a SemVer. */
+  DeliveryTransient: 'KB_RELEASE_DELIVERY_TRANSIENT',
+  /** Artifact/functional failure: the candidate is rejected and its version burned. */
+  DeliveryRejected: 'KB_RELEASE_DELIVERY_REJECTED',
+  /** Bounded compensation did not restore the previous stable pointer. */
+  CompensationFailed: 'KB_RELEASE_COMPENSATION_FAILED',
 } as const;
 export type ReleaseControlDiagnosticCode =
   typeof ReleaseControlDiagnosticCode[keyof typeof ReleaseControlDiagnosticCode];

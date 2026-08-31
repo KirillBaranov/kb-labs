@@ -415,7 +415,173 @@ export const ReleaseReceiptTransitions = [
   ['stable-active', 'rollback-requested'],
   ['stable-observing', 'rollback-requested'],
   ['rollback-requested', 'rolled-back'],
+
+  // ── Failure paths (cutover §6A.1.5 prose, §3B, execution PR 5 item 7) ────
+  //
+  // The happy-path table above is the part §6A.1.5 draws as a grid; the failure
+  // edges are stated as prose beneath it and are just as normative. They are
+  // split into two groups on purpose, because the split is the whole point of
+  // execution plan PR 5 item 7:
+  //
+  //   `rejected`        — the *bytes* are wrong (bundle, compatibility or
+  //                       functional smoke). The version is burned; a fix needs
+  //                       a new version, a new map and a new approval.
+  //   `needs-attention` — the *infrastructure* failed (npm timeout, registry
+  //                       5xx). Nothing about the candidate is disproven, so
+  //                       the version must survive and the same bundle/target
+  //                       may be resumed without a second approval.
+  //
+  // Collapsing the two would make a flaky registry consume real SemVer numbers.
+  ['planned', 'cancelled'],
+  ['source-checked', 'cancelled'],
+  ['staged', 'cancelled'],
+  ['bundled', 'cancelled'],
+  ['promotion-planned', 'cancelled'],
+  ['promotion-checked', 'cancelled'],
+
+  ['planned', 'rejected'],
+  ['source-checked', 'rejected'],
+  ['staged', 'rejected'],
+  ['bundled', 'rejected'],
+  ['committed', 'rejected'],
+  ['artifact-delivery-requested', 'rejected'],
+  ['artifacts-published', 'rejected'],
+  ['candidate-smoke-passed', 'rejected'],
+  ['canary-activation-requested', 'rejected'],
+
+  ['artifact-delivery-requested', 'needs-attention'],
+  ['artifacts-published', 'needs-attention'],
+  ['canary-activation-requested', 'needs-attention'],
+  // Resume returns to the exact state whose adapter call was unacknowledged —
+  // never further forward, so the retried call is the same call.
+  ['needs-attention', 'artifact-delivery-requested'],
+  ['needs-attention', 'artifacts-published'],
+  ['needs-attention', 'canary-activation-requested'],
+  ['needs-attention', 'rejected'],
+  ['needs-attention', 'cancelled'],
+
+  ['rollback-requested', 'rollback-needs-attention'],
+  // Bounded automatic retry of the *sealed* compensation operations only; this
+  // is not a fresh decision and needs no new approval (§3C compensation order).
+  ['rollback-needs-attention', 'rollback-requested'],
 ] as const satisfies ReadonlyArray<readonly [ReleaseReceiptState, ReleaseReceiptState]>;
+
+/**
+ * States after which a candidate's bytes exist and must never be rebuilt.
+ *
+ * `plan`, `stage`, `package` and `seal` are forbidden from `bundled` onwards
+ * (cutover §6A.4 resume rules); everything is forbidden after `approved`,
+ * because the operator signed a specific `bundleSha256`.
+ */
+export const RECEIPT_STATES_WITH_SEALED_BYTES: readonly ReleaseReceiptState[] = [
+  'bundled',
+  'approved',
+  'committed',
+  'artifact-delivery-requested',
+  'artifacts-published',
+  'candidate-smoke-passed',
+  'canary-activation-requested',
+  'canary-active',
+  'needs-attention',
+  'completed',
+];
+
+/** Terminal operational states — a receipt in one of these never moves again. */
+export const TERMINAL_RECEIPT_STATES: readonly ReleaseReceiptState[] = [
+  'completed',
+  'cancelled',
+  'rejected',
+  'rolled-back',
+];
+
+/**
+ * The single human approval per operation (execution plan §3.4).
+ *
+ * This document exists so that an approval can be *stored*, not merely acted
+ * upon: it is appended to the receipt as an immutable transition carrying actor
+ * and time, and `subjectSha256` pins exactly which digests the human signed. A
+ * boolean workflow input could not do either — it would be re-readable as
+ * `true` for a bundle the operator never saw.
+ */
+export const ReleaseApprovalSubjectSchema = z.discriminatedUnion('operation', [
+  z.object({
+    operation: z.literal('candidate'),
+    intentSha256: sha256,
+    bundleSha256: sha256,
+    requestedTarget: ReleaseControlChannelSchema,
+  }).strict(),
+  z.object({
+    operation: z.literal('promotion'),
+    promotionPlanSha256: sha256,
+  }).strict(),
+]);
+export type ReleaseApprovalSubject = z.infer<typeof ReleaseApprovalSubjectSchema>;
+
+export const ReleaseApprovalSchema = z.object({
+  schema: z.literal('kb.release-approval/1'),
+  approvalId: nonEmpty,
+  receiptId: nonEmpty,
+  decision: z.enum(['approved', 'rejected']),
+  subject: ReleaseApprovalSubjectSchema,
+  /** `canonicalSha256(subject)` — recomputed on read, never trusted as given. */
+  subjectSha256: sha256,
+  actor: nonEmpty,
+  at: rfc3339,
+  comment: z.string().min(1).optional(),
+  signature,
+}).strict();
+export type ReleaseApproval = z.infer<typeof ReleaseApprovalSchema>;
+
+/**
+ * The compensation journal a stable promotion persists *before* its first
+ * external mutation (cutover §3C Phase A step 6).
+ *
+ * `authoritative` is the field that carries §3C's central decision: exactly one
+ * operation — the stable pointer CAS — is authoritative and therefore must be
+ * compensated first and to the end. Every other entry is a derived alias whose
+ * failure is recorded as degraded state and never triggers or blocks
+ * compensation.
+ */
+export const StablePromotionJournalOperationSchema = z.object({
+  id: nonEmpty,
+  kind: z.enum(['stage-channel', 'npm-alias', 'pointer-cas']),
+  authoritative: z.boolean(),
+  /** Package name for an alias, channel name for the pointer. */
+  target: nonEmpty,
+  /** Value to restore on compensation; `null` means "no previous stable existed". */
+  from: z.string().nullable(),
+  to: nonEmpty,
+  status: z.enum(['pending', 'applied', 'failed', 'compensated', 'compensation-failed']),
+}).strict();
+export type StablePromotionJournalOperation = z.infer<typeof StablePromotionJournalOperationSchema>;
+
+export const StablePromotionJournalSchema = z.object({
+  schema: z.literal('kb.stable-promotion-journal/1'),
+  promotionId: nonEmpty,
+  receiptId: nonEmpty,
+  planSha256: sha256,
+  createdAt: rfc3339,
+  operations: z.array(StablePromotionJournalOperationSchema),
+}).strict();
+export type StablePromotionJournal = z.infer<typeof StablePromotionJournalSchema>;
+
+/**
+ * One observation-window sample (cutover §3C Phase D).
+ *
+ * Phase D is a *policy* evaluation, not a timer: the window, thresholds and the
+ * closed trigger list are sealed into the approved plan, and the Workflow only
+ * decides whether the observed signals satisfy them. Tests inject these
+ * directly, which is also exactly how a real monitor would deliver them.
+ */
+export const ReleaseObservationSignalSchema = z.object({
+  id: nonEmpty,
+  observedAt: rfc3339,
+  /** Must be one of the plan's sealed triggers to be able to roll anything back. */
+  trigger: nonEmpty.nullable(),
+  severity: z.enum(['info', 'warning', 'critical']),
+  detail: z.string().optional(),
+}).strict();
+export type ReleaseObservationSignal = z.infer<typeof ReleaseObservationSignalSchema>;
 
 export function isAllowedReceiptTransition(from: ReleaseReceiptState, to: ReleaseReceiptState): boolean {
   return ReleaseReceiptTransitions.some(([allowedFrom, allowedTo]) => allowedFrom === from && allowedTo === to);
@@ -453,6 +619,8 @@ const schemas = {
   ReleaseChannelPointer: ReleaseChannelPointerSchema,
   ReleaseDeliveryRequest: ReleaseDeliveryRequestSchema,
   StablePromotionPlan: StablePromotionPlanSchema,
+  StablePromotionJournal: StablePromotionJournalSchema,
+  ReleaseApproval: ReleaseApprovalSchema,
   ReleaseSupportPolicy: ReleaseSupportPolicySchema,
 } as const;
 
@@ -466,6 +634,8 @@ const schemaIds: Record<keyof typeof schemas, string> = {
   ReleaseChannelPointer: 'kb.release-channel/1',
   ReleaseDeliveryRequest: 'kb.release-delivery-request/1',
   StablePromotionPlan: 'kb.stable-promotion/1',
+  StablePromotionJournal: 'kb.stable-promotion-journal/1',
+  ReleaseApproval: 'kb.release-approval/1',
   ReleaseSupportPolicy: 'kb.release-support/1',
 };
 
