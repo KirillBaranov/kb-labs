@@ -29,7 +29,7 @@
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.8.5"
+    "fastify": "^5.12.1"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

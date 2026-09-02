@@ -40,7 +40,7 @@
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.8.5",
+    "fastify": "^5.12.1",
     "fastify-type-provider-zod": "^4.0.2"
   },
   "devDependencies": {
