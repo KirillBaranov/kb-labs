@@ -118,3 +118,39 @@ test('OBS-E2E-07: GET /runs/:nonexistent — returns 404', async ({ request }) =
   const res = await request.get(`${WORKFLOW}/api/v1/runs/00000000`);
   expect(res.status()).toBe(404);
 });
+
+// ── OBS-E2E-08: shell step output is durably persisted, not just live ───────
+//
+// Regression guard for the gap fixed in #427 (separate from #426, which
+// fixed a truncated failure-summary tail): a builtin:shell step's per-line
+// stdout/stderr used to reach only the ephemeral
+// ctx.api.events.emit('log.line', ...) bus, consumed solely by live WS
+// watchers. GET /runs/:id/logs replayed only step-lifecycle messages
+// ("Executing step", "Shell command completed successfully", ...) — never
+// the command's actual output — unless someone happened to be watching the
+// run live. This asserts the real stdout text ("hello from e2e") is present
+// in the durable log query after the run has already finished.
+
+test('OBS-E2E-08: GET /runs/:id/logs — shell step stdout is durably queryable after the run finishes', async ({ request }) => {
+  const runId = await startRun(request, 'e2e-hello');
+
+  await expect.poll(
+    async () => {
+      const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`);
+      const body = await res.json();
+      const run = body.data?.run ?? body.data;
+      return run?.status;
+    },
+    { timeout: 30_000, intervals: [1000, 2000, 3000] },
+  ).toMatch(/^(success|completed)$/);
+
+  const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}/logs`);
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  const logs: Array<{ message?: string; context?: Record<string, unknown> }> = body.data?.logs ?? [];
+
+  const shellOutput = logs.find(
+    (l) => typeof l.context?.text === 'string' && (l.context!.text as string).includes('hello from e2e'),
+  );
+  expect(shellOutput, `expected a durable log entry carrying the shell step's stdout; got: ${JSON.stringify(logs)}`).toBeDefined();
+});
