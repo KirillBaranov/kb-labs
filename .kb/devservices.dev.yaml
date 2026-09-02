@@ -34,6 +34,34 @@ services:
     port: 6379
     optional: true
 
+  # Not part of the prod-equivalent set — only needed for the release
+  # `pack-install` Checks gate (scripts/gates/check-pack-install.sh), which
+  # stages a release plan's planned package versions here so internal
+  # cross-package dependency checks exercise the version about to ship
+  # instead of whatever's already live on npm. Zero manual setup: anonymous
+  # publish and the npm uplink are baked into the mounted config.
+  verdaccio:
+    name: Verdaccio Registry
+    description: Local npm registry staging planned release versions for pack-install Checks
+    group: infra
+    type: docker
+    container: verdaccio
+    command: >-
+      name="verdaccio$KB_NET_OFFSET" &&
+      docker stop "$name" 2>/dev/null || true &&
+      docker rm "$name" 2>/dev/null || true &&
+      docker volume create "verdaccio-storage$KB_NET_OFFSET" >/dev/null &&
+      docker run --name "$name"
+      -p $((4873 + KB_NET_OFFSET)):4873
+      -v "$(pwd)/.kb/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro"
+      -v "verdaccio-storage$KB_NET_OFFSET:/verdaccio/storage"
+      verdaccio/verdaccio
+    stop_command: >-
+      name="verdaccio$KB_NET_OFFSET" && docker stop "$name"
+    health_check: http://localhost:4873/-/ping
+    port: 4873
+    optional: true
+
   state-daemon:
     name: State Daemon
     description: Distributed state management

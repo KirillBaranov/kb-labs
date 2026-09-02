@@ -254,6 +254,36 @@ export const manifest = {
         ],
       },
 
+      // release:stage-plan - Publish a release plan's PLANNED versions to a
+      // local staging registry, before Bump versions has run
+      {
+        path: 'release stage-plan',
+        category: 'Publish',
+        describe: 'Publish a release plan\'s planned package versions to a local staging registry (Verdaccio)',
+        operationType: 'execute' as const,
+        longDescription:
+          'Runs BEFORE version bump, off the in-memory plan `release plan` already computed. Publishes each plan ' +
+          'package at its PLANNED nextVersion — internal sibling dependencies rewritten to `^nextVersion` too — to ' +
+          '--registry, so the `pack-install` Checks gate can verify cross-package dependencies against the version ' +
+          'this release is about to ship instead of whatever is already live on npm. Distinct from `release stage`, ' +
+          'which packs already-committed, already-bumped versions for CI delivery after approval.',
+
+        handler: './cli/commands/stage-plan.js#default',
+
+        flags: defineCommandFlags({
+          'plan-path': { type: 'string', description: 'Path to the plan.json written by `release plan`' },
+          registry: { type: 'string', description: 'Target staging registry URL (e.g. http://localhost:4873)' },
+          flow: { type: 'string', description: 'Named flow — used only to resolve config for package discovery' },
+          token: { type: 'string', description: 'Auth token to send (default: "verdaccio-local" — a placeholder; the staging registry allows anonymous publish)' },
+          tag: { type: 'string', description: 'npm dist-tag to publish under (default: "latest")' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release stage-plan --flow platform --plan-path .kb/release/plans/root/current/plan.json --registry http://localhost:4873',
+        ],
+      },
+
       // release:clean-install - Shared install-verification used by both
       // check-pack-install.sh and `release stage`
       {
@@ -273,6 +303,7 @@ export const manifest = {
         flags: defineCommandFlags({
           tarball: { type: 'string', description: 'Path to the packed tarball to install' },
           name: { type: 'string', description: 'Package name to import after install' },
+          registry: { type: 'string', description: 'Registry override for ALL dependency resolution (default: real npm) — e.g. a local staging Verdaccio' },
           json: { type: 'boolean', description: 'Output in JSON format' },
           additionalTarballs: {
             type: 'string',

@@ -16,6 +16,7 @@ import { verifyCleanInstall, type CleanInstallResult } from '@kb-labs/release-ma
 interface VerifyCleanInstallFlags {
   tarball: string;
   name: string;
+  registry?: string;
   json?: boolean;
 }
 
@@ -33,7 +34,7 @@ export default defineCommand({
         return { ok: false, error: 'Command failed' };
       }
 
-      const result = await verifyCleanInstall(flags.tarball, flags.name);
+      const result = await verifyCleanInstall(flags.tarball, flags.name, [], 'npm', flags.registry);
 
       if (!result.ok) {
         if (flags.json) { ctx.ui?.json?.({ ok: false, result }); } else { ctx.ui?.error?.(result.error ?? 'clean install verification failed'); }
