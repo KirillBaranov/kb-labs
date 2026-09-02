@@ -200,6 +200,20 @@ jobs:
             throw new Error(`prepared ${matched.size}/${manifest.binaries.length} binary assets`);
           }
           fs.copyFileSync(path.join(sourceDir, 'checksums.txt'), path.join(outputDir, 'checksums.txt'));
+
+          // The launcher must resolve installs from a signed release index,
+          // never by talking to npm directly (see resolve.Plan in
+          // tools/kb-create/v2/resolve/resolve.go). Ship it as an immutable
+          // asset on this same per-version binaries release — same place,
+          // same checksums.txt convention the installer already verifies
+          // binaries against — so every future delivery publishes it
+          // automatically with no separate step to remember.
+          const indexSource = '.kb/release/bundle/release-index.json';
+          if (!fs.existsSync(indexSource)) throw new Error('candidate bundle is missing release-index.json');
+          const indexDest = path.join(outputDir, 'release-index.json');
+          fs.copyFileSync(indexSource, indexDest);
+          const indexDigest = crypto.createHash('sha256').update(fs.readFileSync(indexDest)).digest('hex');
+          fs.appendFileSync(path.join(outputDir, 'checksums.txt'), `${indexDigest}  release-index.json\n`);
           NODE
           mapfile -t assets < <(find .kb/release/upload-assets -maxdepth 1 -type f -print | sort)
           test "${#assets[@]}" -gt 0

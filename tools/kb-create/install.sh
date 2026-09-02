@@ -4,6 +4,7 @@ set -eu
 REPO="kb-labs-team/kb-labs"
 BINARY="kb-create"
 DEST="${HOME}/.local/bin/${BINARY}"
+INDEX_DEST="${HOME}/.local/share/${BINARY}/release-index.json"
 VERSION="latest"
 CHANNEL="stable"
 RESOLVED_VERSION=""
@@ -198,6 +199,39 @@ chmod +x "$TMP_BIN"
 mkdir -p "$(dirname "$DEST")"
 mv "$TMP_BIN" "$DEST"
 
+# The launcher resolves installs from this signed index, never by talking to
+# npm directly. It ships next to the binary on the same immutable per-version
+# GitHub Release, verified with the same checksums.txt as the binary above —
+# not every candidate is required to publish one (release-index.json is
+# platform-flow only), so a missing file is a soft skip, not a fatal error.
+INDEX_URL="${BASE_URL}/release-index.json"
+TMP_INDEX="$(mktemp)"
+if curl -fsSL "$INDEX_URL" -o "$TMP_INDEX" 2>/dev/null; then
+  EXPECTED_INDEX="$(grep '  release-index.json$' "$TMP_SUM" | awk '{print $1}' | head -n 1)"
+  if [ -n "$EXPECTED_INDEX" ]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+      ACTUAL_INDEX="$(sha256sum "$TMP_INDEX" | awk '{print $1}')"
+    else
+      ACTUAL_INDEX="$(shasum -a 256 "$TMP_INDEX" | awk '{print $1}')"
+    fi
+    if [ "$EXPECTED_INDEX" != "$ACTUAL_INDEX" ]; then
+      err "Checksum mismatch for release-index.json."
+      err "Expected: $EXPECTED_INDEX"
+      err "Actual:   $ACTUAL_INDEX"
+      rm -f "$TMP_INDEX"
+      exit 1
+    fi
+    mkdir -p "$(dirname "$INDEX_DEST")"
+    mv "$TMP_INDEX" "$INDEX_DEST"
+  else
+    rm -f "$TMP_INDEX"
+    INDEX_DEST=""
+  fi
+else
+  rm -f "$TMP_INDEX"
+  INDEX_DEST=""
+fi
+
 ensure_path() {
   # Already in current shell's PATH? Nothing to do.
   case ":$PATH:" in
@@ -255,7 +289,14 @@ else
   ok "Version: latest"
 fi
 ok "Installation completed in ${ELAPSED}s"
+if [ -n "$INDEX_DEST" ]; then
+  ok "Release index verified and saved to $INDEX_DEST"
+fi
 echo ""
 printf "%sGet started:%s\n" "$C_BOLD" "$C_RESET"
-printf "  %skb-create wizard --index release-index.json --request-platform-root ./kb-platform%s\n" "$C_DIM" "$C_RESET"
+if [ -n "$INDEX_DEST" ]; then
+  printf "  %skb-create wizard --index %s --request-platform-root ./kb-platform%s\n" "$C_DIM" "$INDEX_DEST" "$C_RESET"
+else
+  printf "  %skb-create wizard --index release-index.json --request-platform-root ./kb-platform%s\n" "$C_DIM" "$C_RESET"
+fi
 printf "  %skb-create status --platform-root ./kb-platform%s\n" "$C_DIM" "$C_RESET"
