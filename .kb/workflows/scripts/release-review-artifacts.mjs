@@ -36,6 +36,22 @@ function command(args, fallback = "") {
   }
 }
 
+// Best-effort — a status-check failure (network, gh not authed, etc.) must
+// never block the review from rendering. Absence of this section is itself
+// a visible signal ("status unavailable"), not a silent skip.
+function releaseStatus(flowName) {
+  try {
+    const raw = execFileSync(
+      "pnpm",
+      ["-s", "kb", "release", "status", "--flow", flowName, "--json"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 30000 },
+    );
+    return JSON.parse(raw);
+  } catch (err) {
+    return { error: err?.message || String(err) };
+  }
+}
+
 function repositoryUrl() {
   const remote = command(["git", "remote", "get-url", "origin"]);
   const match = remote.match(/github\.com[:/]([^/]+\/[^/.]+?)(?:\.git)?$/);
@@ -61,6 +77,28 @@ const compareUrl =
         ? `${repository}/releases/tag/${releaseTag}`
         : "";
 const tagUrl = !isCanary && repository ? `${repository}/releases/tag/${releaseTag}` : "";
+
+const status = releaseStatus(flow);
+const statusSection = (() => {
+  if (status.error) {
+    return `⚠️ Release status check unavailable: ${status.error}`;
+  }
+  const lines = [
+    `- Last stable tag: \`${status.git?.tag ?? "none"}\` (${status.git?.version ?? "—"})`,
+    `- npm \`${status.npm?.stableDistTag ?? "latest"}\`: ${status.npm?.stableVersion ?? (status.npm?.stableDrift ? "DRIFT — packages disagree" : "unresolved")}`,
+    `- npm \`${status.npm?.canaryDistTag ?? "canary"}\`: ${status.npm?.canaryVersion ?? (status.npm?.canaryDrift ? "DRIFT — packages disagree" : "unresolved")}`,
+  ];
+  if (status.verdict?.warnings?.length) {
+    lines.push(
+      "",
+      "**⚠️ Before approving, note the current release is not fully clean:**",
+      ...status.verdict.warnings.map((w) => `- ⚠️ ${w}`),
+    );
+  } else {
+    lines.push("", "✅ No drift between the last stable tag and npm — clean baseline for this candidate.");
+  }
+  return lines.join("\n");
+})();
 
 const summary = {
   flow,
@@ -107,6 +145,10 @@ const review = [
   "",
   links,
   "",
+  "## Current release status (before this candidate)",
+  "",
+  statusSection,
+  "",
   "## Packages",
   "",
   "| Package | Current | Next | Bump |",
@@ -125,6 +167,7 @@ const payload = Buffer.from(
     changelog,
     compareUrl,
     tagUrl,
+    releaseStatus: status,
   }),
   "utf8",
 ).toString("base64");
