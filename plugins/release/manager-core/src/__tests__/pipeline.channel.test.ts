@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -113,7 +113,11 @@ describe('runReleasePipeline — channel behavior', () => {
     expect(tags).toContain('release-v1.0.1');
   });
 
-  it('canary: publishes with tag=canary, never bumps package.json, and skips git entirely', async () => {
+  // Cutover plan §3: a canary is a real, final, committed release. The
+  // pre-cutover behaviour asserted here — an in-memory `-canary.<sha>` version
+  // that never touched package.json or git — is exactly what made promoting
+  // the same bytes to stable impossible, so it is gone.
+  it('canary: publishes with tag=canary a final SemVer that is bumped on disk and tagged', async () => {
     const publisher = makePublisherSpy();
     const result = await runReleasePipeline({
       cwd: root,
@@ -131,18 +135,35 @@ describe('runReleasePipeline — channel behavior', () => {
     expect(result.plan.channel).toBe('canary');
     expect(publisher.calls).toHaveLength(1);
     expect(publisher.calls[0]!.options.tag).toBe('canary');
-    expect(publisher.calls[0]!.packages[0]!.version).toMatch(/^1\.0\.1-canary\.[0-9a-f]+$/);
+    expect(publisher.calls[0]!.packages[0]!.version).toBe('1.0.1');
+    expect(publisher.calls[0]!.packages[0]!.version).not.toContain('-canary.');
 
-    // package.json on disk is untouched — canary version only exists in-memory.
     const pkgJson = JSON.parse(readFileSync(join(root, 'packages', 'alpha', 'package.json'), 'utf-8'));
-    expect(pkgJson.version).toBe('1.0.0');
+    expect(pkgJson.version).toBe('1.0.1');
 
-    // No git tag was created for the canary version.
     const tags = execSync('git tag', { cwd: root }).toString();
-    expect(tags).not.toContain('canary');
+    expect(tags).toContain('release-v1.0.1');
+  });
 
-    // No CHANGELOG.md written either — canary skips changelog generation.
-    expect(existsSync(join(root, 'packages', 'alpha', 'CHANGELOG.md'))).toBe(false);
+  it('canary honours a ledger-allocated version instead of the locally computed bump', async () => {
+    const publisher = makePublisherSpy();
+    const result = await runReleasePipeline({
+      cwd: root,
+      repoRoot: root,
+      scopeCwd: root,
+      shell: testShell,
+      config: { bump: 'patch', channel: 'canary' },
+      allocatedVersion: '1.22.33',
+      skipChecks: true,
+      skipBuild: true,
+      skipVerify: true,
+      publisher,
+    });
+
+    expect(result.success).toBe(true);
+    expect(publisher.calls[0]!.packages[0]!.version).toBe('1.22.33');
+    const pkgJson = JSON.parse(readFileSync(join(root, 'packages', 'alpha', 'package.json'), 'utf-8'));
+    expect(pkgJson.version).toBe('1.22.33');
   });
 
   it('skipPublish: never calls the publisher, but still bumps package.json and commits/tags git', async () => {

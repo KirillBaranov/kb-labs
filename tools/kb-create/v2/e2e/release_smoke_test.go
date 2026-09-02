@@ -5,36 +5,40 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kb-labs/create/v2/contracts"
 )
 
 func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("published-artifact V2 journey requires registry and running services")
 	}
-	index := os.Getenv("KB_CREATE_RELEASE_INDEX")
-	if index == "" {
-		root, err := filepath.Abs("../..")
-		if err != nil {
-			t.Fatal(err)
-		}
-		index = filepath.Join(root, ".kb", "release", "release-index.json")
-	}
-	if _, err := os.Stat(index); err != nil {
-		t.Skipf("published V2 release index is unavailable: %v", err)
-	}
-
+	// The smoke profile is credential-free by default: it resolves a release
+	// through the published control plane and installs it. No provider API key
+	// is read here, so a missing external credential can never be mistaken for
+	// a broken release.
 	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Resolution goes through pointer -> descriptor -> index exactly as a user
+	// install does. There is deliberately no environment variable that hands
+	// the launcher an index path: that shortcut would skip the two digest
+	// checks the whole delivery model rests on.
+	base := serveReleaseControlPlane(t, filepath.Join(root, ".kb", "release", "release-index.json"))
 	launcher := os.Getenv("KB_CREATE_BINARY")
 	if launcher == "" {
 		launcher = filepath.Join(t.TempDir(), "kb-create")
@@ -51,7 +55,7 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"apply", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict"}
+	args := []string{"apply", "--release-base", base, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict"}
 	if registry := os.Getenv("KB_REGISTRY_URL"); registry != "" {
 		args = append(args, "--registry", registry)
 	}
@@ -66,7 +70,7 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if output, code := run(t, launcher, "status", "--platform-root", platform); code != 0 {
 		t.Fatalf("V2 status exited %d:\n%s", code, output)
 	}
-	updateOutput, updateCode := run(t, launcher, "update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict")
+	updateOutput, updateCode := run(t, launcher, "update", "--release-base", base, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict")
 	if updateCode != 0 {
 		t.Fatalf("V2 update exited %d: %s", updateCode, updateOutput)
 	}
@@ -200,4 +204,64 @@ func stringValue(value any) string {
 		return text
 	}
 	return ""
+}
+
+// serveReleaseControlPlane publishes the release index behind a local
+// pointer/descriptor chain with real digests. It is a test double for the
+// hosting decision only: the launcher performs the same two digest checks it
+// performs against the production endpoint, and no code path here is aware it
+// is talking to a double. PR 8 repoints this at the real endpoint.
+func serveReleaseControlPlane(t *testing.T, indexPath string) string {
+	t.Helper()
+	index, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Skipf("published V2 release index is unavailable: %v", err)
+	}
+	releaseID := "platform-smoke"
+	descriptor := contracts.ReleaseDescriptor{
+		Schema:       contracts.ReleaseDescriptorSchema,
+		ReleaseID:    releaseID,
+		CandidateID:  releaseID + "-smoke",
+		BundleSHA256: sha256Hex([]byte("smoke-bundle")),
+		Index:        contracts.PointerReference{Path: "platform/release-index.json", SHA256: sha256Hex(index)},
+		Launcher: contracts.ReleaseLauncher{Version: "0.0.0-smoke", Artifacts: []contracts.LauncherArtifact{
+			{OS: runtime.GOOS, Arch: runtime.GOARCH, Path: "platform/kb-create", SHA256: sha256Hex([]byte("smoke-launcher"))},
+		}},
+		PreparedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	descriptorBytes, err := json.Marshal(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointer := contracts.ReleaseChannelPointer{
+		Schema:    contracts.ReleaseChannelPointerSchema,
+		Channel:   contracts.ChannelCanary,
+		ReleaseID: releaseID,
+		Release:   contracts.PointerReference{Path: "releases/" + releaseID + "/release.json", SHA256: sha256Hex(descriptorBytes)},
+	}
+	pointerBytes, err := json.Marshal(pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	documents := map[string][]byte{
+		"/channels/canary.json":                    pointerBytes,
+		"/releases/" + releaseID + "/release.json": descriptorBytes,
+		"/platform/release-index.json":             index,
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		body, ok := documents[request.URL.Path]
+		if !ok {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write(body)
+	}))
+	t.Cleanup(server.Close)
+	return server.URL
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

@@ -1,0 +1,140 @@
+# The release control plane (cutover plan §6A.4, execution plan PR 5).
+#
+# This replaces release-prepare.yml and release-promote.yml entirely. The
+# difference is not cosmetic: the old workflows were the release *logic*, spread
+# across shell steps whose only memory of what had happened was the run itself.
+# A crashed run left no way to know what had been published, so recovery meant a
+# human reconstructing state from GitHub and npm.
+#
+# Here the workflow owns almost nothing. `kb release candidate` is called twice
+# with identical arguments, and the receipt — an append-only log in the durable
+# store — decides what those calls do. That is what makes a crashed run
+# recoverable by re-running the same command, and what makes the two calls
+# either side of the approval step safe to be different processes.
+#
+# The approval is a `builtin:approval` step *plus* `kb release approve`. The step
+# asks the human; the command records the answer as an immutable transition with
+# actor, time and the digest of the sealed bundle that was signed. There is no
+# boolean input anywhere that means "approved", by design (execution plan §3.4).
+#
+# Run:
+#   kb workflow:run --workflow-id workspace:release \
+#     --input '{"flow":"platform","requestedTarget":"canary","dryRun":true}'
+#
+# `dryRun` drives the real receipt state machine against the simulated build
+# pipeline and the fake delivery plane. Live delivery adapters land in PR 6; the
+# CLI refuses a non-dry run with a typed diagnostic rather than silently
+# reporting a release that published nothing.
+
+name: release
+version: 1.0.0
+description: Drive one release operation through its receipt, with a single human approval over the sealed bundle.
+on:
+  manual: true
+
+inputs:
+  flow:
+    type: string
+    description: Release flow — must match a key under release.flows in .kb/kb.config.json (e.g. "platform", "sdk")
+    required: true
+  requestedTarget:
+    type: string
+    description: >-
+      Requested channel. Only "canary" is a candidate operation: "stable" is a promotion
+      of bytes that already exist and runs as its own operation, and "experimental" is
+      reserved in the contracts with no consumer in this cutover.
+    required: false
+    default: canary
+  dryRun:
+    type: boolean
+    description: >-
+      Drive the receipt state machine against the simulated pipeline and the fake CI
+      delivery plane. Nothing is built, published, tagged or pointed at.
+    required: false
+    default: false
+
+phases:
+  build:
+    label: Build
+    description: Plan, check, stage, package and seal — all inside a disposable worktree
+  approval:
+    label: Approval
+    description: The single human approval, signed over the already-sealed bundle
+  deliver:
+    label: Deliver
+    description: Commit, publish immutable artifacts, smoke the exact version and activate the channel
+
+jobs:
+  release:
+    runsOn: local
+    steps:
+      # Everything before the approval happens in a one-shot git worktree
+      # (execution plan §3.4 consequence 1), so `master` and the primary working
+      # tree are untouched no matter how this ends.
+      - name: Seal a release candidate
+        id: candidate
+        phase: build
+        timeoutMs: 7200000
+        env:
+          KB_RELEASE_ACTOR: "${{ trigger.actor }}"
+        run: |
+          set -euo pipefail
+          dry=""
+          if [ '${{ inputs.dryRun }}' = 'true' ]; then dry='--dry-run'; fi
+          pnpm -s kb release candidate --flow '${{ inputs.flow }}' --target '${{ inputs.requestedTarget }}' $dry
+
+      # The map is rendered over the sealed bundle, so the operator is looking at
+      # artifacts that already exist rather than at a promise to build them.
+      - name: Confirm release
+        phase: approval
+        uses: builtin:approval
+        with:
+          title: "Release ${{ inputs.flow }} → ${{ inputs.requestedTarget }} — approve receipt ${{ steps.candidate.outputs.receiptId }}?"
+          instructions: >-
+            The bundle is already sealed and verified; approving signs its exact digest
+            (bundleSha256 ${{ steps.candidate.outputs.bundleSha256 }}) together with the
+            intent and the requested target. Approval is recorded as an immutable receipt
+            transition naming you and the time. Refusing cancels the operation: the staging
+            worktree is destroyed and the reserved version is burned — nothing has been
+            published and master is unchanged either way.
+
+      - name: Record the approval
+        id: approval
+        phase: approval
+        env:
+          KB_RELEASE_ACTOR: "${{ trigger.actor }}"
+        run: |
+          set -euo pipefail
+          dry=""
+          if [ '${{ inputs.dryRun }}' = 'true' ]; then dry='--dry-run'; fi
+          pnpm -s kb release approve \
+            --receipt '${{ steps.candidate.outputs.receiptId }}' \
+            --actor "${KB_RELEASE_ACTOR:-operator}" \
+            --decision approve $dry
+
+      # Same command, same arguments as the first call. The receipt is what
+      # changed, so this one commits, delivers, smokes and activates.
+      - name: Deliver and activate
+        id: deliver
+        phase: deliver
+        timeoutMs: 7200000
+        env:
+          KB_RELEASE_ACTOR: "${{ trigger.actor }}"
+        run: |
+          set -euo pipefail
+          dry=""
+          if [ '${{ inputs.dryRun }}' = 'true' ]; then dry='--dry-run'; fi
+          pnpm -s kb release candidate \
+            --flow '${{ inputs.flow }}' \
+            --target '${{ inputs.requestedTarget }}' \
+            --receipt '${{ steps.candidate.outputs.receiptId }}' $dry
+
+      - name: Show the receipt
+        phase: deliver
+        env:
+          KB_RELEASE_ACTOR: "${{ trigger.actor }}"
+        run: |
+          set -euo pipefail
+          dry=""
+          if [ '${{ inputs.dryRun }}' = 'true' ]; then dry='--dry-run'; fi
+          pnpm -s kb release receipt --receipt '${{ steps.candidate.outputs.receiptId }}' $dry

@@ -66,14 +66,21 @@ pnpm kb marketplace install @kb-labs/release-entry
 
 ### Full pipeline
 
+`kb release run` — the checkout-based full pipeline (plan → checks → build →
+pack → publish → git in one shot, no bundle, no receipt, no approval) has been
+deleted (release control-plane cutover, execution plan §11 item 7). The
+receipt-driven replacement is:
+
 ```bash
-kb release run                           # plan → checks → build → pack → publish → git
-kb release run --dry-run                 # preview everything without publishing
-kb release run --yes                     # skip confirmation (CI mode)
-kb release run --bump minor --yes
-kb release run --scope @my-org/core      # single package
-kb release run --skip-checks --skip-build
+kb release candidate --flow platform --target canary --dry-run --json  # rehearse
+kb release candidate --flow platform --target canary --json            # drive it; stops at `bundled`
+kb release approve --receipt <receiptId> --actor "$USER" --json         # the one human approval
+kb release candidate --flow platform --target canary --json            # resume; same command, reads the receipt
 ```
+
+See [docs/runbooks/release-control-plane.md](../../docs/runbooks/release-control-plane.md)
+for the full operator flow, including reading a receipt and resuming
+`needs-attention`.
 
 ### Step by step
 
@@ -114,7 +121,9 @@ kb release rollback                      # restore from pre-release backup
 
 | Command | Description |
 |---------|-------------|
-| `kb release run` | Full release pipeline |
+| `kb release candidate` | Drive a release candidate receipt (replaces `release run`) |
+| `kb release approve` | Record the one human approval on a receipt |
+| `kb release receipt` | Inspect a receipt's state and transition history |
 | `kb release plan` | Compute version bumps |
 | `kb release verify` | Validate release readiness |
 | `kb release checks` | Run configured pre-release checks |

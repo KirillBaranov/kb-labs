@@ -119,25 +119,54 @@ function applyAdaptive(packages: PackageVersion[]): PackageVersion[] {
 }
 
 /**
- * Apply a canary prerelease suffix to already-computed nextVersion values.
+ * Raise already-computed `nextVersion` values to a version allocated by the
+ * release ledger.
  *
- * Runs AFTER applyVersionStrategy() (lockstep/independent/adaptive) has
- * resolved the base bump — canary is orthogonal to bump size, so it's a
- * pure post-processing step rather than a VersionBump variant. Given a
- * short git SHA, `1.2.3` (base next version) becomes `1.2.3-canary.<sha>`.
+ * This replaces the pre-cutover `applyCanarySuffix()`. Under the old model a
+ * canary was `1.2.3-canary.<shortsha>` — an in-memory prerelease that was never
+ * committed and could not be promoted to stable without a rename. Cutover plan
+ * §3 requires the opposite: a canary receives a **final** SemVer, monotonic
+ * against every version the ledger has ever handed out across *all* channels,
+ * which is committed and later promoted byte-for-byte.
  *
- * Deterministic per (nextVersion, shortSha) pair — retrying the same commit
- * reproduces the same canary version, so publish-side idempotency handling
- * (already-published patterns) makes retries safe without extra state.
+ * The allocated version is authoritative. Bump computation still runs first —
+ * it is what decides whether the allocation is a patch, minor or major step —
+ * but the ledger, not the working tree, decides the number that is actually
+ * used, because only the ledger knows about versions allocated by a concurrent
+ * or already-abandoned release.
+ *
+ * Refusing a non-forward allocation here is deliberate: silently accepting one
+ * would republish over an immutable version, which is the single thing the
+ * ledger exists to prevent.
  */
-export function applyCanarySuffix(packages: PackageVersion[], shortSha: string): PackageVersion[] {
-  if (!shortSha) {
-    throw new Error('applyCanarySuffix: shortSha is required to build a canary version');
+export function applyAllocatedVersion(
+  packages: PackageVersion[],
+  allocatedVersion: string,
+): PackageVersion[] {
+  if (!semver.valid(allocatedVersion)) {
+    throw new Error(`applyAllocatedVersion: ${allocatedVersion} is not a valid SemVer version`);
+  }
+  for (const pkg of packages) {
+    if (semver.valid(pkg.currentVersion) && !semver.gt(allocatedVersion, pkg.currentVersion)) {
+      throw new Error(
+        `Allocated release version ${allocatedVersion} is not ahead of ${pkg.name}@${pkg.currentVersion}. ` +
+        'The ledger baseline is stale — recompute the version proposal.',
+      );
+    }
   }
   return packages.map(pkg => ({
     ...pkg,
-    nextVersion: `${pkg.nextVersion}-canary.${shortSha}`,
+    nextVersion: allocatedVersion,
+    bump: detectAllocatedBump(pkg.currentVersion, allocatedVersion),
+    versionPinned: true,
   }));
+}
+
+function detectAllocatedBump(from: string, to: string): VersionBump {
+  const diff = semver.valid(from) && semver.valid(to) ? semver.diff(from, to) : null;
+  if (diff === 'major' || diff === 'premajor') { return 'major'; }
+  if (diff === 'minor' || diff === 'preminor') { return 'minor'; }
+  return 'patch';
 }
 
 /**

@@ -10,7 +10,7 @@ import semver from 'semver';
 import globby from 'globby';
 import { discoverSubRepoPaths } from '@kb-labs/sdk';
 import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan, ReleaseChannel } from './types';
-import { applyVersionStrategy, applyCanarySuffix, type VersionStrategy } from './versioning-strategies';
+import { applyVersionStrategy, applyAllocatedVersion, type VersionStrategy } from './versioning-strategies';
 import { buildReleaseTag } from './tag';
 
 /**
@@ -82,6 +82,16 @@ export interface PlannerOptions {
   bumpOverride?: VersionBump;
   /** Release track. Defaults to 'stable'. See ReleaseChannel. */
   channel?: ReleaseChannel;
+  /**
+   * Version allocated by the release ledger for this run (cutover plan §3).
+   *
+   * When present it *overrides* the bump computed from the working tree: the
+   * ledger is the only surface that knows about versions handed to concurrent
+   * or abandoned releases, so it — not `package.json` — decides the number.
+   * Absent means "no control-plane allocation", which is the legacy
+   * `release:version` → `release:git` path still used by the old pipeline.
+   */
+  allocatedVersion?: string;
 }
 
 /**
@@ -277,12 +287,11 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     umbrellaPath: scope,
   });
 
-  // Canary: suffix the already-computed base version with -canary.<shortsha>.
-  // Runs last so canary and stable share the exact same bump-computation path.
-  if (channel === 'canary') {
-    const git = simpleGit(cwd, { timeout: { block: 60000 } });
-    const shortSha = (await git.revparse(['--short', 'HEAD'])).trim();
-    planPackages = applyCanarySuffix(planPackages, shortSha);
+  // A ledger allocation, when present, is the final word on the version —
+  // see applyAllocatedVersion(). It runs last so every channel shares the same
+  // bump-computation path and only the *number* differs.
+  if (options.allocatedVersion) {
+    planPackages = applyAllocatedVersion(planPackages, options.allocatedVersion);
   }
 
   return {

@@ -12,13 +12,11 @@ import (
 	"time"
 
 	"github.com/kb-labs/create/v2/artifacts"
-	"github.com/kb-labs/create/v2/catalog"
 	"github.com/kb-labs/create/v2/contracts"
 	"github.com/kb-labs/create/v2/diagnostics"
 	"github.com/kb-labs/create/v2/doctor"
 	"github.com/kb-labs/create/v2/installed"
 	"github.com/kb-labs/create/v2/logs"
-	"github.com/kb-labs/create/v2/preflight"
 	"github.com/kb-labs/create/v2/receipt"
 	"github.com/kb-labs/create/v2/runtime"
 	"github.com/kb-labs/create/v2/scenario"
@@ -51,7 +49,8 @@ func Execute() int {
 		return 0
 	}
 	normalizeOperationArgument()
-	index := flag.String("index", "", "path to immutable V2 release index JSON")
+	index := flag.String("index", "", "exact offline release index JSON; never a fallback for remote resolution")
+	releaseBase := flag.String("release-base", defaultReleaseBase, "trusted release endpoint that publishes channel pointers and descriptors")
 	input := flag.String("input", "", "path to V2 InstallRequest JSON")
 	requestRoot := flag.String("request-platform-root", "", "platform root for direct CI/agent request")
 	projectRoot := flag.String("project-root", "", "project root for the user-owned V2 config pointer")
@@ -79,7 +78,7 @@ func Execute() int {
 	flag.Parse()
 	telemetryEndpoint, telemetryConsent = *telemetryURL, *telemetryAllowed
 	direct := directRequest{PlatformRoot: *requestRoot, ProjectRoot: *projectRoot, PlatformVersion: *platformVersion, PlatformChannel: *platformChannel, SDKVersion: *sdkVersion, ServiceProfile: *serviceProfile, Plugins: *plugins, Adapters: *adapters, Policy: *policy, Offline: *offline}
-	return run(*operation, *index, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout)
+	return run(*operation, *index, *releaseBase, *input, *doctorInput, *platformRoot, *snapshotID, *registry, *kbdev, *secretEnv, *doctorFix, *scenarioID, *scenarioAnswers, *scenarioResume, direct, os.Stdout)
 }
 
 func normalizeOperationArgument() {
@@ -98,7 +97,7 @@ type directRequest struct {
 	Offline                                                                                                            bool
 }
 
-func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev, secretEnv string, doctorFix bool, scenarioID, scenarioAnswers string, scenarioResume bool, direct directRequest, output *os.File) int {
+func run(operation, indexPath, releaseBase, inputPath, doctorInput, platformRoot, snapshotID, registry, kbdev, secretEnv string, doctorFix bool, scenarioID, scenarioAnswers string, scenarioResume bool, direct directRequest, output *os.File) int {
 	if operation != "plan" && operation != "apply" && operation != "update" && operation != "uninstall" && operation != "rollback" && operation != "doctor" && operation != "wizard" && operation != "status" {
 		write(output, failure("KB_CREATE_OPERATION_INVALID", "operation is not supported", "use plan, apply, update, uninstall, rollback, doctor, wizard, or status", nil))
 		return 2
@@ -107,28 +106,44 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 		return runDoctor(doctorInput, platformRoot, kbdev, doctorFix, output)
 	}
 	if operation == "status" {
-		return runStatus(platformRoot, kbdev, output)
+		return runStatus(platformRoot, releaseBase, kbdev, output)
 	}
 	if operation == "wizard" {
-		return runWizard(indexPath, direct.PlatformRoot, scenarioID, output)
-	}
-	if operation == "apply" || operation == "update" {
-		if err := preflight.Ensure(nil); err != nil {
-			write(output, failure("KB_CREATE_TOOLCHAIN_UNSUPPORTED", "runtime preflight failed", "use Node.js 24.x and pnpm 11.x, or update the runtime and retry", err))
-			return 2
-		}
+		return runWizard(indexPath, releaseBase, direct, scenarioID, output)
 	}
 	if operation == "uninstall" || operation == "rollback" {
 		return runRecovery(operation, platformRoot, snapshotID, registry, kbdev, output)
 	}
-	if indexPath == "" || (inputPath == "" && direct.PlatformRoot == "") {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and either --input or --request-platform-root are required", "pass immutable release index plus V2 request JSON or direct CI flags", nil))
+	if inputPath == "" && direct.PlatformRoot == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--input or --request-platform-root is required", "pass a V2 request JSON file or the direct CI flags", nil))
 		return 2
 	}
-	source, err := catalog.LoadFile(indexPath)
+	// An update from a platform root installed under the retired contract is
+	// refused before anything is resolved: the installed state and the
+	// resolution protocol are both different, so there is nothing to update.
+	if operation == "update" {
+		if err := refuseLegacyRoot(direct.PlatformRoot, releaseBase); err != nil {
+			writeError(output, err)
+			return 2
+		}
+	}
+	source, descriptor, err := resolveRelease(operation, indexPath, releaseBase, direct)
 	if err != nil {
-		write(output, failure("KB_CREATE_RELEASE_INDEX_INVALID", "release index could not be loaded", "supply a valid immutable V2 release index", err))
+		writeError(output, err)
 		return 2
+	}
+	// The index describes exactly one release; the descriptor is what names it.
+	// Recording the identity here means the receipt, the journal and `status`
+	// all report the release that was actually installed rather than whatever a
+	// channel happens to point at later.
+	if descriptor != nil && source.ReleaseID == "" {
+		source.ReleaseID = descriptor.ReleaseID
+	}
+	if operation == "apply" || operation == "update" {
+		if err := ensureToolchain(source); err != nil {
+			writeError(output, err)
+			return 2
+		}
 	}
 	var response transport.PlanResponse
 	if inputPath != "" {
@@ -207,7 +222,7 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 // runStatus verifies the receipt-owned graph without resolving a new release.
 // That makes status safe for stable, canary and exact-version installations:
 // it reports the immutable decision that was actually applied.
-func runStatus(platformRoot, kbdev string, output *os.File) int {
+func runStatus(platformRoot, releaseBase, kbdev string, output *os.File) int {
 	if platformRoot == "" {
 		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--platform-root is required", "pass the V2 platform root that owns the active receipt", nil))
 		return 2
@@ -217,12 +232,21 @@ func runStatus(platformRoot, kbdev string, output *os.File) int {
 		write(output, failure("KB_CREATE_RECEIPT_UNAVAILABLE", "active V2 receipt could not be read", "run apply first or restore a named V2 snapshot", err))
 		return 2
 	}
+	// Status reports the lifecycle answer even for a legacy root and even when
+	// the support document is unreachable: telling a user their release left
+	// support is exactly the job an unavailable service must not prevent.
+	contract := active.Plan.Contract
+	if contract == "" {
+		contract = "legacy"
+	}
+	support := evaluateInstalledSupport(releaseBase, active.Plan.ReleaseID, active.Plan.Contract)
 	check, err := verify.Run(active.Plan, services.KBDev{Binary: kbdev}, time.Now().UTC())
 	if err != nil {
-		write(output, failure("KB_CREATE_STATUS_UNHEALTHY", "installed V2 service graph is not ready", "inspect kb-dev status or run doctor --fix", err))
+		write(output, map[string]any{"ok": false, "operation": "status", "contract": contract, "support": support,
+			"error": map[string]string{"code": "KB_CREATE_STATUS_UNHEALTHY", "message": "installed V2 service graph is not ready", "hint": "inspect kb-dev status or run doctor --fix", "cause": err.Error()}})
 		return 1
 	}
-	write(output, map[string]any{"ok": true, "operation": "status", "receipt": active, "verification": check})
+	write(output, map[string]any{"ok": true, "operation": "status", "contract": contract, "support": support, "receipt": active, "verification": check})
 	return 0
 }
 
@@ -281,14 +305,15 @@ func compileScenario(id, answers string, resume bool, base contracts.InstallRequ
 	return request, err
 }
 
-func runWizard(indexPath, platformRoot, scenarioID string, output *os.File) int {
-	if indexPath == "" || platformRoot == "" {
-		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--index and --request-platform-root are required", "pass the sealed release index and desired platform root", nil))
+func runWizard(indexPath, releaseBase string, direct directRequest, scenarioID string, output *os.File) int {
+	platformRoot := direct.PlatformRoot
+	if platformRoot == "" {
+		write(output, failure("KB_CREATE_INPUT_REQUIRED", "--request-platform-root is required", "pass the desired platform root", nil))
 		return 2
 	}
-	source, err := catalog.LoadFile(indexPath)
+	source, _, err := resolveRelease("wizard", indexPath, releaseBase, direct)
 	if err != nil {
-		write(output, failure("KB_CREATE_RELEASE_INDEX_INVALID", "release index could not be loaded", "supply a valid sealed V2 release index", err))
+		writeError(output, err)
 		return 2
 	}
 	request, err := wizard.RequestScenario(source, platformRoot, scenarioID, wizard.IO{In: os.Stdin, Out: os.Stderr})

@@ -1,13 +1,18 @@
 name: kb-create-install action smoke test
 
 # Ad-hoc verification that the reusable .github/actions/kb-create-install
-# composite action applies a sealed V2 release index with the real released
-# kb-create binary and installs a plugin with it.
+# composite action installs the platform the way an external consumer repo
+# would: bootstrap the launcher from the public install script, resolve a
+# channel pointer, install a plugin.
 #
 # This is deliberately separate from the Go-level e2e suite (tools/kb-create/
 # v2/e2e/), which tests kb-create itself built from source on every PR — this
 # workflow instead proves the *packaged, reusable action* wrapping a released
-# binary works, the way an external consumer repo would actually use it.
+# launcher works.
+#
+# It needs a live release endpoint serving a published channel pointer, so it
+# stays workflow_dispatch: there is nothing for it to resolve until the control
+# plane has actually published something.
 
 on:
   workflow_dispatch:
@@ -16,9 +21,16 @@ on:
         description: 'Plugin ID to install (must be in the manifest catalog)'
         required: true
         default: 'release'
-      release_index:
-        description: 'Path to a sealed V2 release-index.json in the checked-out ref'
-        required: true
+      platform_channel:
+        description: 'Channel to install from'
+        required: false
+        default: 'stable'
+        type: choice
+        options: [stable, canary]
+      release_base:
+        description: 'Release endpoint; override to smoke a non-production namespace'
+        required: false
+        default: 'https://releases.kb-labs.dev'
 
 permissions:
   contents: read
@@ -36,8 +48,18 @@ jobs:
         uses: ./.github/actions/kb-create-install
         with:
           plugins: ${{ inputs.plugin }}
-          release-index: ${{ inputs.release_index }}
+          platform-channel: ${{ inputs.platform_channel }}
+          release-base: ${{ inputs.release_base }}
           platform-dir: ${{ runner.temp }}/kb-platform-action-smoke
+
+      - name: Verify the action reported the release it resolved
+        run: |
+          set -euo pipefail
+          # An empty release id means the launcher installed something it could
+          # not name, which is the one outcome the descriptor protocol exists to
+          # make impossible.
+          test -n "${{ steps.kb.outputs.release-id }}"
+          echo "resolved release: ${{ steps.kb.outputs.release-id }}"
 
       - name: Verify the plugin package is actually there
         run: |

@@ -44,10 +44,9 @@ what it checks, and how to see the current state.
 | **CI** (`ci.yml`) | ✅ paths-ignore | — | — | — | — | ✅ |
 | **CI (PR)** (`ci-pr.yml`) | — | ✅ open/sync/reopen | — | — | — | — |
 | **E2E Platform Tests** (`e2e-platform.yml`) | ✅ paths-ignore | ✅ open/sync/reopen, paths-ignore | — | ✅ after Release Binaries | ✅ Mon 9:00 UTC | ✅ |
-| **Post-publish Smoke** (`e2e-user-journey.yml`) | — | — | — | ✅ after binary/npm delivery | ✅ Mon 8:00 UTC | ✅ |
+| **Launcher E2E** (`reusable-launcher-e2e.yml`) | reusable — invoked by `ci.yml` and `ci-pr.yml` via `workflow_call` |
 | **Deploy** (`deploy.yml`) | ✅ paths-only | — | — | — | — | ✅ |
-| **Build candidate** (`release-build-candidate.yml`) | — | — | — | — | — | ✅ via engine |
-| **Deliver candidate** (`release-deliver-candidate.yml`) | — | — | — | — | — | ✅ via engine |
+| **Release — deliver** (`release-deliver.yml`) | — | — | — | — | — | ✅ `workflow_call` / dispatch |
 | **CodeQL** ("Push on main") | ✅ every push | ✅ | — | — | ✅ default | — |
 | **KB Deploy — Apply** (`kb-deploy-apply.yml`) | reusable — invoked by other workflows via `workflow_call` |
 
@@ -93,13 +92,22 @@ platform, npm tarballs, Verdaccio registry, and images from source. This is the
 authoritative verification path. See [ADR-0038](./adr/0038-ci-cache-policy-and-authoritative-builds.md)
 for fingerprints, metrics, and the warm-vs-cold audit.
 
-### Post-publish Smoke (`e2e-user-journey.yml`)
-**Purpose:** verify delivery of the public installer and published artifacts in
-a clean container. Full source/CI user journeys run against Verdaccio in
-`e2e-platform.yml` and the launcher E2E workflow; this job is the final public
-artifact smoke and intentionally catches npm/GitHub Release packaging errors.
-**When:** after successful binary or npm delivery, weekly Monday 08:00 UTC,
-or manual dispatch.
+### Launcher E2E (`reusable-launcher-e2e.yml`)
+**Purpose:** run the Go `kb-create` end-to-end suite against a local Verdaccio
+populated from the monorepo's own built packages — the pre-publish validation
+cycle.
+**When:** `workflow_call` from `ci.yml` (always) and `ci-pr.yml` (gated on
+`tools/kb-create/**` changes).
+
+**The post-publish smoke is no longer a workflow.** It used to live in
+`e2e-user-journey.yml`, triggered by `workflow_run` after a delivery — which
+meant a smoke that could not block the publication it was smoking, and whose
+correlation to a specific release was inferred from run ordering. It is now a
+*step in the release itself*: the candidate saga stops at
+`artifacts-published` and only reaches `candidate-smoke-passed` once
+`smokeExactVersion` returns evidence bound to that exact candidate id and bundle
+digest. A failing smoke rejects the candidate and burns its version rather than
+producing a red run beside a green release.
 **Typical duration:** ~5–15 min.
 
 ### Deploy (`deploy.yml`)
@@ -113,16 +121,39 @@ or manual dispatch.
 **Reuses:** `KB Deploy — Apply` via `workflow_call`.
 **Typical duration:** ~10 min.
 
-### Build and deliver candidate workflows
-The workflow engine supplies an immutable release intent to
-`release-build-candidate.yml`. That workflow builds packages and binaries once,
-seals the unified release-index and uploads one candidate bundle. The engine
-then invokes `release-deliver-candidate.yml`, which verifies the bundle digest,
-publishes exact bytes and runs the post-publish launcher journey.
+### Release — deliver (`release-deliver.yml`)
+**Purpose:** the entire CI surface of the release train, and the only one.
+**When:** `workflow_call` from the Workflow control plane, or manual dispatch for
+recovery.
 
-Neither workflow chooses versions, resolves compatibility, performs a second
-build, or has a legacy tag-triggered fallback. Stable promotion is another
-workflow-engine transition using the same candidate ID and bundle.
+It replaced `release-build-candidate.yml` and `release-deliver-candidate.yml`,
+which between them chose versions, applied them, built the flow, staged npm
+artifacts, ran a GoReleaser build and generated the release index — 484 lines of
+release decisions that no receipt recorded and no approval covered.
+
+This workflow decides nothing. Its inputs are a `ReleaseDeliveryRequest` and
+nothing else: `{receipt_id, candidate_id, bundle_uri, bundle_sha256, step_id,
+operation}` plus the pointer preconditions the pointer operations need. There is
+no flow, no version, no package pattern and no manifest path, and their absence
+is the design — CI that knows the version can pick a different one. It fetches
+the bundle the release plugin sealed, verifies the externally supplied digest
+*before* reading any bundle content, and calls `kb release deliver-request`,
+which publishes exactly those bytes and prints one `DeliveryEvidence` document.
+
+Everything above that call is transport. Every ordering, idempotency and
+conflict rule lives in the release plugin, where it is unit-tested; a step in
+this file cannot violate one because it cannot express one.
+
+Forbidden here and enforced by a policy test rather than reviewer memory
+(`plugins/release/manager-cli/src/__tests__/ci-workflow-policy.test.ts`):
+`kb release plan|build|stage|version`, `npm pack`, a GoReleaser build, and index
+generation.
+
+Stable promotion is not a separate workflow. It is a Workflow-side saga that
+calls this same file with `operation: stage-channel` and then `commit-channel`,
+over the same candidate ID and bundle digest the canary used. See
+[ADR-0043](./adr/0043-release-bundle-and-delivery-boundaries.md) and the
+[release control plane runbook](./runbooks/release-control-plane.md).
 
 ### CodeQL ("Push on main")
 **Purpose:** static-analysis security scanning.

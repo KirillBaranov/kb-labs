@@ -1,0 +1,6 @@
+{
+  "status": "retired",
+  "contract": "kb.release-legacy/0",
+  "message": "This distribution channel was retired on 2026-08-31. Reinstall with: curl -fsSL https://kblabs.ru/install.sh | sh",
+  "supersededBy": "https://releases.kb-labs.dev/channels/canary.json"
+}

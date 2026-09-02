@@ -18,8 +18,19 @@ func main() {
 	input := flag.String("input", "", "normalized V2 release-index export JSON")
 	output := flag.String("output", "", "sealed immutable release-index JSON")
 	manifestRoot := flag.String("manifest-root", "", "staging root containing exact V2 package manifests")
+	verify := flag.String("verify", "", "sealed release-index JSON to read back exactly as a launcher would")
 	flag.Parse()
-	if err := run(*input, *output, *manifestRoot); err != nil {
+	action := func() error {
+		if *verify != "" {
+			// Reading the sealed document back through the launcher's only
+			// reader is what proves a sealer run actually produced something
+			// installable, rather than merely well-formed on the way out.
+			_, err := catalog.LoadFile(*verify)
+			return err
+		}
+		return run(*input, *output, *manifestRoot)
+	}
+	if err := action(); err != nil {
 		_ = json.NewEncoder(os.Stderr).Encode(map[string]any{"ok": false, "error": map[string]string{"code": "KB_CREATE_RELEASE_INDEX_INVALID", "message": "could not seal V2 release index", "cause": err.Error(), "hint": "fix the normalized manifest export before publishing the release"}})
 		os.Exit(2)
 	}

@@ -30,10 +30,17 @@ go build -o kb-create .
 
 ## Project Layout
 
-The public launcher lives under `v2/`: `catalog` owns the sealed
-release-index, `resolve` creates the immutable plan, `runtime` applies and
-recovers it, and `cmd/kb-create-v2` exposes the human/agent/CI transports.
-Publisher-only sealing lives in `v2/cmd/kb-create-release-index`.
+The public launcher lives under `v2/`: `remote` speaks the published
+descriptor protocol (channel pointer → immutable release descriptor → release
+index), `catalog` owns the resulting index, `resolve` creates the immutable
+plan, `runtime` applies and recovers it, and `cmd/kb-create-v2` exposes the
+human/agent/CI transports. Publisher-only sealing lives in
+`v2/cmd/kb-create-release-index`.
+
+`install.sh` beside this file is the public bootstrap and speaks the same
+protocol; `install_test.sh` exercises it offline against a stubbed endpoint and
+runs as part of `make test`. There is no `install.ps1`: Windows is off the
+support matrix (decision S0.3c).
 
 ## Conventions
 
@@ -72,23 +79,23 @@ Tests are table-driven and live alongside the code they test (`*_test.go`).
 
 ## Building a Release
 
-The release train publishes one sealed `release-index.json` together with the
-platform, SDK and binary artifacts. The index is prepared from the exact
-staged package manifests and binary checksum manifest; it is the compatibility
-authority consumed by the launcher. Do not publish a platform or binary with a
-separate compatibility file or an ad-hoc latest-version lookup.
+The launcher is released as part of the platform release train, not on its own.
+The release plugin seals one immutable bundle containing the release index, the
+npm tarballs, the launcher binaries and the sealed channel pointer; a human
+approves that bundle's digest; CI publishes exactly those bytes. A launcher
+binary has no independent release path and no independent version negotiation.
 
-The workflow engine dispatches the candidate builder and promotion workflows.
-GitHub Actions receives an immutable release intent and delivers only the
-resulting candidate bundle:
+Drive it with `kb release candidate` and approve it with `kb release approve`.
+See the [release control plane runbook](../../docs/runbooks/release-control-plane.md)
+for the operator procedure and for what currently still needs infrastructure
+that is not deployed.
 
-```bash
-kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform","channel":"canary"}'
-```
+Do not publish a platform or binary with a separate compatibility file or an
+ad-hoc latest-version lookup: the sealed index inside the bundle is the
+compatibility authority the launcher consumes.
 
-Local binary builds are development-only. Production candidate binaries are
-created by `release-build-candidate.yml` and must not be replaced by a local
-GoReleaser build.
+Local binary builds are development-only. Production launcher binaries come out
+of the sealed bundle and must never be replaced by a local GoReleaser build.
 
 ```bash
 goreleaser build --snapshot --clean

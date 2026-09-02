@@ -44,15 +44,20 @@ type ProviderBinding struct {
 // The runtime converts its artifacts/config/variables to actions; it must not
 // re-resolve versions or discover unplanned services.
 type ResolvedInstallPlan struct {
-	Schema              string            `json:"schema"`
-	Request             InstallRequest    `json:"request"`
-	Artifacts           []Artifact        `json:"artifacts"`
-	ServiceGraph        ServiceGraph      `json:"serviceGraph"`
-	ProviderBindings    []ProviderBinding `json:"providerBindings,omitempty"`
-	ConfigPatches       []ConfigPatch     `json:"configPatches,omitempty"`
-	PlanHash            string            `json:"planHash"`
-	ReleaseDigest       string            `json:"releaseDigest,omitempty"`
-	ScenarioStateDigest string            `json:"scenarioStateDigest,omitempty"`
+	Schema           string            `json:"schema"`
+	Request          InstallRequest    `json:"request"`
+	Artifacts        []Artifact        `json:"artifacts"`
+	ServiceGraph     ServiceGraph      `json:"serviceGraph"`
+	ProviderBindings []ProviderBinding `json:"providerBindings,omitempty"`
+	ConfigPatches    []ConfigPatch     `json:"configPatches,omitempty"`
+	PlanHash         string            `json:"planHash"`
+	// ReleaseID and Contract record which published release this plan came
+	// from. Support evaluation and status read them from the receipt rather
+	// than re-resolving a channel that may have moved since installation.
+	ReleaseID           string `json:"releaseId,omitempty"`
+	Contract            string `json:"contract,omitempty"`
+	ReleaseDigest       string `json:"releaseDigest,omitempty"`
+	ScenarioStateDigest string `json:"scenarioStateDigest,omitempty"`
 }
 
 type ConfigPatch struct {

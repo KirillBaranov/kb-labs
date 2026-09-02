@@ -30,7 +30,13 @@ There is no legacy `install` path. `kb-create apply` is the only installation
 operation; it accepts the same request whether it came from CI, an agent,
 scenario, or the wizard.
 
-`apply` and `update` require an immutable release index and request. Recovery
+`apply` and `update` resolve the release themselves: a channel pointer is
+followed to an immutable release descriptor and then to the release index,
+and both digests are verified before any of it informs a decision. Pass
+`--platform-channel <stable|canary|experimental>` or `--platform-version
+<releaseId>`; `--release-base <url>` selects the trusted endpoint. `--index`
+remains only as an explicit exact/offline source and is never tried as a
+fallback after remote resolution fails. Recovery
 operations deliberately require only `--platform-root` (and a snapshot for
 rollback), so they recover the verified V2 receipt rather than recalculating a
 new plan. Raw package-manager transcript is private under `.kb/logs/`; failed
@@ -43,7 +49,7 @@ as `--request-platform-root`, `--platform-version`/`--platform-channel`,
 the same `InstallRequest` before resolution; flags never build a separate
 shell-level install sequence.
 
-For a human, `kb-create wizard --index release-index.json
+For a human, `kb-create wizard --platform-channel stable
 --request-platform-root /path/to/platform` asks only for product axes and
 returns the same JSON request on stdout. It does not apply anything or own a
 second resolver; feed that request into `plan` or `apply` to continue.
@@ -62,17 +68,24 @@ declares that requirement and JSON Pointer. Secret fields become secret-store
 references and cannot have a scenario default. The migrated built-ins are
 `commit`, `custom`, `explore`, `plugin-author`, and `release`.
 
-Release automation creates the index with
+Release automation creates the index through the release plugin: `kb release
+seal --bundle <bundle-dir>` builds the normalized manifest export and the
+binary manifest (from the exact published checksums) and then calls
+`kb-create-release-index` to seal it. The sealer is still the owner of this
+format and can be invoked directly as
 `go run ./v2/cmd/kb-create-release-index --input manifest-export.json
---manifest-root staging-root --output release-index.json` after generating the
-binary manifest from the exact published checksums with
-`node scripts/prepare-binary-manifest.mjs`. The command reads the exact V2
+--manifest-root staging-root --output release-index.json`. The command reads the exact V2
 manifests staged with each artifact and replaces any hand-authored config
 projection; missing/mismatched manifests fail the release. The resulting
-index contains the shared compatibility matrix for platform, SDK and binaries,
-rejects channels that point outside its platform set, and seals the canonical
-payload with a digest. `kb-create` verifies both the digest and matrix before
-resolving.
+index is channel-independent — a channel is an externally resolved pointer,
+not a field inside a sealed document — and carries the release compatibility
+graph: `{kind, id, version, variant, digest}` nodes addressed by the same key
+scheme the TypeScript sealer uses (`package:<name>@<version>`,
+`binary:<id>@<version>:<os>/<arch>`) with `requires`, `provides`,
+`compatibleWith` and `conflictsWith` edges. `kb-create` verifies the digest and
+traverses only explicit edges before resolving. The supported matrix is
+linux/amd64, linux/arm64, darwin/amd64 and darwin/arm64; an unsupported
+`{os, arch}` is rejected with `KB_CREATE_RELEASE_TARGET_UNSUPPORTED`.
 
 Secret input uses `--secret-env requirement.id=ENV_VAR`, so CI/agents pass a
 reference to process environment rather than secret text through argv/JSON.

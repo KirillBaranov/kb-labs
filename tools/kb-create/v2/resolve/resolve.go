@@ -20,17 +20,26 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if err != nil {
 		return contracts.ResolvedInstallPlan{}, err
 	}
+	// The index is channel-independent: a channel was already resolved to this
+	// exact release by the pointer/descriptor layer, so a channel request here
+	// means "the release this index describes", never a lookup inside it.
 	platformVersion := request.Platform.Version
 	if platformVersion == "" {
-		platformVersion = source.Channels[request.Platform.Channel]
+		sole, err := catalog.SolePlatform(source)
+		if err != nil {
+			return contracts.ResolvedInstallPlan{}, incompatible("platform channel", string(request.Platform.Channel), err.Error())
+		}
+		platformVersion = sole.Version
 	}
 	platform, ok := findPlatform(source.Platforms, platformVersion)
 	if !ok {
 		return contracts.ResolvedInstallPlan{}, incompatible("platform", platformVersion, "is not present in the release index")
 	}
 	sdkVersion := request.SDK.Version
-	if sdkVersion == "" {
-		sdkVersion = source.Channels[request.SDK.Channel]
+	if sdkVersion == "" && request.SDK.Channel != "" {
+		if sole, ok := catalog.SoleSDK(source); ok {
+			sdkVersion = sole.Version
+		}
 	}
 	if source.Compatibility != nil {
 		if err := catalog.CheckCompatibility(source, platform.Version, sdkVersion, "", "", ""); err != nil {
@@ -46,8 +55,27 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 			return contracts.ResolvedInstallPlan{}, incompatible("service profile", request.ServiceProfile, "is not supplied by platform "+platform.Version)
 		}
 	}
+	// The supported matrix is checked once, here, so an unsupported target is
+	// reported as such instead of surfacing later as an empty binary selection.
+	if !contracts.SupportedTarget(runtime.GOOS, runtime.GOARCH) {
+		return contracts.ResolvedInstallPlan{}, contracts.ReleaseError(contracts.CodeReleaseTargetUnsupported, contracts.StageResolve,
+			"the local platform is outside the supported release matrix",
+			"supported targets are "+strings.Join(contracts.SupportedTargets(), ", "),
+			fmt.Errorf("target %s/%s is not released", runtime.GOOS, runtime.GOARCH)).
+			WithDetail("target", runtime.GOOS+"/"+runtime.GOARCH)
+	}
 	graph.PlatformVersion, graph.Profile = platform.Version, profileName(request.ServiceProfile)
 	artifacts := []contracts.Artifact{{ID: platform.ID, Kind: "platform", Package: platform.Package, Version: platform.Version, SHA256: platform.SHA256, Tarball: platform.Tarball}}
+	// A release-declared managed toolchain installs like any other release
+	// binary: hash-verified, private to the platform root and planned up front
+	// rather than fetched opportunistically at apply time.
+	managed, err := platform.Toolchain.ManagedFor(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return contracts.ResolvedInstallPlan{}, err
+	}
+	for _, binary := range managed {
+		artifacts = append(artifacts, contracts.Artifact{ID: binary.ID, Kind: "binary", Version: platform.Version, SHA256: binary.SHA256, URL: binary.URL, Target: binary.Filename})
+	}
 	for _, member := range platform.Members {
 		artifacts = append(artifacts, artifact(member, "platform-member"))
 	}
@@ -123,7 +151,7 @@ func Plan(request contracts.InstallRequest, source catalog.Catalog) (contracts.R
 	if err != nil {
 		return contracts.ResolvedInstallPlan{}, err
 	}
-	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches, ReleaseDigest: source.Digest, ScenarioStateDigest: request.ScenarioStateDigest}
+	plan := contracts.ResolvedInstallPlan{Schema: contracts.ResolvedPlanSchema, Request: request, Artifacts: artifacts, ServiceGraph: graph, ProviderBindings: bindings, ConfigPatches: patches, ReleaseID: source.ReleaseID, Contract: contracts.ReleaseDescriptorSchema, ReleaseDigest: source.Digest, ScenarioStateDigest: request.ScenarioStateDigest}
 	plan.PlanHash = hash(plan)
 	return plan, nil
 }

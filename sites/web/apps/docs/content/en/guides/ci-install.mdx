@@ -1,25 +1,27 @@
 ---
 title: "V2 Installs in CI"
-description: "Apply a sealed KB Labs release index non-interactively with kb-create and the reusable GitHub Action."
-updatedAt: "2026-08-22"
+description: "Install KB Labs non-interactively in CI with kb-create and the reusable GitHub Action."
+updatedAt: "2026-08-31"
 order: 8
 ---
 
-Most workflows only need a thin slice of the platform — a release job needs the `release` plugin, not the gateway, workflow engine, or marketplace. V2 `kb-create apply` and the `kb-create-install` GitHub Action make that slice explicit while using the same release-index contract as the human wizard and agent protocol.
+Most workflows only need a thin slice of the platform — a release job needs the `release` plugin, not the gateway, workflow engine, or marketplace. `kb-create apply` and the `kb-create-install` GitHub Action make that slice explicit, using the same resolution protocol as the human wizard and the agent protocol.
+
+CI resolves a release the same way a person does: a channel pointer names an immutable release descriptor, which names the sealed index and every artifact by digest. **You do not obtain a `release-index.json` and pass it in.** `--index` still exists as an explicit offline escape hatch, but it is never a fallback — a failed remote resolution is a failure, not a reason to read a local file.
 
 ## `kb-create apply`
 
 A non-interactive command that applies exactly the plugins/services you name — no wizard, no default footprint beyond the platform baseline.
 
 ```bash
-kb-create apply --index ./release-index.json \
+kb-create apply --platform-channel stable \
   --request-platform-root ./ci-platform \
   --project-root "$GITHUB_WORKSPACE" \
   --plugins=release
 ```
 
-The index digest and compatibility matrix are validated before any package is
-written. An unknown plugin, missing provider, incompatible version, or missing
+Every hop is digest-verified before the next is read, and the resolved index's
+compatibility matrix is validated before any package is written. An unknown plugin, missing provider, incompatible version, or missing
 platform/SDK/binary relation fails during planning with structured diagnostics.
 The same request can be passed unchanged by CI, an agent, or the wizard.
 
@@ -28,7 +30,7 @@ The same request can be passed unchanged by CI, an agent, or the wizard.
 Append `@version` to any plugin or service ID:
 
 ```bash
-kb-create apply --index ./release-index.json --plugins=release@0.2.0 \
+kb-create apply --platform-channel stable --plugins=release@0.2.0 \
   --services=rest@1.4.0 --request-platform-root ./ci-platform
 ```
 
@@ -41,19 +43,26 @@ Omit the version to install `@latest`. Pins are independent per catalog (plugins
 packages). Select a channel on either axis, or pin it to an exact version:
 
 ```bash
-# Track the next platform train while keeping the default SDK channel.
-kb-create apply --index ./release-index.json --plugins=release \
+# Track the next platform train.
+kb-create apply --plugins=release \
   --platform-channel=canary --request-platform-root ./ci-platform
 
 # Reproduce a known platform release exactly.
-kb-create apply --index ./release-index.json --plugins=release \
+kb-create apply --plugins=release \
   --platform-version=2.118.1 --request-platform-root ./ci-platform
 ```
 
-Supported channels are labels in the sealed release index. On an
-axis, `--*-version` and `--*-channel` are mutually exclusive. A channel is
-resolved to a concrete version before installation, then recorded in the
-installation state so `kb-create status` can show what actually landed.
+Supported channels are `stable` and `canary`. `--platform-version` and
+`--platform-channel` are mutually exclusive. A channel resolves to a concrete
+release before installation, and that exact release id is recorded in the
+installation state so `kb-create status` shows what actually landed.
+
+The two modes differ in one respect worth knowing. Installing from a **channel**
+does not read the published support policy at all — resolving the pointer *is*
+the statement that the release is supported, and a mutable document must never
+be able to block every new installation at once. Installing an **exact version**
+does read it, and fails closed if it cannot: without a pointer vouching for the
+release, support cannot be confirmed.
 
 The release index carries the shared platform/SDK/binary compatibility matrix.
 It is checked before packages are written; an incompatible or incomplete
@@ -64,7 +73,7 @@ relation stops the command. Production has no compatibility bypass.
 Adapters back the capabilities plugins declare (`llm`, `storage`, `cache`, ...). Wire one explicitly with `--adapters`:
 
 ```bash
-kb-create apply --index ./release-index.json --plugins=release \
+kb-create apply --platform-channel stable --plugins=release \
   --adapters "cache=@kb-labs/adapters-redis@0.3.0" \
   --request-platform-root ./ci-platform
 ```
@@ -98,30 +107,32 @@ user intent; they do not contain complete `kb.config.jsonc` documents.
 
 ## Reusable GitHub Action
 
-For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the binary download and the flags above into one step:
+For GitHub Actions workflows, `.github/actions/kb-create-install` wraps the launcher bootstrap and the flags above into one step:
 
 ```yaml
 - uses: kb-labs-team/kb-labs/.github/actions/kb-create-install@main
   with:
-    release-index: ./.kb/release/release-index.json
+    platform-channel: stable
     plugins: release@0.2.0
     platform-dir: ${{ runner.temp }}/kb-platform
 ```
 
-| Input          | Description                                                            |
-| -------------- | ---------------------------------------------------------------------- |
-| `plugins`      | Comma-separated plugin IDs, each optionally `@version`                 |
-| `services`     | Comma-separated service IDs, each optionally `@version`                |
-| `adapters`     | Comma-separated `role=pkg[@version]` pairs                             |
-| `platform-dir` | Where the platform installs to (default: a runner temp dir)            |
-| `registry`     | Override the npm registry (e.g. a local Verdaccio for testing)         |
-| `release-index` | Required sealed `kb.create.release-index/v2` file for the release train |
-| `version`      | Pin the `kb-create` binary release; use an exact tag in production |
+| Input              | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `plugins`          | Comma-separated plugin IDs, each optionally `@version`             |
+| `adapters`         | Comma-separated `role=pkg[@version]` pairs                         |
+| `platform-channel` | Channel to install from (default `stable`)                         |
+| `platform-version` | Exact version; overrides `platform-channel` when set               |
+| `release-base`     | Release endpoint; override only to target a non-production namespace |
+| `platform-dir`     | Where the platform installs to (default: a runner temp dir)         |
+| `project-dir`      | Project root receiving the config pointer (default: the workspace)  |
+| `registry`         | Override the npm registry (e.g. a local Verdaccio for testing)      |
 
-Outputs: `platform-dir` (resolved install path) and `config-path` (generated `kb.config.jsonc`), for chaining into later steps that need to `cd` into the platform or read its config.
+Outputs: `platform-dir` (resolved install path), `config-path` (generated `kb.config.jsonc`) and `release-id` (the exact release that was resolved), for chaining into later steps.
 
-The action downloads the `kb-create` binary directly from GitHub Releases and
-applies the supplied release index — no separate install script step is needed.
+The action bootstraps the launcher with the same public install script a person runs, from the same endpoint, speaking the same protocol. There is deliberately no CI-specific download path: a CI-only bootstrap is a second installer that can drift from the documented one without anyone noticing.
+
+Linux and macOS runners only, on `amd64` or `arm64`. Windows is not supported; a windows runner fails during bootstrap with a diagnostic naming the four supported targets.
 
 ## What's next
 

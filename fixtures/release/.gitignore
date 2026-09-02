@@ -1,0 +1,7 @@
+# The root .gitignore excludes *.tgz to keep stray npm packs out of the repo.
+# The golden bundle's tarballs are not packs: they are fixed-byte stand-ins
+# whose hashes its inventory commits to. Without them the bundle fails its own
+# rule 5 (closed inventory) and `kb release verify-bundle` cannot be run
+# against it. The rule lives here, not inside the bundle, because a bundle
+# directory holding an extra file would itself be a rule 5 violation.
+!golden/npm/*.tgz

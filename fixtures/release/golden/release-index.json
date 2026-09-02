@@ -1,0 +1,10 @@
+{
+  "schema": "kb.release-index/1",
+  "channel": "canary",
+  "version": "2.119.0",
+  "packages": [
+    "@kb-labs/core-runtime",
+    "@kb-labs/plugin-release",
+    "@kb-labs/sdk"
+  ]
+}

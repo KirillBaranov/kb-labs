@@ -5,6 +5,8 @@
 
 import { z } from 'zod';
 
+import { ReleaseControlChannelSchema } from './release-control-plane.schema';
+
 // ============================================================================
 // Scopes
 // ============================================================================
@@ -61,7 +63,12 @@ export const VersionBumpSchema = z.enum(['patch', 'minor', 'major', 'auto']);
 
 export type VersionBump = z.infer<typeof VersionBumpSchema>;
 
-export const ReleaseChannelSchema = z.enum(['stable', 'canary']);
+/**
+ * Single source of truth for the channel set: the control-plane enum. Keeping a
+ * second `z.enum([...])` here is what would let the REST surface drift from the
+ * contracts it is supposed to expose.
+ */
+export const ReleaseChannelSchema = ReleaseControlChannelSchema;
 
 export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
 

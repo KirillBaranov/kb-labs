@@ -1,9 +1,18 @@
 # ADR-0042: Release Engine Control Plane and CI Delivery Plane
 
 **Date:** 2026-08-22  
-**Status:** Accepted  
+**Status:** Accepted; superseded in part by ADR-0043  
 **Deciders:** KB Labs Team  
 **Tags:** release, workflow-engine, ci, artifacts, provenance
+
+> **Superseded in part by [ADR-0043](./0043-release-bundle-and-delivery-boundaries.md).**
+> The release control-plane cutover moved every release-domain decision into the
+> release plugin and reduced CI to publishing exact bytes out of a sealed bundle.
+> The split of "engine plans, CI delivers" survives; what does not is CI building
+> candidate artifacts. CI now receives `{receiptId, candidateId, bundle locator,
+> expected digest, operation}` and nothing else.
+> The rest of this ADR remains an accurate description of the pipeline as it was,
+> and is kept for that reason — it is history, not instruction.
 
 ## Context
 
