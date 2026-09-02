@@ -40,6 +40,20 @@ inputs:
     description: Skip the pre-release Checks step (dist-exports/pack-install/typecheck/lint/tests). Escape hatch for shipping when Checks itself is broken/too slow — the packages still get built and reviewed, just not gate-checked. Re-run checks manually before trusting the release.
     required: false
     default: false
+  bump:
+    type: string
+    description: >-
+      Version bump override — "auto" (default) infers patch/minor/major from
+      conventional commits since the last tag; force "major" for a deliberate
+      breaking release regardless of what commit messages say. This only
+      changes the version number: the compatibility matrix in each release's
+      release-index.json already relates platform/SDK/binary versions by
+      exact, explicit pairs (tools/kb-create/v2/catalog/catalog.go,
+      CheckCompatibility) — nothing is compatible by default, so a major bump
+      does not need a separate "breaking" flag to stop old installs from
+      silently picking it up.
+    required: false
+    default: auto
 phases:
   preview:
     label: Preview
@@ -76,7 +90,7 @@ jobs:
         id: plan
         phase: preview
         timeoutMs: 1200000
-        run: pnpm kb release plan --flow ${{ inputs.flow }} --channel ${{ inputs.channel }}
+        run: pnpm kb release plan --flow ${{ inputs.flow }} --channel ${{ inputs.channel }} --bump ${{ inputs.bump }}
 
       - name: Checks
         id: checks
@@ -134,14 +148,14 @@ jobs:
         uses: builtin:approval
         with:
           title: "Release ${{ inputs.flow }} (${{ inputs.channel }}) — proceed?"
-          instructions: "Review the release plan, package links, and check results above — including the 'Current release status' section, which shows whether the last stable tag and npm already agree before this candidate. A warning there is not this candidate's fault, but it means the baseline you're releasing on top of is not fully clean — read it before treating this as a routine approve. Approval only prepares the Git state (for stable) and starts the governed release-plugin build in immutable candidate CI. Publishing and the installable channel are separate later transitions, and the channel moves only after green smoke. skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
+          instructions: "Review the release plan, package links, and check results above — including the 'Current release status' section, which shows whether the last stable tag and npm already agree before this candidate. A warning there is not this candidate's fault, but it means the baseline you're releasing on top of is not fully clean — read it before treating this as a routine approve. Approval only prepares the Git state (for stable) and starts the governed release-plugin build in immutable candidate CI. Publishing and the installable channel are separate later transitions, and the channel moves only after green smoke. bump=${{ inputs.bump }} (verify the plan's version numbers match what you expect — 'major' does not add a compatibility gate on top of the version bump; the release-index compatibility matrix already relates versions by exact explicit pairs). skipChecks=${{ inputs.skipChecks }} (if true, pack-install/typecheck/lint/tests did NOT run — verify manually before approving)."
 
       - name: Bump versions
         id: version
         phase: prepare
         if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
-        run: pnpm kb release version --flow ${{ inputs.flow }} --json
+        run: pnpm kb release version --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --json
 
       - name: Verify release branch before git operations
         id: git-branch
@@ -160,7 +174,7 @@ jobs:
         phase: git
         if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
-        run: pnpm kb release git --flow ${{ inputs.flow }} --bump auto --json
+        run: pnpm kb release git --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --json
 
       - name: Build immutable candidate in controlled CI
         id: candidate

@@ -25,6 +25,7 @@ $Binary = "kb-create"
 $Arch   = "amd64"   # only amd64 Windows builds are published
 $File   = "${Binary}-windows-${Arch}.exe"
 $Dest   = Join-Path $env:LOCALAPPDATA "kb-labs\bin\${Binary}.exe"
+$IndexDest = Join-Path $env:LOCALAPPDATA "kb-labs\${Binary}\release-index.json"
 
 function Write-Info  { param($m) Write-Host "[INFO] $m" -ForegroundColor Cyan }
 function Write-Ok    { param($m) Write-Host "[ OK ] $m" -ForegroundColor Green }
@@ -105,6 +106,40 @@ try {
 
     Copy-Item -Path $TmpBin -Destination $Dest -Force
 
+    # The launcher resolves installs from this signed index, never by talking
+    # to npm directly. It ships next to the binary on the same immutable
+    # per-version GitHub Release, verified with the same checksums.txt as the
+    # binary above — not every candidate publishes one (release-index.json is
+    # platform-flow only), so a missing file is a soft skip, not a fatal error.
+    try {
+        $IndexUrl = "$BaseUrl/release-index.json"
+        $TmpIndex = [System.IO.Path]::GetTempFileName()
+        Invoke-WebRequest -Uri $IndexUrl -OutFile $TmpIndex -UseBasicParsing -ErrorAction Stop
+
+        $expectedIndexLine = $checksumLines | Where-Object { $_ -match "  release-index\.json$" } | Select-Object -First 1
+        if ($expectedIndexLine) {
+            $ExpectedIndex = ($expectedIndexLine -split '\s+')[0]
+            $indexHash = Get-FileHash -Path $TmpIndex -Algorithm SHA256
+            $ActualIndex = $indexHash.Hash.ToLower()
+            if ($ExpectedIndex.ToLower() -ne $ActualIndex) {
+                Write-Err "Checksum mismatch for release-index.json."
+                Write-Err "Expected: $ExpectedIndex"
+                Write-Err "Actual:   $ActualIndex"
+                exit 1
+            }
+            $IndexDir = Split-Path $IndexDest
+            if (-not (Test-Path $IndexDir)) {
+                New-Item -ItemType Directory -Path $IndexDir -Force | Out-Null
+            }
+            Copy-Item -Path $TmpIndex -Destination $IndexDest -Force
+        } else {
+            $IndexDest = $null
+        }
+        Remove-Item -Path $TmpIndex -Force -ErrorAction SilentlyContinue
+    } catch {
+        $IndexDest = $null
+    }
+
 } finally {
     Remove-Item -Path $TmpBin -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $TmpSum -Force -ErrorAction SilentlyContinue
@@ -126,8 +161,13 @@ Write-Host ""
 Write-Ok "$Binary installed to $Dest"
 Write-Ok "Checksum verified ($File)"
 if ($ResolvedVersion) { Write-Ok "Version: $ResolvedVersion" }
+if ($IndexDest) { Write-Ok "Release index verified and saved to $IndexDest" }
 Write-Host ""
 Write-Host "Get started:" -ForegroundColor White
-Write-Host "  kb-create wizard --index release-index.json --request-platform-root ./kb-platform" -ForegroundColor DarkGray
+if ($IndexDest) {
+    Write-Host "  kb-create wizard --index `"$IndexDest`" --request-platform-root ./kb-platform" -ForegroundColor DarkGray
+} else {
+    Write-Host "  kb-create wizard --index release-index.json --request-platform-root ./kb-platform" -ForegroundColor DarkGray
+}
 Write-Host "  kb-create status" -ForegroundColor DarkGray
 Write-Host ""
