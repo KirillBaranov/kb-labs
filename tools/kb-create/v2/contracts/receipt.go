@@ -20,11 +20,12 @@ type Artifact struct {
 }
 
 type Service struct {
-	ID        string   `json:"id"`
-	Command   string   `json:"command"`
-	Port      int      `json:"port,omitempty"`
-	DependsOn []string `json:"dependsOn,omitempty"`
-	Required  bool     `json:"required"`
+	ID          string   `json:"id"`
+	Command     string   `json:"command"`
+	Port        int      `json:"port,omitempty"`
+	HealthCheck string   `json:"healthCheck,omitempty"`
+	DependsOn   []string `json:"dependsOn,omitempty"`
+	Required    bool     `json:"required"`
 }
 
 type ServiceGraph struct {
