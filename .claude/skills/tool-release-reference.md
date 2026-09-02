@@ -107,6 +107,26 @@ pnpm kb release plan --flow sdk --channel canary   # preview only
 
 Canary publishes straight to real npm under a prerelease dist-tag — no Verdaccio, no git commit, no git tag. Version is computed in-memory as `<base-version>-canary.<shortsha>`; `package.json` and git history stay untouched. Users install with `npm install @kb-labs/sdk@canary`. Deterministic per commit, so retrying a failed canary from the same commit is naturally idempotent.
 
+## `kb release status` — drift check (git tag vs. real npm vs. recent CI)
+
+```bash
+pnpm kb release status --flow platform
+pnpm kb release status --flow sdk --json
+pnpm kb release status --flow platform --ci=false   # skip the gh CI lookup
+```
+
+Read-only, no side effects. Answers "what is actually stable vs. candidate right now" without hand-comparing `npm view`, `git tag`, and Actions logs:
+
+- Finds the latest stable git tag for the flow (by semver, from `buildReleaseTag`'s pattern).
+- Queries real npm (`config.publish.npmRegistry`, never Verdaccio) for a sample of the flow's packages under both the `stable` and `canary` dist-tags, and flags it if packages in the same flow disagree with each other (partial/non-atomic publish).
+- Flags it if the git tag's version doesn't match what `latest` actually resolves to on npm.
+- Flags it if `canary` is semver-ahead of `latest` — that's an unverified candidate, not a release, until it has a green delivery+smoke run and has been explicitly promoted.
+- Best-effort pulls the last few `release-build-candidate.yml`/`release-deliver-candidate.yml` CI runs via `gh` (skipped/noted, not fatal, if `gh` isn't available).
+
+**Already wired into `release-prepare`'s review** — the "Prepare release review" step calls this automatically and injects a "Current release status" section into the review artifact shown at `waiting_approval`, before the package table. A warning there is about the *existing* baseline, not the candidate being reviewed — it means "what you're releasing on top of isn't fully clean," not "this candidate is broken." A status-check failure (network, `gh` not authed) never blocks the review from rendering.
+
+Source: `plugins/release/manager-core/src/status.ts` (`computeFlowReleaseStatus`), `plugins/release/manager-cli/src/cli/commands/status.ts`, wired into `.kb/workflows/scripts/release-review-artifacts.mjs`.
+
 ## `release:*:prepare` fallback scripts
 
 Only when the workflow daemon can't be restored, and only after explicit human approval — this path has no workflow approval gate of its own.

@@ -31,7 +31,7 @@ Valid `flow` values come from `release.flows` in `.kb/kb.config.json` (normally 
 
 **`skipChecks` input** (optional boolean, default `false`) skips only the `Checks` phase (`dist-exports`/`pack-install`/`typecheck`/`lint`/`tests`) — everything else, including the approval gate, still runs. Use only when Checks itself is broken and blocking an unrelated release; run `pnpm kb release checks --flow <flow>` manually afterward and don't call the release verified until that's green.
 
-**`channel` input** (`"stable"` default, or `"canary"`) is the only agent-safe way to publish canary — it keeps the approval gate; approving *is* the publish for canary (no tag, no second gate). Needs `NPM_TOKEN`/`NODE_AUTH_TOKEN` in the daemon's environment.
+**`channel` input** (`"stable"` default, or `"canary"`) is the only agent-safe way to build canary — it keeps the approval gate; canary skips all git mutations (no bump, no commit, no tag). Approving dispatches `release-build-candidate.yml` and downloads the resulting bundle — **it does not by itself publish to npm** (verified live 2026-09-02: build succeeded, bundle downloaded to `.kb/release/candidates/<candidateId>/`, npm untouched). Actual delivery is a separate, not-auto-chained `gh workflow run release-deliver-candidate.yml` dispatch (`candidate_run_id`, `candidate_id`, `flow`, `version`, `target=canary`) — that dispatch is the real publish step and needs its own explicit human authorization in chat, same as any other npm-publish action. Needs `NPM_TOKEN`/`NODE_AUTH_TOKEN` in the daemon's environment for when delivery does run.
 
 ```bash
 pnpm kb workflow run --workflow-id release-prepare --input '{"flow":"platform","channel":"canary"}'
@@ -68,6 +68,7 @@ Always release `platform` first, then `sdk` — SDK may re-export platform symbo
 pnpm kb release plan --flow platform
 pnpm kb release checks --flow platform
 pnpm kb release run --flow platform --dry-run
+pnpm kb release status --flow platform   # drift: git tag vs. real npm vs. recent CI — see reference doc
 ```
 
 ## Special cases — only with explicit human approval
