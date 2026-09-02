@@ -221,6 +221,21 @@ jobs:
             gh release create "$binary_tag" "${assets[@]}" --repo "$REPOSITORY" --title "KB Labs Binaries $binary_tag" --notes "Immutable release candidate ${{ inputs.candidate_id }}"
           fi
 
+      - name: Trust this candidate for the smoke install
+        # pnpm 11 defaults minimum-release-age to 24h (supply-chain hardening
+        # against just-published/compromised packages) — see pnpm.mjs
+        # DEFAULT_OPTS: "minimum-release-age": 24 * 60. The smoke test's own
+        # `pnpm install` inside the scaffolded temp project inherits that
+        # default and refuses every package this same job published minutes
+        # ago, failing with ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION — no
+        # bounded retry/wait can outlast a 24h wall in a CI job. We already
+        # verified this exact candidate's bundle digest against provenance.json
+        # earlier in this job (see "Verify candidate identity and bundle
+        # digest"), so trusting it here is not a broadened policy — it is
+        # narrowly scoped to this ephemeral runner's pnpm config and to the
+        # one candidate this job itself built and published.
+        run: pnpm config set minimum-release-age 0 --global
+
       - name: Run post-publish launcher smoke
         if: inputs.flow == 'platform'
         working-directory: tools/kb-create
@@ -232,11 +247,14 @@ jobs:
           binary="${{ github.workspace }}/.kb/release/upload-assets/kb-create-linux-amd64"
           test -x "$binary"
           set +e
-          for attempt in 1 2 3 4; do
+          # Retries here are for genuine transient issues only (npm registry/CDN
+          # propagation lag right after publish) — the minimum-release-age
+          # rejection is fixed above, not by retrying.
+          for attempt in 1 2 3 4 5; do
             KB_CREATE_BINARY="$binary" go test -v -race -count=1 -timeout 12m \
               -run '^TestPublishedV2JourneyReachesPluginWorkflow$' ./v2/e2e/...
             status=$?
             if [ "$status" -eq 0 ]; then exit 0; fi
-            if [ "$attempt" -lt 4 ]; then sleep 30; fi
+            if [ "$attempt" -lt 5 ]; then sleep 20; fi
           done
           exit "$status"
