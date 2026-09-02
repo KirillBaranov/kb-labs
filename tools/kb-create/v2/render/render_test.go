@@ -30,6 +30,18 @@ func TestBuildProjectsSecretAsPlaceholderOnly(t *testing.T) {
 	}
 }
 
+func TestBuildRendersHealthCheckAsAbsoluteLocalhostURL(t *testing.T) {
+	plan := testPlan(t.TempDir())
+	plan.ServiceGraph.Services[0].HealthCheck = "/health"
+	output, err := Build(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := output.Devservices.Services["gateway"].HealthCheck; got != "http://localhost:4000/health" {
+		t.Fatalf("health check = %q", got)
+	}
+}
+
 func TestWriteProducesCompleteV2Projections(t *testing.T) {
 	root := t.TempDir()
 	if _, err := Write(testPlan(root)); err != nil {

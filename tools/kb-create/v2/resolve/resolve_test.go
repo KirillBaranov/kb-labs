@@ -70,6 +70,17 @@ func TestPlanTargetsReleaseManagedBinaryByLogicalID(t *testing.T) {
 	}
 }
 
+func TestPlanCarriesServiceHealthCheckIntoServiceGraph(t *testing.T) {
+	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {Services: []contracts.Service{{ID: "gateway", Command: "serve", Port: 4000, HealthCheck: "/health"}}}}}}}
+	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x"}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.ServiceGraph.Services) != 1 || plan.ServiceGraph.Services[0].HealthCheck != "/health" {
+		t.Fatalf("service graph = %#v", plan.ServiceGraph.Services)
+	}
+}
+
 func TestPlanRejectsConflictingManifestRequirementOwnership(t *testing.T) {
 	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Config: []catalog.ConfigRequirement{{ID: "shared", Path: "/platform/shared"}}}}, Plugins: []catalog.Component{{ID: "plugin", Version: "1", Package: "@kb/plugin", SHA256: "plugin", Config: []catalog.ConfigRequirement{{ID: "shared", Path: "/plugin/shared"}}}}}
 	_, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x", Plugins: []contracts.ComponentRequest{{ID: "plugin"}}}, source)

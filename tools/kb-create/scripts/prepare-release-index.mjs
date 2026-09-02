@@ -146,11 +146,12 @@ const manifestFor = item => {
       // (3000 -> 3e3), so the port literal must be captured whole rather than
       // truncated at the exponent marker.
       const port = Number(source.match(/\bport:\s*(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/)?.[1] ?? 0);
+      const healthCheck = source.match(/\bhealthCheck:\s*["']([^"']*)["']/)?.[1];
       const dependsOnSource = source.match(/\bdependsOn:\s*\[([^\]]*)\]/)?.[1];
       const dependsOn = dependsOnSource
         ? [...dependsOnSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
         : [];
-      if (id) return { schema: 'kb.service/1', id, runtime: { port }, dependsOn };
+      if (id) return { schema: 'kb.service/1', id, runtime: { port, healthCheck }, dependsOn };
     }
     const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
     const implementsSource = source.match(/\bimplements:\s*(\[[^\]]+\]|["'][^"']+["'])/)?.[1];
@@ -221,6 +222,7 @@ for (const item of stage) {
       packageName: item.name,
       command: manifest.bin ? Object.keys(manifest.bin)[0] : Object.keys(packageJSON.bin ?? {})[0] ?? item.name.split('/').pop(),
       port: manifest.runtime?.port ?? 0,
+      healthCheck: manifest.runtime?.healthCheck ?? '',
       dependsOn: manifest.dependsOn ?? [],
       required: true,
     });

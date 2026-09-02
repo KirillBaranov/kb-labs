@@ -30,11 +30,12 @@ type DevservicesFile struct {
 }
 
 type Service struct {
-	Name      string            `yaml:"name,omitempty"`
-	Command   string            `yaml:"command"`
-	Port      int               `yaml:"port,omitempty"`
-	DependsOn []string          `yaml:"depends_on,omitempty"`
-	Env       map[string]string `yaml:"env,omitempty"`
+	Name        string            `yaml:"name,omitempty"`
+	Command     string            `yaml:"command"`
+	Port        int               `yaml:"port,omitempty"`
+	HealthCheck string            `yaml:"health_check,omitempty"`
+	DependsOn   []string          `yaml:"depends_on,omitempty"`
+	Env         map[string]string `yaml:"env,omitempty"`
 }
 
 func (file DevservicesFile) Validate() error {
@@ -72,7 +73,7 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		if service.ID == "" {
 			return Output{}, fmt.Errorf("service ID is required")
 		}
-		services[service.ID] = Service{Name: service.ID, Command: RuntimeCommand(service.Command), Port: service.Port, DependsOn: service.DependsOn, Env: map[string]string{}}
+		services[service.ID] = Service{Name: service.ID, Command: RuntimeCommand(service.Command), Port: service.Port, HealthCheck: healthCheckURL(service.HealthCheck, service.Port), DependsOn: service.DependsOn, Env: map[string]string{}}
 	}
 	file := DevservicesFile{Name: "kb-labs", Services: services}
 	if err := file.Validate(); err != nil {
@@ -130,6 +131,20 @@ func RuntimeCommand(command string) string {
 	default:
 		return "pnpm exec " + command
 	}
+}
+
+// healthCheckURL turns a manifest's relative health-check path (e.g. "/" or
+// "/api/v1/health") into the absolute localhost URL kb-dev's health checker
+// expects. An already-absolute value (a full URL, or a bare host:port for a
+// TCP check) passes through unchanged.
+func healthCheckURL(path string, port int) string {
+	if path == "" || port == 0 {
+		return ""
+	}
+	if strings.Contains(path, "://") || !strings.HasPrefix(path, "/") {
+		return path
+	}
+	return fmt.Sprintf("http://localhost:%d%s", port, path)
 }
 
 func setConfigValue(root map[string]any, pointer, raw string) error {
