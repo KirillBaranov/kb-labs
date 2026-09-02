@@ -1,18 +1,24 @@
-## Summary
+<!--
+Title: <type>(<scope>): <short message> — see .claude/skills/commit.md for types/scopes.
+A task tag (e.g. "[CU-123]") at the end of the title is welcome when this PR
+tracks a task, but is not required.
+-->
 
-<!-- What does this PR do and why? -->
+## What
 
-## Changes
+<!-- What did you actually change? -->
 
-<!-- Key changes, bullet points -->
+## Why
 
--
+<!-- What problem does this solve, or what does it enable? -->
 
-## How to test
+## How verified
 
-<!-- Steps to verify this works -->
+<!-- Tests run, manual steps taken, what you checked -->
 
-1.
+## Plan / Reference
+
+<!-- Link to the plan, ticket, or design doc this PR follows, if any -->
 
 ## Checklist
 
