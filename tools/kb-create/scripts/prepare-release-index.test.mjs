@@ -41,6 +41,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
   assert.equal(index.plugins[0].id, 'commit');
   assert.equal(index.platforms[0].profiles.default.services[0].id, 'workflow');
   assert.equal(index.platforms[0].profiles.default.services[0].command, 'kb-workflow');
+  assert.equal(index.platforms[0].profiles.default.services[0].port, 7778);
   assert.deepEqual(index.platforms[0].requires, [{ capability: 'serviceTransport', requiredBy: 'platform' }]);
   assert.deepEqual(index.platforms[0].config, [
     { id: 'platform.adapters', path: '/platform/adapters', default: '{"serviceTransport":"@kb-labs/adapters-service-transport-http"}' },
@@ -100,6 +101,29 @@ test('fails closed when a required platform member was not staged', () => {
   const result = spawnSync(process.execPath, [script.pathname, '--flow', 'platform', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--platform-member-packages', '@kb-labs/cli-bin', '--output', join(root, 'release-index.json')], { encoding: 'utf8' });
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}\n${result.stderr}`, /required platform member @kb-labs\/cli-bin is absent/);
+});
+
+test('reads a minified scientific-notation port literal from a compiled service manifest', () => {
+  const root = mkdtempSync(join(tmpdir(), 'kb-release-index-port-'));
+  const stage = join(root, 'stage');
+  const packageRoot = join(root, 'packages');
+  mkdirSync(stage, { recursive: true });
+  const artifacts = [
+    packageArtifact(root, packageRoot, stage, '@kb-labs/core-runtime', '2.0.0', ''),
+    packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '>=2.0.0 <3.0.0' } }),
+    // esbuild rewrites round numeric literals into scientific notation
+    // (4000 -> 4e3) when minifying published dist bundles; the release index
+    // must still recover the real port instead of the truncated leading digit.
+    packageArtifact(root, packageRoot, stage, '@kb-labs/gateway-app', '2.0.0', 'var manifest = { schema: "kb.service/1", id: "gateway", runtime: { port: 4e3 } }; export { manifest };', { bin: { 'gateway-app': './dist/index.js' } }),
+  ];
+  writeFileSync(join(stage, 'manifest.json'), JSON.stringify(artifacts));
+  const binaryManifest = join(root, 'binary-manifest.json');
+  writeFileSync(binaryManifest, JSON.stringify({ binaries: [{ id: 'kb-create', os: 'linux', arch: 'amd64', url: 'https://example.test/kb-create', filename: 'kb-create-linux-amd64', sha256: 'binary-sha' }] }));
+  const output = join(root, 'release-index.json');
+  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--output', output], { stdio: 'pipe' });
+  const index = JSON.parse(readFileSync(output, 'utf8'));
+  assert.equal(index.platforms[0].profiles.default.services[0].id, 'gateway');
+  assert.equal(index.platforms[0].profiles.default.services[0].port, 4000);
 });
 
 function packageArtifact(root, packageRoot, stage, name, version, manifest, extra = {}) {
