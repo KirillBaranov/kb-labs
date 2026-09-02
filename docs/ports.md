@@ -35,6 +35,7 @@ Ports declared in `.kb/devservices.yaml` / `.kb/devservices.dev.yaml`.
 |------|---------|-------|-------|-------|-------------|
 | 3000 | Studio Web App | `frontend` | dev | backend | Web UI for KB Labs platform |
 | 4000 | Gateway | `gateway` | prod | backend | Central router — aggregates REST API, Workflow, Marketplace |
+| 4873 | Verdaccio Registry | `test` | dev | infra | Local npm registry staging planned release versions for pack-install Checks |
 | 5050 | REST API | `services` | dev | backend | Main platform REST API |
 | 5070 | Marketplace Service | `services` | dev | backend | Unified entity marketplace — install, manage, discover |
 | 6379 | Redis Cache | `exception` | dev | infra | State cache + workflow distributed lock backing store |

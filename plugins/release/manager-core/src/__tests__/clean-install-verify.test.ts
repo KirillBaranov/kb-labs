@@ -79,6 +79,26 @@ describe('verifyCleanInstall', () => {
     expect(result.error).toContain('workspace:*');
   });
 
+  it('passes registry through to Arborist for the npm path', async () => {
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk', [], 'npm', 'http://localhost:4873');
+
+    expect(result.ok).toBe(true);
+    expect(mockArboristCtor).toHaveBeenCalledWith(
+      expect.objectContaining({ registry: 'http://localhost:4873' }),
+    );
+  });
+
+  it('writes a .npmrc registry override for the pnpm path', async () => {
+    const fs = await import('node:fs');
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk', [], 'pnpm', 'http://localhost:4873');
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      '/tmp/kb-clean-install-fake/.npmrc',
+      'registry=http://localhost:4873\n',
+    );
+  });
+
   it('reports ok:false when install succeeds but the import check fails', async () => {
     vi.mocked(spawnSync).mockReturnValue({
       status: 1,

@@ -74,7 +74,10 @@ _private/
 .kb/mind/
 /mind/
 .kb/devkit/
-.kb/verdaccio/
+# Runtime storage for the `verdaccio` kb-dev service — the service's own
+# config.yaml (checked in, mounted read-only) stays tracked.
+.kb/verdaccio/*
+!.kb/verdaccio/config.yaml
 .kb/bundle/
 .kb/release/history/
 .kb/release/backup.json

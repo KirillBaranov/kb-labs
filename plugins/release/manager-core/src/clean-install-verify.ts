@@ -27,12 +27,20 @@ export interface CleanInstallResult {
  * Install `tarballPath` into a throwaway consumer project (outside the
  * monorepo workspace, so pnpm's workspace resolution can't mask a problem)
  * and confirm `packageName` can actually be imported afterward.
+ *
+ * `registry`, when set, overrides where the consumer resolves ALL
+ * dependencies from (not just `packageName` itself) — used by the
+ * `pack-install` release gate to point at a local staging registry that
+ * carries the release plan's not-yet-published internal sibling versions.
+ * Third-party dependencies still resolve correctly through that registry's
+ * uplink to the real npm registry.
  */
 export async function verifyCleanInstall(
   tarballPath: string,
   packageName: string,
   additionalTarballs: string[] = [],
   packageManager: 'pnpm' | 'npm' = 'npm',
+  registry?: string,
 ): Promise<CleanInstallResult> {
   const consumerDir = mkdtempSync(join(tmpdir(), 'kb-clean-install-'));
   try {
@@ -55,6 +63,9 @@ export async function verifyCleanInstall(
         join(consumerDir, 'package.json'),
         JSON.stringify({ name: 'kb-release-consumer', private: true, dependencies, pnpm: { overrides } }, null, 2) + '\n',
       );
+      if (registry) {
+        writeFileSync(join(consumerDir, '.npmrc'), `registry=${registry}\n`);
+      }
       const install = spawnSync(
         'pnpm',
         ['install', '--ignore-scripts', '--no-lockfile', '--config.auto-install-peers=true'],
@@ -67,7 +78,7 @@ export async function verifyCleanInstall(
       writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'kb-release-consumer', private: true }) + '\n');
       // Lazy import: Arborist is only needed for the explicit npm path.
       const { Arborist } = await import('@npmcli/arborist');
-      const arb = new Arborist({ path: consumerDir, ignoreScripts: true });
+      const arb = new Arborist({ path: consumerDir, ignoreScripts: true, ...(registry ? { registry } : {}) });
       try {
         await arb.reify({ add: [tarballPath, ...additionalTarballs], save: false });
       } catch (err) {

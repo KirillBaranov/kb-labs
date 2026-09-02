@@ -9,11 +9,18 @@
 # Run: kb workflow:run --workflow-id workspace:release-prepare --input '{"flow":"platform"}'
 #
 # Emergency escape hatch: add "skipChecks":true to the input to skip the
-# Checks step entirely (e.g. when Checks itself is broken or the pre-release
-# gate is what's blocking, not the release content). Packages still get
-# built and reviewed — just not gate-checked. Re-run `pnpm kb release checks
-# --flow <flow>` by hand afterward and don't treat the release as verified
-# until that's green.
+# Stage and Checks steps entirely (e.g. when Checks itself is broken, Verdaccio/
+# Docker aren't available, or the pre-release gate is what's blocking, not the
+# release content). Packages still get built and reviewed — just not
+# gate-checked. Re-running checks by hand afterward needs both steps, in
+# order — the Stage step publishes this run's plan to the local registry
+# pack-install verifies internal cross-package dependencies against (see
+# scripts/gates/check-pack-install.sh):
+#   pnpm kb release plan --flow <flow>          # writes .kb/release/plans/root/current/plan.json
+#   pnpm kb release stage plan --flow <flow> --plan-path <planPath> --registry http://localhost:4873
+#   RELEASE_PLAN_PATH=<planPath> KB_RELEASE_STAGING_REGISTRY=http://localhost:4873 \
+#     pnpm kb release checks --flow <flow> --json
+# and don't treat the release as verified until that's green.
 
 name: release-prepare
 version: 1.0.0
@@ -92,6 +99,32 @@ jobs:
         timeoutMs: 1200000
         run: pnpm kb release plan --flow ${{ inputs.flow }} --channel ${{ inputs.channel }} --bump ${{ inputs.bump }}
 
+      - name: Stage internal deps to Verdaccio
+        id: stage
+        phase: checks
+        # The pack-install check (below) packs each package with pnpm's publish
+        # materialization, which rewrites any workspace:* dependency to the
+        # sibling's CURRENT, already-published version — because lockstep
+        # version bumping (Bump versions) hasn't run yet at this point in the
+        # workflow. That's structurally broken whenever this release's own
+        # source already uses an API a sibling only started providing in THIS
+        # release. Publish the plan's PLANNED versions to a throwaway local
+        # registry first, so pack-install can verify against the version this
+        # release is actually about to ship instead of what's live on npm
+        # today. Third-party dependencies are unaffected — Verdaccio uplinks
+        # to real npm for everything it hasn't been asked to stage.
+        timeoutMs: 1200000
+        if: ${{ !inputs.skipChecks }}
+        env:
+          RELEASE_PLAN_PATH: "${{ steps.plan.outputs.planPath }}"
+        run: |
+          set -e
+          NET_OFFSET="${KB_NET_OFFSET:-0}"
+          REGISTRY="http://localhost:$((4873 + NET_OFFSET))"
+          ./tools/kb-dev/kb-dev ensure verdaccio --config .kb/devservices.dev.yaml --net-offset "$NET_OFFSET"
+          pnpm kb release stage plan --flow ${{ inputs.flow }} --plan-path "$RELEASE_PLAN_PATH" --registry "$REGISTRY" --json
+          echo "::kb-output::{\"stagingRegistry\":\"$REGISTRY\"}"
+
       - name: Checks
         id: checks
         phase: checks
@@ -101,6 +134,9 @@ jobs:
         # can grow with the monorepo; keep a two-hour budget for future package growth.
         timeoutMs: 7200000
         if: ${{ !inputs.skipChecks }}
+        env:
+          RELEASE_PLAN_PATH: "${{ steps.plan.outputs.planPath }}"
+          KB_RELEASE_STAGING_REGISTRY: "${{ steps.stage.outputs.stagingRegistry }}"
         run: pnpm kb release checks --flow ${{ inputs.flow }} --json
 
       - name: Prepare release review

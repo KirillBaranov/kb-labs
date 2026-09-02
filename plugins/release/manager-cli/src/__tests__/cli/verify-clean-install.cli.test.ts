@@ -24,7 +24,20 @@ describe('release:clean-install', () => {
     );
 
     expect(result.ok).toBe(true);
-    expect(vi.mocked(verifyCleanInstall)).toHaveBeenCalledWith('/tmp/pkg.tgz', '@kb-labs/sdk');
+    expect(vi.mocked(verifyCleanInstall)).toHaveBeenCalledWith('/tmp/pkg.tgz', '@kb-labs/sdk', [], 'npm', undefined);
+  });
+
+  it('VCI-05: passes --registry through to verifyCleanInstall', async () => {
+    vi.mocked(verifyCleanInstall).mockResolvedValue({ ok: true });
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui, cwd: '/project' });
+
+    await verifyCleanInstallCommand.execute(
+      ctx as never,
+      mockCLIInput({ flags: { tarball: '/tmp/pkg.tgz', name: '@kb-labs/sdk', registry: 'http://localhost:4873' } }),
+    );
+
+    expect(vi.mocked(verifyCleanInstall)).toHaveBeenCalledWith('/tmp/pkg.tgz', '@kb-labs/sdk', [], 'npm', 'http://localhost:4873');
   });
 
   it('VCI-02: ok:false with the real reason surfaced when verifyCleanInstall fails', async () => {

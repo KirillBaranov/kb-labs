@@ -1,0 +1,39 @@
+# Verdaccio config for the local release-checks staging registry.
+#
+# Checked in and mounted read-only into the `verdaccio` kb-dev service
+# (.kb/devservices.dev.yaml) — no manual one-time setup (no editing
+# ~/.config/verdaccio/config.yaml, no ~/.npmrc auth token). Anonymous publish
+# is allowed on purpose: this registry only ever holds the release plan's
+# not-yet-published planned versions for the duration of one `release
+# checks` run (see scripts/gates/check-pack-install.sh and
+# plugins/release/manager-cli/src/cli/commands/stage-plan.ts) — never
+# real credentials, never promoted to real npm from here.
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: -1
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  '@*/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+  '**':
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+# Real tarballs in this workspace (e.g. studio-app) run to tens of MB —
+# Verdaccio's default max_body_size (10mb) rejects those publishes outright.
+max_body_size: 200mb
+
+logs: { type: stdout, format: pretty, level: warn }
