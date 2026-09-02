@@ -409,6 +409,25 @@ export const manifest = {
         examples: ['kb release report', 'kb release report --json'],
       },
 
+      // release:status - What is actually stable vs. candidate right now
+      {
+        path: 'release status',
+        category: 'Utilities',
+        describe: 'Show what is actually stable vs. candidate for a flow (git tag, npm dist-tags, recent candidate CI)',
+        operationType: 'read' as const,
+        longDescription: 'Cross-checks the latest stable git tag against real npm dist-tags and recent candidate CI runs, and flags drift — a tag or npm publish existing is not the same as a verified, promoted release.',
+
+        handler: './cli/commands/status.js#default',
+
+        flags: defineCommandFlags({
+          flow: { type: 'string', description: 'Named release flow from release.flows (e.g. "platform", "sdk")', required: true },
+          ci: { type: 'boolean', description: 'Include recent candidate CI run status (default: true)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: ['kb release status --flow platform', 'kb release status --flow sdk --json'],
+      },
+
       // release:changelog - Generate changelog
       {
         path: 'release changelog',
