@@ -99,7 +99,6 @@ function main() {
   }
 
   const errors = validate({ title: pr.title, body: pr.body });
-  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 
   if (errors.length === 0) {
     console.log('PR title and description follow the required structure.');
@@ -115,7 +114,12 @@ function main() {
   ].join('\n');
 
   console.error(report);
+  // GITHUB_STEP_SUMMARY is a separate file per step — write to a plain
+  // workspace file too so a later step in the same job (e.g. the PR-comment
+  // step) can read this report back.
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
   if (summaryPath) fs.appendFileSync(summaryPath, `${report}\n`);
+  fs.writeFileSync('.pr-description-report.md', `${report}\n`);
   process.exit(1);
 }
 
