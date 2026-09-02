@@ -257,7 +257,7 @@ export const manifest = {
       // release:stage-plan - Publish a release plan's PLANNED versions to a
       // local staging registry, before Bump versions has run
       {
-        path: 'release stage-plan',
+        path: 'release stage plan',
         category: 'Publish',
         describe: 'Publish a release plan\'s planned package versions to a local staging registry (Verdaccio)',
         operationType: 'execute' as const,
@@ -280,7 +280,7 @@ export const manifest = {
         }),
 
         examples: [
-          'kb release stage-plan --flow platform --plan-path .kb/release/plans/root/current/plan.json --registry http://localhost:4873',
+          'kb release stage plan --flow platform --plan-path .kb/release/plans/root/current/plan.json --registry http://localhost:4873',
         ],
       },
 

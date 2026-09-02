@@ -17,7 +17,7 @@
 # pack-install verifies internal cross-package dependencies against (see
 # scripts/gates/check-pack-install.sh):
 #   pnpm kb release plan --flow <flow>          # writes .kb/release/plans/root/current/plan.json
-#   pnpm kb release stage-plan --flow <flow> --plan-path <planPath> --registry http://localhost:4873
+#   pnpm kb release stage plan --flow <flow> --plan-path <planPath> --registry http://localhost:4873
 #   RELEASE_PLAN_PATH=<planPath> KB_RELEASE_STAGING_REGISTRY=http://localhost:4873 \
 #     pnpm kb release checks --flow <flow> --json
 # and don't treat the release as verified until that's green.
@@ -122,7 +122,7 @@ jobs:
           NET_OFFSET="${KB_NET_OFFSET:-0}"
           REGISTRY="http://localhost:$((4873 + NET_OFFSET))"
           ./tools/kb-dev/kb-dev ensure verdaccio --config .kb/devservices.dev.yaml --net-offset "$NET_OFFSET"
-          pnpm kb release stage-plan --flow ${{ inputs.flow }} --plan-path "$RELEASE_PLAN_PATH" --registry "$REGISTRY" --json
+          pnpm kb release stage plan --flow ${{ inputs.flow }} --plan-path "$RELEASE_PLAN_PATH" --registry "$REGISTRY" --json
           echo "::kb-output::{\"stagingRegistry\":\"$REGISTRY\"}"
 
       - name: Checks
