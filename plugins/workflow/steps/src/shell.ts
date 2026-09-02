@@ -44,8 +44,9 @@ const MARKER_LINE_MAX_CHARS = 2000;
 function lastOutputMarkerLine(text: string): string | null {
   const lines = text.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].includes(OUTPUT_MARKER_B64) || lines[i].includes(OUTPUT_MARKER)) {
-      return lines[i];
+    const line = lines[i];
+    if (line !== undefined && (line.includes(OUTPUT_MARKER_B64) || line.includes(OUTPUT_MARKER))) {
+      return line;
     }
   }
   return null;
