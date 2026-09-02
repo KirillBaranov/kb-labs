@@ -53,6 +53,17 @@ function lastOutputMarkerLine(text: string): string | null {
 }
 
 /**
+ * Batching for durable line persistence: the ring buffer's `maxSize` is a
+ * fixed number of records shared across the entire daemon (not per run/step),
+ * so one `ctx.platform.logger` call per output line would let a single
+ * verbose step (e.g. a package install with thousands of lines) evict every
+ * other run's recent logs from the hot tier. We accumulate lines and flush
+ * as one logger call per window, keyed by whichever limit is hit first.
+ */
+const LOG_BATCH_MAX_LINES = 50;
+const LOG_BATCH_MAX_MS = 500;
+
+/**
  * Last N characters of `text`, prefixed with a marker when it was truncated.
  * Tail (not head) because the actionable error is almost always at the end —
  * a stack trace, an assertion failure, the final "Error:" line.
@@ -76,6 +87,56 @@ export function tail(text: string, maxChars: number): string {
     ? `${markerLine.slice(0, MARKER_LINE_MAX_CHARS)}…(marker line truncated, ${markerLine.length} chars total)`
     : markerLine;
   return `${markerSnippet}\n${rawTail}`;
+}
+
+/**
+ * Accumulates output lines for one stream (stdout or stderr) and flushes them
+ * as a single durable log write once `maxLines` lines have queued up or
+ * `maxMs` has elapsed since the first unflushed line — whichever comes first.
+ *
+ * This is what makes per-line shell output durable without turning every
+ * line into its own `ctx.platform.logger` call: the daemon's ring buffer is a
+ * fixed number of records shared across the whole daemon, so one write per
+ * line would let a single verbose step evict every other run's recent logs.
+ */
+export class LineBatcher {
+  private buffer: Array<{ line: string; lineNo: number }> = [];
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  public constructor(
+    private readonly stream: 'stdout' | 'stderr',
+    private readonly onFlush: (batch: { stream: 'stdout' | 'stderr'; fromLine: number; toLine: number; text: string }) => void,
+    private readonly maxLines = LOG_BATCH_MAX_LINES,
+    private readonly maxMs = LOG_BATCH_MAX_MS,
+  ) {}
+
+  public add(line: string, lineNo: number): void {
+    this.buffer.push({ line, lineNo });
+    if (this.buffer.length >= this.maxLines) {
+      this.flush();
+      return;
+    }
+    if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), this.maxMs);
+    }
+  }
+
+  /** Flush whatever is buffered right now, regardless of size/time thresholds. */
+  public flush(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+    if (this.buffer.length === 0) {return;}
+    const batch = this.buffer;
+    this.buffer = [];
+    this.onFlush({
+      stream: this.stream,
+      fromLine: batch[0]!.lineNo,
+      toLine: batch[batch.length - 1]!.lineNo,
+      text: batch.map((entry) => entry.line).join('\n'),
+    });
+  }
 }
 
 /**
@@ -309,6 +370,22 @@ async function shellHandler(
     let stdoutFull = '';
     let stderrFull = '';
 
+    // Durable persistence for full per-line output, batched so a verbose step
+    // (e.g. a package install emitting thousands of lines) doesn't blow away
+    // the daemon's shared ring buffer with one record per line. This is
+    // additive to the live 'log.line' event below, not a replacement for it.
+    const onBatchFlush = (batch: { stream: 'stdout' | 'stderr'; fromLine: number; toLine: number; text: string }) => {
+      const log = batch.stream === 'stderr' ? ctx.platform.logger.warn : ctx.platform.logger.info;
+      log.call(ctx.platform.logger, `Shell output (${batch.stream})`, {
+        stream: batch.stream,
+        fromLine: batch.fromLine,
+        toLine: batch.toLine,
+        text: batch.text,
+      });
+    };
+    const stdoutBatcher = new LineBatcher('stdout', onBatchFlush);
+    const stderrBatcher = new LineBatcher('stderr', onBatchFlush);
+
     const emitLine = (stream: 'stdout' | 'stderr', line: string) => {
       lineNo++;
       // stderr is an output stream, not an exit-status signal. Several
@@ -317,6 +394,7 @@ async function shellHandler(
       // keep stderr visible without turning every diagnostic line into an
       // error event.
       void ctx.api.events.emit('log.line', { stream, line, lineNo, level: stream === 'stderr' ? 'warn' : 'info' });
+      (stream === 'stderr' ? stderrBatcher : stdoutBatcher).add(line, lineNo);
     };
 
     proc.stdout?.on('data', (chunk: Buffer) => {
@@ -358,6 +436,12 @@ async function shellHandler(
     // Flush remaining buffered content
     if (stdoutBuf) {emitLine('stdout', stdoutBuf);}
     if (stderrBuf) {emitLine('stderr', stderrBuf);}
+
+    // Flush any lines still waiting on the batch window/size threshold —
+    // without this, the tail of a step's output (fewer than maxLines lines,
+    // flushed less than maxMs ago) would never reach durable storage.
+    stdoutBatcher.flush();
+    stderrBatcher.flush();
 
     if (timedOut) {
       // Whatever the command printed before the kill is the only clue to

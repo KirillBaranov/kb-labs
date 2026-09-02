@@ -4,9 +4,10 @@
  * Tests cover mergeJsonOutputs and parseOutputMarkerLine — the two
  * functions responsible for extracting structured outputs from shell stdout.
  */
-import { describe, it, expect, expectTypeOf, vi } from 'vitest'
+import { describe, it, expect, expectTypeOf, vi, beforeEach, afterEach } from 'vitest'
+import { createTestContext, type MockLoggerInstance } from '@kb-labs/sdk/testing'
 import type { ShellInput, ShellOutput } from '../shell.js'
-import { mergeJsonOutputs, parseOutputMarkerLine, tail } from '../shell.js'
+import { mergeJsonOutputs, parseOutputMarkerLine, tail, LineBatcher } from '../shell.js'
 import shellModule from '../shell.js'
 
 // ---------------------------------------------------------------------------
@@ -19,6 +20,19 @@ function makeOutput(stdout: string, exitCode = 0): ShellOutput {
     exitCode,
     ok: exitCode === 0,
   }
+}
+
+/**
+ * A real PluginContextV3 built by the SDK's test factory (mockLogger +
+ * createMockPluginAPI under the hood), not a hand-rolled shape — so it stays
+ * correct as the contract evolves instead of drifting out of sync with it.
+ */
+function makeShellTestContext() {
+  // shellHandler only touches ctx.platform.logger and ctx.api.events — it
+  // never reads the global adapter singleton, so skip syncing it (avoids
+  // noisy "Adapters initialised" logging per test).
+  const { ctx, cleanup } = createTestContext({ host: 'workflow', syncSingleton: false })
+  return { ctx, cleanup, logger: ctx.platform.logger as MockLoggerInstance }
 }
 
 // ---------------------------------------------------------------------------
@@ -380,49 +394,37 @@ describe('ShellOutput type shape', () => {
 // Regression: timeout with reject:false must NOT silently succeed
 // ---------------------------------------------------------------------------
 describe('shellHandler — timeout regression (BUG: timedOut + reject:false = silent success)', () => {
-  function makeMockCtx() {
-    return {
-      cwd: process.cwd(),
-      platform: {
-        logger: {
-          debug: vi.fn(),
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      },
-      api: {
-        events: {
-          emit: vi.fn().mockResolvedValue(undefined),
-        },
-      },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any
-  }
-
   it('throws an error when the command times out — must not return ok:true with empty stdout', async () => {
     // Before the fix: execa with reject:false returned timedOut:true, exitCode:null.
     // null ?? 0 === 0 → ok:true → silent success with empty stdout.
     // After the fix: timedOut is detected and thrown as an error.
-    const ctx = makeMockCtx()
-    await expect(
-      shellModule.execute(ctx, { command: 'sleep 10', timeout: 100 }),
-    ).rejects.toThrow(/timed out/i)
+    const { ctx, cleanup } = makeShellTestContext()
+    try {
+      await expect(
+        shellModule.execute(ctx, { command: 'sleep 10', timeout: 100 }),
+      ).rejects.toThrow(/timed out/i)
+    } finally {
+      cleanup()
+    }
   }, 5000)
 
   it('keeps successful stderr diagnostics at warn level', async () => {
-    const ctx = makeMockCtx()
-    const result = await shellModule.execute(ctx, {
-      command: `node -e "process.stderr.write('discovery diagnostic\\n')"`,
-    })
+    const { ctx, cleanup } = makeShellTestContext()
+    try {
+      const result = await shellModule.execute(ctx, {
+        command: `node -e "process.stderr.write('discovery diagnostic\\n')"`,
+      })
 
-    expect(result).toMatchObject({ exitCode: 0, ok: true, stderr: 'discovery diagnostic\n' })
-    expect(ctx.api.events.emit).toHaveBeenCalledWith('log.line', {
-      stream: 'stderr',
-      line: 'discovery diagnostic',
-      lineNo: 1,
-      level: 'warn',
-    })
+      expect(result).toMatchObject({ exitCode: 0, ok: true, stderr: 'discovery diagnostic\n' })
+      expect(ctx.api.events.emit).toHaveBeenCalledWith('log.line', {
+        stream: 'stderr',
+        line: 'discovery diagnostic',
+        lineNo: 1,
+        level: 'warn',
+      })
+    } finally {
+      cleanup()
+    }
   })
 
   // Regression: `kb workflow runs logs` showed only exitCode + a line count
@@ -430,34 +432,42 @@ describe('shellHandler — timeout regression (BUG: timedOut + reject:false = si
   // re-running the command by hand outside the workflow. `Shell command
   // failed`/`Shell command timed out` must carry the real output.
   it('includes the actual stderr in the failure log entry, not just its shape', async () => {
-    const ctx = makeMockCtx()
-    await shellModule.execute(ctx, {
-      command: `node -e "process.stderr.write('boom: assertion failed\\n'); process.exit(1)"`,
-    })
+    const { ctx, cleanup } = makeShellTestContext()
+    try {
+      await shellModule.execute(ctx, {
+        command: `node -e "process.stderr.write('boom: assertion failed\\n'); process.exit(1)"`,
+      })
 
-    expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
-      'Shell command failed',
-      expect.objectContaining({ stderrTail: expect.stringContaining('boom: assertion failed') }),
-    )
+      expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
+        'Shell command failed',
+        expect.objectContaining({ stderrTail: expect.stringContaining('boom: assertion failed') }),
+      )
+    } finally {
+      cleanup()
+    }
   })
 
   it('includes whatever the command printed before being killed in the timeout log entry', async () => {
-    const ctx = makeMockCtx()
-    await expect(
-      shellModule.execute(ctx, {
-        // A shell builtin emits before the long-running child starts. Starting
-        // a second Node process within 200ms is scheduling-dependent on a
-        // loaded CI worker, which made this assertion flaky rather than testing
-        // the timeout log contract.
-        command: "printf 'working...\\n'; sleep 10",
-        timeout: 500,
-      }),
-    ).rejects.toThrow(/timed out/i)
+    const { ctx, cleanup } = makeShellTestContext()
+    try {
+      await expect(
+        shellModule.execute(ctx, {
+          // A shell builtin emits before the long-running child starts. Starting
+          // a second Node process within 200ms is scheduling-dependent on a
+          // loaded CI worker, which made this assertion flaky rather than testing
+          // the timeout log contract.
+          command: "printf 'working...\\n'; sleep 10",
+          timeout: 500,
+        }),
+      ).rejects.toThrow(/timed out/i)
 
-    expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
-      'Shell command timed out',
-      expect.objectContaining({ stdoutTail: expect.stringContaining('working...') }),
-    )
+      expect(ctx.platform.logger.warn).toHaveBeenCalledWith(
+        'Shell command timed out',
+        expect.objectContaining({ stdoutTail: expect.stringContaining('working...') }),
+      )
+    } finally {
+      cleanup()
+    }
   })
 })
 
@@ -510,5 +520,184 @@ describe('tail', () => {
     const result = tail(text, 200)
     expect(result).toContain('marker line truncated')
     expect(result).toContain('[ELIFECYCLE] Command failed with exit code 1.')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// LineBatcher: batches per-line output for durable persistence without
+// turning every line into its own logger write (the daemon's ring buffer is
+// a fixed number of records shared across the whole daemon).
+// ---------------------------------------------------------------------------
+describe('LineBatcher', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('does not flush before maxLines or maxMs is reached', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stdout', onFlush, 5, 500)
+
+    batcher.add('line 1', 1)
+    batcher.add('line 2', 2)
+
+    expect(onFlush).not.toHaveBeenCalled()
+  })
+
+  it('flushes exactly once when maxLines lines arrive, not once per line', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stdout', onFlush, 3, 500)
+
+    batcher.add('a', 1)
+    batcher.add('b', 2)
+    batcher.add('c', 3)
+
+    expect(onFlush).toHaveBeenCalledTimes(1)
+    expect(onFlush).toHaveBeenCalledWith({
+      stream: 'stdout',
+      fromLine: 1,
+      toLine: 3,
+      text: 'a\nb\nc',
+    })
+  })
+
+  it('flushes on the time window even if maxLines was never reached', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stderr', onFlush, 50, 500)
+
+    batcher.add('only line', 1)
+    expect(onFlush).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(500)
+
+    expect(onFlush).toHaveBeenCalledTimes(1)
+    expect(onFlush).toHaveBeenCalledWith({
+      stream: 'stderr',
+      fromLine: 1,
+      toLine: 1,
+      text: 'only line',
+    })
+  })
+
+  it('starts a fresh batch (and timer) after a flush', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stdout', onFlush, 2, 500)
+
+    batcher.add('a', 1)
+    batcher.add('b', 2) // flush #1: lines 1-2
+    batcher.add('c', 3)
+    vi.advanceTimersByTime(500) // flush #2: line 3, via timer
+
+    expect(onFlush).toHaveBeenCalledTimes(2)
+    expect(onFlush).toHaveBeenNthCalledWith(1, expect.objectContaining({ fromLine: 1, toLine: 2 }))
+    expect(onFlush).toHaveBeenNthCalledWith(2, expect.objectContaining({ fromLine: 3, toLine: 3 }))
+  })
+
+  it('manual flush() is a no-op when nothing is buffered', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stdout', onFlush, 50, 500)
+
+    batcher.flush()
+
+    expect(onFlush).not.toHaveBeenCalled()
+  })
+
+  it('manual flush() emits whatever is buffered and cancels the pending timer', () => {
+    const onFlush = vi.fn()
+    const batcher = new LineBatcher('stdout', onFlush, 50, 500)
+
+    batcher.add('a', 1)
+    batcher.flush()
+
+    expect(onFlush).toHaveBeenCalledTimes(1)
+
+    // The timer that would have fired for the flushed batch must not fire again.
+    vi.advanceTimersByTime(1000)
+    expect(onFlush).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// shellHandler: durable per-line persistence via ctx.platform.logger.
+//
+// Before this fix, per-line output only reached ctx.api.events.emit('log.line', ...),
+// an ephemeral pub/sub event consumed solely by live WebSocket watchers. A step's
+// full output was unrecoverable after the run finished unless someone was
+// watching live. This wires per-line output into the same logger pipeline
+// used by lifecycle events (which already flows to the ring buffer + durable
+// persistence), batched so it doesn't flood the daemon's shared ring buffer.
+// ---------------------------------------------------------------------------
+describe('shellHandler — durable per-line log persistence (batched)', () => {
+  it("persists a small step's stdout as one batched logger call, not one per line", async () => {
+    const { ctx, cleanup, logger } = makeShellTestContext()
+    try {
+      await shellModule.execute(ctx, {
+        command: `node -e "console.log('one'); console.log('two'); console.log('three')"`,
+      })
+
+      const batches = logger.messages.filter((m) => m.msg === 'Shell output (stdout)')
+      expect(batches).toHaveLength(1)
+      expect(batches[0]?.meta).toMatchObject({
+        stream: 'stdout',
+        fromLine: 1,
+        toLine: 3,
+        text: 'one\ntwo\nthree',
+      })
+
+      // The live-streaming path must still fire once per line, unchanged.
+      const lineEmits = (ctx.api.events.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'log.line',
+      )
+      expect(lineEmits).toHaveLength(3)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('splits more than one batch worth of lines (>50) into multiple logger calls', async () => {
+    const { ctx, cleanup, logger } = makeShellTestContext()
+    try {
+      // 120 lines: two full batches of 50 plus a 20-line tail flushed at the end.
+      await shellModule.execute(ctx, {
+        command: `node -e "for (let i = 1; i <= 120; i++) { console.log('line ' + i) }"`,
+      })
+
+      const batches = logger.messages.filter((m) => m.msg === 'Shell output (stdout)')
+      expect(batches.length).toBeGreaterThanOrEqual(2)
+
+      const totalLinesLogged = batches.reduce((sum, m) => {
+        const meta = m.meta as { fromLine: number; toLine: number }
+        return sum + (meta.toLine - meta.fromLine + 1)
+      }, 0)
+      expect(totalLinesLogged).toBe(120)
+
+      // Still exactly one live-stream emit per line.
+      const lineEmits = (ctx.api.events.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'log.line',
+      )
+      expect(lineEmits).toHaveLength(120)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('routes stderr batches through logger.warn, matching the per-line level', async () => {
+    const { ctx, cleanup, logger } = makeShellTestContext()
+    try {
+      await shellModule.execute(ctx, {
+        command: `node -e "console.error('oops')"`,
+      })
+
+      const batches = logger.messages.filter(
+        (m) => m.level === 'warn' && m.msg === 'Shell output (stderr)',
+      )
+      expect(batches).toHaveLength(1)
+      expect(batches[0]?.meta).toMatchObject({ stream: 'stderr', text: 'oops' })
+    } finally {
+      cleanup()
+    }
   })
 })
