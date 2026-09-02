@@ -31,14 +31,50 @@ const BLOCKED_COMMANDS = [
 /** Cap on how much of a failed command's output gets attached to its log entry. */
 const FAILURE_OUTPUT_TAIL_CHARS = 4000;
 
+/** Cap on how much of a surfaced ::kb-output:: marker line gets attached — see `tail()`. */
+const MARKER_LINE_MAX_CHARS = 2000;
+
+/**
+ * The last `::kb-output::`/`::kb-output:base64::` line in `text`, or null.
+ * A `kb` command reports its real structured result on one of these lines
+ * (e.g. `{"ok":false,"failed":["dist-exports"],...}`) — often followed by a
+ * wrapper's own generic exit banner (pnpm's "[ELIFECYCLE] Command failed
+ * with exit code 1."), which then becomes the literal last bytes of output.
+ */
+function lastOutputMarkerLine(text: string): string | null {
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].includes(OUTPUT_MARKER_B64) || lines[i].includes(OUTPUT_MARKER)) {
+      return lines[i];
+    }
+  }
+  return null;
+}
+
 /**
  * Last N characters of `text`, prefixed with a marker when it was truncated.
  * Tail (not head) because the actionable error is almost always at the end —
  * a stack trace, an assertion failure, the final "Error:" line.
+ *
+ * Exception: a raw byte-count tail alone silently drops the one thing that
+ * actually explains a failed `kb` command. A wrapper's generic exit banner
+ * (pnpm's "[ELIFECYCLE] Command failed...") becomes the true last bytes of
+ * output, while the command's own `::kb-output::` result — the whole reason
+ * `runReleaseChecks` and friends exist — sits earlier in the stream and gets
+ * discarded (observed live: a failed `release checks` step logged only
+ * "[ELIFECYCLE] Command failed with exit code 1." with the real
+ * `{"ok":false,"failed":[...]}` payload truncated away). When a marker line
+ * is present, surface it ahead of the raw tail instead of dropping it.
  */
 export function tail(text: string, maxChars: number): string {
   if (text.length <= maxChars) {return text;}
-  return `…(truncated, showing last ${maxChars} of ${text.length} chars)\n${text.slice(-maxChars)}`;
+  const rawTail = `…(truncated, showing last ${maxChars} of ${text.length} chars)\n${text.slice(-maxChars)}`;
+  const markerLine = lastOutputMarkerLine(text);
+  if (!markerLine || rawTail.includes(markerLine)) {return rawTail;}
+  const markerSnippet = markerLine.length > MARKER_LINE_MAX_CHARS
+    ? `${markerLine.slice(0, MARKER_LINE_MAX_CHARS)}…(marker line truncated, ${markerLine.length} chars total)`
+    : markerLine;
+  return `${markerSnippet}\n${rawTail}`;
 }
 
 /**

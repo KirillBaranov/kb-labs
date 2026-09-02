@@ -478,4 +478,37 @@ describe('tail', () => {
     expect(result).toMatch(/^…\(truncated, showing last 50 of 200 chars\)\n/)
     expect(result.endsWith('x'.repeat(50))).toBe(true)
   })
+
+  it('surfaces a ::kb-output:: line even when a trailing wrapper banner would otherwise push it out of the tail', () => {
+    // Mirrors a real `pnpm kb <cmd> --json` failure: the command's own
+    // structured result comes first, then pnpm appends its generic banner —
+    // which becomes the literal last bytes once padded past maxChars.
+    const payload = JSON.stringify({ ok: false, failed: ['dist-exports'] })
+    const text = `::kb-output::${payload}\n` + 'padding line\n'.repeat(500) + '[ELIFECYCLE] Command failed with exit code 1.\n'
+    const result = tail(text, 200)
+    expect(result).toContain(`::kb-output::${payload}`)
+    expect(result).toContain('[ELIFECYCLE] Command failed with exit code 1.')
+  })
+
+  it('surfaces a ::kb-output:base64:: line the same way', () => {
+    const payload = Buffer.from(JSON.stringify({ ok: false, failed: ['pack-install'] }), 'utf8').toString('base64')
+    const text = `::kb-output:base64::${payload}\n` + 'padding line\n'.repeat(500) + '[ELIFECYCLE] Command failed with exit code 1.\n'
+    const result = tail(text, 200)
+    expect(result).toContain(`::kb-output:base64::${payload}`)
+  })
+
+  it('does not duplicate the marker line when it already falls inside the raw tail window', () => {
+    const payload = JSON.stringify({ ok: false })
+    const text = `::kb-output::${payload}\n[ELIFECYCLE] Command failed with exit code 1.\n`
+    const result = tail(text, 10000)
+    expect(result.split(`::kb-output::${payload}`).length - 1).toBe(1)
+  })
+
+  it('truncates an overlong marker line instead of blowing the whole budget on it', () => {
+    const hugePayload = JSON.stringify({ ok: false, failed: Array.from({ length: 500 }, (_, i) => `pkg-${i}`) })
+    const text = `::kb-output::${hugePayload}\n` + 'padding line\n'.repeat(500) + '[ELIFECYCLE] Command failed with exit code 1.\n'
+    const result = tail(text, 200)
+    expect(result).toContain('marker line truncated')
+    expect(result).toContain('[ELIFECYCLE] Command failed with exit code 1.')
+  })
 })
