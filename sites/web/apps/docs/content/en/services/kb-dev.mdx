@@ -15,7 +15,7 @@ It works with any project via `devservices.yaml`. When you install KB Labs, `kb-
 curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
 ```
 
-The script detects your OS and architecture, downloads the right binary from [GitHub Releases](https://github.com/kb-labs-team/kb-labs/releases), verifies the SHA256 checksum, and installs to `~/.local/bin/kb-dev`. Supports macOS, Linux, and Windows (Git Bash / WSL).
+The script detects your OS and architecture, downloads the right binary from [GitHub Releases](https://github.com/kb-labs-team/kb-labs/releases), verifies the SHA256 checksum, and installs to `~/.local/bin/kb-dev`. Supports macOS and Linux. Windows support is coming.
 
 **Pin a specific version:**
 
@@ -27,13 +27,6 @@ curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh -s -- --version v0.1.1
 
 ```bash
 curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh -s -- --dest /usr/local/bin/kb-dev
-```
-
-**Windows (Git Bash or WSL):**
-
-```bash
-curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
-# installs kb-dev-windows-amd64.exe → ~/.local/bin/kb-dev.exe
 ```
 
 **Build from source:**
@@ -423,12 +416,6 @@ PID files are JSON documents, not bare integers:
 ```
 
 `flock`-based cross-process locking prevents two concurrent `kb-dev start` invocations from duplicating services.
-
-### Windows notes
-
-On Windows, `kb-dev` uses `taskkill /T /F /PID` instead of POSIX signals to terminate process trees, and `LockFileEx` instead of `flock` for cross-process locking. Resource monitoring (`cpu%`, `mem` columns in `kb-dev status`) shows `n/a` on Windows — this will be improved in a future release.
-
-The `command` field runs through `cmd.exe /C` instead of `bash -c`. Standard `&&`, `||`, and `|` operators work. If your service command uses bash-specific syntax, run it via `bash -c "..."` explicitly.
 
 ## KB Labs integration
 
