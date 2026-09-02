@@ -142,7 +142,10 @@ const manifestFor = item => {
     // execute a tarball fetched from the registry while preparing a release.
     if (/schema:\s*["']kb\.service\/1["']/.test(source)) {
       const id = source.match(/\bid:\s*["']([^"']+)["']/)?.[1];
-      const port = Number(source.match(/\bport:\s*(\d+)/)?.[1] ?? 0);
+      // Minifiers rewrite round numeric literals into scientific notation
+      // (3000 -> 3e3), so the port literal must be captured whole rather than
+      // truncated at the exponent marker.
+      const port = Number(source.match(/\bport:\s*(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/)?.[1] ?? 0);
       const dependsOnSource = source.match(/\bdependsOn:\s*\[([^\]]*)\]/)?.[1];
       const dependsOn = dependsOnSource
         ? [...dependsOnSource.matchAll(/["']([^"']+)["']/g)].map(match => match[1])
