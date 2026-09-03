@@ -42,12 +42,19 @@ type Pnpm struct {
 	Log io.Writer
 }
 
-// The platform's shipped SQLite adapters depend on better-sqlite3.  The
-// workspace's existing pnpm policy explicitly permits that native build; the
-// standalone installed platform has no workspace manifest from which pnpm can
-// inherit the policy, so carry the same narrowly-scoped permission into the
-// executor invocation.
-const approvedNativeBuild = "better-sqlite3"
+// pnpm refuses to run any dependency's install/postinstall script unless it
+// is explicitly allow-listed, and treats even one unapproved script as a
+// fatal error rather than a skip — so every package the exact-artifact set
+// can pull in with a legitimate build step must be named here, not just the
+// one that happens to be exercised by a given install. The standalone
+// installed platform has no workspace manifest from which pnpm could inherit
+// an existing approval, so this carries the same narrowly-scoped permissions
+// the monorepo's own tooling already relies on into the executor invocation:
+// better-sqlite3 (native binary, used by the shipped SQLite adapters),
+// esbuild and unrs-resolver (native binaries pulled in transitively by
+// tsup-based tooling), and @kb-labs/devkit (a benign, non-fatal `|| true`
+// postinstall that generates local tsup config — see infra/devkit/package.json).
+const approvedNativeBuilds = "better-sqlite3,esbuild,unrs-resolver,@kb-labs/devkit"
 
 func (p Pnpm) Install(items []contracts.Artifact) error {
 	if err := p.prepare(); err != nil {
@@ -86,7 +93,7 @@ func (p Pnpm) run(command string, specs ...string) error {
 	if p.Root == "" {
 		return fmt.Errorf("V2 platform root is required")
 	}
-	args := []string{command, "--dir", p.Root, "--reporter=append-only", "--allow-build=" + approvedNativeBuild}
+	args := []string{command, "--dir", p.Root, "--reporter=append-only", "--allow-build=" + approvedNativeBuilds}
 	if p.Offline {
 		args = append(args, "--offline")
 	}
