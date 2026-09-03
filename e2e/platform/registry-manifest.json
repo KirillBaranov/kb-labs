@@ -103,7 +103,7 @@
       "default": false
     },
     {
-      "id": "ai-review",
+      "id": "review",
       "pkg": "@kb-labs/review-entry",
       "description": "AI code review",
       "default": true

@@ -29,7 +29,7 @@ describe("readProfilesSection", () => {
   it("returns empty list when profiles section absent", async () => {
     await fs.writeFile(
       path.join(tmpDir, "kb.config.json"),
-      JSON.stringify({ aiReview: { enabled: true } }, null, 2),
+      JSON.stringify({ review: { enabled: true } }, null, 2),
     );
 
     const result = await readProfilesSection(tmpDir);
@@ -48,7 +48,7 @@ describe("readProfilesSection", () => {
               label: "Default profile",
               scopes: [{ id: "root", include: ["**/*"], default: true }],
               products: {
-                aiReview: { engine: "openai" },
+                review: { engine: "openai" },
               },
             },
           ],
@@ -61,7 +61,7 @@ describe("readProfilesSection", () => {
     const result = await readProfilesSection(tmpDir);
     expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0]!.id).toBe("default");
-    expect(result.profiles[0]!.products?.aiReview).toBeDefined();
+    expect(result.profiles[0]!.products?.review).toBeDefined();
   });
 
   it("throws KbError when profiles section invalid", async () => {

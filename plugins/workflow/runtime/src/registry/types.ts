@@ -2,7 +2,7 @@
  * Resolved workflow information from registry
  */
 export interface ResolvedWorkflow {
-  /** Workflow ID (e.g., "workspace:ai-ci", "plugin:@kb-labs/ai-review/full-audit") */
+  /** Workflow ID (e.g., "workspace:ai-ci", "plugin:@kb-labs/review/full-audit") */
   id: string
   /** Source of the workflow */
   source: 'workspace' | 'plugin'

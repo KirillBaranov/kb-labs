@@ -22,9 +22,9 @@ const POLICY_SCAFFOLD_YAML = `
 #   overrides:
 #     roles:
 #       maintainer:
-#         allow: ["release.publish","devkit.sync","devlink.watch","aiReview.run","profiles.materialize"]
+#         allow: ["release.publish","devkit.sync","devlink.watch","review.run","profiles.materialize"]
 #       developer:
-#         allow: ["devlink.watch","aiReview.run"]
+#         allow: ["devlink.watch","review.run"]
 #         deny: []
 #       guest:
 #         allow: []

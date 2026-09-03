@@ -7,5 +7,5 @@
 /**
  * Product identifier for KB Labs products
  */
-export type ProductId = 'devlink' | 'release' | 'aiReview' | 'aiDocs' | 'devkit' | 'analytics';
+export type ProductId = 'devlink' | 'release' | 'review' | 'aiDocs' | 'devkit' | 'analytics';
 

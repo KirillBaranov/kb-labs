@@ -48,7 +48,7 @@ export interface ProfileLayerInput {
 export interface ResolveOptions {
   cwd: string;
   /**
-   * Product identifier (e.g., 'mind', 'aiReview', 'workflow')
+   * Product identifier (e.g., 'mind', 'review', 'workflow')
    */
   product: string;
   cli?: Record<string, unknown>;

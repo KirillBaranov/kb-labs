@@ -39,7 +39,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin"],
           },
         ],
@@ -63,7 +63,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin", "developer"],
           },
         ],
@@ -71,7 +71,7 @@ describe("Policy Engine Edge Cases", () => {
 
       const permits = createPermitsFunction(policy, { roles: ["admin"] });
 
-      expect(permits("aiReview.run")).toBe(true);
+      expect(permits("review.run")).toBe(true);
     });
 
     it("should deny action when explicitly denied", () => {
@@ -79,7 +79,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             deny: ["guest"],
           },
         ],
@@ -87,7 +87,7 @@ describe("Policy Engine Edge Cases", () => {
 
       const permits = createPermitsFunction(policy, { roles: ["guest"] });
 
-      expect(permits("aiReview.run")).toBe(false);
+      expect(permits("review.run")).toBe(false);
     });
 
     it("should deny by default when no rule matches (deny-all default)", () => {
@@ -104,7 +104,7 @@ describe("Policy Engine Edge Cases", () => {
       const permits = createPermitsFunction(policy, { roles: ["user"] });
 
       // No rule for this action, should deny by default
-      expect(permits("aiReview.run")).toBe(false);
+      expect(permits("review.run")).toBe(false);
     });
 
     it("should permit by default when no rule matches (permit-all mode)", () => {
@@ -125,11 +125,11 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin", "developer"],
           },
           {
-            action: "aiReview.run",
+            action: "review.run",
             deny: ["developer"], // Conflict with allow
           },
         ],
@@ -139,7 +139,7 @@ describe("Policy Engine Edge Cases", () => {
 
       // Behavior depends on implementation - may prioritize first rule, last rule, or deny
       // Check that function returns a boolean (behavior is consistent)
-      const result = permits("aiReview.run");
+      const result = permits("review.run");
       expect(typeof result).toBe("boolean");
     });
 
@@ -152,7 +152,7 @@ describe("Policy Engine Edge Cases", () => {
             allow: ["admin"],
           },
           {
-            action: "aiReview.*",
+            action: "review.*",
             allow: ["developer"],
           },
         ],
@@ -164,11 +164,11 @@ describe("Policy Engine Edge Cases", () => {
       });
 
       // Admin should have access to everything
-      expect(permitsAdmin("aiReview.run")).toBe(true);
+      expect(permitsAdmin("review.run")).toBe(true);
       expect(permitsAdmin("release.publish")).toBe(true);
 
-      // Developer should have access to aiReview.*
-      expect(permitsDeveloper("aiReview.run")).toBe(true);
+      // Developer should have access to review.*
+      expect(permitsDeveloper("review.run")).toBe(true);
       expect(permitsDeveloper("release.publish")).toBe(false);
     });
 
@@ -177,7 +177,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin", "developer"],
           },
           {
@@ -192,7 +192,7 @@ describe("Policy Engine Edge Cases", () => {
       });
 
       // Should have access if any role matches
-      expect(permits("aiReview.run")).toBe(true);
+      expect(permits("review.run")).toBe(true);
       expect(permits("release.publish")).toBe(false);
     });
 
@@ -201,7 +201,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin"],
           },
         ],
@@ -210,7 +210,7 @@ describe("Policy Engine Edge Cases", () => {
       const permits = createPermitsFunction(policy, { roles: [] });
 
       // No roles, should deny
-      expect(permits("aiReview.run")).toBe(false);
+      expect(permits("review.run")).toBe(false);
     });
   });
 
@@ -220,11 +220,11 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin"],
           },
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["developer"], // Additional allow
           },
         ],
@@ -240,7 +240,7 @@ describe("Policy Engine Edge Cases", () => {
       });
 
       // Both rules should be merged
-      expect(permits("aiReview.run")).toBe(true);
+      expect(permits("review.run")).toBe(true);
     });
 
     it("should handle conflicting allow/deny rules", async () => {
@@ -248,11 +248,11 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin"],
           },
           {
-            action: "aiReview.run",
+            action: "review.run",
             deny: ["admin"], // Conflict
           },
         ],
@@ -269,7 +269,7 @@ describe("Policy Engine Edge Cases", () => {
 
       // Behavior depends on implementation - may prioritize first rule, last rule, or deny
       // Check that function returns a boolean (behavior is consistent)
-      const result_check = permits("aiReview.run");
+      const result_check = permits("review.run");
       expect(typeof result_check).toBe("boolean");
     });
   });
@@ -298,7 +298,7 @@ describe("Policy Engine Edge Cases", () => {
         schemaVersion: "1.0",
         rules: [
           {
-            action: "aiReview.run",
+            action: "review.run",
             allow: ["admin"],
           },
         ],

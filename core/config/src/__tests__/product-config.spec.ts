@@ -41,7 +41,7 @@ describe("Product Configuration", () => {
 
   describe("Product Normalization", () => {
     it("should convert ProductId to filesystem format", () => {
-      expect(toFsProduct("aiReview")).toBe("ai-review");
+      expect(toFsProduct("review")).toBe("review");
       expect(toFsProduct("aiDocs")).toBe("ai-docs");
       expect(toFsProduct("devlink")).toBe("devlink");
       expect(toFsProduct("release")).toBe("release");
@@ -49,7 +49,7 @@ describe("Product Configuration", () => {
     });
 
     it("should convert filesystem format to ProductId", () => {
-      expect(toConfigProduct("ai-review")).toBe("aiReview");
+      expect(toConfigProduct("review")).toBe("review");
       expect(toConfigProduct("ai-docs")).toBe("aiDocs");
       expect(toConfigProduct("devlink")).toBe("devlink");
       expect(toConfigProduct("release")).toBe("release");
@@ -62,7 +62,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -80,7 +80,7 @@ describe("Product Configuration", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             enabled: false,
             customSetting: "test",
           },
@@ -91,7 +91,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -106,7 +106,7 @@ describe("Product Configuration", () => {
 
     it("should merge local config", async () => {
       // Create local config directory
-      const localConfigDir = path.join(testDir, ".kb", "ai-review");
+      const localConfigDir = path.join(testDir, ".kb", "review");
       await fsp.mkdir(localConfigDir, { recursive: true });
 
       const localConfig = {
@@ -116,14 +116,14 @@ describe("Product Configuration", () => {
         localSetting: "local-value",
       };
       await fsp.writeFile(
-        path.join(localConfigDir, "ai-review.config.json"),
+        path.join(localConfigDir, "review.config.json"),
         JSON.stringify(localConfig, null, 2),
       );
 
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -140,7 +140,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           cli: {
             enabled: false,
             debug: true,
@@ -162,7 +162,7 @@ describe("Product Configuration", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             rules: ["workspace-rule"],
           },
         },
@@ -172,7 +172,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           cli: {
             rules: ["cli-rule"],
           },
@@ -191,7 +191,7 @@ describe("Product Configuration", () => {
       const result = await explainProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -211,7 +211,7 @@ describe("Product Configuration", () => {
         getProductConfig(
           {
             cwd: testDir,
-            product: "aiReview",
+            product: "review",
           },
           null,
         ),
@@ -224,7 +224,7 @@ describe("Product Configuration", () => {
         schemaVersion: "1.0",
         preset: "nonexistent/preset",
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
           },
         },
@@ -235,7 +235,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -251,7 +251,7 @@ describe("Product Configuration", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
             rules: ["workspace-rule"],
           },
@@ -259,7 +259,7 @@ describe("Product Configuration", () => {
       };
       await writeWorkspaceConfig(testDir, workspaceConfig);
 
-      const localConfigDir = path.join(testDir, ".kb", "ai-review");
+      const localConfigDir = path.join(testDir, ".kb", "review");
       await fsp.mkdir(localConfigDir, { recursive: true });
 
       const localConfig = {
@@ -269,14 +269,14 @@ describe("Product Configuration", () => {
         rules: ["local-rule"],
       };
       await fsp.writeFile(
-        path.join(localConfigDir, "ai-review.config.json"),
+        path.join(localConfigDir, "review.config.json"),
         JSON.stringify(localConfig, null, 2),
       );
 
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -303,7 +303,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -320,7 +320,7 @@ describe("Product Configuration", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": "invalid-string-instead-of-object",
+          "review": "invalid-string-instead-of-object",
         },
       };
       await writeWorkspaceConfig(testDir, workspaceConfig);
@@ -329,7 +329,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -343,19 +343,19 @@ describe("Product Configuration", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
             circularRef: null as any,
           },
         },
       };
-      workspaceConfig.products["ai-review"].circularRef = workspaceConfig;
+      workspaceConfig.products["review"].circularRef = workspaceConfig;
 
       // JSON.stringify will fail with circular references, so we'll create a simpler test
       const simpleConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
           },
         },
@@ -366,7 +366,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -386,7 +386,7 @@ describe("Product Configuration", () => {
       const result = await getProductConfig(
         {
           cwd: restrictedDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );

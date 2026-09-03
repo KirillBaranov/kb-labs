@@ -29,7 +29,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true },
+          "review": { enabled: true },
         },
       };
       await fsp.writeFile(
@@ -40,7 +40,7 @@ describe("getProductConfig Edge Cases", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer: undefined,
         },
         null,
@@ -54,7 +54,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 100 },
+          "review": { enabled: true, maxFiles: 100 },
         },
       };
       await fsp.writeFile(
@@ -66,14 +66,14 @@ describe("getProductConfig Edge Cases", () => {
         profileId: "default",
         source: "profile:default",
         products: {
-          "ai-review": { maxFiles: 200 },
+          "review": { maxFiles: 200 },
         },
       };
 
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer,
         },
         null,
@@ -93,7 +93,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 100 },
+          "review": { enabled: true, maxFiles: 100 },
         },
       };
       await fsp.writeFile(
@@ -105,13 +105,13 @@ describe("getProductConfig Edge Cases", () => {
         profileId: "default",
         source: "profile:default",
         products: {
-          "ai-review": { maxFiles: 200 },
+          "review": { maxFiles: 200 },
         },
         scope: {
           id: "src",
           source: "profile-scope:src",
           products: {
-            "ai-review": { maxFiles: 150 },
+            "review": { maxFiles: 150 },
           },
         },
       };
@@ -119,7 +119,7 @@ describe("getProductConfig Edge Cases", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer,
         },
         null,
@@ -140,7 +140,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 100 },
+          "review": { enabled: true, maxFiles: 100 },
         },
       };
       await fsp.writeFile(
@@ -152,14 +152,14 @@ describe("getProductConfig Edge Cases", () => {
         profileId: "default",
         source: "profile:default",
         products: {
-          "ai-review": { maxFiles: 200 },
+          "review": { maxFiles: 200 },
         },
       };
 
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer,
           cli: { maxFiles: 50 },
         },
@@ -174,7 +174,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 100 },
+          "review": { enabled: true, maxFiles: 100 },
         },
       };
       await fsp.writeFile(
@@ -185,7 +185,7 @@ describe("getProductConfig Edge Cases", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           cli: { maxFiles: 50, debug: true },
         },
         null,
@@ -202,7 +202,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
             rules: {
               security: { level: "high" },
@@ -220,7 +220,7 @@ describe("getProductConfig Edge Cases", () => {
         profileId: "default",
         source: "profile:default",
         products: {
-          "ai-review": {
+          "review": {
             rules: {
               security: { level: "critical" },
               style: { level: "low" },
@@ -232,7 +232,7 @@ describe("getProductConfig Edge Cases", () => {
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer,
         },
         null,
@@ -259,7 +259,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true },
+          "review": { enabled: true },
         },
       };
       await fsp.writeFile(
@@ -271,7 +271,7 @@ describe("getProductConfig Edge Cases", () => {
       const result1 = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -280,7 +280,7 @@ describe("getProductConfig Edge Cases", () => {
       const result2 = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -293,7 +293,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig1 = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 100 },
+          "review": { enabled: true, maxFiles: 100 },
         },
       };
       await fsp.writeFile(
@@ -304,7 +304,7 @@ describe("getProductConfig Edge Cases", () => {
       const result1 = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -313,7 +313,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig2 = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true, maxFiles: 200 },
+          "review": { enabled: true, maxFiles: 200 },
         },
       };
       await fsp.writeFile(
@@ -328,7 +328,7 @@ describe("getProductConfig Edge Cases", () => {
       const result2 = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
         },
         null,
       );
@@ -360,7 +360,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true },
+          "review": { enabled: true },
         },
       };
       await fsp.writeFile(
@@ -372,14 +372,14 @@ describe("getProductConfig Edge Cases", () => {
         profileId: "default",
         source: "profile:default",
         products: {
-          "ai-review": { maxFiles: 200 },
+          "review": { maxFiles: 200 },
         },
       };
 
       const result = await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           profileLayer,
           cli: { debug: true },
         },
@@ -409,7 +409,7 @@ describe("getProductConfig Edge Cases", () => {
       const workspaceConfig = {
         schemaVersion: "1.0",
         products: {
-          "ai-review": { enabled: true },
+          "review": { enabled: true },
         },
       };
       await fsp.writeFile(
@@ -420,7 +420,7 @@ describe("getProductConfig Edge Cases", () => {
       await getProductConfig(
         {
           cwd: testDir,
-          product: "aiReview",
+          product: "review",
           writeFinal: true,
         },
         null,
@@ -430,8 +430,8 @@ describe("getProductConfig Edge Cases", () => {
       const finalConfigPath = path.join(
         testDir,
         ".kb",
-        "ai-review",
-        "ai-review.config.json",
+        "review",
+        "review.config.json",
       );
       const finalConfigExists = await fsp
         .access(finalConfigPath)

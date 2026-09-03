@@ -62,7 +62,7 @@ export async function discoverCLIPackages(
             else if (group === 'mind') {priority = 80;}
             else if (group === 'tox') {priority = 70;}
             else if (group === 'profiles') {priority = 60;}
-            else if (group === 'ai-review') {priority = 50;}
+            else if (group === 'review') {priority = 50;}
             
             packages.push({
               name: packageName,

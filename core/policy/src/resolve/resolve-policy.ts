@@ -110,7 +110,7 @@ async function loadPresetPolicy(bundle: string): Promise<Policy> {
         allow: ["admin", "developer"],
       },
       {
-        action: "aiReview.run",
+        action: "review.run",
         allow: ["admin", "reviewer"],
       },
       {

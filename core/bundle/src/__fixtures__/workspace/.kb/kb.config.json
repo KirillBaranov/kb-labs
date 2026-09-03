@@ -21,7 +21,7 @@
       "id": "default",
       "label": "Default Profile",
       "products": {
-        "aiReview": {
+        "review": {
           "maxFiles": 25,
           "debug": true,
           "rules": ["custom-rules.yml"]
@@ -36,7 +36,7 @@
       "id": "production",
       "label": "Production Profile",
       "products": {
-        "aiReview": {
+        "review": {
           "maxFiles": 100,
           "debug": false
         }

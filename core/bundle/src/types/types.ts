@@ -11,7 +11,7 @@ export interface LoadBundleOptions {
    */
   cwd?: string;
   /**
-   * Product identifier (e.g., 'mind', 'aiReview', 'workflow')
+   * Product identifier (e.g., 'mind', 'review', 'workflow')
    * Corresponds to key in kb.config.json profiles[].products
    */
   product: string;

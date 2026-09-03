@@ -4,7 +4,7 @@
  */
 
 const FS_MAP = new Map([
-  ['aiReview', 'ai-review'],
+  ['review', 'review'],
   ['aiDocs', 'ai-docs'],
   ['devlink', 'devlink'],
   ['release', 'release'],
@@ -16,7 +16,7 @@ const FS_MAP = new Map([
 
 /**
  * Convert product ID to filesystem kebab-case format
- * @param id Product ID (e.g., 'aiReview', 'mind', 'workflow')
+ * @param id Product ID (e.g., 'review', 'mind', 'workflow')
  * @returns kebab-case string for filesystem paths
  */
 export function toFsProduct(id: string): string {

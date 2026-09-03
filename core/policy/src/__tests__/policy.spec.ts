@@ -77,7 +77,7 @@ describe("Policy System", () => {
           allow: ["admin", "developer"],
         },
         {
-          action: "aiReview.run",
+          action: "review.run",
           allow: ["admin", "reviewer"],
         },
         {
@@ -92,7 +92,7 @@ describe("Policy System", () => {
 
       expect(can(policy, identity, BASE_ACTIONS.RELEASE_PUBLISH)).toBe(true);
       expect(can(policy, identity, BASE_ACTIONS.DEVKIT_SYNC)).toBe(true);
-      expect(can(policy, identity, BASE_ACTIONS.AI_REVIEW_RUN)).toBe(true);
+      expect(can(policy, identity, BASE_ACTIONS.REVIEW_RUN)).toBe(true);
       expect(can(policy, identity, BASE_ACTIONS.PROFILES_MATERIALIZE)).toBe(
         true,
       );
@@ -118,7 +118,7 @@ describe("Policy System", () => {
     it("should allow reviewer to run AI review", () => {
       const identity: Identity = { roles: ["reviewer"] };
 
-      expect(can(policy, identity, BASE_ACTIONS.AI_REVIEW_RUN)).toBe(true);
+      expect(can(policy, identity, BASE_ACTIONS.REVIEW_RUN)).toBe(true);
       expect(can(policy, identity, BASE_ACTIONS.RELEASE_PUBLISH)).toBe(false);
     });
 

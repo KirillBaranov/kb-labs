@@ -48,7 +48,7 @@ describe("Preset and Lockfile System", () => {
 
       const configDefaults = {
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
             rules: ["security", "performance"],
           },
@@ -84,7 +84,7 @@ describe("Preset and Lockfile System", () => {
 
       const configDefaults = {
         products: {
-          "ai-review": {
+          "review": {
             enabled: true,
             rules: ["security", "performance"],
           },
@@ -96,9 +96,9 @@ describe("Preset and Lockfile System", () => {
       );
 
       const preset = await resolvePreset("@kb-labs/org-preset@1.3.2", testDir);
-      const aiReviewConfig = getPresetConfigForProduct(preset, "aiReview");
+      const reviewConfig = getPresetConfigForProduct(preset, "review");
 
-      expect(aiReviewConfig).toEqual({
+      expect(reviewConfig).toEqual({
         enabled: true,
         rules: ["security", "performance"],
       });
@@ -125,7 +125,7 @@ describe("Preset and Lockfile System", () => {
         orgPreset: "@kb-labs/org-preset@1.3.2",
         profile: "node-ts-lib@1.2.0",
         hashes: {
-          "ai-review": "sha256-abc123",
+          "review": "sha256-abc123",
           devlink: "sha256-def456",
         },
         generatedAt: new Date().toISOString(),
@@ -142,7 +142,7 @@ describe("Preset and Lockfile System", () => {
       const initialData = {
         schemaVersion: "1.0" as const,
         hashes: {
-          "ai-review": "sha256-old123",
+          "review": "sha256-old123",
         },
         generatedAt: new Date().toISOString(),
       };
@@ -150,7 +150,7 @@ describe("Preset and Lockfile System", () => {
 
       // Update with new config hashes
       const newConfigs = {
-        aiReview: { enabled: true, rules: ["new-rule"] },
+        review: { enabled: true, rules: ["new-rule"] },
         devlink: { watch: true },
       };
 
@@ -158,14 +158,14 @@ describe("Preset and Lockfile System", () => {
         configHashes: newConfigs,
       });
 
-      expect(updatedData.hashes["ai-review"]).toBeDefined();
+      expect(updatedData.hashes["review"]).toBeDefined();
       expect(updatedData.hashes["devlink"]).toBeDefined();
-      expect(updatedData.hashes["ai-review"]).not.toBe("sha256-old123");
+      expect(updatedData.hashes["review"]).not.toBe("sha256-old123");
     });
 
     it("should check if lockfile is up to date", async () => {
       const configs = {
-        aiReview: { enabled: true, rules: ["test"] },
+        review: { enabled: true, rules: ["test"] },
       };
 
       // No lockfile exists
@@ -179,7 +179,7 @@ describe("Preset and Lockfile System", () => {
 
       // Change config
       const newConfigs = {
-        aiReview: { enabled: false, rules: ["different"] },
+        review: { enabled: false, rules: ["different"] },
       };
       expect(await isLockfileUpToDate(testDir, newConfigs)).toBe(false);
     });

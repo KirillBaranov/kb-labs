@@ -16,10 +16,10 @@ profiles:
 
   combo:
     description: Mind + Commit + AI Review together
-    plugins: [mind, commit, ai-review, marketplace]
+    plugins: [mind, commit, review, marketplace]
     services: [state-daemon, rest, gateway, marketplace]
 
   release-set:
     description: Reference set for pre-release regression
-    plugins: [mind, commit, ai-review, marketplace]
+    plugins: [mind, commit, review, marketplace]
     services: [state-daemon, rest, gateway, workflow, marketplace]

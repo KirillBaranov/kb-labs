@@ -45,7 +45,7 @@ describe("Analytics Source Attribution", () => {
       // Create analytics with explicit context (simulating root package.json)
       const context: AnalyticsContext = {
         source: {
-          product: "@kb-labs/ai-review",
+          product: "@kb-labs/review",
           version: "1.0.0",
         },
         runId: "test-run-123",
@@ -59,7 +59,7 @@ describe("Analytics Source Attribution", () => {
       const event = JSON.parse(files.trim());
 
       expect(event.source).toEqual({
-        product: "@kb-labs/ai-review",
+        product: "@kb-labs/review",
         version: "1.0.0",
       });
     });
@@ -86,7 +86,7 @@ describe("Analytics Source Attribution", () => {
 
       const rootContext: AnalyticsContext = {
         source: {
-          product: "@kb-labs/ai-review", // Root package.json
+          product: "@kb-labs/review", // Root package.json
           version: "1.0.0",
         },
         runId: "test-run-123",
@@ -109,9 +109,9 @@ describe("Analytics Source Attribution", () => {
 
       // CURRENT BEHAVIOR: All events show same source (ROOT)
       // This is the problem we're trying to fix!
-      expect(events[0].source.product).toBe("@kb-labs/ai-review");
-      expect(events[1].source.product).toBe("@kb-labs/ai-review");
-      expect(events[2].source.product).toBe("@kb-labs/ai-review");
+      expect(events[0].source.product).toBe("@kb-labs/review");
+      expect(events[1].source.product).toBe("@kb-labs/review");
+      expect(events[2].source.product).toBe("@kb-labs/review");
 
       // DESIRED BEHAVIOR (after fix):
       // expect(events[0].source.product).toBe('@kb-labs/mind');

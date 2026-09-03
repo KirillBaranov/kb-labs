@@ -68,10 +68,10 @@ describe('ScopedAnalytics', () => {
   let scopedAnalytics: ScopedAnalytics;
 
   beforeEach(() => {
-    // Create mock analytics with root context (simulating @kb-labs/ai-review)
+    // Create mock analytics with root context (simulating @kb-labs/review)
     const rootContext: AnalyticsContext = {
       source: {
-        product: '@kb-labs/ai-review',
+        product: '@kb-labs/review',
         version: '1.0.0',
       },
       runId: 'test-run-123',
@@ -192,7 +192,7 @@ describe('Integration: ScopedAnalytics + handler-executor', () => {
     // Simulate the flow:
     // 1. Parent process creates analytics with root context
     const rootContext: AnalyticsContext = {
-      source: { product: '@kb-labs/ai-review', version: '1.0.0' },
+      source: { product: '@kb-labs/review', version: '1.0.0' },
       runId: 'parent-run-123',
     };
     const parentAnalytics = new MockAnalytics(rootContext);

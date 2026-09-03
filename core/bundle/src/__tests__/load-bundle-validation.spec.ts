@@ -6,7 +6,7 @@ describe('bundle: loadBundle validation option', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Using a minimal cwd; this is a smoke test to ensure code path executes
     await expect(
-      loadBundle({ cwd: process.cwd(), product: 'aiReview' as any, validate: 'warn' })
+      loadBundle({ cwd: process.cwd(), product: 'review' as any, validate: 'warn' })
     ).resolves.toBeTruthy();
   });
 });

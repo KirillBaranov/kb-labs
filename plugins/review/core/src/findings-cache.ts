@@ -130,7 +130,7 @@ export class FindingsCache {
 
   constructor(cwd: string) {
     this.cwd = cwd;
-    this.cachePath = join(cwd, '.kb', 'ai-review', 'cache', CACHE_FILENAME);
+    this.cachePath = join(cwd, '.kb', 'review', 'cache', CACHE_FILENAME);
   }
 
   /**
