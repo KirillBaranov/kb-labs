@@ -222,7 +222,7 @@ globalDispatcher.firstHost(namespaceId)
 **4.1** Docker образ для host-agent
 
 ```dockerfile
-FROM node:20-slim
+FROM node:24-slim
 COPY dist/ /app/dist/
 CMD ["node", /app/dist/index.js]
 ```
