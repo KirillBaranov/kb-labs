@@ -104,7 +104,7 @@ const pluginPermissions = combinePermissions()
 
 export const manifest = {
   schema: 'kb.plugin/3',
-  id: '@kb-labs/agent',
+  id: '@kb-labs/agents',
   version: '0.1.0',
 
   display: {

@@ -197,6 +197,8 @@ for (const item of stage) {
         ? manifest.id
         : manifest?.schema === 'kb.adapter/1'
           ? manifest.id
+        : manifest?.schema === 'kb.plugin/3'
+          ? pluginIdFor(manifest, item.name)
         : idFor(item.name);
   const generatedRequirements = item.name === platformPackage
     ? [
@@ -227,8 +229,9 @@ for (const item of stage) {
       required: true,
     });
   } else if (manifest.schema === 'kb.plugin/3') {
-    const requires = (manifest.platform?.requires ?? []).map(capability => ({ capability, requiredBy: idFor(item.name) }));
-    plugins.push({ ...component(item, manifest, idFor(item.name)), requires });
+    const pluginId = pluginIdFor(manifest, item.name);
+    const requires = (manifest.platform?.requires ?? []).map(capability => ({ capability, requiredBy: pluginId }));
+    plugins.push({ ...component(item, manifest, pluginId), requires });
   } else if (manifest.schema === 'kb.adapter/1') {
     const capabilities = (Array.isArray(manifest.implements) ? manifest.implements : [manifest.implements])
       .filter(Boolean)
@@ -306,6 +309,18 @@ if (sealer.status !== 0) process.exit(sealer.status ?? 1);
 
 function idFor(packageName) {
   return packageName.split('/').pop().replace(/-entry$/, '');
+}
+
+// A plugin's kb.plugin/3 manifest is the source of truth for its catalog ID
+// (e.g. "@kb-labs/release" -> "release"). Stripping the "-entry" suffix off
+// the npm package name (idFor) is only a fallback for manifests that don't
+// declare one — package names don't reliably follow the manifest's id (e.g.
+// @kb-labs/release-manager-cli's manifest declares id "@kb-labs/release").
+function pluginIdFor(manifest, packageName) {
+  if (typeof manifest.id === 'string' && manifest.id.startsWith('@')) {
+    return manifest.id.split('/').pop();
+  }
+  return idFor(packageName);
 }
 
 const digest = createHash('sha256').update(readFileSync(output)).digest('hex');

@@ -17,6 +17,9 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
     packageArtifact(root, packageRoot, stage, '@kb-labs/core-contracts', '2.0.0', ''),
     packageArtifact(root, packageRoot, stage, '@kb-labs/sdk', '2.0.0', '', { peerDependencies: { '@kb-labs/core-runtime': '>=2.0.0 <3.0.0' } }),
     packageArtifact(root, packageRoot, stage, '@kb-labs/commit-entry', '2.0.0', JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/commit', version: '2.0.0', platform: { requires: ['cache'] } })),
+    // The package name doesn't follow the "-entry" convention, so the catalog
+    // ID must come from the manifest's own id, not a package-name heuristic.
+    packageArtifact(root, packageRoot, stage, '@kb-labs/release-manager-cli', '2.0.0', JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/release', version: '2.0.0' })),
     packageArtifact(root, packageRoot, stage, '@kb-labs/workflow-daemon', '2.0.0', 'var manifest = { schema: "kb.service/1", id: "workflow", runtime: { port: 7778, healthCheck: "/health" } }; export { manifest };', { bin: { 'kb-workflow': './dist/index.js' } }),
     packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-pino', '2.0.0', 'const manifest={id:"pino-logger",implements:["ILogger"]}; export {manifest};'),
     packageArtifact(root, packageRoot, stage, '@kb-labs/adapters-service-transport-http', '2.0.0', 'const manifest={id:"service-transport-http",implements:["IServiceTransport"]}; export {manifest};'),
@@ -39,6 +42,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
   assert.deepEqual(index.compatibility.labels[0].requires, [{ label: 'sdk@2.0.0', constraint: '>=2.0.0 <3.0.0' }]);
   assert.equal(index.channels.canary, '2.0.0');
   assert.equal(index.plugins[0].id, 'commit');
+  assert.equal(index.plugins.find(p => p.package === '@kb-labs/release-manager-cli')?.id, 'release');
   assert.equal(index.platforms[0].profiles.default.services[0].id, 'workflow');
   assert.equal(index.platforms[0].profiles.default.services[0].command, 'kb-workflow');
   assert.equal(index.platforms[0].profiles.default.services[0].port, 7778);
