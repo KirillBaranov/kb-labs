@@ -5,6 +5,7 @@ export default defineConfig({
   ...nodePreset,
   entry: {
     index: 'src/index.ts',
+    manifest: 'src/manifest.ts',
   },
   format: ['esm', 'cjs'],
 });
