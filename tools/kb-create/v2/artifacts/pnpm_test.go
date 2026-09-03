@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/v2/contracts"
@@ -32,8 +33,57 @@ func TestPnpmUsesVerifiedTarballInsteadOfRegistrySpec(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := "file:" + filepath.Join(root, ".kb", "v2", "cache", "packages", sum+".tgz")
-	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3,esbuild,unrs-resolver,@kb-labs/devkit", want}) {
+	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, []string{"add", "--dir", root, "--reporter=append-only", want}) {
 		t.Fatalf("calls = %#v", runner.calls)
+	}
+}
+
+// Regression coverage for the mechanism, not just its absence from the pnpm
+// invocation: pnpm 11.4.0 mis-parses a comma-joined --allow-build value as a
+// single "name@version-union" spec (ERR_PNPM_INVALID_VERSION_UNION) the
+// moment the list mixes a scoped package (like @kb-labs/devkit) with others
+// — confirmed directly against that pnpm version. The fix moves the
+// approval list into pnpm-workspace.yaml's `allowBuilds` map instead, which
+// handles scoped names correctly since it's YAML, not a CLI string.
+func TestPnpmWritesWorkspaceAllowBuildsList(t *testing.T) {
+	root := t.TempDir()
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: root, Runner: runner}).Install([]contracts.Artifact{{ID: "a", Package: "@kb/a", Version: "1.0.0"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "pnpm-workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	for _, name := range approvedNativeBuilds {
+		want := fmt.Sprintf("%q: true", name)
+		if !strings.Contains(got, want) {
+			t.Fatalf("pnpm-workspace.yaml = %q, missing %q", got, want)
+		}
+	}
+}
+
+func TestPnpmDoesNotOverwriteExistingWorkspaceYAML(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "pnpm-workspace.yaml")
+	custom := "allowBuilds:\n  \"esbuild\": true\nminimumReleaseAgeExclude:\n  - \"@kb/a\"\n"
+	if err := os.WriteFile(path, []byte(custom), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"kb-platform","private":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	if err := (Pnpm{Root: root, Runner: runner}).Install([]contracts.Artifact{{ID: "a", Package: "@kb/a", Version: "1.0.0"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != custom {
+		t.Fatalf("pnpm-workspace.yaml was overwritten: got %q, want unchanged %q", data, custom)
 	}
 }
 
@@ -54,7 +104,7 @@ func TestPnpmInstallsSortedExactArtifactBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3,esbuild,unrs-resolver,@kb-labs/devkit", "@kb/a@1.0.0", "@kb/b@2.0.0", "--registry", "https://registry.test"}
+	want := []string{"add", "--dir", root, "--reporter=append-only", "@kb/a@1.0.0", "@kb/b@2.0.0", "--registry", "https://registry.test"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
 		t.Fatalf("calls = %#v, want %q", runner.calls, want)
 	}
@@ -108,7 +158,7 @@ func TestPnpmUsesOfflineModeWhenRequested(t *testing.T) {
 	if err := (Pnpm{Root: root, Offline: true, Runner: runner}).Install([]contracts.Artifact{{ID: "platform", Package: "@kb/platform", Version: "2"}}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"add", "--dir", root, "--reporter=append-only", "--allow-build=better-sqlite3,esbuild,unrs-resolver,@kb-labs/devkit", "--offline", "@kb/platform@2"}
+	want := []string{"add", "--dir", root, "--reporter=append-only", "--offline", "@kb/platform@2"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0].args, want) {
 		t.Fatalf("calls = %#v", runner.calls)
 	}

@@ -4,6 +4,7 @@
 package artifacts
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -54,7 +55,18 @@ type Pnpm struct {
 // esbuild and unrs-resolver (native binaries pulled in transitively by
 // tsup-based tooling), and @kb-labs/devkit (a benign, non-fatal `|| true`
 // postinstall that generates local tsup config — see infra/devkit/package.json).
-const approvedNativeBuilds = "better-sqlite3,esbuild,unrs-resolver,@kb-labs/devkit"
+//
+// This is written into pnpm-workspace.yaml's `allowBuilds` map (the format
+// `pnpm approve-builds --all` itself writes) rather than passed as a CLI
+// `--allow-build=` flag: pnpm 11.4.0 (pinned in the E2E image and this
+// repo's own packageManager field) mis-parses a comma-joined value as a
+// single "name@version-union" spec — and therefore fails with
+// ERR_PNPM_INVALID_VERSION_UNION — the moment the list has more than one
+// entry AND at least one is scoped (contains "@"), which every combination
+// including @kb-labs/devkit hits. Confirmed directly against pnpm 11.4.0:
+// the CLI flag breaks on this exact list (comma-joined or repeated), while
+// this config file's `allowBuilds` map handles it cleanly.
+var approvedNativeBuilds = []string{"better-sqlite3", "esbuild", "unrs-resolver", "@kb-labs/devkit"}
 
 func (p Pnpm) Install(items []contracts.Artifact) error {
 	if err := p.prepare(); err != nil {
@@ -93,7 +105,7 @@ func (p Pnpm) run(command string, specs ...string) error {
 	if p.Root == "" {
 		return fmt.Errorf("V2 platform root is required")
 	}
-	args := []string{command, "--dir", p.Root, "--reporter=append-only", "--allow-build=" + approvedNativeBuilds}
+	args := []string{command, "--dir", p.Root, "--reporter=append-only"}
 	if p.Offline {
 		args = append(args, "--offline")
 	}
@@ -122,6 +134,13 @@ func (p Pnpm) prepare() error {
 	if err := os.MkdirAll(p.Root, 0o750); err != nil {
 		return err
 	}
+	if err := p.preparePackageJSON(); err != nil {
+		return err
+	}
+	return p.prepareWorkspaceYAML()
+}
+
+func (p Pnpm) preparePackageJSON() error {
 	path := filepath.Join(p.Root, "package.json")
 	if _, err := os.Stat(path); err == nil {
 		return nil
@@ -130,6 +149,28 @@ func (p Pnpm) prepare() error {
 	}
 	data, _ := json.MarshalIndent(map[string]any{"name": "kb-platform", "private": true, "packageManager": "pnpm@11.4.0"}, "", "  ")
 	return os.WriteFile(path, append(data, '\n'), 0o600)
+}
+
+// prepareWorkspaceYAML only writes when the file is absent, same guard as
+// preparePackageJSON: pnpm itself rewrites this file during install (e.g. it
+// appends entries to minimumReleaseAgeExclude), so unconditionally
+// regenerating it on every apply would discard pnpm's own additions from a
+// prior run. A project bootstrapped by an older kb-create version (before
+// this file existed) still gets it written on its next apply, since the
+// file won't exist yet there either.
+func (p Pnpm) prepareWorkspaceYAML() error {
+	path := filepath.Join(p.Root, "pnpm-workspace.yaml")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	var buf bytes.Buffer
+	buf.WriteString("allowBuilds:\n")
+	for _, name := range approvedNativeBuilds {
+		fmt.Fprintf(&buf, "  %q: true\n", name)
+	}
+	return os.WriteFile(path, buf.Bytes(), 0o600)
 }
 
 func (p Pnpm) specs(items []contracts.Artifact) ([]string, error) {
