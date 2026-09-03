@@ -40,7 +40,11 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
-          go-version-file: tools/kb-devkit/go.mod
+          # `pnpm build` below runs kb-devkit's full topological build,
+          # covering every Go module in the workspace (including
+          # kb-deploy/kb-monitor, which require go 1.26 as of #435), not
+          # just kb-devkit itself.
+          go-version: '1.26.8'
 
       - name: Resolve platform version
         id: version
