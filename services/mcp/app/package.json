@@ -18,22 +18,22 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/cli-commands": "workspace:*",
     "@kb-labs/cli-runtime": "workspace:*",
+    "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-policy": "workspace:*",
     "@kb-labs/core-registry": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
-    "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",
     "@kb-labs/gateway-contracts": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/shared-daemon": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "fastify": "^5.8.5"
+    "fastify": "^5.12.1"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
