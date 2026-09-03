@@ -13,7 +13,7 @@ Full real-stack exercise of the ADR-0014 delivery plane:
 │  │  kb-create     │   │  kb-create     │◀──▶│  @kb-labs/gateway-  │   │
 │  │  kb-dev (stub) │   │  kb-dev (stub) │    │    test@1.0.0       │   │
 │  │  openssh       │   │  openssh       │    │  @kb-labs/adapter-  │   │
-│  │  Node 20+pnpm  │   │  Node 20+pnpm  │    │    noop@1.0.0       │   │
+│  │  Node 24+pnpm  │   │  Node 24+pnpm  │    │    noop@1.0.0       │   │
 │  └────────────────┘   └────────────────┘    └─────────────────────┘   │
 │          └─ docker-compose (kb-net) ───────────────────────┘           │
 └────────────────────────────────────────────────────────────────────────┘

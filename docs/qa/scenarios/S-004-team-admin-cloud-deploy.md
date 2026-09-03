@@ -18,7 +18,7 @@ Platform should be reachable at the configured domain, all services healthy, Stu
 - [ ] SSH access to target host (key-based, no password)
 - [ ] `deploy.yaml` configured with target host and services
 - [ ] Domain/IP for the platform (e.g. `kblabs-cloud.kblabs.ru`)
-- [ ] Target host: Node 20+, pnpm 9+, 2GB+ free disk, 1GB+ free RAM
+- [ ] Target host: Node 24+, pnpm 9+, 2GB+ free disk, 1GB+ free RAM
 - [ ] Ports 80/443 open on target host (or direct ports 3000/4000/5050)
 
 ---

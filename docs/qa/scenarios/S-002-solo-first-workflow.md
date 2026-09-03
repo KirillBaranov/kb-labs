@@ -16,7 +16,7 @@ Validates that the workflow engine is reachable, a run is created, and result is
 
 - [ ] KB Labs installed (`kb-create` done, project exists)
 - [ ] Services not yet started
-- [ ] Node.js 20+, no port conflicts on 4000, 5050, 7778, 3000
+- [ ] Node.js 24+, no port conflicts on 4000, 5050, 7778, 3000
 
 ---
 

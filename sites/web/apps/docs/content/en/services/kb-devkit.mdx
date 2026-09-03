@@ -589,12 +589,12 @@ out/
 Dockerfile pattern:
 
 ```dockerfile
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY .kb/bundle/docs-site/json/ .
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/docs-site...
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/sites/web/node_modules ./sites/web/node_modules

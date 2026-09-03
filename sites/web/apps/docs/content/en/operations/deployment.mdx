@@ -118,13 +118,13 @@ Every service that ships a `ServiceManifest` has a `Dockerfile` you can build fr
 For services without a pre-made Dockerfile, use a multi-stage Node image pattern:
 
 ```dockerfile
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /build
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
-FROM node:20-slim
+FROM node:24-slim
 WORKDIR /app
 COPY --from=build /build/dist ./dist
 COPY --from=build /build/node_modules ./node_modules

@@ -26,9 +26,9 @@ package), the platform gives a clear, actionable error — not a stack trace.
 | # | Action | Expected |
 |---|--------|----------|
 | 1 | Switch to Node 18: `nvm use 18` (or equivalent) | — |
-| 2 | `kb-create doctor` | Fails with clear message: "Node 20+ required, found 18.x" |
+| 2 | `kb-create doctor` | Fails with clear message: "Node 24+ required, found 18.x" |
 | 3 | `kb-dev start` | Refuses to start with same message, exit non-zero |
-| 4 | Restore Node 20+: `nvm use 20` | — |
+| 4 | Restore Node 24+: `nvm use 24` | — |
 
 ### Phase 2 — Missing config field
 

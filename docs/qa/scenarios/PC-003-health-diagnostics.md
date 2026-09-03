@@ -26,7 +26,7 @@ A developer can quickly tell if something is wrong and why.
 | # | Action | Expected |
 |---|--------|----------|
 | 1 | `kb-create doctor` | All checks pass, exit 0 |
-| 2 | Output includes Node version check | Node 20+ confirmed |
+| 2 | Output includes Node version check | Node 24+ confirmed |
 | 3 | Output includes platform package versions | No version mismatch |
 | 4 | Output includes config validation | Config valid |
 | 5 | `kb-dev doctor` | All services healthy, exit 0 |

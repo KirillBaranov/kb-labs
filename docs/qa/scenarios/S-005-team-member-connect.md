@@ -17,7 +17,7 @@ without managing their own LLM credentials.
 
 - [ ] Platform is deployed and healthy (S-004 passed)
 - [ ] Admin has created an account for the member
-- [ ] Member has: Node 20+, internet access, no prior KB Labs install
+- [ ] Member has: Node 24+, internet access, no prior KB Labs install
 
 ---
 

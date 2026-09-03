@@ -108,7 +108,7 @@ Operational signals stay separate from the product header:
 | Signal | Status |
 |---|---|
 | Production and documentation | [![Deploy](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=master)](https://github.com/kb-labs-team/kb-labs/actions/workflows/deploy.yml?query=branch%3Amaster) |
-| Node.js | 20 or newer; CI runs on Node 22 |
+| Node.js | 24 or newer; CI runs on Node 24 |
 
 → [CI/CD reference](docs/ci-cd.md)
 
