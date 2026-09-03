@@ -54,6 +54,14 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
   ]);
   assert.deepEqual(index.platforms[0].members.map(({ package: packageName }) => packageName), ['@kb-labs/workflow-daemon', '@kb-labs/core-contracts', '@kb-labs/adapters-service-transport-http', '@kb-labs/adapters-sqlite', '@kb-labs/adapters-openai']);
   assert.deepEqual(index.adapters.find(adapter => adapter.id === 'pino-logger')?.provides, ['logger']);
+  // Regression coverage for the capability-derivation bug: lowercasing every
+  // capital letter in the interface name (instead of just the leading run)
+  // turned "IServiceTransport" into "servicetransport" and "IKVStore" into
+  // "kvstore", neither of which matched the "serviceTransport"/"kvStore"
+  // capabilities the platform actually requires — so no adapter was ever
+  // found for them and bootstrap failed with KB_CREATE_PROVIDER_UNRESOLVED.
+  assert.deepEqual(index.adapters.find(adapter => adapter.id === 'service-transport-http')?.provides, ['serviceTransport']);
+  assert.deepEqual(index.adapters.find(adapter => adapter.id === 'sqlite')?.provides, ['kvStore']);
 });
 
 test('fails closed when a configured platform adapter is not staged', () => {

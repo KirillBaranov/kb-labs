@@ -235,7 +235,7 @@ for (const item of stage) {
   } else if (manifest.schema === 'kb.adapter/1') {
     const capabilities = (Array.isArray(manifest.implements) ? manifest.implements : [manifest.implements])
       .filter(Boolean)
-      .map(capability => capability.replace(/^I/, '').replace(/[A-Z]/g, letter => letter.toLowerCase()));
+      .map(interfaceToCapability);
     adapters.push({ ...component(item, manifest, manifest.id ?? idFor(item.name)), provides: capabilities });
   }
 }
@@ -321,6 +321,23 @@ function pluginIdFor(manifest, packageName) {
     return manifest.id.split('/').pop();
   }
   return idFor(packageName);
+}
+
+// Convert an adapter interface name (e.g. "IServiceTransport", "IKVStore",
+// "ILLM") to the camelCase capability token the platform requires by (e.g.
+// "serviceTransport", "kvStore", "llm"). Lowercasing every capital letter
+// (the previous approach) collapses "IServiceTransport" to
+// "servicetransport", which never matches the "serviceTransport" capability
+// the platform declares — so no adapter is ever found and bootstrap fails
+// with KB_CREATE_PROVIDER_UNRESOLVED. Only the leading run of capitals needs
+// lowercasing, and only up to (not including) the capital that starts the
+// next word — "KVStore" -> "kvStore", not "kVStore" or "kvstore".
+function interfaceToCapability(name) {
+  const stripped = name.replace(/^I/, '');
+  return stripped.replace(/^[A-Z]+/, (leading) => {
+    if (leading.length <= 1 || leading.length === stripped.length) return leading.toLowerCase();
+    return leading.slice(0, -1).toLowerCase() + leading.slice(-1);
+  });
 }
 
 const digest = createHash('sha256').update(readFileSync(output)).digest('hex');
