@@ -2,7 +2,7 @@
  * @module @kb-labs/review-llm/llm-lite/category-validator
  * Dynamic category discovery from rules directory.
  *
- * Categories are NOT hardcoded - they come from .kb/ai-review/rules/ subdirectories.
+ * Categories are NOT hardcoded - they come from .kb/review/rules/ subdirectories.
  */
 
 import type { ReviewConfig } from '@kb-labs/review-contracts';
@@ -28,7 +28,7 @@ const COMMON_CATEGORY_MAPPINGS: Record<string, string[]> = {
 /**
  * CategoryValidator - discovers and validates categories dynamically
  *
- * Categories come from .kb/ai-review/rules/ subdirectories.
+ * Categories come from .kb/review/rules/ subdirectories.
  * No hardcoded categories - fully configurable per project.
  */
 export class CategoryValidator {
@@ -110,11 +110,11 @@ export class CategoryValidator {
 /**
  * Discover valid categories from rules directory
  *
- * Reads subdirectories of .kb/ai-review/rules/ (or config-defined path).
+ * Reads subdirectories of .kb/review/rules/ (or config-defined path).
  * Each subdirectory name becomes a valid category.
  *
  * @example
- * .kb/ai-review/rules/
+ * .kb/review/rules/
  *   ├── security/        → "security"
  *   ├── naming/          → "naming"
  *   ├── architecture/    → "architecture"
@@ -126,7 +126,7 @@ export async function discoverCategories(cwd: string): Promise<string[]> {
     const config = await useConfig<ReviewConfig>();
 
     // Get rulesDir from config (with fallback)
-    const rulesDir = config?.rulesDir ?? 'ai-review/rules';
+    const rulesDir = config?.rulesDir ?? 'review/rules';
     const kbDir = path.join(cwd, '.kb');
     const fullPath = path.join(kbDir, rulesDir);
 

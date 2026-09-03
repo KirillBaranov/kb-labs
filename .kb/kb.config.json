@@ -447,9 +447,9 @@
         },
         "review": {
           "defaultPreset": "kb-labs-full",
-          "presetsDir": "ai-review/presets",
+          "presetsDir": "review/presets",
           "presets": [
-            "ai-review/presets/kb-labs-full.json"
+            "review/presets/kb-labs-full.json"
           ],
           "llm": {
             "minTurns": 3,

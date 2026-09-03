@@ -21,7 +21,7 @@ func TestGenDevManifestFiltersPlugins(t *testing.T) {
       "plugins": [
         {"id": "mind", "pkg": "@kb-labs/mind-entry", "localPath": "/ws/mind"},
         {"id": "commit", "pkg": "@kb-labs/commit-entry"},
-        {"id": "ai-review", "pkg": "@kb-labs/review-entry"},
+        {"id": "review", "pkg": "@kb-labs/review-entry"},
         {"id": "marketplace", "pkg": "@kb-labs/marketplace-entry"}
       ],
       "binaries": [{"id": "kb-dev", "name": "kb-dev", "localPath": "/ws/tools/kb-dev/kb-dev"}]
@@ -52,7 +52,7 @@ func TestGenDevManifestFiltersPlugins(t *testing.T) {
 	if !got["mind"] || !got["marketplace"] {
 		t.Errorf("kept wrong plugins: %v", got)
 	}
-	if got["commit"] || got["ai-review"] {
+	if got["commit"] || got["review"] {
 		t.Errorf("filtered plugins leaked: %v", got)
 	}
 

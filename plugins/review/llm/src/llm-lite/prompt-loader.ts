@@ -1,6 +1,6 @@
 /**
  * @module @kb-labs/review-llm/llm-lite/prompt-loader
- * Load prompts and rules from .kb/ai-review/ directory.
+ * Load prompts and rules from .kb/review/ directory.
  *
  * Reads markdown files and builds context for LLM prompts.
  */
@@ -114,14 +114,14 @@ You have a list of changed files. Do the following in order:
 Don't triage or prioritize — report every real issue, from hardcoded passwords to SQL injections to broken logic. A complete report is better than a conservative one.`;
 
 /**
- * Load all prompts and rules from .kb/ai-review/
+ * Load all prompts and rules from .kb/review/
  */
 export async function loadPrompts(cwd: string): Promise<LoadedPrompts> {
   const config = await useConfig<ReviewConfig>('review');
 
   const kbDir = path.join(cwd, '.kb');
-  const rulesDir = path.join(kbDir, config?.rulesDir ?? 'ai-review/rules');
-  const promptsDir = path.join(kbDir, config?.promptsDir ?? 'ai-review/prompts');
+  const rulesDir = path.join(kbDir, config?.rulesDir ?? 'review/rules');
+  const promptsDir = path.join(kbDir, config?.promptsDir ?? 'review/prompts');
 
   // Load system and task prompts
   const system = await loadPromptFile(promptsDir, 'system.md', DEFAULT_SYSTEM_PROMPT);

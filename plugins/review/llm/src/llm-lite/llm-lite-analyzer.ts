@@ -180,7 +180,7 @@ export class LLMLiteAnalyzer {
     const reviewConfig = await useConfig<ReviewConfig>('review');
     const llmConfig = reviewConfig?.llm;
 
-    // Load prompts and rules from .kb/ai-review/
+    // Load prompts and rules from .kb/review/
     const prompts = await loadPrompts(this.cwd);
 
     // Get category validator

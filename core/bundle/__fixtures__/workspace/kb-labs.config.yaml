@@ -20,7 +20,7 @@ profiles:
         include: ["**/*"]
         default: true
 products:
-  ai-review:
+  review:
     rules:
       - "custom-rules.yml"
     maxFiles: 50
@@ -32,7 +32,7 @@ policy:
   overrides:
     roles:
       developer:
-        - "aiReview.run"
+        - "review.run"
         - "devkit.sync"
       maintainer:
         - "release.publish"

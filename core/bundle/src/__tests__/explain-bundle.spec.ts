@@ -32,13 +32,13 @@ describe('explainBundle', () => {
   });
 
   it('returns merge trace array', async () => {
-    const trace = await explainBundle({ cwd: testDir, product: 'aiReview', profileId: 'default' });
+    const trace = await explainBundle({ cwd: testDir, product: 'review', profileId: 'default' });
     expect(Array.isArray(trace)).toBe(true);
     expect(trace.length).toBeGreaterThan(0);
   });
 
   it('each trace entry has source and path fields', async () => {
-    const trace = await explainBundle({ cwd: testDir, product: 'aiReview', profileId: 'default' });
+    const trace = await explainBundle({ cwd: testDir, product: 'review', profileId: 'default' });
     for (const entry of trace) {
       expect(entry).toHaveProperty('source');
       expect(entry).toHaveProperty('path');

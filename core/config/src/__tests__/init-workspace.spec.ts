@@ -25,7 +25,7 @@ describe("initWorkspaceConfig", () => {
     const result = await initWorkspaceConfig({
       cwd: tmpDir,
       format: "yaml",
-      products: ["aiReview"],
+      products: ["review"],
     });
 
     expect(result.created).toHaveLength(1);
@@ -34,14 +34,14 @@ describe("initWorkspaceConfig", () => {
     const configPath = path.join(tmpDir, ".kb", "kb.config.yaml");
     const content = await fs.readFile(configPath, "utf-8");
     expect(content).toContain('schemaVersion: "1.0"');
-    expect(content).toContain("aiReview");
+    expect(content).toContain("review");
   });
 
   it("creates new workspace config in JSON format", async () => {
     const result = await initWorkspaceConfig({
       cwd: tmpDir,
       format: "json",
-      products: ["aiReview"],
+      products: ["review"],
     });
 
     expect(result.created).toHaveLength(1);
@@ -51,7 +51,7 @@ describe("initWorkspaceConfig", () => {
     const content = await fs.readFile(configPath, "utf-8");
     const parsed = JSON.parse(content);
     expect(parsed.schemaVersion).toBe("1.0");
-    expect(parsed.products).toHaveProperty("aiReview");
+    expect(parsed.products).toHaveProperty("review");
   });
 
   it("is idempotent - second run skips unchanged config", async () => {
@@ -59,14 +59,14 @@ describe("initWorkspaceConfig", () => {
     await initWorkspaceConfig({
       cwd: tmpDir,
       format: "yaml",
-      products: ["aiReview"],
+      products: ["review"],
     });
 
     // Second run with same options
     const result2 = await initWorkspaceConfig({
       cwd: tmpDir,
       format: "yaml",
-      products: ["aiReview"],
+      products: ["review"],
     });
 
     expect(result2.skipped).toHaveLength(1);
@@ -80,7 +80,7 @@ describe("initWorkspaceConfig", () => {
     await fs.mkdir(path.dirname(configPath), { recursive: true });
     await fs.writeFile(
       configPath,
-      'schemaVersion: "1.0"\nproducts:\n  aiReview: {}\n',
+      'schemaVersion: "1.0"\nproducts:\n  review: {}\n',
       "utf-8",
     );
 
@@ -88,7 +88,7 @@ describe("initWorkspaceConfig", () => {
     const result = await initWorkspaceConfig({
       cwd: tmpDir,
       format: "yaml",
-      products: ["aiReview", "aiDocs"],
+      products: ["review", "aiDocs"],
       force: false,
     });
 
@@ -101,7 +101,7 @@ describe("initWorkspaceConfig", () => {
     const result = await initWorkspaceConfig({
       cwd: tmpDir,
       format: "yaml",
-      products: ["aiReview"],
+      products: ["review"],
       dryRun: true,
     });
 

@@ -74,7 +74,7 @@ export interface SystemContext {
    *
    * @example
    * ```bash
-   * kb --profile strict ai-review:check
+   * kb --profile strict review:check
    * KB_PROFILE=ci-strict kb workflow:run
    * ```
    */

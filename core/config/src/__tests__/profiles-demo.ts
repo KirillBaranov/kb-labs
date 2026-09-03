@@ -29,7 +29,7 @@ async function demo() {
         label: "Base Profile",
         description: "Базовый профиль с настройками по умолчанию",
         products: {
-          aiReview: {
+          review: {
             engine: "openai",
             maxComments: 20,
             riskThreshold: "medium",
@@ -41,7 +41,7 @@ async function demo() {
             include: ["**/*"],
             default: true,
             products: {
-              aiReview: {
+              review: {
                 engine: "openai",
               },
             },
@@ -54,7 +54,7 @@ async function demo() {
         extends: "base",
         description: "Профиль для фронтенда с другим движком",
         products: {
-          aiReview: {
+          review: {
             engine: "anthropic",
             maxComments: 10,
           },
@@ -65,7 +65,7 @@ async function demo() {
             include: ["src/frontend/**", "apps/web/**"],
             default: true,
             products: {
-              aiReview: {
+              review: {
                 engine: "anthropic",
                 maxComments: 5,
               },
@@ -75,7 +75,7 @@ async function demo() {
             id: "backend",
             include: ["src/backend/**", "apps/api/**"],
             products: {
-              aiReview: {
+              review: {
                 engine: "openai",
                 maxComments: 15,
               },
@@ -130,13 +130,13 @@ async function demo() {
     JSON.stringify(frontendProfile.products, null, 2),
   );
   console.log(
-    `  → engine: ${frontendProfile.products?.aiReview?.engine} (переопределен)`,
+    `  → engine: ${frontendProfile.products?.review?.engine} (переопределен)`,
   );
   console.log(
-    `  → maxComments: ${frontendProfile.products?.aiReview?.maxComments} (переопределен)`,
+    `  → maxComments: ${frontendProfile.products?.review?.maxComments} (переопределен)`,
   );
   console.log(
-    `  → riskThreshold: ${frontendProfile.products?.aiReview?.riskThreshold} (унаследован от base)`,
+    `  → riskThreshold: ${frontendProfile.products?.review?.riskThreshold} (унаследован от base)`,
   );
   console.log(`Scopes:`, frontendProfile.scopes.map((s) => s.id).join(", "));
   console.log("\n" + "=".repeat(80) + "\n");

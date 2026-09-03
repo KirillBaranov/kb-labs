@@ -248,7 +248,7 @@ export interface IAnalytics {
    *
    * Use case: When a plugin (@kb-labs/mind) runs in a subprocess, we want
    * analytics events to show source.product = '@kb-labs/mind' instead of
-   * the root package (@kb-labs/ai-review).
+   * the root package (@kb-labs/review).
    *
    * @param source - New source to use for future events
    *

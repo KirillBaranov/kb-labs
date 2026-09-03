@@ -116,7 +116,7 @@ async function updateGitignore(cwd: string, dryRun: boolean): Promise<InitResult
  */
 export async function initAll(opts: InitAllOptions): Promise<InitAllResult> {
   const cwd = path.resolve(opts.cwd);
-  const products = opts.products || ['aiReview'];
+  const products = opts.products || ['review'];
   const format = opts.format || 'yaml';
   
   // Import all init functions

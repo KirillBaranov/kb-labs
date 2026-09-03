@@ -216,7 +216,7 @@ function getRuntimeDefaults(product: string): Record<string, unknown> {
         autoUnshallow: false,
       },
     },
-    aiReview: {
+    review: {
       enabled: true,
       rules: [],
     },

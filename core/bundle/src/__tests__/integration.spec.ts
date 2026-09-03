@@ -33,11 +33,11 @@ describe('Bundle Integration Tests', () => {
     it('should load complete bundle', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
-      expect(bundle.product).toBe('aiReview');
+      expect(bundle.product).toBe('review');
       expect(bundle.config).toBeDefined();
       expect(bundle.profile).toBeDefined();
       expect(bundle.policy).toBeDefined();
@@ -48,7 +48,7 @@ describe('Bundle Integration Tests', () => {
     it('should resolve profile correctly', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -60,7 +60,7 @@ describe('Bundle Integration Tests', () => {
     it('should merge configuration from profile', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -75,7 +75,7 @@ describe('Bundle Integration Tests', () => {
     it('should work with production profile', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'production'
       });
 
@@ -89,7 +89,7 @@ describe('Bundle Integration Tests', () => {
     it('should provide policy permits function', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -100,7 +100,7 @@ describe('Bundle Integration Tests', () => {
     it('should provide merge trace', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -119,7 +119,7 @@ describe('Bundle Integration Tests', () => {
         await expect(
           loadBundle({
             cwd: emptyDir,
-            product: 'aiReview',
+            product: 'review',
             profileId: 'default'
           })
         ).rejects.toThrow(/No workspace configuration found/);
@@ -132,7 +132,7 @@ describe('Bundle Integration Tests', () => {
       await expect(
         loadBundle({
           cwd: testDir,
-          product: 'aiReview',
+          product: 'review',
           profileId: 'nonexistent'
         })
       ).rejects.toThrow(/Profile "nonexistent" not found/);
@@ -156,7 +156,7 @@ describe('Bundle Integration Tests', () => {
       // Load once to populate cache
       await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -166,7 +166,7 @@ describe('Bundle Integration Tests', () => {
       // Load again - should work after cache clear
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -176,9 +176,9 @@ describe('Bundle Integration Tests', () => {
 
   describe('Multiple Products', () => {
     it('should load different products from same profile', async () => {
-      const aiReviewBundle = await loadBundle({
+      const reviewBundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 
@@ -188,7 +188,7 @@ describe('Bundle Integration Tests', () => {
         profileId: 'default'
       });
 
-      expect(aiReviewBundle.product).toBe('aiReview');
+      expect(reviewBundle.product).toBe('review');
       expect(releaseBundle.product).toBe('release');
 
       const releaseConfig = releaseBundle.config as any;
@@ -201,7 +201,7 @@ describe('Bundle Integration Tests', () => {
     it('should load platform config from kb.config', async () => {
       const bundle = await loadBundle({
         cwd: testDir,
-        product: 'aiReview',
+        product: 'review',
         profileId: 'default'
       });
 

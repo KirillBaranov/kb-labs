@@ -2,7 +2,7 @@
  * @module @kb-labs/core-platform/wrappers/scoped-analytics
  * Analytics wrapper that overrides source attribution for plugin execution
  *
- * Problem: All analytics events show source from root package.json (@kb-labs/ai-review)
+ * Problem: All analytics events show source from root package.json (@kb-labs/review)
  * Solution: Use IAnalytics.setSource() to override source.product with actual plugin ID
  *
  * Used by: core-sandbox/handler-executor to inject plugin-specific source

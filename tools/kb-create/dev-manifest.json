@@ -29,7 +29,7 @@
     { "id": "marketplace", "pkg": "@kb-labs/marketplace-entry", "description": "Install, list, enable plugins", "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/marketplace/entry" },
     { "id": "mind",        "pkg": "@kb-labs/mind-entry",        "description": "AI code search (RAG)",          "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/mind/entry" },
     { "id": "agents",      "pkg": "@kb-labs/agent-entry",       "description": "Autonomous agents",             "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/agents/entry" },
-    { "id": "ai-review",   "pkg": "@kb-labs/review-entry",      "description": "AI code review",                "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/review/entry" },
+    { "id": "review",      "pkg": "@kb-labs/review-entry",      "description": "AI code review",                "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/review/entry" },
     { "id": "commit",      "pkg": "@kb-labs/commit-entry",      "description": "AI commit generation",          "default": true, "localPath": "/Users/kirillbaranov/Desktop/work/kb-labs-workspace/plugins/commit/entry" }
   ],
   "binaries": [

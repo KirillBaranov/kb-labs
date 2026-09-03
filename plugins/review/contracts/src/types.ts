@@ -291,7 +291,7 @@ export interface LLMAnalyzerContext {
   language?: string;            // 'typescript' | 'javascript' | 'python'
 
   // Dynamic conventions - any category name is valid
-  // Categories map to .kb/ai-review/rules/{category}/ directories
+  // Categories map to .kb/review/rules/{category}/ directories
   // Common categories: naming, architecture, security, testing, performance, errorHandling, consistency
   conventions?: Record<string, string>;
 
@@ -326,7 +326,7 @@ export interface PresetDefinition extends ReviewPreset {
 
   // Atomic rules composition (ESLint-style)
   // Dynamic categories - any category name is valid
-  // Categories are defined by directory structure in .kb/ai-review/rules/{category}/
+  // Categories are defined by directory structure in .kb/review/rules/{category}/
   atomicRules?: Record<string, {
     include?: string[];       // Include specific rules (e.g., ['pyramid-rule', 'typescript-naming'])
     exclude?: string[];       // Exclude specific rules
@@ -483,10 +483,10 @@ export interface ReviewConfig {
   // Custom analyzers directory (default: .kb/review/analyzers)
   analyzersDir?: string;
 
-  // Rules directory (relative to .kb/, default: ai-review/rules)
+  // Rules directory (relative to .kb/, default: review/rules)
   rulesDir?: string;
 
-  // Prompts directory (relative to .kb/, default: ai-review/prompts)
+  // Prompts directory (relative to .kb/, default: review/prompts)
   promptsDir?: string;
 
   // LLM configuration for llm-lite mode

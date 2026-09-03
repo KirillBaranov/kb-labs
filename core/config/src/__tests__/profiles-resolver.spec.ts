@@ -30,14 +30,14 @@ describe("resolveProfile", () => {
           id: "base",
           label: "Base Profile",
           products: {
-            aiReview: { engine: "openai", maxComments: 20 },
+            review: { engine: "openai", maxComments: 20 },
           },
           scopes: [
             {
               id: "root",
               include: ["**/*"],
               default: true,
-              products: { aiReview: { engine: "openai" } },
+              products: { review: { engine: "openai" } },
             },
           ],
         },
@@ -45,14 +45,14 @@ describe("resolveProfile", () => {
           id: "child",
           extends: "base",
           products: {
-            aiReview: { engine: "anthropic" },
+            review: { engine: "anthropic" },
           },
           scopes: [
             {
               id: "src",
               include: ["src/**"],
               default: true,
-              products: { aiReview: { engine: "anthropic" } },
+              products: { review: { engine: "anthropic" } },
             },
           ],
         },
@@ -62,15 +62,15 @@ describe("resolveProfile", () => {
     const result = await resolveProfile({ cwd: tmpDir, profileId: "child" });
 
     expect(result.id).toBe("child");
-    expect(result.products?.aiReview).toEqual({
+    expect(result.products?.review).toEqual({
       engine: "anthropic",
       maxComments: 20,
     });
     expect(result.scopes).toHaveLength(1);
-    expect(result.scopes[0]!.products?.aiReview).toEqual({
+    expect(result.scopes[0]!.products?.review).toEqual({
       engine: "anthropic",
     });
-    expect(result.productsByScope?.src?.aiReview).toEqual({
+    expect(result.productsByScope?.src?.review).toEqual({
       engine: "anthropic",
     });
     expect(result.trace?.extends).toEqual(["workspace:base"]);
@@ -109,7 +109,7 @@ describe("resolveProfile", () => {
         {
           id: "default",
           label: "Preset Profile",
-          products: { aiReview: { engine: "openai" } },
+          products: { review: { engine: "openai" } },
           scopes: [{ id: "root", include: ["**/*"], default: true }],
         },
       ],
@@ -119,7 +119,7 @@ describe("resolveProfile", () => {
         {
           id: "workspace",
           extends: "@test/preset#default",
-          products: { aiReview: { engine: "local" } },
+          products: { review: { engine: "local" } },
         },
       ],
     });
@@ -129,7 +129,7 @@ describe("resolveProfile", () => {
       profileId: "workspace",
     });
 
-    expect(result.products?.aiReview).toEqual({ engine: "local" });
+    expect(result.products?.review).toEqual({ engine: "local" });
     expect(result.trace?.extends).toEqual(["npm:@test/preset#default"]);
   });
 });

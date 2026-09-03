@@ -43,7 +43,7 @@ export const BASE_ACTIONS = {
   RELEASE_PUBLISH: "release.publish",
   DEVKIT_SYNC: "devkit.sync",
   DEVLINK_WATCH: "devlink.watch",
-  AI_REVIEW_RUN: "aiReview.run",
+  REVIEW_RUN: "review.run",
   PROFILES_MATERIALIZE: "profiles.materialize",
 } as const;
 

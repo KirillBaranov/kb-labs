@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Step: Resolve Conflicts
 // Checks if PR has merge conflicts with base branch and auto-resolves them.
-// Garbage runtime files (.kb/run-artifacts/, .kb/ai-review/, .kb/qa/snapshots/, .mimocode/)
+// Garbage runtime files (.kb/run-artifacts/, .kb/review/, .kb/qa/snapshots/, .mimocode/)
 // are untracked. Real code conflicts are left for the agent (exits with needs_agent=true).
 //
 // Env: OWNER, REPO, PR_NUMBER, BRANCH_NAME, BASE_BRANCH
@@ -26,7 +26,7 @@ process.chdir(ws);
 
 run('git', ['fetch', 'origin'], { allowFailure: true });
 
-const GARBAGE_PATTERN = /^\.kb\/ai-review\/|^\.kb\/qa\/snapshots\/|^\.kb\/run-artifacts\/|^\.mimocode\//;
+const GARBAGE_PATTERN = /^\.kb\/review\/|^\.kb\/qa\/snapshots\/|^\.kb\/run-artifacts\/|^\.mimocode\//;
 
 const merge = run('git', ['merge', `origin/${BASE_BRANCH}`, '--no-edit'], { allowFailure: true });
 if (merge.status === 0) {
@@ -65,7 +65,7 @@ if (merge.status === 0) {
 }
 
 // Remove all tracked garbage files (gitignored but previously committed)
-run('git', ['rm', '--cached', '-r', '.kb/ai-review/', '.kb/qa/snapshots/', '.kb/run-artifacts/', '.mimocode/'], { allowFailure: true });
+run('git', ['rm', '--cached', '-r', '.kb/review/', '.kb/qa/snapshots/', '.kb/run-artifacts/', '.mimocode/'], { allowFailure: true });
 
 // Commit the merge
 const cachedDiff = run('git', ['diff', '--cached', '--quiet'], { allowFailure: true });

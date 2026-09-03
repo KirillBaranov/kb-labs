@@ -133,7 +133,7 @@ export class PresetLoader {
         }
       }
 
-      // 2. Auto-scan .kb/ai-review/presets/ directory
+      // 2. Auto-scan .kb/review/presets/ directory
       await this.scanPresetsDirectory();
 
       this.configLoaded = true;
@@ -144,14 +144,14 @@ export class PresetLoader {
   }
 
   /**
-   * Auto-scan .kb/ai-review/presets/ directory for preset files
+   * Auto-scan .kb/review/presets/ directory for preset files
    */
   private async scanPresetsDirectory(): Promise<void> {
     try {
       const fs = await import('fs/promises');
       const pathModule = await import('path');
 
-      const presetsDir = pathModule.join(process.cwd(), '.kb', 'ai-review', 'presets');
+      const presetsDir = pathModule.join(process.cwd(), '.kb', 'review', 'presets');
 
       // Check if directory exists
       try {
@@ -220,7 +220,7 @@ export class PresetLoader {
       const path = await import('path');
 
       const configDir = path.join(process.cwd(), '.kb');
-      const rulePath = path.join(configDir, 'ai-review', 'rules', category, `${ruleName}.md`);
+      const rulePath = path.join(configDir, 'review', 'rules', category, `${ruleName}.md`);
 
       const content = await fs.readFile(rulePath, 'utf-8');
       return content.trim();

@@ -28,7 +28,7 @@ describe("Product Config with Profiles", () => {
     const result = await getProductConfig(
       {
         cwd: testDir,
-        product: "aiReview",
+        product: "review",
         cli: {},
         profileLayer,
       },
@@ -46,7 +46,7 @@ describe("Product Config with Profiles", () => {
     const config = await getProductConfig(
       {
         cwd: testDir,
-        product: "aiReview",
+        product: "review",
         cli: {},
       },
       null,
@@ -67,7 +67,7 @@ describe("Product Config with Profiles", () => {
     const config = await getProductConfig(
       {
         cwd: testDir,
-        product: "aiReview",
+        product: "review",
         cli: {},
         profileLayer: profileLayerInput,
       },
@@ -94,7 +94,7 @@ describe("Product Config with Profiles", () => {
     const config = await getProductConfig(
       {
         cwd: testDir,
-        product: "aiReview",
+        product: "review",
         cli: {},
         profileLayer: profileLayerInput,
       },
