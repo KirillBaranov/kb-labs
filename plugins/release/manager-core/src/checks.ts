@@ -119,15 +119,31 @@ async function runSingleCheck(
       // concurrency contention (see CHECKS_CONCURRENCY doc above), so retry
       // once. Any other rejection is a real failure and is not retried.
       if (attempt === 1 && isTimeoutError(error)) {
-        options.logger?.warn?.(`Check ${check.id}: ${pkgPath} timed out, retrying once`);
+        const partial = partialResultOf(error);
+        options.logger?.warn?.(
+          `Check ${check.id}: ${pkgPath} timed out, retrying once` +
+          (partial?.stdout || partial?.stderr
+            ? ` (captured ${partial.stdout?.length ?? 0}B stdout / ${partial.stderr?.length ?? 0}B stderr before kill)`
+            : ''),
+        );
         return runForPath(pkgPath, attempt + 1);
       }
+      // GovernedProcessError (node-backend.ts) attaches whatever stdout/stderr
+      // the killed process had buffered up to the moment of the kill as
+      // details.result — without pulling that through, a second-attempt
+      // timeout (or any other terminationReason) surfaces only the generic
+      // "Process terminated: timeout" message, identical to what an agent
+      // debugging this dead-blind sees today. See node-backend.ts finish().
+      const partial = partialResultOf(error);
       return {
         path: pkgPath,
         ok: false,
         durationMs: Date.now() - startedAt,
         details: {
           packagePath: pkgPath,
+          stdout: partial?.stdout || undefined,
+          stderr: partial?.stderr || undefined,
+          exitCode: partial?.exitCode,
           error: error instanceof Error ? error.message : String(error),
         },
       };
@@ -144,6 +160,13 @@ async function runSingleCheck(
     for (let i = 0; i < pathsToRun.length; i += CHECKS_CONCURRENCY) {
       const batch = pathsToRun.slice(i, i + CHECKS_CONCURRENCY);
       pkgResults.push(...await Promise.all(batch.map(runForPath)));
+      // Progress breadcrumb: if the *outer* governed process (the whole CLI
+      // invocation) gets killed mid-run, this is the last thing on record
+      // showing how far the check got — which package batch it was on, not
+      // just a silent multi-minute gap before the kill.
+      options.logger?.info?.(
+        `Check ${check.id}: ${Math.min(i + CHECKS_CONCURRENCY, pathsToRun.length)}/${pathsToRun.length} packages checked`,
+      );
     }
   } else {
     pkgResults = [await runForPath(pathsToRun[0]!)];
@@ -170,6 +193,31 @@ async function runSingleCheck(
 
 function isTimeoutError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'PROCESS_TIMEOUT';
+}
+
+/**
+ * Pull the killed process's buffered stdout/stderr/exit info out of a
+ * GovernedProcessError, if present. node-backend.ts's `finish()` attaches
+ * the full ProcessResult (including whatever output was captured before the
+ * kill) as `details.result` on every governed-process rejection — timeout,
+ * memory/cpu/output limit, or cancellation — not just PROCESS_SPAWN_FAILED.
+ * Returns undefined for non-governed errors (e.g. a thrown JS error from
+ * evaluateParser) so callers don't fabricate empty output fields for those.
+ */
+function partialResultOf(
+  error: unknown,
+): { stdout?: string; stderr?: string; exitCode?: number } | undefined {
+  if (typeof error !== 'object' || error === null) { return undefined; }
+  const details = (error as { details?: unknown }).details;
+  if (typeof details !== 'object' || details === null) { return undefined; }
+  const result = (details as { result?: unknown }).result;
+  if (typeof result !== 'object' || result === null) { return undefined; }
+  const r = result as { stdout?: unknown; stderr?: unknown; code?: unknown };
+  return {
+    stdout: typeof r.stdout === 'string' ? r.stdout : undefined,
+    stderr: typeof r.stderr === 'string' ? r.stderr : undefined,
+    exitCode: typeof r.code === 'number' ? r.code : undefined,
+  };
 }
 
 function readPackageName(pkgPath: string): string | undefined {

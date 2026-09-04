@@ -469,6 +469,28 @@ describe('shellHandler — timeout regression (BUG: timedOut + reject:false = si
       cleanup()
     }
   })
+
+  // Regression: the daemon logger call above writes to the daemon's own log
+  // sink, but what actually reaches a caller reading the failed step (e.g.
+  // workflow/daemon worker.ts's `new Error(result.error?.message ...)`, then
+  // engine.ts's markStepFailed which persists only message/stack) is the
+  // *thrown* error's message — nothing else survives that chain. Before this
+  // fix the thrown error was just "Shell command timed out after Xms", so a
+  // step that timed out mid-run looked identical to one that never printed
+  // anything at all, no matter what the daemon logger had captured.
+  it('carries the captured output tail in the thrown error itself, not just the log entry', async () => {
+    const { ctx, cleanup } = makeShellTestContext()
+    try {
+      await expect(
+        shellModule.execute(ctx, {
+          command: "printf 'working...\\n'; sleep 10",
+          timeout: 500,
+        }),
+      ).rejects.toThrow(/working\.\.\./)
+    } finally {
+      cleanup()
+    }
+  })
 })
 
 describe('tail', () => {

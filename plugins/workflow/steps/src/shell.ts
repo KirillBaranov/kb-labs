@@ -449,12 +449,27 @@ async function shellHandler(
       // multi-hour gap between "Executing shell command" and this error and
       // nothing in between (see kb-labs incident: 20min Build-step timeout
       // debugged blind because of exactly this).
+      const stderrTail = tail(stderrFull, FAILURE_OUTPUT_TAIL_CHARS);
+      const stdoutTail = tail(stdoutFull, FAILURE_OUTPUT_TAIL_CHARS);
       ctx.platform.logger.warn('Shell command timed out', {
         timeoutMs: timeout,
-        stderrTail: tail(stderrFull, FAILURE_OUTPUT_TAIL_CHARS),
-        stdoutTail: tail(stdoutFull, FAILURE_OUTPUT_TAIL_CHARS),
+        stderrTail,
+        stdoutTail,
       });
-      throw new Error(`Shell command timed out after ${timeout}ms`);
+      // The logger call above writes to the daemon's own log sink, but the
+      // *thrown* error is what actually reaches the caller: it becomes
+      // result.error in ExecutionResult, then result.error.message in
+      // worker.ts's markStepFailed(), which is the only piece of this that
+      // survives into the run's persisted step.error (engine.ts only keeps
+      // message/stack, not arbitrary error.details). So the tails have to be
+      // in the message itself, not just logged, or a step failure still
+      // reads as an empty echo of the command with no signal about how far
+      // it got. Command line is included too since that's often literally
+      // the only thing otherwise in the message on a hung step.
+      const parts = [`Shell command timed out after ${timeout}ms: ${command.slice(0, 200)}`];
+      if (stdoutTail) { parts.push(`--- stdout (tail) ---\n${stdoutTail}`); }
+      if (stderrTail) { parts.push(`--- stderr (tail) ---\n${stderrTail}`); }
+      throw new Error(parts.join('\n'));
     }
 
     const output: ShellOutput = {
@@ -484,15 +499,30 @@ async function shellHandler(
       });
 
       if (throwOnError) {
-        throw new Error(`Shell command failed with exit code ${output.exitCode}: ${output.stderr.slice(0, 500)}`);
+        const failParts = [`Shell command failed with exit code ${output.exitCode}: ${command.slice(0, 200)}`];
+        const failStderrTail = tail(output.stderr, FAILURE_OUTPUT_TAIL_CHARS);
+        const failStdoutTail = tail(output.stdout, FAILURE_OUTPUT_TAIL_CHARS);
+        if (failStdoutTail) { failParts.push(`--- stdout (tail) ---\n${failStdoutTail}`); }
+        if (failStderrTail) { failParts.push(`--- stderr (tail) ---\n${failStderrTail}`); }
+        throw new Error(failParts.join('\n'));
       }
     }
 
     return mergeJsonOutputs(output, (msg) => ctx.platform.logger.warn(`[shell] ${msg}`));
   } catch (error) {
-    // Handle timeout
+    // Handle timeout (defensive fallback: the primary path is the manually
+    // managed killTimer above, which throws before this catch is reached —
+    // this covers execa surfacing its own TimeoutError, e.g. if `reject`
+    // behavior changes upstream). execa's TimeoutError/ExecaError carries
+    // whatever stdout/stderr it captured on the error object itself.
     if (error && typeof error === 'object' && 'timedOut' in error && error.timedOut) {
-      throw new Error(`Shell command timed out after ${timeout}ms`);
+      const execTimeoutError = error as { stdout?: string; stderr?: string };
+      const timeoutParts = [`Shell command timed out after ${timeout}ms: ${command.slice(0, 200)}`];
+      const execStdoutTail = tail(execTimeoutError.stdout ?? '', FAILURE_OUTPUT_TAIL_CHARS);
+      const execStderrTail = tail(execTimeoutError.stderr ?? '', FAILURE_OUTPUT_TAIL_CHARS);
+      if (execStdoutTail) { timeoutParts.push(`--- stdout (tail) ---\n${execStdoutTail}`); }
+      if (execStderrTail) { timeoutParts.push(`--- stderr (tail) ---\n${execStderrTail}`); }
+      throw new Error(timeoutParts.join('\n'));
     }
 
     // Handle execution error

@@ -167,3 +167,76 @@ describe('runReleaseChecks — optional', () => {
     expect(results).toHaveLength(1);
   });
 });
+
+// ─── governed-timeout diagnostics ─────────────────────────────────────────────
+// Regression: a governor-enforced timeout kill (node-backend.ts) rejects with
+// a GovernedProcessError carrying whatever stdout/stderr the killed process
+// had buffered as `details.result`. Before this fix, runForPath's catch block
+// only kept `error.message` on a second (post-retry) timeout — the captured
+// partial output was silently dropped, leaving a debugging agent with nothing
+// but "Process terminated: timeout" for a check that ran for over a minute.
+
+function makeGovernedTimeoutError(partial: { stdout?: string; stderr?: string; code?: number }) {
+  const error = new Error('Process terminated: timeout') as Error & {
+    code: string;
+    details: { result: typeof partial };
+  };
+  error.name = 'GovernedProcessError';
+  error.code = 'PROCESS_TIMEOUT';
+  error.details = { result: partial };
+  return error;
+}
+
+describe('runReleaseChecks — governed timeout diagnostics', () => {
+  it('surfaces partial stdout/stderr captured before the kill, after retry is exhausted', async () => {
+    let calls = 0;
+    const timeoutShell = {
+      async exec() {
+        calls++;
+        throw makeGovernedTimeoutError({
+          stdout: 'installed 40/62 packages\n',
+          stderr: 'npm warn deprecated foo@1.0.0\n',
+          code: undefined,
+        });
+      },
+    };
+
+    const checks: CustomCheckConfig[] = [
+      { id: 'pack-install', command: 'true', runIn: 'repoRoot' },
+    ];
+    const results = await runReleaseChecksCore(checks, {
+      repoRoot: '/tmp',
+      packagePaths: [],
+      shell: timeoutShell,
+    });
+
+    // Retried once (attempt 1 timeout → attempt 2), then gave up.
+    expect(calls).toBe(2);
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.details?.stdout).toContain('installed 40/62 packages');
+    expect(results[0]?.details?.stderr).toContain('npm warn deprecated');
+    expect(results[0]?.details?.error).toMatch(/timeout/i);
+  });
+
+  it('does not fabricate stdout/stderr fields for a non-governed rejection', async () => {
+    const plainErrorShell = {
+      async exec() {
+        throw new Error('ENOENT: command not found');
+      },
+    };
+
+    const checks: CustomCheckConfig[] = [
+      { id: 'missing-cmd', command: 'true', runIn: 'repoRoot' },
+    ];
+    const results = await runReleaseChecksCore(checks, {
+      repoRoot: '/tmp',
+      packagePaths: [],
+      shell: plainErrorShell,
+    });
+
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.details?.stdout).toBeUndefined();
+    expect(results[0]?.details?.stderr).toBeUndefined();
+    expect(results[0]?.details?.error).toContain('ENOENT');
+  });
+});

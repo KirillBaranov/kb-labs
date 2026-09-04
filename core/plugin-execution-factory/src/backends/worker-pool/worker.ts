@@ -27,7 +27,7 @@ interface WithMiddlewareDecls {
 }
 import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory, PlatformTransportServer } from '../../types.js';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
-import { WorkerCrashedError } from '../../errors.js';
+import { WorkerCrashedError, TimeoutError } from '../../errors.js';
 
 /**
  * Worker events.
@@ -89,6 +89,15 @@ export class Worker extends EventEmitter<WorkerEvents> {
     onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
     onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
     onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
+    request: ExecutionRequest;
+    startedAt: number;
+    /**
+     * Last log/loggerLog line seen from the worker for this request, tracked
+     * regardless of whether a caller supplied onLog/onLoggerLog — this is
+     * what lets a timeout error say something about how far execution got
+     * instead of nothing at all. See execute()'s timeout handler.
+     */
+    lastActivity?: { message: string; stream: 'stdout' | 'stderr'; at: number };
   }>();
 
   // Health check tracking
@@ -261,13 +270,62 @@ export class Worker extends EventEmitter<WorkerEvents> {
     this._info.lastRequestStartedAt = Date.now();
     this._info.currentExecutionId = executionId;
 
+    const startedAt = Date.now();
+
     return new Promise<ExecutionResult>((resolve, reject) => {
-      // Setup timeout
+      // Setup timeout.
+      //
+      // Regression: this used to just abandon the pending promise — delete
+      // it from pendingRequests, mark the worker 'idle' again, and reject
+      // with a bare `Error("Execution ... timed out after Xms")` carrying no
+      // code/details. Two compounding bugs followed from that:
+      //
+      // 1. The underlying child process (`this.process`) was never killed.
+      //    It kept running the handler in the background while the pool
+      //    believed this worker was free — a later request could be
+      //    dispatched onto the same still-busy process. Worker.kill() exists
+      //    (SIGKILL) and is already used for the startup-timeout and
+      //    shutdown-timeout paths; execution timeout was the one path that
+      //    didn't call it.
+      // 2. Because the pendingRequests entry was deleted immediately, any
+      //    'result'/'error'/'log'/'loggerLog' IPC message the orphaned child
+      //    sent afterward (including the real failure detail the fixes in
+      //    checks.ts/shell.ts now preserve further down the stack) looked
+      //    up an already-gone entry in handleMessage() and was silently
+      //    dropped — so even output that WAS captured never reached the
+      //    caller.
+      //
+      // Fix: actually kill the runaway process (via kill(), which also
+      // clears pendingRequests/state itself), and reject with a
+      // TimeoutError carrying whatever we know — worker/plugin/handler
+      // identity and the last log line seen before the deadline — instead
+      // of a bare, contentless message.
       const timeoutId = setTimeout(() => {
-        this.pendingRequests.delete(executionId);
-        this._state = 'idle';
-        this._info.currentExecutionId = undefined;
-        reject(new Error(`Execution ${executionId} timed out after ${timeoutMs}ms`));
+        const pending = this.pendingRequests.get(executionId);
+        const timeoutError = new TimeoutError(
+          `Execution ${executionId} timed out after ${timeoutMs}ms`
+          + (pending?.lastActivity
+            ? ` — last output ${Date.now() - pending.lastActivity.at}ms before kill: ${pending.lastActivity.message.slice(0, 500)}`
+            : ' — no output was captured before the kill'),
+          timeoutMs,
+        );
+        // TimeoutError's constructor always sets `details` to a plain object
+        // ({ timeoutMs }), so this is safe to extend in place.
+        Object.assign(timeoutError.details as Record<string, unknown>, {
+          workerId: this.id,
+          executionId,
+          pluginId: request.descriptor.pluginId,
+          handlerRef: request.handlerRef,
+          runningForMs: Date.now() - startedAt,
+          lastActivity: pending?.lastActivity,
+        });
+        // Reject with our richer error before kill() rejects the same
+        // (already-settled-by-then) promise with a generic WorkerCrashedError
+        // — a promise only honors its first settlement, and both calls are
+        // synchronous here so there's no window for the pool to dispatch a
+        // new request onto this worker between them.
+        pending?.reject(timeoutError);
+        this.kill();
       }, timeoutMs);
 
       // Store pending request
@@ -291,6 +349,8 @@ export class Worker extends EventEmitter<WorkerEvents> {
         onLog,
         onLoggerLog,
         onUIPrompt,
+        request,
+        startedAt,
       });
 
       // Send execute message
@@ -453,8 +513,13 @@ export class Worker extends EventEmitter<WorkerEvents> {
       case 'log': {
         const msg = message as LogWorkerMessage;
         const pending = this.pendingRequests.get(msg.requestId);
-        if (pending?.onLog) {
-          pending.onLog(msg.entry);
+        if (pending) {
+          // Tracked unconditionally (not just when a caller wired onLog) so
+          // an execution-timeout error has something real to report even
+          // when nothing downstream is consuming live log streaming — see
+          // execute()'s timeout handler.
+          pending.lastActivity = { message: msg.entry.message, stream: msg.entry.stream, at: Date.now() };
+          pending.onLog?.(msg.entry);
         }
         break;
       }
@@ -463,8 +528,9 @@ export class Worker extends EventEmitter<WorkerEvents> {
         // ctx.logger.* entries — base logger already wrote to SQLite. See ADR-0019.
         const msg = message as { type: 'loggerLog'; requestId: string; entry: LogWorkerMessage['entry'] };
         const pending = this.pendingRequests.get(msg.requestId);
-        if (pending?.onLoggerLog) {
-          pending.onLoggerLog(msg.entry);
+        if (pending) {
+          pending.lastActivity = { message: msg.entry.message, stream: msg.entry.stream, at: Date.now() };
+          pending.onLoggerLog?.(msg.entry);
         }
         break;
       }
