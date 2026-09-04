@@ -131,6 +131,16 @@ export interface CustomCheckConfig {
    * If omitted, check runs in each package directory (original behaviour).
    */
   runIn?: 'repoRoot' | 'scopePath' | 'perPackage';
+  /**
+   * Package name patterns (same matcher as PackagesFilter.exclude) skipped
+   * by this check only — unlike `packages.exclude`, the package still gets
+   * discovered, packed, versioned, and published normally by the rest of
+   * the release. Use this for a check whose assumption doesn't hold for a
+   * specific package (e.g. `pack-install`'s bare top-level import against a
+   * config-only or test-harness-only package), not as a substitute for
+   * excluding the package from the release itself.
+   */
+  skipPackages?: string[];
 }
 
 export interface ReleaseResult {

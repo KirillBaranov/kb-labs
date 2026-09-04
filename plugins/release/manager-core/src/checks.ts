@@ -3,8 +3,10 @@
  * Reads config.checks[], supports parser field, script path resolution, perPackage routing.
  */
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CustomCheckConfig, CheckResult, CheckResultDetails, PluginLogger, ReleaseShell } from './types';
+import { matchesPackagePattern } from './planner';
 
 export interface CheckRunnerOptions {
   repoRoot: string;
@@ -25,8 +27,11 @@ export interface CheckRunnerOptions {
  * the tarball and runs a real `npm install` of it into a throwaway consumer
  * per package. At higher concurrency those installs contend for CPU/disk/npm
  * registry and start blowing their own per-check timeout under load.
+ *
+ * Overridable via KB_RELEASE_CHECKS_CONCURRENCY for profiling/tuning without
+ * a source edit + rebuild; the default (2) is unchanged when unset.
  */
-export const CHECKS_CONCURRENCY = 2;
+export const CHECKS_CONCURRENCY = Number(process.env.KB_RELEASE_CHECKS_CONCURRENCY) || 2;
 
 /**
  * Run all configured checks against packages.
@@ -68,6 +73,18 @@ async function runSingleCheck(
     pathsToRun = options.packagePaths.length > 0 ? options.packagePaths : [options.repoRoot];
   }
 
+  if (runIn === 'perPackage' && check.skipPackages?.length) {
+    const skipPatterns = check.skipPackages;
+    pathsToRun = pathsToRun.filter(pkgPath => {
+      const name = readPackageName(pkgPath);
+      const skip = name != null && matchesPackagePattern(name, pkgPath, skipPatterns);
+      if (skip) {
+        options.logger?.info?.(`Check ${check.id}: skipping ${name} (matches skipPackages)`);
+      }
+      return !skip;
+    });
+  }
+
   // Run perPackage checks in parallel, bounded by the plugin's granted shell concurrency;
   // single-path checks run sequentially.
   const resolvedArgs = (check.args ?? []).map(arg =>
@@ -77,27 +94,51 @@ async function runSingleCheck(
 
   type PkgRunResult = { path: string; ok: boolean; details: CheckResultDetails; durationMs: number };
 
-  async function runForPath(pkgPath: string): Promise<PkgRunResult> {
+  async function runForPath(pkgPath: string, attempt = 1): Promise<PkgRunResult> {
     const startedAt = Date.now();
-    const result = await options.shell.exec(check.command, resolvedArgs, { cwd: pkgPath, timeout: timeoutMs });
-    const ok = evaluateParser(check, result.stdout, result.stderr, result.code);
-    return {
-      path: pkgPath,
-      ok,
-      durationMs: Date.now() - startedAt,
-      details: {
-        packagePath: pkgPath,
-        stdout: result.stdout || undefined,
-        stderr: result.stderr || undefined,
-        exitCode: result.code,
-        error: !ok ? `exit code ${result.code}` : undefined,
-      },
-    };
+    try {
+      const result = await options.shell.exec(check.command, resolvedArgs, { cwd: pkgPath, timeout: timeoutMs });
+      const ok = evaluateParser(check, result.stdout, result.stderr, result.code);
+      return {
+        path: pkgPath,
+        ok,
+        durationMs: Date.now() - startedAt,
+        details: {
+          packagePath: pkgPath,
+          stdout: result.stdout || undefined,
+          stderr: result.stderr || undefined,
+          exitCode: result.code,
+          error: !ok ? `exit code ${result.code}` : undefined,
+        },
+      };
+    } catch (error) {
+      // A governor-enforced timeout kill (ExecOptions.retry does not cover
+      // this: the process backend only retries PROCESS_SPAWN_FAILED, never
+      // a timeout — see core/plugin-runtime/src/process/node-backend.ts) is
+      // a rejection, not a resolved non-zero exit. It's plausibly transient
+      // concurrency contention (see CHECKS_CONCURRENCY doc above), so retry
+      // once. Any other rejection is a real failure and is not retried.
+      if (attempt === 1 && isTimeoutError(error)) {
+        options.logger?.warn?.(`Check ${check.id}: ${pkgPath} timed out, retrying once`);
+        return runForPath(pkgPath, attempt + 1);
+      }
+      return {
+        path: pkgPath,
+        ok: false,
+        durationMs: Date.now() - startedAt,
+        details: {
+          packagePath: pkgPath,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
   }
 
   let pkgResults: PkgRunResult[];
 
-  if (runIn === 'perPackage' && pathsToRun.length > 1) {
+  if (pathsToRun.length === 0) {
+    pkgResults = [];
+  } else if (runIn === 'perPackage' && pathsToRun.length > 1) {
     // Parallel with concurrency limit
     pkgResults = [];
     for (let i = 0; i < pathsToRun.length; i += CHECKS_CONCURRENCY) {
@@ -125,6 +166,19 @@ async function runSingleCheck(
     timingMs: totalDurationMs,
     packages: perPackage && perPackage.length > 0 ? perPackage : undefined,
   };
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'PROCESS_TIMEOUT';
+}
+
+function readPackageName(pkgPath: string): string | undefined {
+  try {
+    const pkg = JSON.parse(readFileSync(join(pkgPath, 'package.json'), 'utf8')) as { name?: unknown };
+    return typeof pkg.name === 'string' ? pkg.name : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function evaluateParser(

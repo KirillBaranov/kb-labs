@@ -312,7 +312,12 @@
                     "scripts/gates/check-pack-install.sh"
                   ],
                   "timeoutMs": 120000,
-                  "runIn": "perPackage"
+                  "runIn": "perPackage",
+                  "skipPackages": [
+                    "@kb-labs/devkit",
+                    "@kb-labs/shared-testing-platform",
+                    "@kb-labs/shared-testing"
+                  ]
                 }
               ]
             }

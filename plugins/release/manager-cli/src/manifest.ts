@@ -68,7 +68,9 @@ const pluginPermissions = combinePermissions()
     analytics: true,                 // Track release events
   })
   .withQuotas({
-    timeoutMs: 1800000, // 30 min for complex releases (167 packages)
+    // 30 min default for complex releases (167 packages); overridable via
+    // KB_RELEASE_CHECKS_TIMEOUT_MS for profiling/tuning without a rebuild.
+    timeoutMs: Number(process.env.KB_RELEASE_CHECKS_TIMEOUT_MS) || 1800000,
     memoryMb: 4096, // full platform build:affected across 167 packages peaked at ~2.05GB on a CI runner, right at the old 2048 ceiling
     cpuMs: 300000, // 5 min CPU time
   })

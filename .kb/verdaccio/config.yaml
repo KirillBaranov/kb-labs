@@ -20,6 +20,18 @@ uplinks:
     url: https://registry.npmjs.org/
 
 packages:
+  # @kb-labs/* is entirely staged here by the release-checks flow (see
+  # header above) — it never needs freshness-checking against real npm.
+  # Without this, Verdaccio treats it like any other scoped package and
+  # syncs with the npmjs uplink on first request per package name, which
+  # measured at 15-60s EACH the first time (100+ @kb-labs packages get
+  # pulled in transitively via @kb-labs/sdk's peer deps) — that's what
+  # blew the pack-install check's 120s timeout on a cold registry.
+  '@kb-labs/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+
   '@*/*':
     access: $all
     publish: $all
