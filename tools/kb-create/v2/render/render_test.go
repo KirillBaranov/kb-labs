@@ -1,6 +1,7 @@
 package render
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +66,48 @@ func TestBuildAssignsConventionalServiceGroups(t *testing.T) {
 	}
 	if got := output.Devservices.Services["mcp-daemon"].Group; got != "" {
 		t.Fatalf("mcp-daemon group = %q, want unset (no known conventional group yet)", got)
+	}
+}
+
+// Regression coverage: gateway.upstreams (services/gateway/contracts/src/config.ts's
+// UpstreamConfigSchema) defaults to {} when absent from rendered config —
+// distinct from platform.adapterOptions.serviceTransport.services, which V2
+// already renders and which only supplies per-service RPC URLs, not HTTP
+// proxy routing. Without any gateway.upstreams entries, /ready's single
+// required check (the "rest" upstream) can never turn "up", so the gateway
+// never becomes ready. Only routes whose target service is actually part of
+// this install's resolved service graph should render — a route pointing at
+// an uninstalled service is not just unnecessary but silently wrong.
+func TestBuildRendersGatewayUpstreamsForInstalledServicesOnly(t *testing.T) {
+	plan := testPlan(t.TempDir())
+	plan.ServiceGraph.Services = append(plan.ServiceGraph.Services,
+		contracts.Service{ID: "rest", Command: "serve", Port: 5050},
+		contracts.Service{ID: "workflow", Command: "serve", Port: 7778},
+	)
+	output, err := Build(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		Gateway struct {
+			Upstreams map[string]struct {
+				ServiceID string `json:"serviceId"`
+				Prefix    string `json:"prefix"`
+			} `json:"upstreams"`
+		} `json:"gateway"`
+	}
+	if err := json.Unmarshal(output.Config, &config); err != nil {
+		t.Fatal(err)
+	}
+	rest, ok := config.Gateway.Upstreams["rest"]
+	if !ok || rest.ServiceID != "rest" || rest.Prefix != "/api/v1" {
+		t.Fatalf("rest upstream = %+v, ok=%v", rest, ok)
+	}
+	if _, ok := config.Gateway.Upstreams["workflow"]; !ok {
+		t.Fatal("expected workflow upstream to render (workflow service is installed)")
+	}
+	if _, ok := config.Gateway.Upstreams["marketplace"]; ok {
+		t.Fatal("marketplace upstream should not render — marketplace service is not part of this plan")
 	}
 }
 

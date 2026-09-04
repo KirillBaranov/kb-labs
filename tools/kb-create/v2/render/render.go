@@ -84,6 +84,51 @@ var conventionalServiceGroups = map[string]string{
 	"workflow":     "backend",
 }
 
+// gatewayUpstreamRoute is a single entry of the gateway's proxy routing
+// table (services/gateway/contracts/src/config.ts's UpstreamConfigSchema:
+// serviceId, prefix, optional rewritePrefix/websocket/description). This is
+// a distinct concept from platform.adapterOptions.serviceTransport.services
+// (which V2 already renders): serviceTransport supplies the URL a given
+// service ID resolves to for RPC calls, while gatewayUpstreamRoute maps an
+// inbound HTTP path prefix to which service ID handles it. Nothing in the
+// V2 plan/manifest pipeline carries per-service routing metadata today (a
+// kb.service/1 manifest has no equivalent of a plugin's declared `requires`/
+// `config`), so this mirrors .kb/kb.config.json's hand-authored `gateway.
+// upstreams` table verbatim rather than deriving it. Without it, the
+// generated config's `gateway.upstreams` defaults to `{}` (the schema's zod
+// default), so the gateway boots with zero configured upstreams and /ready
+// never turns healthy — it has nothing to consider "up".
+type gatewayUpstreamRoute struct {
+	ServiceID     string `json:"serviceId"`
+	Prefix        string `json:"prefix"`
+	RewritePrefix string `json:"rewritePrefix,omitempty"`
+	Websocket     bool   `json:"websocket,omitempty"`
+	Description   string `json:"description,omitempty"`
+}
+
+var conventionalGatewayUpstreams = map[string]gatewayUpstreamRoute{
+	"rest":                 {ServiceID: "rest", Prefix: "/api/v1", Websocket: true, Description: "REST API — main platform BFF"},
+	"workflow":             {ServiceID: "workflow", Prefix: "/api/exec", RewritePrefix: "", Description: "Workflow Daemon — direct access"},
+	"marketplace":          {ServiceID: "marketplace", Prefix: "/api/v1/marketplace", Description: "Marketplace Service — unified entity management"},
+	"widgets":              {ServiceID: "rest", Prefix: "/plugins", Description: "Plugin widget bundles — served by REST API"},
+	"marketplace-registry": {ServiceID: "marketplace-registry", Prefix: "/api/v1/registry", RewritePrefix: "/api/v1", Description: "Marketplace Registry — publish, share, install kb:handle/name packages"},
+	"mcp":                  {ServiceID: "mcp-daemon", Prefix: "/api/v1/mcp", Description: "MCP Daemon — plugin commands as tools for external agents"},
+}
+
+// gatewayUpstreams returns the conventional routes whose target service ID
+// is actually present in this install's resolved service graph — a route
+// pointing at a service this particular profile never installed would be
+// silently dead weight at best.
+func gatewayUpstreams(services map[string]Service) map[string]gatewayUpstreamRoute {
+	result := map[string]gatewayUpstreamRoute{}
+	for name, route := range conventionalGatewayUpstreams {
+		if _, ok := services[route.ServiceID]; ok {
+			result[name] = route
+		}
+	}
+	return result
+}
+
 func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 	if plan.Schema != contracts.ResolvedPlanSchema {
 		return Output{}, fmt.Errorf("unsupported resolved plan schema %q", plan.Schema)
@@ -128,6 +173,9 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		}
 	}
 	config := map[string]any{"platform": map[string]any{"version": plan.ServiceGraph.PlatformVersion, "adapters": adapters}, "plugins": plugins}
+	if upstreams := gatewayUpstreams(services); len(upstreams) > 0 {
+		config["gateway"] = map[string]any{"upstreams": upstreams}
+	}
 	merge(config, extra)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
