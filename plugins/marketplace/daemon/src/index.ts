@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * @module @kb-labs/marketplace-app
  * Marketplace service entry point.

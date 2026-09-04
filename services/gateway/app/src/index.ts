@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { bootstrap } from "./bootstrap.js";
 
 // process.cwd() = workspace root when launched via `node ./infra/kb-labs-gateway/.../dist/index.js`

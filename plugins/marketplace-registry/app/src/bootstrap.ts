@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
 import { runService } from "@kb-labs/shared-daemon";
 import { getListenOptions } from "@kb-labs/shared-http";
