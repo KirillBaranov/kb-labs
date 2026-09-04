@@ -24,6 +24,12 @@ mkdir -p /workspace && cd /workspace
 # The V2 launcher consumes a sealed release index. The registry manifest still
 # controls the E2E composition, while the index carries the platform wiring.
 PLATFORM_ROOT=/workspace/kb-e2e
+# The sealed index's binary manifest is deliberately empty (E2E never
+# downloads GH release assets — see the Dockerfile), so kb-create apply
+# never provisions a local .kb/v2/bin/kb-dev copy from it. --kb-dev points
+# V2's service ensure/status calls at the binary already baked into the
+# image instead, matching what the "Installing KB Labs" step above verified
+# is present.
 kb-create apply \
   --index /release-index.json \
   --request-platform-root "$PLATFORM_ROOT" \
@@ -32,7 +38,8 @@ kb-create apply \
   --service-profile default \
   --plugins "$(jq -r '[.plugins[] | select(.default == true) | .id] | join(",")' /e2e-registry-manifest.json)" \
   --adapters "$(jq -r '[.adapters[].id] | join(",")' /release-index.json)" \
-  --registry http://verdaccio:4873
+  --registry http://verdaccio:4873 \
+  --kb-dev /usr/local/bin/kb-dev
 cd "$PLATFORM_ROOT"
 
 # Bootstrap admin for E2E — gateway creates this user on first start.
