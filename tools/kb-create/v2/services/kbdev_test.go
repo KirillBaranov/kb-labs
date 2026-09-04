@@ -1,9 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/kb-labs/create/v2/verify"
@@ -52,6 +54,23 @@ func TestKBDevEnsuresResolvedGraphWithoutOverridingNetworkOffset(t *testing.T) {
 	want := []string{"--config", "/platform/.kb/devservices.yaml", "ensure", "gateway", "worker", "--json"}
 	if !reflect.DeepEqual(runner.args, want) {
 		t.Fatalf("args = %#v", runner.args)
+	}
+}
+
+// Regression coverage: a successful `kb-dev ensure` call's own JSON action
+// list (started/skipped/failed per service) was previously discarded
+// whenever the call succeeded — the error-wrapping path only captured
+// output on failure. That's the one place able to show what kb-dev itself
+// believed it did when a later, separate `kb-dev status` snapshot disagrees
+// (KB_CREATE_SERVICE_GRAPH_MISMATCH), so it must survive success too.
+func TestKBDevLogsEnsureOutputEvenOnSuccess(t *testing.T) {
+	var log bytes.Buffer
+	runner := &fakeRunner{data: []byte(`{"ok":true,"actions":[{"service":"gateway","action":"started"}]}`)}
+	if err := (KBDev{Runner: runner, Log: &log}).Ensure("/platform", []string{"gateway"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(log.String(), `"gateway"`) {
+		t.Fatalf("log = %q, expected it to contain the ensure JSON output", log.String())
 	}
 }
 
