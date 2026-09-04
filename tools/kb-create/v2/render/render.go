@@ -31,6 +31,7 @@ type DevservicesFile struct {
 
 type Service struct {
 	Name        string            `yaml:"name,omitempty"`
+	Group       string            `yaml:"group,omitempty"`
 	Command     string            `yaml:"command"`
 	Port        int               `yaml:"port,omitempty"`
 	HealthCheck string            `yaml:"health_check,omitempty"`
@@ -64,6 +65,25 @@ func (file DevservicesFile) Validate() error {
 	return nil
 }
 
+// conventionalServiceGroups mirrors .kb/devservices.dev.yaml's hand-authored
+// `groups:` block — kb-dev's config loader (tools/kb-dev/internal/config/yaml.go)
+// derives its Groups map from each service's own `group` field, so a
+// generated devservices.yaml with no `group` field anywhere silently drops
+// every group (including "backend", one of kb-dev's own "conventional"
+// group names — see config.go's GroupOrder), breaking any caller (like the
+// E2E platform entrypoint) that starts services by group name instead of
+// listing every service individually. Not every generated service has a
+// known group yet (e.g. marketplace-registry, mcp-daemon) — that mirrors
+// the same gap in the hand-authored config, not an oversight here.
+var conventionalServiceGroups = map[string]string{
+	"state-daemon": "infra",
+	"gateway":      "backend",
+	"marketplace":  "backend",
+	"rest":         "backend",
+	"studio":       "backend",
+	"workflow":     "backend",
+}
+
 func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 	if plan.Schema != contracts.ResolvedPlanSchema {
 		return Output{}, fmt.Errorf("unsupported resolved plan schema %q", plan.Schema)
@@ -73,7 +93,7 @@ func Build(plan contracts.ResolvedInstallPlan) (Output, error) {
 		if service.ID == "" {
 			return Output{}, fmt.Errorf("service ID is required")
 		}
-		services[service.ID] = Service{Name: service.ID, Command: RuntimeCommand(service.Command), Port: service.Port, HealthCheck: healthCheckURL(service.HealthCheck, service.Port), DependsOn: service.DependsOn, Env: map[string]string{}}
+		services[service.ID] = Service{Name: service.ID, Group: conventionalServiceGroups[service.ID], Command: RuntimeCommand(service.Command), Port: service.Port, HealthCheck: healthCheckURL(service.HealthCheck, service.Port), DependsOn: service.DependsOn, Env: map[string]string{}}
 	}
 	file := DevservicesFile{Name: "kb-labs", Services: services}
 	if err := file.Validate(); err != nil {
