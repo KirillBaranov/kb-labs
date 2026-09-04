@@ -42,6 +42,32 @@ func TestBuildRendersHealthCheckAsAbsoluteLocalhostURL(t *testing.T) {
 	}
 }
 
+// Regression coverage: kb-dev's config loader derives its Groups map (used to
+// resolve `kb-dev start backend`) from each service's own `group` field in
+// devservices.yaml — a rendered file with no `group` anywhere silently drops
+// every group, including "backend", breaking any caller that starts services
+// by group name. gateway is a known "backend" member (mirroring
+// .kb/devservices.dev.yaml's hand-authored groups); an unrecognized service
+// ID must render with no group at all, not a guessed one.
+func TestBuildAssignsConventionalServiceGroups(t *testing.T) {
+	plan := testPlan(t.TempDir())
+	plan.ServiceGraph.Services = append(plan.ServiceGraph.Services, contracts.Service{ID: "state-daemon", Command: "serve", Port: 7777})
+	plan.ServiceGraph.Services = append(plan.ServiceGraph.Services, contracts.Service{ID: "mcp-daemon", Command: "serve", Port: 7779})
+	output, err := Build(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := output.Devservices.Services["gateway"].Group; got != "backend" {
+		t.Fatalf("gateway group = %q, want backend", got)
+	}
+	if got := output.Devservices.Services["state-daemon"].Group; got != "infra" {
+		t.Fatalf("state-daemon group = %q, want infra", got)
+	}
+	if got := output.Devservices.Services["mcp-daemon"].Group; got != "" {
+		t.Fatalf("mcp-daemon group = %q, want unset (no known conventional group yet)", got)
+	}
+}
+
 func TestWriteProducesCompleteV2Projections(t *testing.T) {
 	root := t.TempDir()
 	if _, err := Write(testPlan(root)); err != nil {
