@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -36,6 +37,13 @@ func (commandRunner) CombinedOutput(ctx context.Context, name string, args ...st
 type KBDev struct {
 	Binary string
 	Runner Runner
+	// Log receives kb-dev ensure's own JSON transcript (its per-service
+	// started/skipped/failed action list), successful or not. Without this,
+	// a successful `kb-dev ensure` call's own view of what it did is
+	// discarded — the only place V2 could later show it disagreed with a
+	// subsequent `kb-dev status` snapshot (KB_CREATE_SERVICE_GRAPH_MISMATCH)
+	// is this log, so it needs to survive that case, not just failures.
+	Log io.Writer
 }
 
 func (client KBDev) ServiceStatuses(platformRoot string) ([]verify.ObservedService, error) {
@@ -88,6 +96,10 @@ func (client KBDev) Ensure(platformRoot string, serviceIDs []string) error {
 		output, err = combined.CombinedOutput(context.Background(), binary, args...)
 	} else {
 		output, err = runner.Output(context.Background(), binary, args...)
+	}
+	if client.Log != nil && len(output) > 0 {
+		_, _ = client.Log.Write(output)
+		_, _ = client.Log.Write([]byte("\n"))
 	}
 	if err != nil {
 		if len(output) > 0 {

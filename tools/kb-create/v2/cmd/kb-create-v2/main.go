@@ -183,7 +183,7 @@ func run(operation, indexPath, inputPath, doctorInput, platformRoot, snapshotID,
 	}
 	offlineArtifacts := response.Plan.Request.Source == contracts.SourceOffline
 	artifactExecutor := artifacts.Composite{Packages: artifacts.Pnpm{Root: response.Plan.Request.PlatformRoot, Registry: registry, Offline: offlineArtifacts, Log: transcript}, Binaries: artifacts.Binaries{Root: response.Plan.Request.PlatformRoot, Offline: offlineArtifacts}}
-	deps := runtime.Dependencies{Artifacts: artifactExecutor, Activator: services.KBDev{Binary: kbdev}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
+	deps := runtime.Dependencies{Artifacts: artifactExecutor, Activator: services.KBDev{Binary: kbdev, Log: transcript}, Status: services.KBDev{Binary: kbdev}, CorrelationID: correlationID, Secrets: &store}
 	if operation == "apply" {
 		receipt, applyErr := runtime.Apply(*response.Plan, deps)
 		if applyErr == nil {
@@ -429,7 +429,7 @@ func runRecovery(operation, platformRoot, snapshotID, registry, kbdev string, ou
 		return 2
 	}
 	defer transcript.Close()
-	service := services.KBDev{Binary: kbdev}
+	service := services.KBDev{Binary: kbdev, Log: transcript}
 	deps := runtime.Dependencies{Artifacts: artifacts.Composite{Packages: artifacts.Pnpm{Root: platformRoot, Registry: registry, Log: transcript}, Binaries: artifacts.Binaries{Root: platformRoot}}, Activator: service, Deactivator: service, Status: service, CorrelationID: correlationID}
 	if operation == "uninstall" {
 		snapshot, uninstallErr := runtime.Uninstall(platformRoot, deps)
