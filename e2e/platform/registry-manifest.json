@@ -61,7 +61,7 @@
       "port": 3000
     },
     {
-      "id": "mcp",
+      "id": "mcp-daemon",
       "pkg": "@kb-labs/mcp-app",
       "description": "MCP Daemon (port 7779)",
       "default": true,
