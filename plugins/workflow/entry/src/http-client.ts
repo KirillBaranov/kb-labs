@@ -10,6 +10,8 @@ import type {
   JobStepsResponse,
   JobLogsResponse,
   CronListResponse,
+  WorkflowInfo,
+  WorkflowListResponse,
 } from '@kb-labs/workflow-contracts';
 import { useEnv } from '@kb-labs/sdk';
 
@@ -305,6 +307,45 @@ export class WorkflowDaemonClient {
     const payload = await this.parseJsonResponse<unknown>(response);
     const data = this.unwrapData<{ jobId: string }>(payload);
     return { id: data.jobId, status: 'pending' };
+  }
+
+  /**
+   * List workflow definitions, optionally filtered by source/status/tags
+   */
+  async listWorkflows(params: {
+    source?: string;
+    status?: string;
+    tags?: string;
+  } = {}): Promise<WorkflowInfo[]> {
+    const query = new URLSearchParams();
+    if (params.source) { query.set('source', params.source); }
+    if (params.status) { query.set('status', params.status); }
+    if (params.tags) { query.set('tags', params.tags); }
+
+    const qs = query.toString();
+    const response = await fetch(`${this.baseUrl}/api/v1/workflows${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      throw new Error(`Failed to list workflows: ${response.statusText}`);
+    }
+    const data = await this.parseJsonResponse<unknown>(response);
+    const unwrapped = this.unwrapData<WorkflowListResponse>(data);
+    return unwrapped.workflows ?? [];
+  }
+
+  /**
+   * Get a specific workflow definition by ID
+   */
+  async getWorkflow(id: string): Promise<WorkflowInfo> {
+    const encodedId = encodeURIComponent(id);
+    const response = await fetch(`${this.baseUrl}/api/v1/workflows/${encodedId}`);
+    if (response.status === 404) {
+      throw new Error(`Workflow ${id} not found`);
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to get workflow: ${response.statusText}`);
+    }
+    const data = await this.parseJsonResponse<unknown>(response);
+    return this.unwrapData<WorkflowInfo>(data);
   }
 
   /**

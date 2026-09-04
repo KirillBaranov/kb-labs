@@ -433,3 +433,53 @@ export const lintFlags = {
 } as const;
 
 export type LintFlags = typeof lintFlags;
+
+/**
+ * Flags for workflow:defs-list command
+ */
+export const defsListFlags = {
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+  source: {
+    type: 'string',
+    description: 'Filter by source: manifest, standalone, plugin',
+  },
+  status: {
+    type: 'string',
+    description: 'Filter by status: active, inactive',
+  },
+  tags: {
+    type: 'string',
+    description: 'Filter by comma-separated tags',
+  },
+} as const;
+
+export interface DefsListFlags {
+  json?: boolean;
+  source?: string;
+  status?: string;
+  tags?: string;
+}
+
+/**
+ * Flags for workflow:defs-view command
+ */
+export const defsViewFlags = {
+  id: {
+    type: 'string',
+    description: 'Workflow ID to inspect (alias for positional argument)',
+  },
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+} as const;
+
+export interface DefsViewFlags {
+  id?: string;
+  json?: boolean;
+}
