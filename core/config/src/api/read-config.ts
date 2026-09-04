@@ -106,10 +106,14 @@ async function findNearestConfig(
   const tried: string[] = [];
   let dir = start;
 
-  // Default filenames if not provided: prioritize .kb/ location
+  // Default filenames if not provided: prioritize .kb/ location.
+  // .jsonc is checked before .json to match findKbConfig's convention
+  // (core/config/src/api/read-kb-config.ts) — this repo tracks
+  // .kb/kb.config.jsonc as the canonical dev config.
   const defaultFilenames = [
     '.kb/kb.config.yaml',
     '.kb/kb.config.yml',
+    '.kb/kb.config.jsonc',
     '.kb/kb.config.json',
   ];
   const searchFilenames = filenames.length > 0 ? filenames : defaultFilenames;
