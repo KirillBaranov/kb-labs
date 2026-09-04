@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { bootstrap } from "./bootstrap.js";
 
 // runService() (called inside bootstrap) resolves env and platform/project roots.

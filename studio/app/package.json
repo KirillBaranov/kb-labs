@@ -4,6 +4,9 @@
   "version": "2.118.2",
   "type": "module",
   "main": "./server.js",
+  "bin": {
+    "studio-app": "./server.js"
+  },
   "files": [
     "dist",
     "server.js"

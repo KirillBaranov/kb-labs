@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * @module @kb-labs/rest-api-app
  * REST API application entry point

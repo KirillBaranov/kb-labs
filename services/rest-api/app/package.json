@@ -4,6 +4,9 @@
   "version": "2.118.2",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "rest-api-app": "./dist/index.js"
+  },
   "files": [
     "dist"
   ],

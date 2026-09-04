@@ -3,6 +3,9 @@
   "version": "2.118.2",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "mcp-app": "./dist/index.js"
+  },
   "files": [
     "dist"
   ],

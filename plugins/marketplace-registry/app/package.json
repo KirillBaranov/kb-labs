@@ -4,6 +4,9 @@
   "version": "2.118.2",
   "type": "module",
   "main": "./dist/bootstrap.js",
+  "bin": {
+    "marketplace-registry-app": "./dist/bootstrap.js"
+  },
   "files": [
     "dist"
   ],
