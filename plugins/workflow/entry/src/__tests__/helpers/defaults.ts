@@ -1,6 +1,6 @@
 import type { WorkflowDaemonClient } from '../../http-client.js';
 import type { WorkflowRunSummary, WorkflowRunDetail, JobStatusDetail } from '../../http-client.js';
-import type { WorkflowRerunRequest, WorkflowRestartRequest, WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import type { WorkflowRerunRequest, WorkflowRestartRequest, WorkflowRunRequest, WorkflowInfo } from '@kb-labs/workflow-contracts';
 
 type WorkflowClientInstance = InstanceType<typeof WorkflowDaemonClient>;
 
@@ -72,6 +72,14 @@ export const defaultWorkflowClient: WorkflowDaemonClient = {
   getCronJobs: async () => ({ crons: [] }),
 
   submitJob: async () => ({ id: 'job-test-123', status: 'pending' }),
+
+  listWorkflows: async () => [],
+
+  getWorkflow: async (id: string): Promise<WorkflowInfo> => ({
+    id,
+    name: 'test-workflow',
+    source: 'manifest',
+  }),
 } as unknown as WorkflowDaemonClient;
 
 export const sampleRunSummary: WorkflowRunSummary = {
@@ -79,4 +87,11 @@ export const sampleRunSummary: WorkflowRunSummary = {
   name: 'test-workflow',
   status: 'running',
   createdAt: new Date().toISOString(),
+};
+
+export const sampleWorkflowInfo: WorkflowInfo = {
+  id: 'wf-test-123',
+  name: 'test-workflow',
+  source: 'manifest',
+  status: 'active',
 };

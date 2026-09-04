@@ -23,6 +23,8 @@ import {
   runsCancelFlags,
   runsApproveFlags,
   lintFlags,
+  defsListFlags,
+  defsViewFlags,
 } from './flags';
 import {
   WORKFLOW_BASE_PATH,
@@ -67,6 +69,7 @@ export const manifest = {
       { path: 'workflow', describe: 'Workflow daemon commands' },
       { path: 'workflow runs', describe: 'Workflow run management (list, view, watch, rerun)' },
       { path: 'workflow job', describe: 'Raw job execution' },
+      { path: 'workflow defs', describe: 'Workflow definition discovery (list, view)' },
     ],
     commands: [
       {
@@ -326,6 +329,41 @@ export const manifest = {
           'kb workflow runs approve <runId> --action=reject --comment="Needs rework"',
           'kb workflow runs approve <runId> --job-id=<jobId> --step-id=<stepId>',
           'kb workflow runs approve <runId> --json',
+        ],
+      },
+      {
+        path: 'workflow defs list',
+        category: 'Definitions',
+        operationType: 'read' as const,
+        describe: 'List workflow definitions.',
+        longDescription:
+          'Lists workflow definitions available to run via /api/v1/workflows. ' +
+          'Filter by --source (manifest, standalone, plugin), --status (active, inactive), or --tags. ' +
+          'Use --json for machine-readable output.',
+        handler: './commands/defs-list.js#default',
+        flags: defineCommandFlags(defsListFlags),
+        examples: [
+          'kb workflow defs list',
+          'kb workflow defs list --status=active',
+          'kb workflow defs list --source=manifest',
+          'kb workflow defs list --json',
+        ],
+      },
+      {
+        path: 'workflow defs view',
+        category: 'Definitions',
+        operationType: 'read' as const,
+        describe: 'View workflow definition details.',
+        longDescription:
+          'Shows details for a single workflow definition via /api/v1/workflows/:id, including ' +
+          'source, status, tags, version, and declared input parameters. Useful for discovering what ' +
+          'inputs a workflow expects before calling "kb workflow run".',
+        handler: './commands/defs-view.js#default',
+        flags: defineCommandFlags(defsViewFlags),
+        examples: [
+          'kb workflow defs view <id>',
+          'kb workflow defs view --id=<id>',
+          'kb workflow defs view <id> --json',
         ],
       },
       {
