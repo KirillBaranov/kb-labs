@@ -110,8 +110,6 @@ deploy/docker/
 .kb/logs/
 # installer-managed — use .kb/devservices.dev.yaml for local dev
 .kb/devservices.yaml
-# installer-managed — use .kb/kb.config.json for local dev
-.kb/kb.config.jsonc
 # installer-managed overlay state
 .kb/generated/
 # end-kb-labs-ignore
