@@ -168,9 +168,52 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          platform_members="$(node -e 'const c=require("./.kb/kb.config.json"); const m=c.profiles?.find(p => p.id === "default")?.products?.release?.flows?.platform?.platformMembers; if (!Array.isArray(m) || m.length === 0) throw new Error("release.flows.platform.platformMembers must be a non-empty array"); process.stdout.write(m.join(","));')"
-          platform_adapters="$(node -e 'const c=require("./.kb/kb.config.json"); if (!c.platform?.adapters) throw new Error("platform.adapters is required for a platform release index"); process.stdout.write(JSON.stringify(c.platform.adapters));')"
-          platform_adapter_options="$(node -e 'const c=require("./.kb/kb.config.json"); process.stdout.write(JSON.stringify(c.platform?.adapterOptions ?? {}));')"
+          # .kb/kb.config.jsonc is the tracked dev config (see c2f829ea7); a
+          # bare require() can't parse its comments, so strip them the same
+          # way core/config/src/api/read-config.ts's stripJsonComments does
+          # before parsing. .kb/kb.config.json is kept as a fallback so this
+          # doesn't silently break again if the tracked filename changes.
+          config_json="$(node -e '
+            const fs = require("fs");
+            function stripJsonComments(src) {
+              let out = ""; let i = 0; const len = src.length;
+              while (i < len) {
+                if (src[i] === String.fromCharCode(34)) {
+                  out += src[i++];
+                  while (i < len) {
+                    if (src[i] === "\\") { out += src[i++]; out += src[i++]; continue; }
+                    out += src[i];
+                    if (src[i++] === String.fromCharCode(34)) { break; }
+                  }
+                } else if (src[i] === "/" && src[i + 1] === "/") {
+                  while (i < len && src[i] !== "\n") { i++; }
+                } else if (src[i] === "/" && src[i + 1] === "*") {
+                  i += 2;
+                  while (i < len && !(src[i] === "*" && src[i + 1] === "/")) { i++; }
+                  i += 2;
+                } else {
+                  out += src[i++];
+                }
+              }
+              return out.replace(/,(\s*[}\]])/g, "$1");
+            }
+            const candidates = ["./.kb/kb.config.jsonc", "./.kb/kb.config.json"];
+            const found = candidates.find((p) => fs.existsSync(p));
+            if (!found) throw new Error("no .kb/kb.config.jsonc or .kb/kb.config.json found");
+            const raw = fs.readFileSync(found, "utf8");
+            const c = JSON.parse(found.endsWith(".jsonc") ? stripJsonComments(raw) : raw);
+            const m = c.profiles?.find((p) => p.id === "default")?.products?.release?.flows?.platform?.platformMembers;
+            if (!Array.isArray(m) || m.length === 0) throw new Error("release.flows.platform.platformMembers must be a non-empty array");
+            if (!c.platform?.adapters) throw new Error("platform.adapters is required for a platform release index");
+            process.stdout.write(JSON.stringify({
+              platformMembers: m,
+              adapters: c.platform.adapters,
+              adapterOptions: c.platform.adapterOptions ?? {},
+            }));
+          ')"
+          platform_members="$(node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(d.platformMembers.join(","));' <<< "$config_json")"
+          platform_adapters="$(node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(JSON.stringify(d.adapters));' <<< "$config_json")"
+          platform_adapter_options="$(node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(JSON.stringify(d.adapterOptions));' <<< "$config_json")"
           node tools/kb-create/scripts/prepare-release-index.mjs \
             --flow "$FLOW" \
             --channel "$CHANNEL" \
