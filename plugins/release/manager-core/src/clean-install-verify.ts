@@ -78,7 +78,16 @@ export async function verifyCleanInstall(
       writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'kb-release-consumer', private: true }) + '\n');
       // Lazy import: Arborist is only needed for the explicit npm path.
       const { Arborist } = await import('@npmcli/arborist');
-      const arb = new Arborist({ path: consumerDir, ignoreScripts: true, ...(registry ? { registry } : {}) });
+      // audit:false — reify() otherwise submits a bulk security-advisory
+      // request to the registry and unconditionally awaits it before
+      // returning (see @npmcli/arborist reify.js: `this.auditReport = await
+      // this.auditReport`), even though this call site never reads
+      // arb.auditReport. That's a real network round-trip per package with
+      // zero bearing on what this check verifies (a broken manifest fails
+      // the same way — via reify() itself throwing — regardless of the
+      // audit flag), measured ~15-20% of total install time removed in a
+      // repeated, alternating before/after comparison on this machine.
+      const arb = new Arborist({ path: consumerDir, ignoreScripts: true, audit: false, ...(registry ? { registry } : {}) });
       try {
         await arb.reify({ add: [tarballPath, ...additionalTarballs], save: false });
       } catch (err) {

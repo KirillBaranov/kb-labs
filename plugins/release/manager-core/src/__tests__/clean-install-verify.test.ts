@@ -88,6 +88,22 @@ describe('verifyCleanInstall', () => {
     );
   });
 
+  // Arborist's reify() unconditionally submits a bulk security-advisory
+  // request and awaits it before returning (unless constructed with
+  // audit:false) — a real network round-trip this call site never reads
+  // the result of (auditReport is never accessed below). Disabling it must
+  // not change what the check actually verifies: a broken manifest still
+  // fails via reify() rejecting, exercised by the EUNSUPPORTEDPROTOCOL test
+  // above, which passes regardless of the audit flag.
+  it('disables the Arborist audit network call, which this check never reads', async () => {
+    const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk');
+
+    expect(result.ok).toBe(true);
+    expect(mockArboristCtor).toHaveBeenCalledWith(
+      expect.objectContaining({ audit: false }),
+    );
+  });
+
   it('writes a .npmrc registry override for the pnpm path', async () => {
     const fs = await import('node:fs');
     const result = await verifyCleanInstall('/tmp/pkg.tgz', '@kb-labs/sdk', [], 'pnpm', 'http://localhost:4873');
