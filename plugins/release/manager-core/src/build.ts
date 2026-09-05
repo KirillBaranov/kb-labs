@@ -3,7 +3,7 @@
  * Prevents crashing running services whose dist/ is wiped by tsup's `clean: true`.
  */
 
-import { rename, rm, cp } from 'node:fs/promises';
+import { rename, rm, cp, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -57,11 +57,55 @@ export async function runSafeBuild(packagePath: string, packageName: string, she
   const usesTsup = existsSync(join(packagePath, 'tsup.config.ts'))
     || existsSync(join(packagePath, 'tsup.config.js'));
 
-  if (usesTsup) {
+  // The temp-dir/atomic-swap trick below only protects a build whose *entire*
+  // output comes from a single `tsup` invocation, because it runs `npx tsup
+  // -d tempDir` directly instead of the package's own `build` script — that
+  // substitution is only equivalent to the real build when the real build
+  // *is* bare tsup. A compound script (e.g. studio-app's
+  // "rspack build && tsup src/manifest.ts") has other steps whose output
+  // this path silently drops: running `npx tsup -d tempDir` alone builds
+  // only the manifest and never invokes rspack, so the SPA bundle never
+  // lands in dist/ — the published package ends up with just
+  // dist/manifest.js and no index.html/assets, and the installed service
+  // starts (serving 404s from an empty dist/) but never becomes healthy.
+  // This was confirmed against the real published 2.119.0 @kb-labs/studio-app
+  // tarball, which contained exactly that: dist/manifest.js and nothing else.
+  //
+  // So only take the safe temp-dir path when `build` is a bare tsup call;
+  // anything else must run through its own script (runDirectBuild), trusting
+  // that script to manage its own dist/ safety — as studio-app's
+  // tsup.config.ts already does by pinning `clean: false` specifically so
+  // its tsup step doesn't wipe the rspack output that ran before it.
+  if (usesTsup && (await isBareTsupBuildScript(packagePath))) {
     return runTsupSafeBuild(packagePath, packageName, shell);
   }
 
   return runDirectBuild(packagePath, packageName, shell);
+}
+
+/**
+ * True when the package's `build` script is nothing more than a plain
+ * `tsup` invocation (optionally with flags) — i.e. safe to replace with
+ * `npx tsup -d <tempDir>` without silently dropping other build steps.
+ */
+async function isBareTsupBuildScript(packagePath: string): Promise<boolean> {
+  try {
+    const raw = await readFile(join(packagePath, 'package.json'), 'utf-8');
+    const pkg = JSON.parse(raw) as { scripts?: Record<string, string> };
+    const buildScript = pkg.scripts?.build?.trim();
+    if (!buildScript) {
+      return false;
+    }
+    // Reject anything chaining multiple commands (&&, ||, ;, |) or invoking
+    // another tool alongside tsup.
+    if (/&&|\|\||;|\|/.test(buildScript)) {
+      return false;
+    }
+    return /^(npx\s+)?tsup(\s|$)/.test(buildScript);
+  } catch {
+    // No readable package.json / build script — don't risk the fast path.
+    return false;
+  }
 }
 
 /**

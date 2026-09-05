@@ -33,4 +33,69 @@ describe('release build governed execution', () => {
       env: { NODE_ENV: 'production' },
     }]);
   });
+
+  it('runs a bare tsup build script through the safe temp-dir/atomic-swap path', async () => {
+    const packagePath = join(tmpdir(), `kb-release-build-test-${randomBytes(4).toString('hex')}`);
+    await mkdir(packagePath, { recursive: true });
+    await writeFile(join(packagePath, 'tsup.config.ts'), 'export default {}');
+    await writeFile(join(packagePath, 'package.json'), JSON.stringify({ name: 'fixture-tsup', scripts: { build: 'tsup' } }));
+
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const shell = {
+      async exec(command: string, args: string[] = []) {
+        calls.push({ command, args });
+        // The real tsup would populate the -d tempDir; simulate that so the
+        // safe-build's rename-into-place step has something to swap in.
+        const dIndex = args.indexOf('-d');
+        const tempDir = dIndex !== -1 ? args[dIndex + 1] : undefined;
+        if (tempDir) {
+          await mkdir(tempDir, { recursive: true });
+        }
+        return { code: 0, stdout: 'tsup-build', stderr: '', ok: true };
+      },
+    };
+
+    const result = await runSafeBuild(packagePath, 'fixture-tsup', shell);
+
+    expect(result.success).toBe(true);
+    expect(calls).toHaveLength(1);
+    const call = calls[0]!;
+    expect(call.command).toBe('npx');
+    expect(call.args[0]).toBe('tsup');
+    expect(call.args).toContain('-d');
+  });
+
+  it('does NOT take the bare-tsup fast path for a compound build script (regression: studio-app rspack+tsup build)', async () => {
+    // Reproduces the real bug found in the published @kb-labs/studio-app
+    // 2.119.0 npm tarball: its dist/ contained only manifest.js (tsup's
+    // output) and none of the rspack-built SPA (index.html, JS/CSS bundles).
+    // The old runSafeBuild logic ran `npx tsup -d tempDir` for ANY package
+    // with a tsup.config.ts, silently skipping the `rspack build` half of
+    // "rspack build && tsup src/manifest.ts" — so the installed Studio
+    // service started (it has server.js + manifest.js) but served 404s for
+    // everything, including its health-check path "/", and never became
+    // healthy.
+    const packagePath = join(tmpdir(), `kb-release-build-test-${randomBytes(4).toString('hex')}`);
+    await mkdir(packagePath, { recursive: true });
+    await writeFile(join(packagePath, 'tsup.config.ts'), 'export default {}');
+    await writeFile(
+      join(packagePath, 'package.json'),
+      JSON.stringify({ name: 'fixture-studio', scripts: { build: 'rspack build && tsup src/manifest.ts' } }),
+    );
+
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const shell = {
+      async exec(command: string, args: string[] = []) {
+        calls.push({ command, args });
+        return { code: 0, stdout: 'compound-build', stderr: '', ok: true };
+      },
+    };
+
+    const result = await runSafeBuild(packagePath, 'fixture-studio', shell);
+
+    expect(result.success).toBe(true);
+    // Must run the package's own full build script (pnpm run build), not a
+    // bare `npx tsup` that would drop the rspack step.
+    expect(calls).toEqual([{ command: 'pnpm', args: ['run', 'build'] }]);
+  });
 });
