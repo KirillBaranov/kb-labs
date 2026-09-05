@@ -154,13 +154,23 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 		t.Fatalf("installed kb-dev binary is missing or not executable: %s (%v)", kbDev, err)
 	}
 	config := filepath.Join(platform, ".kb", "devservices.yaml")
-	if output, code := run(t, kbDev, "--config", config, "ensure", "marketplace", "workflow"); code != 0 {
+	// kb-dev must be invoked with the project directory as its cwd, not an
+	// arbitrary one. --config points at the platform's own devservices.yaml
+	// (a separate directory from the project in this V2 topology), and
+	// kb-dev's FindConfig only recovers the real project directory — for
+	// KB_PROJECT_ROOT and everything keyed off it, including the workflow
+	// daemon's per-project .kb/workflows discovery — by checking whether cwd
+	// itself is a project whose kb.config.jsonc "platform.dir" points back at
+	// this same platform (see tools/kb-dev/cmd/root.go FindConfig). Running
+	// from an unrelated cwd, as this test previously did, defeats that check
+	// and silently points KB_PROJECT_ROOT at the platform directory instead.
+	if output, code := runIn(t, project, kbDev, "--config", config, "ensure", "marketplace", "workflow"); code != 0 {
 		t.Fatalf("installed service graph did not start: %s", output)
 	}
-	marketplaceURL := installedServiceURL(t, kbDev, config, "marketplace")
+	marketplaceURL := installedServiceURL(t, project, kbDev, config, "marketplace")
 	t.Setenv("KB_MARKETPLACE_URL", marketplaceURL)
 	t.Cleanup(func() {
-		_, _ = run(t, kbDev, "--config", config, "stop", "marketplace", "workflow")
+		_, _ = runIn(t, project, kbDev, "--config", config, "stop", "marketplace", "workflow")
 	})
 
 	cli := filepath.Join(platform, "node_modules", "@kb-labs", "cli-bin", "dist", "bin.js")
@@ -175,6 +185,20 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	pluginRoot := filepath.Join(project, ".kb", "plugins", "e2e-user")
 	if _, err := os.Stat(filepath.Join(pluginRoot, "package.json")); err != nil {
 		t.Fatalf("scaffolded plugin package is missing: %v", err)
+	}
+
+	// Workflow definitions are discovered per-project from the project's own
+	// .kb/workflows/**/*.{yml,yaml} (see WorkspaceWorkflowRegistry in
+	// plugins/workflow/runtime/src/registry/workspace-registry.ts) — the
+	// platform ships no builtin, unprefixed "healthcheck" workflow for a
+	// fresh install to discover on its own. A real user who wants to run
+	// `kb workflow run --workflow-id healthcheck` must author that workflow
+	// file themselves, exactly like this repo's own dev convenience workflow
+	// at .kb/workflows/healthcheck.yaml. Seed the scratch project with an
+	// equivalent minimal fixture so this smoke test exercises the same path
+	// a real user's project would.
+	if err := seedHealthcheckWorkflow(project); err != nil {
+		t.Fatalf("seed healthcheck workflow fixture: %v", err)
 	}
 	workflowOutput, code := runIn(t, project, "node", cli, "workflow", "run", "--workflow-id", "healthcheck", "--json")
 	if code != 0 {
@@ -193,9 +217,9 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 // reconstructing it from a base port. That keeps this published-artifact test
 // valid for an automatically derived KB_NET_OFFSET and avoids a hidden gateway
 // dependency: scaffold talks directly to the marketplace service it installed.
-func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
+func installedServiceURL(t *testing.T, project, kbDev, config, serviceID string) string {
 	t.Helper()
-	output, code := run(t, kbDev, "--config", config, "status", "--json")
+	output, code := runIn(t, project, kbDev, "--config", config, "status", "--json")
 	if code != 0 {
 		t.Fatalf("read installed service status: %s", output)
 	}
@@ -218,7 +242,7 @@ func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
 			serviceID,
 			service.State,
 			output,
-			installedServiceLog(kbDev, config, serviceID),
+			installedServiceLog(project, kbDev, config, serviceID),
 		)
 	}
 	return service.URL
@@ -227,10 +251,12 @@ func installedServiceURL(t *testing.T, kbDev, config, serviceID string) string {
 // installedServiceLog preserves the child-process stderr that can be lost
 // from kb-dev status after a startup crash. Published smoke must report the
 // concrete service failure, not just its reconciled "dead" state.
-func installedServiceLog(kbDev, config, serviceID string) string {
+func installedServiceLog(project, kbDev, config, serviceID string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, kbDev, "--config", config, "logs", serviceID, "--lines", "200").CombinedOutput()
+	cmd := exec.CommandContext(ctx, kbDev, "--config", config, "logs", serviceID, "--lines", "200")
+	cmd.Dir = project
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Sprintf("unable to read managed log: %v\n%s", err, output)
 	}
@@ -259,6 +285,48 @@ func runIn(t *testing.T, dir, command string, args ...string) (string, int) {
 	}
 	t.Fatalf("command %s failed: %v\n%s", command, err, output)
 	return string(output), 1
+}
+
+// seedHealthcheckWorkflow writes a minimal, generic "healthcheck" workflow
+// definition into the project's .kb/workflows directory, mirroring this
+// monorepo's own .kb/workflows/healthcheck.yaml. Workflow definitions are a
+// per-project concern (discovered from the project's own workspace, not
+// shipped by the platform), so a fresh install has none until the project
+// author adds one — this fixture stands in for that authored file.
+func seedHealthcheckWorkflow(projectRoot string) error {
+	dir := filepath.Join(projectRoot, ".kb", "workflows")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	const healthcheckWorkflow = `name: healthcheck
+version: 1.0.0
+description: "Build, lint, and test your project"
+on:
+  manual: true
+
+jobs:
+  check:
+    runsOn: local
+    steps:
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+          else
+            echo "No package.json — dependency installation skipped"
+          fi
+      - name: Build
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present build; else echo "No package.json — build skipped"; fi
+      - name: Lint
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present lint; else echo "No package.json — lint skipped"; fi
+        continueOnError: true
+      - name: Test
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present test; else echo "No package.json — tests skipped"; fi
+`
+	return os.WriteFile(filepath.Join(dir, "healthcheck.yaml"), []byte(healthcheckWorkflow), 0o640)
 }
 
 func stringValue(value any) string {

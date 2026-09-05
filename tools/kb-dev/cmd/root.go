@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/kb-labs/clikit/diag"
 	"github.com/kb-labs/clikit/result"
@@ -121,14 +122,32 @@ func init() {
 
 // FindConfig resolves the config file and project directory.
 // Priority: --config flag > config.Discover (walks up from cwd).
-// When --config is given explicitly, ProjectDir == RootDir(configPath).
+// When --config is given explicitly, ProjectDir normally == RootDir(configPath)
+// — the config file's own directory is assumed to be the project. That
+// assumption breaks for the split platform/project topology (kb.config.jsonc
+// "platform.dir", the same one config.Discover already special-cases for the
+// no-flag path): there, an explicit --config almost always points at the
+// separate platform's devservices.yaml, and callers rely on it (this repo's
+// own CLAUDE.md mandates `--config` for kb-dev start/restart/ensure). If cwd
+// is a project whose kb.config.jsonc platform.dir resolves to that same
+// config's root, cwd is the real project — use it, so KB_PROJECT_ROOT (and
+// anything else keyed off ProjectDir, e.g. per-project .kb/workflows
+// discovery) resolves to the project, not the platform.
 func FindConfig() (config.DiscoverResult, error) {
 	if configPath != "" {
 		if _, err := os.Stat(configPath); err != nil {
 			return config.DiscoverResult{}, fmt.Errorf("config not found: %s", configPath)
 		}
 		rootDir := config.RootDir(configPath)
-		return config.DiscoverResult{ConfigPath: configPath, ProjectDir: rootDir}, nil
+		projectDir := rootDir
+		if cwd, err := os.Getwd(); err == nil {
+			if platformDir := config.FindPlatformDir(cwd); platformDir != "" {
+				if samePath(platformDir, rootDir) {
+					projectDir = cwd
+				}
+			}
+		}
+		return config.DiscoverResult{ConfigPath: configPath, ProjectDir: projectDir}, nil
 	}
 
 	dir, err := os.Getwd()
@@ -137,6 +156,16 @@ func FindConfig() (config.DiscoverResult, error) {
 	}
 
 	return config.Discover(dir)
+}
+
+// samePath reports whether two paths resolve to the same location, ignoring
+// trailing separators and symlink-insensitive formatting differences that
+// filepath.Clean already normalizes (e.g. a path with vs. without a trailing
+// slash). It deliberately does not resolve symlinks (EvalSymlinks) — both
+// inputs here already come from filesystem walks (FindPlatformDir,
+// config.RootDir) that produce consistent forms for the same directory.
+func samePath(a, b string) bool {
+	return filepath.Clean(a) == filepath.Clean(b)
 }
 
 // ShouldCascade returns the resolved cascade behavior.
