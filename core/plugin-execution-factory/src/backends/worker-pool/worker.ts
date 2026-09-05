@@ -5,7 +5,7 @@
  * Handles IPC communication, health checks, and lifecycle.
  */
 
-import { fork, type ChildProcess } from 'node:child_process';
+import { fork, execFileSync, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { randomBytes } from 'node:crypto';
 import type {
@@ -62,6 +62,77 @@ export interface WorkerOptions {
 
 const DEFAULT_STARTUP_TIMEOUT = 10_000;
 const DEFAULT_HEALTH_CHECK_TIMEOUT = 5_000;
+
+/**
+ * Find every live descendant of `rootPid` by walking `ps`'s pid/ppid table,
+ * regardless of process-group membership (a descendant may have been
+ * spawned `detached: true` into its own group — see kill()'s doc comment).
+ * Returns descendants ordered deepest-first, so killing in that order tears
+ * down leaves before their parents.
+ *
+ * Best-effort: `ps` failing (unsupported platform, sandboxing, etc.) yields
+ * an empty list rather than throwing — the caller still SIGKILLs the root
+ * PID itself either way.
+ */
+function listDescendantPids(rootPid: number): number[] {
+  let table: string;
+  try {
+    table = execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' });
+  } catch {
+    return [];
+  }
+
+  const childrenByParent = new Map<number, number[]>();
+  for (const line of table.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) { continue; }
+    const [pidStr, ppidStr] = trimmed.split(/\s+/);
+    const pid = Number(pidStr);
+    const ppid = Number(ppidStr);
+    if (!Number.isFinite(pid) || !Number.isFinite(ppid)) { continue; }
+    const siblings = childrenByParent.get(ppid) ?? [];
+    siblings.push(pid);
+    childrenByParent.set(ppid, siblings);
+  }
+
+  const generations: number[][] = [];
+  let frontier = childrenByParent.get(rootPid) ?? [];
+  while (frontier.length > 0) {
+    generations.push(frontier);
+    const next: number[] = [];
+    for (const pid of frontier) {
+      next.push(...(childrenByParent.get(pid) ?? []));
+    }
+    frontier = next;
+  }
+
+  // Flatten deepest generation first so children die before their parents.
+  const result: number[] = [];
+  for (let i = generations.length - 1; i >= 0; i--) {
+    result.push(...generations[i]!);
+  }
+  return result;
+}
+
+/**
+ * SIGKILL `rootPid` and every live descendant of it (see
+ * listDescendantPids for why this can't just be a process-group kill).
+ * Best-effort per PID — a process that already exited (ESRCH) is ignored.
+ */
+function killProcessTree(rootPid: number): void {
+  for (const pid of listDescendantPids(rootPid)) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      // Already exited between the ps snapshot and the kill — fine.
+    }
+  }
+  try {
+    process.kill(rootPid, 'SIGKILL');
+  } catch {
+    // Already exited.
+  }
+}
 
 /**
  * Worker - manages a single worker subprocess.
@@ -447,13 +518,49 @@ export class Worker extends EventEmitter<WorkerEvents> {
 
   /**
    * Forceful termination.
+   *
+   * Also kills this worker's whole descendant process tree, not just the
+   * single worker-script.js PID.
+   *
+   * Why a plain SIGKILL of `this.process` isn't enough: a governed
+   * shell.exec (node-backend.ts) executed by the handler this worker is
+   * running spawns its subprocess with `detached: true` so ITS OWN
+   * execution-timeout kill can clean up ITS OWN subtree without touching
+   * unrelated processes. But `detached: true` makes that subprocess the
+   * leader of a brand-new process group — it does NOT stay a member of this
+   * worker's process group. That means neither a bare `this.process.kill()`
+   * (single PID) nor even a process-group kill of this worker's own group
+   * (`process.kill(-pid, ...)`, the pattern plugins/workflow/steps/src/
+   * shell.ts uses for its own direct children) reaches it: it already
+   * escaped into a different group by design.
+   *
+   * A `release checks` run is the concrete case this guards: worker-script
+   * runs the checks handler, which shell.execs `release clean install`
+   * per package (detached, own group) — and THAT process itself forks
+   * further worker-pool children. If this worker is killed (e.g. an
+   * execution timeout) while that's in flight, the install process and its
+   * own children were being silently orphaned — left running, consuming
+   * CPU, indefinitely (confirmed in production: ~10 such orphans
+   * accumulated across failed runs).
+   *
+   * Fix: walk the real process tree by ppid (which persists across process
+   * groups) instead of relying on group membership, and SIGKILL every PID
+   * found, deepest descendants first. This works regardless of how many
+   * levels down something else also happens to `detached: true`.
    */
   kill(): void {
     this.transportServer?.stop();
     this.transportServer = null;
 
     if (this.process) {
-      this.process.kill('SIGKILL');
+      const pid = this.process.pid;
+      if (pid) {
+        killProcessTree(pid);
+      } else {
+        // No PID to walk a tree from (process failed to spawn) — fall back
+        // to the plain single-handle kill.
+        this.process.kill('SIGKILL');
+      }
       this.process = null;
     }
 
