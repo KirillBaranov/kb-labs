@@ -19,6 +19,35 @@ import { withLock } from './lock'
  */
 const RUN_TTL_MS = 24 * 60 * 60 * 1000 // 24h
 
+/**
+ * How long a daemon's liveness claim on this shared state store stays valid
+ * without a heartbeat renewal. This answers a completely different question
+ * from `RUN_TTL_MS` above: not "is this run's data still around" but "is the
+ * daemon that owns it still alive". `cleanupStaleRuns` uses ONLY this lease —
+ * never a run's or job's own elapsed running time — to decide whether a
+ * previous daemon instance is genuinely gone. A lease still on file this
+ * recently can only mean some process wrote it within the last
+ * DAEMON_LEASE_TTL_MS; if that process isn't the one calling
+ * `cleanupStaleRuns`, force-failing "running"/"queued" jobs would very likely
+ * be abandoning work a still-live sibling instance owns, not cleaning up
+ * after a dead one. Kept well short of RUN_TTL_MS on purpose — a run/job can
+ * legitimately run for tens of minutes, but no legitimate single daemon
+ * instance should ever go this long without renewing its own lease.
+ */
+export const DAEMON_LEASE_TTL_MS = 45_000 // 45s
+
+/** How often a live daemon should call `writeDaemonLease` to keep its lease
+ * fresh — comfortably under `DAEMON_LEASE_TTL_MS` so a normal GC pause or a
+ * slow cache round-trip never lets the lease lapse on its own. */
+export const DAEMON_LEASE_HEARTBEAT_INTERVAL_MS = 15_000 // 15s
+
+const DAEMON_LEASE_KEY = 'kb:daemon:lease'
+
+export interface DaemonLease {
+  instanceId: string
+  heartbeatAt: string
+}
+
 export class StateStore {
   private readonly cache: ICache
 
@@ -72,6 +101,38 @@ export class StateStore {
     // Score range: -inf to +inf (all runs)
     const runIds = await this.cache.zrangebyscore('workflow:runs:index', -Infinity, Infinity)
     return runIds ?? []
+  }
+
+  /**
+   * Read the current daemon liveness lease, if one is still on file. Returns
+   * null both when no daemon has ever written one and when the last writer's
+   * lease has expired (per `DAEMON_LEASE_TTL_MS`) — the cache backend itself
+   * enforces that expiry, so a non-null result here is proof some process
+   * heartbeated within the last `DAEMON_LEASE_TTL_MS`.
+   */
+  async getDaemonLease(): Promise<DaemonLease | null> {
+    const raw = await this.cache.get<string>(DAEMON_LEASE_KEY)
+    if (!raw) {
+      return null
+    }
+    try {
+      return JSON.parse(raw) as DaemonLease
+    } catch (error) {
+      this.logger.error('Failed to parse stored daemon lease', error instanceof Error ? error : undefined)
+      return null
+    }
+  }
+
+  /**
+   * Claim (or renew) the daemon liveness lease under `instanceId`, valid for
+   * `DAEMON_LEASE_TTL_MS`. Called once at startup after `cleanupStaleRuns`
+   * decides this instance is safe to proceed as the active daemon, and then
+   * periodically for as long as the daemon stays up, so its lease never
+   * lapses while it's genuinely alive.
+   */
+  async writeDaemonLease(instanceId: string): Promise<void> {
+    const lease: DaemonLease = { instanceId, heartbeatAt: new Date().toISOString() }
+    await this.cache.set(DAEMON_LEASE_KEY, JSON.stringify(lease), DAEMON_LEASE_TTL_MS)
   }
 
   /**

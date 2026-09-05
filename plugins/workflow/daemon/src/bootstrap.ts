@@ -4,7 +4,11 @@
  */
 
 import { makeAssemblyHook } from "@kb-labs/plugin-runtime";
-import { WorkflowEngine, WorkflowService } from "@kb-labs/workflow-engine";
+import {
+  WorkflowEngine,
+  WorkflowService,
+  DAEMON_LEASE_HEARTBEAT_INTERVAL_MS,
+} from "@kb-labs/workflow-engine";
 import { getListenOptions } from "@kb-labs/shared-http";
 import { runService } from "@kb-labs/shared-daemon";
 import { createWorkflowWorker } from "./worker.js";
@@ -127,6 +131,20 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
       );
       await engine.cleanupStaleRuns();
 
+      // Keep this instance's daemon liveness lease fresh for as long as the
+      // process stays up — cleanupStaleRuns (on any future daemon launch
+      // against this same store, including a stray/duplicate one) uses a
+      // still-fresh lease under a different instanceId as its sole signal
+      // that it must not touch this daemon's runs.
+      const leaseHeartbeat = setInterval(() => {
+        engine.renewDaemonLease().catch((error) => {
+          bootstrapLogger.warn("Failed to renew daemon liveness lease", {
+            err: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }, DAEMON_LEASE_HEARTBEAT_INTERVAL_MS);
+      leaseHeartbeat.unref?.();
+
       bootstrapLogger.info("Resuming interrupted jobs");
       await engine.resumeInterruptedJobs();
 
@@ -233,6 +251,7 @@ export async function bootstrap(_cwd: string = process.cwd()): Promise<void> {
 
       return async () => {
         bootstrapLogger.warn("Stopping workflow daemon components");
+        clearInterval(leaseHeartbeat);
         fileWatcher.close();
         await cronScheduler.stop();
         await worker.stop();

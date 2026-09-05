@@ -968,6 +968,134 @@ describe('WorkflowEngine', () => {
     });
   });
 
+  describe('cleanupStaleRuns — daemon liveness lease guards against false "restart" positives', () => {
+    // Regression coverage for a real incident: a `release-prepare` run's
+    // Checks job, still genuinely alive under its original daemon process
+    // (same PID the whole session, one single startup sequence in its logs),
+    // got force-failed mid-step with error "Daemon restarted — run was
+    // abandoned" — even though that daemon never restarted. The only way
+    // that message can be produced is `cleanupStaleRuns`, which (before this
+    // fix) treated simply being *called* as sufficient proof of a restart,
+    // with no check for whether some other, still-alive process actually
+    // owned the run it was about to force-fail. These tests simulate that
+    // exact shape: a second `WorkflowEngine` instance sharing the same
+    // underlying state store as a live one.
+
+    const plainSpec: WorkflowSpec = {
+      name: 'Plain Workflow',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        main: {
+          runsOn: 'local',
+          steps: [{ name: 'Step 1', uses: 'builtin:shell', with: { run: 'echo hi' } }],
+        },
+      },
+    };
+
+    it('does NOT abandon a job under a fresh daemon liveness lease held by a ' +
+      'different, still-alive instance — the false-positive this fix closes. ' +
+      'A long-running job under the SAME live daemon instance must never be ' +
+      'declared abandoned just because some process (here, a second engine ' +
+      'against the same store — modeling a stray/duplicate daemon launch) ' +
+      'happens to run its own startup sweep.', async () => {
+      const liveDaemon = new WorkflowEngine({
+        cache,
+        events,
+        logger,
+        instanceId: 'daemon-live',
+      });
+
+      const run = await liveDaemon.createRun({ spec: plainSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      await liveDaemon.markJobStarted(run.id, job.id); // genuinely still running
+
+      // The live daemon heartbeats its lease, exactly as bootstrap.ts's
+      // periodic renewDaemonLease() call does for as long as it's up.
+      await liveDaemon.renewDaemonLease();
+
+      // A second daemon instance boots against the SAME shared state store
+      // (e.g. a stray/duplicate launch) and runs its own one-time cleanup.
+      const strayLogger = mockLogger();
+      const strayDaemon = new WorkflowEngine({
+        cache,
+        events,
+        logger: strayLogger,
+        instanceId: 'daemon-stray',
+      });
+
+      await strayDaemon.cleanupStaleRuns();
+
+      const afterStrayBoot = await liveDaemon.getRun(run.id);
+      expect(afterStrayBoot!.status).toBe('running');
+      expect(afterStrayBoot!.jobs[0]!.status).toBe('running');
+      expect(afterStrayBoot!.jobs[0]!.error).toBeUndefined();
+
+      expect(strayLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('daemon liveness lease held by a different instance is still fresh'),
+        undefined,
+        expect.objectContaining({ thisInstanceId: 'daemon-stray', otherInstanceId: 'daemon-live' }),
+      );
+    });
+
+    it('still abandons a genuinely orphaned job once the previous instance\'s ' +
+      'lease is actually gone — a real restart succeeding a truly-dead daemon ' +
+      'must keep cleaning up orphaned runs exactly as before.', async () => {
+      const crashedDaemon = new WorkflowEngine({
+        cache,
+        events,
+        logger,
+        instanceId: 'daemon-crashed',
+      });
+
+      const run = await crashedDaemon.createRun({ spec: plainSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      await crashedDaemon.markJobStarted(run.id, job.id);
+      await crashedDaemon.renewDaemonLease();
+
+      // The crashed daemon's lease has since expired (TTL lapsed with no
+      // renewal — nothing is heartbeating it any more). Simulate that by
+      // removing the lease key directly from the shared cache, the same
+      // outcome the real TTL produces once the owning process is truly gone.
+      await cache.delete('kb:daemon:lease');
+
+      const restartedDaemon = new WorkflowEngine({
+        cache,
+        events,
+        logger,
+        instanceId: 'daemon-restarted',
+      });
+
+      await restartedDaemon.cleanupStaleRuns();
+
+      const afterRestart = await restartedDaemon.getRun(run.id);
+      expect(afterRestart!.status).toBe('failed');
+      expect(afterRestart!.jobs[0]!.status).toBe('failed');
+      expect(afterRestart!.jobs[0]!.error).toMatchObject({
+        message: 'Daemon restarted — run was abandoned',
+      });
+    });
+
+    it('a daemon calling cleanupStaleRuns again under its OWN instanceId (the ' +
+      'lease it just wrote itself) is not mistaken for a different instance, ' +
+      'and still correctly abandons a job started under its own watch', async () => {
+      await engine.cleanupStaleRuns(); // first call: no prior lease, proceeds, claims the lease
+
+      // Started AFTER this instance already claimed the lease — a real
+      // hypothetical second cleanup pass from the SAME instance must still
+      // be able to proceed (own lease, not "a different instance") and treat
+      // this the same as any other genuinely abandoned running job.
+      const run = await engine.createRun({ spec: plainSpec, trigger: { type: 'manual' } });
+      const job = run.jobs[0]!;
+      await engine.markJobStarted(run.id, job.id);
+
+      await engine.cleanupStaleRuns();
+
+      const afterSecondPass = await engine.getRun(run.id);
+      expect(afterSecondPass!.jobs[0]!.status).toBe('failed');
+    });
+  });
+
   describe('resolveApproval guards against a stale/reopened approval', () => {
     const approvalSpec: WorkflowSpec = {
       name: 'Approval Workflow',

@@ -51,11 +51,21 @@ export interface WorkflowEngineOptions {
   snapshotManager?: ISnapshotManager
   /** Workspace root (monorepo root) - used for plugin execution context */
   workspaceRoot?: string
+  /**
+   * Unique identifier for this daemon/engine process, used by
+   * `cleanupStaleRuns` to tell "genuinely a different daemon instance" apart
+   * from "this same instance calling in again". Defaults to a fresh
+   * `randomUUID()` per engine — override only in tests that need to assert
+   * on a known id or simulate two instances against the same store.
+   */
+  instanceId?: string
 }
 
 export class WorkflowEngine {
   readonly loader: WorkflowLoader
   readonly maxWorkflowDepth: number
+  /** See `WorkflowEngineOptions.instanceId`. */
+  readonly instanceId: string
 
   private readonly logger: EngineLogger
   private readonly analytics?: IAnalytics
@@ -69,6 +79,7 @@ export class WorkflowEngine {
   constructor(private readonly options: WorkflowEngineOptions) {
     this.logger = options.logger
     this.analytics = options.analytics
+    this.instanceId = options.instanceId ?? randomUUID()
 
     this.stateStore = new StateStore(options.cache, this.logger)
     this.concurrency = new ConcurrencyManager(
@@ -985,14 +996,57 @@ export class WorkflowEngine {
   }
 
   /**
+   * Renew this instance's daemon liveness lease. Call once cleanupStaleRuns
+   * has decided this instance is safe to proceed, then periodically (see
+   * `DAEMON_LEASE_HEARTBEAT_INTERVAL_MS`) for as long as the daemon stays
+   * up — a live daemon's lease must never lapse, since `cleanupStaleRuns`
+   * treats a lapsed lease as proof its owner is genuinely gone.
+   */
+  async renewDaemonLease(): Promise<void> {
+    await this.stateStore.writeDaemonLease(this.instanceId)
+  }
+
+  /**
    * Mark stale running/queued jobs as failed on daemon startup — their
    * executor process is gone, so they're unrecoverable. The run itself is
    * only finalized as 'failed' if nothing else could still complete it;
    * a run with one abandoned job and one job legitimately parked on a human
    * approval or a child workflow stays 'running' (only the abandoned job is
    * failed) until the parked one resolves.
+   *
+   * Before touching anything, this checks the shared daemon liveness lease
+   * (see `StateStore.getDaemonLease`/`writeDaemonLease`). Being CALLED is not
+   * by itself evidence of a restart — that's exactly what let a stray or
+   * duplicate daemon process (e.g. a second launch racing a daemon that never
+   * actually restarted) force-fail a genuinely in-flight run out from under
+   * a still-alive sibling instance, purely because it, too, executed its own
+   * one-time startup sweep against the same shared state store. A lease still
+   * fresh under a DIFFERENT instanceId is real, recent (within
+   * `DAEMON_LEASE_TTL_MS`) evidence that some other process is currently
+   * alive and heartbeating — in that case this pass must not run at all, no
+   * matter how long any individual job has been "running": elapsed job
+   * runtime is never a substitute for genuine restart evidence, and is not
+   * even consulted here.
    */
   async cleanupStaleRuns(): Promise<void> {
+    const priorLease = await this.stateStore.getDaemonLease()
+    if (priorLease && priorLease.instanceId !== this.instanceId) {
+      this.logger.error(
+        'cleanupStaleRuns: a daemon liveness lease held by a different instance is still fresh — ' +
+          'skipping stale-run cleanup entirely to avoid abandoning runs that may genuinely still be ' +
+          'in flight under that instance. If no other workflow daemon is actually running, this lease ' +
+          'is simply stale past its own restart window and the next daemon start will clean up normally.',
+        undefined,
+        {
+          thisInstanceId: this.instanceId,
+          otherInstanceId: priorLease.instanceId,
+          otherHeartbeatAt: priorLease.heartbeatAt,
+        },
+      )
+      return
+    }
+    await this.stateStore.writeDaemonLease(this.instanceId)
+
     const runIds = await this.stateStore.getAllRunIds()
     const now = new Date().toISOString()
     let count = 0
