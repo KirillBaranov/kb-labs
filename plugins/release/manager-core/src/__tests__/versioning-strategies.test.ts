@@ -139,4 +139,32 @@ describe('applyVersionStrategy lockstep — idempotent retry', () => {
     expect(() => applyVersionStrategy(packages, { strategy: 'lockstep' }))
       .toThrow(/conflicting already-resolved versions/);
   });
+
+  // Regression: getMaxBump() used to start its floor at 'patch', so a
+  // lockstep group where every package resolved to 'none' (no commits since
+  // its last release tag — e.g. re-planning at an already-tagged commit)
+  // still got force-bumped by one patch instead of staying put. See the
+  // matching fix in planner.ts's detectVersionFromCommits().
+  it('does not bump at all when every package in the group resolved to "none"', () => {
+    const packages = [
+      pkg({ name: '@kb-labs/a', currentVersion: '2.119.0', nextVersion: '2.119.0', bump: 'none' }),
+      pkg({ name: '@kb-labs/b', currentVersion: '2.119.0', nextVersion: '2.119.0', bump: 'none' }),
+    ];
+
+    const result = applyVersionStrategy(packages, { strategy: 'lockstep' });
+
+    expect(result.map(p => p.nextVersion)).toEqual(['2.119.0', '2.119.0']);
+    expect(result.every(p => p.bump === 'none')).toBe(true);
+  });
+
+  it('still bumps the whole group when at least one package has a real bump alongside "none" packages', () => {
+    const packages = [
+      pkg({ name: '@kb-labs/a', currentVersion: '2.119.0', nextVersion: '2.119.0', bump: 'none' }),
+      pkg({ name: '@kb-labs/b', currentVersion: '2.119.0', nextVersion: '2.119.0', bump: 'patch' }),
+    ];
+
+    const result = applyVersionStrategy(packages, { strategy: 'lockstep' });
+
+    expect(result.map(p => p.nextVersion)).toEqual(['2.119.1', '2.119.1']);
+  });
 });

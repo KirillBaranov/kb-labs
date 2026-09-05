@@ -87,6 +87,20 @@ function applyLockstep(packages: PackageVersion[]): PackageVersion[] {
     return semver.gt(pkg.currentVersion, max) ? pkg.currentVersion : max;
   }, packages[0]!.currentVersion); // ! safe: length already checked
 
+  // No package in the lockstep group had any commits since its last release
+  // tag ('none') — nothing to release, so the shared version must stay
+  // exactly where it is. Previously getMaxBump() had no 'none' floor (it
+  // started at 'patch'), so an all-unchanged lockstep group still bumped a
+  // patch on every re-plan — e.g. re-running `release version` against a
+  // commit that's already tagged at the target version.
+  if (maxBump === 'none') {
+    return packages.map(pkg => ({
+      ...pkg,
+      bump: 'none' as const,
+      nextVersion: maxVersion,
+    }));
+  }
+
   // Compute next version from max version + max bump
   // Filter out 'auto' since semver.inc expects ReleaseType
   const releaseType = maxBump === 'auto' ? 'patch' : maxBump;
@@ -143,10 +157,17 @@ export function applyCanarySuffix(packages: PackageVersion[], shortSha: string):
 /**
  * Get the maximum bump level from a list of packages
  *
- * Priority: major > minor > patch
+ * Priority: major > minor > patch > none
+ *
+ * Starts at 'none', not 'patch': a lockstep group where every package
+ * resolved to 'none' (no commits since its last release tag) must not be
+ * force-bumped to a patch — that floor previously made lockstep re-plans of
+ * an already-tagged, unchanged commit always advance the version by one
+ * patch (see applyLockstep()'s 'none' branch, and the matching fix in
+ * planner.ts's detectVersionFromCommits()).
  */
 function getMaxBump(packages: PackageVersion[]): VersionBump {
-  let maxBump: VersionBump = 'patch';
+  let maxBump: VersionBump = 'none';
 
   for (const pkg of packages) {
     if (pkg.bump === 'major') {
@@ -154,6 +175,16 @@ function getMaxBump(packages: PackageVersion[]): VersionBump {
     }
     if (pkg.bump === 'minor') {
       maxBump = 'minor';
+    }
+    if (pkg.bump === 'patch' && maxBump !== 'minor') {
+      maxBump = 'patch';
+    }
+    if (pkg.bump === 'auto' && maxBump === 'none') {
+      // Defensive: an unresolved 'auto' bump should never reach here (the
+      // planner always resolves 'auto' to a concrete level before strategy
+      // application), but treat it as at least a patch rather than silently
+      // dropping to 'none'.
+      maxBump = 'patch';
     }
   }
 

@@ -21,7 +21,7 @@ export interface ReleaseShell {
 
 export type ReleaseStage = 'planning' | 'checking' | 'versioning' | 'publishing' | 'verifying' | 'rollback';
 
-export type VersionBump = 'patch' | 'minor' | 'major' | 'auto';
+export type VersionBump = 'patch' | 'minor' | 'major' | 'auto' | 'none';
 
 /**
  * Release track. Orthogonal to VersionBump — bump decides how much to

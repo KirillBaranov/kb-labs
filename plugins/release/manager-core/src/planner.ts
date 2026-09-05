@@ -543,8 +543,18 @@ async function computeNextVersion(
 ): Promise<string> {
   if (bump === 'auto') {
     const detectedBump = await detectVersionFromCommits(git, packagePath, gitCwd, pkgName, flowTagGlob);
+    // No commits since the last matching release tag — most commonly because
+    // HEAD *is* the last release tag (e.g. a CI job re-running `release
+    // version` against an already-tagged, already-committed release commit,
+    // such as the "Apply planned package versions" step in
+    // release-build-candidate.yml). There is nothing to bump: inventing a
+    // patch bump here would silently re-version a release that was already
+    // planned, committed, and tagged. See versioning-strategies.ts's
+    // getMaxBump()/applyLockstep() for the matching lockstep-side handling.
+    if (detectedBump === 'none') {return currentVersion;}
     return semver.inc(currentVersion, detectedBump) || currentVersion;
   }
+  if (bump === 'none') {return currentVersion;}
   return semver.inc(currentVersion, bump) || currentVersion;
 }
 
@@ -554,10 +564,19 @@ async function detectVersionFromCommits(
   gitCwd: string,
   pkgName: string,
   flowTagGlob?: string,
-): Promise<'major' | 'minor' | 'patch'> {
+): Promise<'major' | 'minor' | 'patch' | 'none'> {
   try {
     const relPath = relative(resolve(gitCwd), resolve(packagePath));
     const messages = await getCommitsSinceTag(git, pkgName, relPath, flowTagGlob);
+
+    // Zero commits since the last release tag means nothing changed for this
+    // package since it was last released — 'auto' must not invent a bump out
+    // of thin air (previously this defaulted to 'patch', which is what
+    // produced e.g. 2.119.0 -> 2.119.1 when re-planning at the exact tagged
+    // commit: `getCommitsSinceTag` found the just-created tag as "last
+    // release tag", the range against HEAD was empty, and the old fallback
+    // still returned 'patch').
+    if (messages.length === 0) {return 'none';}
 
     let hasMinor = false;
     let hasBreaking = false;
@@ -580,6 +599,9 @@ async function detectVersionFromCommits(
 }
 
 function detectBumpType(currentVersion: string, nextVersion: string): VersionBump {
+  if (currentVersion === nextVersion) {
+    return 'none';
+  }
   if (semver.major(currentVersion) < semver.major(nextVersion)) {
     return 'major';
   }

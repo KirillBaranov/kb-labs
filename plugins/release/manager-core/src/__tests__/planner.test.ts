@@ -304,3 +304,69 @@ describe('planRelease — idempotent re-plan after external bump', () => {
     }
   });
 });
+
+// ─── auto-bump at an already-tagged, already-committed release commit ────────
+//
+// Regression for the real incident this reproduces: `release-build-candidate.yml`
+// checks out the EXACT commit `release-prepare` already committed and tagged
+// (e.g. `platform-v2.119.0`), then runs `pnpm kb release version --flow
+// platform --json` with NO `--bump` flag (defaults to 'auto') to "apply
+// planned package versions". At that checkout, HEAD's package.json and disk's
+// package.json are identical (nothing to trust-disk-over), and the newest
+// matching release tag IS the checked-out commit itself, so there are zero
+// commits in the `<tag>..HEAD` range. The old `detectVersionFromCommits()`
+// defaulted an empty commit range to 'patch' (instead of "nothing to bump"),
+// and lockstep's `getMaxBump()` floored at 'patch' even when every package
+// resolved to 'none' — together they silently re-bumped an already-released,
+// unchanged commit by one patch (2.119.0 -> 2.119.1), which then failed
+// "Verify sealed platform version" against the tag/plan's 2.119.0.
+describe('planRelease — auto bump at an already-tagged commit (idempotent CI re-run)', () => {
+  it('does not invent a bump when HEAD is exactly the last matching release tag (independent strategy)', async () => {
+    const root = realpathSync(makeTmpMonorepo([{ name: '@scope/alpha', version: '2.119.0' }]));
+    try {
+      execSync('git add -A && git commit -q -m "chore(release): publish alpha"', { cwd: root });
+      execSync('git tag myflow-v2.119.0', { cwd: root });
+
+      // No further commits — this IS the tagged commit, exactly like the CI
+      // "checkout exact intent commit" step. Under the independent strategy,
+      // detectModifiedPackages() drops packages with no uncommitted changes
+      // and no commits since their last tag before bump computation even
+      // runs, so the package legitimately does not appear in the plan at
+      // all — there is nothing to bump, which is the same "no invented
+      // bump" property the lockstep case below asserts more directly.
+      const plan = await planRelease({
+        cwd: root,
+        config: { flows: { myflow: {} } },
+        flow: 'myflow',
+        // No bumpOverride — mirrors the CI workflow step, which passes no
+        // --bump flag and so falls through to 'auto'.
+      });
+
+      expect(plan.packages).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not invent a bump when HEAD is exactly the last matching release tag (lockstep strategy)', async () => {
+    const root = realpathSync(makeTmpMonorepo([
+      { name: '@scope/alpha', version: '2.119.0' },
+      { name: '@scope/beta', version: '2.119.0' },
+    ]));
+    try {
+      execSync('git add -A && git commit -q -m "chore(release): publish 2 packages"', { cwd: root });
+      execSync('git tag platform-v2.119.0', { cwd: root });
+
+      const plan = await planRelease({
+        cwd: root,
+        config: { flows: { platform: { versioningStrategy: 'lockstep' } } },
+        flow: 'platform',
+      });
+
+      expect(plan.packages.map(p => p.nextVersion)).toEqual(['2.119.0', '2.119.0']);
+      expect(plan.packages.every(p => p.bump === 'none')).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
