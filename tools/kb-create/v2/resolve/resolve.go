@@ -202,9 +202,18 @@ func provides(adapter catalog.Adapter, capability string) bool {
 	return false
 }
 func uniqueArtifacts(values []contracts.Artifact) []contracts.Artifact {
+	// Keying on Kind+ID+Version alone silently collapses two genuinely
+	// different npm packages whenever they happen to compute the same
+	// catalog ID (for example a service package like @kb-labs/marketplace-app,
+	// whose id is its declared service id "marketplace", and an unrelated CLI
+	// plugin entry like @kb-labs/marketplace-entry, whose id falls back to
+	// "marketplace" once idFor strips the "-entry" suffix in
+	// prepare-release-index.mjs). Package is the actual installation unit, so
+	// it must be part of the uniqueness key: without it, one of the two
+	// packages simply never gets installed, and its service never starts.
 	seen := map[string]contracts.Artifact{}
 	for _, v := range values {
-		seen[v.Kind+"/"+v.ID+"@"+v.Version] = v
+		seen[v.Kind+"/"+v.ID+"@"+v.Version+"#"+v.Package] = v
 	}
 	result := make([]contracts.Artifact, 0, len(seen))
 	for _, v := range seen {
@@ -325,7 +334,11 @@ func compatible(rangeValue, version, name string) error {
 	return incompatible(name, version, "does not satisfy declared range "+rangeValue)
 }
 func incompatible(subject, value, reason string) error {
-	return launcherError(contracts.CodeIncompatibleComponents, subject+" "+value+" is incompatible: "+reason, map[string]string{"subject": subject, "value": value})
+	label := subject
+	if value != "" {
+		label = subject + " " + value
+	}
+	return launcherError(contracts.CodeIncompatibleComponents, label+" is incompatible: "+reason, map[string]string{"subject": subject, "value": value})
 }
 func launcherError(code, message string, details map[string]string) error {
 	return &contracts.LauncherError{Code: code, Stage: contracts.StageResolve, Message: message, Hint: "Choose compatible versions or pass an explicit supported provider.", Details: details}

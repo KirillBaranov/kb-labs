@@ -10,10 +10,66 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 )
+
+// packageTagPattern matches the immutable candidate tag the delivery workflow
+// stamps on every publish: "candidate-<flow>-<version>-<channel>-<sha>" (for
+// example "candidate-platform-2.119.0-stable-30310c8f10a2"). The channel
+// segment is release-deliver-candidate.yml's *build* channel input — which is
+// embedded in the candidate/tag identity before the delivery job later
+// chooses a rollout target — and it is also the only channel the sealed
+// release index actually declares (see prepare-release-index.mjs, which
+// writes `channels: { [buildChannel]: version }`). The smoke test must
+// resolve against that same channel; requesting a different one always fails
+// resolve with KB_CREATE_INCOMPATIBLE_COMPONENTS because the release index
+// simply has no entry for it.
+var packageTagPattern = regexp.MustCompile(`^candidate-(?:platform|sdk)-\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?-(canary|stable)-[0-9a-f]+$`)
+
+// channelFromPackageTag extracts the release channel encoded in a
+// KB_CREATE_PACKAGE_TAG-style candidate tag. It returns "" when the tag is
+// empty or does not match the expected shape, letting the caller fall back to
+// a sane default instead of resolving against a fabricated channel.
+func channelFromPackageTag(tag string) string {
+	match := packageTagPattern.FindStringSubmatch(tag)
+	if match == nil {
+		return ""
+	}
+	return match[1]
+}
+
+// TestChannelFromPackageTagMatchesDeliveredCandidateFormat guards against a
+// regression to the bug this file previously shipped: the smoke test used to
+// hardcode "--platform-channel canary" regardless of the candidate actually
+// under test, so a real build delivered under a "stable" candidate tag (e.g.
+// v2.119.0-binaries / candidate-platform-2.119.0-stable-30310c8f10a2, whose
+// published release-index.json declares only "stable" in its channels map)
+// made resolve.Plan fail closed with KB_CREATE_INCOMPATIBLE_COMPONENTS and an
+// empty subject value, because "canary" was never a key in that index at all.
+func TestChannelFromPackageTagMatchesDeliveredCandidateFormat(t *testing.T) {
+	cases := []struct {
+		name string
+		tag  string
+		want string
+	}{
+		{name: "real stable candidate from v2.119.0-binaries", tag: "candidate-platform-2.119.0-stable-30310c8f10a2", want: "stable"},
+		{name: "canary candidate", tag: "candidate-platform-2.119.0-canary-30310c8f10a2", want: "canary"},
+		{name: "sdk flow", tag: "candidate-sdk-1.2.3-canary-abcdef0123456789", want: "canary"},
+		{name: "prerelease version segment", tag: "candidate-platform-2.119.0-rc.1-stable-30310c8f10a2", want: "stable"},
+		{name: "empty tag falls back to caller default", tag: "", want: ""},
+		{name: "unrecognized shape falls back to caller default", tag: "not-a-candidate-tag", want: ""},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := channelFromPackageTag(testCase.tag); got != testCase.want {
+				t.Fatalf("channelFromPackageTag(%q) = %q, want %q", testCase.tag, got, testCase.want)
+			}
+		})
+	}
+}
 
 func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if testing.Short() {
@@ -51,7 +107,17 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"apply", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict"}
+	// The sealed release index only declares the channel the candidate was
+	// actually built under (see channelFromPackageTag above), which need not
+	// be "canary" — resolve.Plan fails closed with an empty subject value
+	// whenever the requested channel is absent from the index, so requesting
+	// a channel the index doesn't have is not a resolvable configuration.
+	channel := channelFromPackageTag(os.Getenv("KB_CREATE_PACKAGE_TAG"))
+	if channel == "" {
+		channel = "canary"
+	}
+
+	args := []string{"apply", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", channel, "--policy", "strict"}
 	if registry := os.Getenv("KB_REGISTRY_URL"); registry != "" {
 		args = append(args, "--registry", registry)
 	}
@@ -66,7 +132,7 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if output, code := run(t, launcher, "status", "--platform-root", platform); code != 0 {
 		t.Fatalf("V2 status exited %d:\n%s", code, output)
 	}
-	updateOutput, updateCode := run(t, launcher, "update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", "canary", "--policy", "strict")
+	updateOutput, updateCode := run(t, launcher, "update", "--index", index, "--request-platform-root", platform, "--project-root", project, "--platform-channel", channel, "--policy", "strict")
 	if updateCode != 0 {
 		t.Fatalf("V2 update exited %d: %s", updateCode, updateOutput)
 	}

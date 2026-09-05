@@ -57,6 +57,42 @@ func TestPlanInstallsPlatformMembersAtomically(t *testing.T) {
 	}
 }
 
+// TestPlanKeepsPlatformMembersThatShareACatalogID guards against a real
+// regression found in the v2.119.0-binaries release: prepare-release-index.mjs
+// derives a member's catalog ID either from its declared service id (e.g.
+// @kb-labs/marketplace-app -> "marketplace") or, for non-service packages,
+// from its npm package name with a trailing "-entry" stripped (e.g.
+// @kb-labs/marketplace-entry -> "marketplace"). Two unrelated packages can
+// therefore legitimately share one catalog ID. uniqueArtifacts used to key
+// solely on Kind+ID+Version, so the second package silently vanished from
+// the resolved plan and its service never got installed — reproduced locally
+// against the real published release-index.json, where @kb-labs/marketplace-app
+// and @kb-labs/workflow-daemon were dropped in favor of @kb-labs/marketplace-entry
+// and @kb-labs/workflow-entry.
+func TestPlanKeepsPlatformMembersThatShareACatalogID(t *testing.T) {
+	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelStable: "2.0.0"}, Platforms: []catalog.PlatformBundle{{
+		ID: "platform", Version: "2.0.0", Package: "@kb/platform", Tarball: "https://example.test/platform.tgz", SHA256: "platform",
+		Members: []catalog.Component{
+			{ID: "marketplace", Version: "2.0.0", Package: "@kb-labs/marketplace-app", Tarball: "https://example.test/marketplace-app.tgz", SHA256: "app"},
+			{ID: "marketplace", Version: "2.0.0", Package: "@kb-labs/marketplace-entry", Tarball: "https://example.test/marketplace-entry.tgz", SHA256: "entry"},
+		},
+		Profiles: map[string]contracts.ServiceGraph{"default": {}},
+	}}}
+	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x"}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packages := map[string]bool{}
+	for _, artifact := range plan.Artifacts {
+		if artifact.Kind == "platform-member" {
+			packages[artifact.Package] = true
+		}
+	}
+	if !packages["@kb-labs/marketplace-app"] || !packages["@kb-labs/marketplace-entry"] {
+		t.Fatalf("expected both same-ID members to survive dedup, got artifacts = %#v", plan.Artifacts)
+	}
+}
+
 func TestPlanTargetsReleaseManagedBinaryByLogicalID(t *testing.T) {
 	source := catalog.Catalog{Channels: map[contracts.Channel]string{contracts.ChannelCanary: "2.0.0-canary.abc123456"}, Platforms: []catalog.PlatformBundle{{ID: "platform", Version: "2.0.0-canary.abc123456", Package: "@kb/platform", SHA256: "platform", Profiles: map[string]contracts.ServiceGraph{"default": {}}, Binaries: []catalog.Binary{{ID: "kb-dev", OS: "linux", Arch: "amd64", URL: "https://example.test/kb-dev-linux-amd64", Filename: "kb-dev-linux-amd64", SHA256: "binary"}}}}}
 	plan, err := Plan(contracts.InstallRequest{PlatformRoot: "/tmp/x", Platform: contracts.VersionSelector{Channel: contracts.ChannelCanary}}, source)
