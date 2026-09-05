@@ -137,6 +137,12 @@ jobs:
         env:
           RELEASE_PLAN_PATH: "${{ steps.plan.outputs.planPath }}"
           KB_RELEASE_STAGING_REGISTRY: "${{ steps.stage.outputs.stagingRegistry }}"
+          # release-manager-cli's own governed-process quota (manifest.ts) defaults to
+          # 1800000ms (30min) and fires independently of this step's 7200000ms timeoutMs —
+          # without this, the CLI's inner quota kills the checks process silently at 30min
+          # while this step's outer timeout (meant to be the real ceiling) never gets a
+          # chance to matter. Match the two so the step-level budget above is authoritative.
+          KB_RELEASE_CHECKS_TIMEOUT_MS: "7200000"
         run: pnpm kb release checks --flow ${{ inputs.flow }} --json
 
       - name: Prepare release review
