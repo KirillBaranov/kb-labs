@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/review-entry",
-  "version": "2.118.2",
+  "version": "2.119.0",
   "description": "CLI commands and manifest for the AI code review plugin",
   "type": "module",
   "exports": {
