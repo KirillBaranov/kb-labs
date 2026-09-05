@@ -197,7 +197,7 @@ jobs:
         phase: prepare
         if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
-        run: pnpm kb release version --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --json
+        run: pnpm kb release version --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --channel ${{ inputs.channel }} --json
 
       - name: Verify release branch before git operations
         id: git-branch
@@ -216,7 +216,7 @@ jobs:
         phase: git
         if: ${{ inputs.channel == 'stable' }}
         timeoutMs: 1200000
-        run: pnpm kb release git --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --json
+        run: pnpm kb release git --flow ${{ inputs.flow }} --bump ${{ inputs.bump }} --channel ${{ inputs.channel }} --json
 
       - name: Build immutable candidate in controlled CI
         id: candidate

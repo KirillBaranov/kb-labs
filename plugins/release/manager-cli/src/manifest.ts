@@ -628,6 +628,12 @@ export const manifest = {
             default: 'auto',
             description: 'Version bump override',
           },
+          channel: {
+            type: 'string',
+            choices: ['stable', 'canary'] as const,
+            default: 'stable',
+            description: 'Release channel — must match the channel `release plan` used, so a stale/rejected persisted plan is recomputed under the same channel instead of silently falling back to stable',
+          },
           'dry-run': { type: 'boolean', description: 'Show what would be bumped without writing' },
           json: { type: 'boolean', description: 'Output in JSON format' },
         }),
@@ -635,6 +641,7 @@ export const manifest = {
         examples: [
           'kb release version',
           'kb release version --bump minor',
+          'kb release version --channel canary',
           'kb release version --dry-run',
           'kb release version --scope platform --json',
         ],
@@ -657,6 +664,12 @@ export const manifest = {
             type: 'string',
             choices: ['patch', 'minor', 'major', 'auto'] as const,
             description: 'Version bump override (used to reload plan)',
+          },
+          channel: {
+            type: 'string',
+            choices: ['stable', 'canary'] as const,
+            default: 'stable',
+            description: 'Release channel — must match the channel `release plan`/`release version` used, so a stale/rejected persisted plan is recomputed under the same channel instead of silently falling back to stable',
           },
           'dry-run': { type: 'boolean', description: 'Skip git operations' },
           'no-verify': { type: 'boolean', description: 'Pass --no-verify to git push' },

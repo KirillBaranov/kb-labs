@@ -8,6 +8,7 @@ import {
   planRelease,
   updatePackageVersions,
   type ReleaseConfig,
+  type ReleaseChannel,
   type VersionBump,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -17,6 +18,7 @@ interface VersionFlags {
   scope?: string;
   flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
+  channel?: ReleaseChannel;
   'dry-run'?: boolean;
   json?: boolean;
 }
@@ -68,7 +70,11 @@ export default defineCommand({
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
       const fileConfig = await useConfig<ReleaseConfig>();
-      const config: ReleaseConfig = { ...fileConfig, ...(flags.bump && { bump: flags.bump }) };
+      const config: ReleaseConfig = {
+        ...fileConfig,
+        ...(flags.bump && { bump: flags.bump }),
+        ...(flags.channel && { channel: flags.channel }),
+      };
 
       const plan = await planRelease({
         cwd: repoRoot,
@@ -76,6 +82,7 @@ export default defineCommand({
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        channel: config.channel,
       });
 
       return {
@@ -97,6 +104,7 @@ export default defineCommand({
       const config: ReleaseConfig = {
         ...fileConfig,
         ...(flags.bump && { bump: flags.bump }),
+        ...(flags.channel && { channel: flags.channel }),
       };
 
       const planLoader = useLoader('Planning version bumps...');
@@ -104,12 +112,28 @@ export default defineCommand({
       // `flow` is mandatory here: without it planRelease() falls back to the
       // global package set, and a lockstep strategy then levels EVERY package
       // in the repo — including other flows' — onto this flow's version.
+      //
+      // `channel` must ALSO be threaded through explicitly (not left to
+      // resolvePlan/planRelease's 'stable' default): if the persisted plan.json
+      // is stale relative to the working tree (e.g. a canary run, which never
+      // commits its bumped package.json files back to git — see
+      // release-build-candidate.yml's "Apply planned package versions" step —
+      // so the plan.json checked out for a later commit can legitimately still
+      // reflect an older release), resolvePlan() correctly rejects it and
+      // recomputes fresh via planRelease(). Without an explicit channel here,
+      // that recompute silently defaults to 'stable' and drops the
+      // -canary.<sha> suffix from EVERY package's nextVersion — not just one —
+      // producing a plain version that only gets caught downstream if
+      // something happens to compare that one package's sealed version
+      // against the expected canary version (see prepare-release-index.mjs /
+      // "Verify sealed platform version").
       const { plan, source, reason } = await resolvePlan({
         repoRoot,
         config,
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        channel: config.channel,
         stage: 'pre-bump',
       });
       ctx.platform?.logger?.debug?.('Release plan resolved', { source, reason });

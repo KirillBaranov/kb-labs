@@ -149,7 +149,23 @@ jobs:
         if: inputs.channel != 'stable'
         env:
           FLOW: ${{ inputs.flow }}
-        run: pnpm kb release version --flow "$FLOW" --json
+          CHANNEL: ${{ inputs.channel }}
+        # --channel must be passed explicitly. release:version's resolvePlan()
+        # reuses the plan.json checked out at commit_sha only when it provably
+        # matches the current working tree (see resolve-plan.ts); for canary
+        # that plan.json is NOT guaranteed fresh — canary deliberately skips
+        # the git commit that would carry a just-computed plan forward (see
+        # "Bump versions"/"Commit and tag" in release-prepare.yml, gated on
+        # channel == stable) — so the checked-out artifact can legitimately
+        # still be whatever a previous release cycle last committed. When
+        # resolvePlan rejects it as stale, it recomputes via planRelease()
+        # fresh; without --channel here that recompute silently defaults to
+        # 'stable' and drops the -canary.<sha> suffix from every package's
+        # version, not just one — this is what produced candidate run
+        # 33991804236's "sealed platform version mismatch: 2.119.1 !=
+        # 2.119.1-canary.9dffabc24" (core-runtime was simply the one package
+        # whose version happens to get compared against inputs.version).
+        run: pnpm kb release version --flow "$FLOW" --channel "$CHANNEL" --json
 
       - name: Verify pre-versioned stable candidate
         # For channel == 'stable' this replaces the step above: verify the

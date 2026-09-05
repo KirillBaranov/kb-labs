@@ -9,6 +9,7 @@ import {
   commitAndTagRelease,
   resolveScopePath,
   type ReleaseConfig,
+  type ReleaseChannel,
   type VersionBump,
 } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
@@ -18,6 +19,7 @@ interface GitFlags {
   scope?: string;
   flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
+  channel?: ReleaseChannel;
   'dry-run'?: boolean;
   'no-verify'?: boolean;
   json?: boolean;
@@ -56,7 +58,11 @@ export default defineCommand({
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
       const fileConfig = await useConfig<ReleaseConfig>();
-      const config: ReleaseConfig = { ...fileConfig, ...(flags.bump && { bump: flags.bump }) };
+      const config: ReleaseConfig = {
+        ...fileConfig,
+        ...(flags.bump && { bump: flags.bump }),
+        ...(flags.channel && { channel: flags.channel }),
+      };
 
       const plan = await planRelease({
         cwd: repoRoot,
@@ -64,6 +70,7 @@ export default defineCommand({
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        channel: config.channel,
       });
 
       return {
@@ -90,6 +97,7 @@ export default defineCommand({
       const config: ReleaseConfig = {
         ...fileConfig,
         ...(flags.bump && { bump: flags.bump }),
+        ...(flags.channel && { channel: flags.channel }),
       };
 
       const planLoader = useLoader('Loading release plan...');
@@ -98,12 +106,18 @@ export default defineCommand({
       // sees the versions that step just wrote as the new baseline and bumps a
       // second time, so the tag/commit message land one version ahead of the
       // package.json files being committed.
+      //
+      // `channel` must be threaded through for the same reason as in
+      // version.ts: a resolvePlan() fallback to a fresh planRelease() call
+      // silently defaults to 'stable' (dropping any -canary.<sha> suffix)
+      // unless the caller's own channel is passed along explicitly.
       const { plan, source, reason } = await resolvePlan({
         repoRoot,
         config,
         scope: flags.scope,
         flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
+        channel: config.channel,
         stage: 'post-bump',
       });
       ctx.platform?.logger?.debug?.('Release plan resolved', { source, reason });
