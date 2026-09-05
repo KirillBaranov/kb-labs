@@ -30,7 +30,7 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
   const binaryManifest = join(root, 'binary-manifest.json');
   writeFileSync(binaryManifest, JSON.stringify({ binaries: [{ id: 'kb-create', os: 'linux', arch: 'amd64', url: 'https://example.test/kb-create', filename: 'kb-create-linux-amd64', sha256: 'binary-sha' }] }));
   const output = join(root, 'release-index.json');
-  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--platform-requires', 'serviceTransport', '--platform-adapter-config', '{"serviceTransport":"@kb-labs/adapters-service-transport-http","kvStore":"@kb-labs/adapters-sqlite/kv","llm":"@kb-labs/adapters-openai"}', '--platform-adapter-options', '{"serviceTransport":{"services":{"workflow":{"url":"http://127.0.0.1:7778"}}},"llm":{"apiKey":"${OPENAI_API_KEY}"}}', '--platform-member-packages', '@kb-labs/core-contracts', '--output', output], { stdio: 'pipe' });
+  execFileSync(process.execPath, [script.pathname, '--flow', 'platform', '--channel', 'canary', '--artifacts-dir', stage, '--binary-manifest', binaryManifest, '--platform-requires', 'serviceTransport', '--platform-adapter-config', '{"serviceTransport":"@kb-labs/adapters-service-transport-http","kvStore":"@kb-labs/adapters-sqlite/kv","llm":"@kb-labs/adapters-openai"}', '--platform-adapter-options', '{"serviceTransport":{"services":{"workflow":{"url":"http://127.0.0.1:7778"}}},"llm":{"apiKey":"${OPENAI_API_KEY}"}}', '--platform-member-packages', '@kb-labs/core-contracts,@kb-labs/release-manager-cli', '--output', output], { stdio: 'pipe' });
   const index = JSON.parse(readFileSync(output, 'utf8'));
   assert.equal(index.schema, 'kb.create.release-index/v2');
   assert.equal(index.compatibility.schema, 'kb.release-compatibility/2');
@@ -52,7 +52,16 @@ test('prepares a sealed index from staged plugin, service and adapter manifests'
     { id: 'platform.adapters', path: '/platform/adapters', default: '{"serviceTransport":"@kb-labs/adapters-service-transport-http"}' },
     { id: 'platform.adapterOptions', path: '/platform/adapterOptions', default: '{"serviceTransport":{"services":{"workflow":{"url":"http://127.0.0.1:7778"}}}}' },
   ]);
-  assert.deepEqual(index.platforms[0].members.map(({ package: packageName }) => packageName), ['@kb-labs/workflow-daemon', '@kb-labs/core-contracts', '@kb-labs/adapters-service-transport-http', '@kb-labs/adapters-sqlite', '@kb-labs/adapters-openai']);
+  assert.deepEqual(index.platforms[0].members.map(({ package: packageName }) => packageName), ['@kb-labs/workflow-daemon', '@kb-labs/core-contracts', '@kb-labs/release-manager-cli', '@kb-labs/adapters-service-transport-http', '@kb-labs/adapters-sqlite', '@kb-labs/adapters-openai']);
+  // Regression coverage for the members[]-id divergence bug: this array used
+  // to re-derive each member's catalog id from its package name (falling
+  // back to idFor() whenever the package wasn't a staged service or adapter),
+  // instead of reusing the same normalizedID already written into that
+  // package's own kb-create.manifest.json. For @kb-labs/release-manager-cli
+  // that produced "release-manager-cli" here but "release" in the shipped
+  // manifest file, so installed.Load()'s id equality check failed at publish
+  // time with a misleading "does not match resolved artifact" error.
+  assert.equal(index.platforms[0].members.find(m => m.package === '@kb-labs/release-manager-cli')?.id, 'release');
   assert.deepEqual(index.adapters.find(adapter => adapter.id === 'pino-logger')?.provides, ['logger']);
   // Regression coverage for the capability-derivation bug: lowercasing every
   // capital letter in the interface name (instead of just the leading run)

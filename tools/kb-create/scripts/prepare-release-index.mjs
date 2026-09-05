@@ -187,6 +187,18 @@ const component = (item, manifest, id = item.name.split('/').pop().replace(/-ent
 const services = [];
 const plugins = [];
 const adapters = [];
+// Single source of truth for each staged package's normalized catalog ID.
+// The platform `members[]` array (built below, after this loop) MUST reuse
+// these exact same IDs rather than re-deriving them from packageName via
+// idFor()/-entry stripping — a plugin's own kb.plugin/3 manifest is the
+// source of truth for its ID (see pluginIdFor's doc comment), and package
+// names don't reliably follow that id (e.g. @kb-labs/release-manager-cli's
+// manifest declares id "@kb-labs/release"). Re-deriving IDs independently
+// for members caused the release index to write "release-manager-cli" as
+// that member's id while the package's own kb-create.manifest.json (written
+// below using normalizedID) shipped "release" — a divergence that failed
+// installed.Load()'s id equality check at publish time.
+const normalizedIdByPackage = new Map();
 for (const item of stage) {
   const manifest = manifestFor(item) ?? adapterOverrides[item.name];
   const normalizedID = item.name === platformPackage
@@ -200,6 +212,7 @@ for (const item of stage) {
         : manifest?.schema === 'kb.plugin/3'
           ? pluginIdFor(manifest, item.name)
         : idFor(item.name);
+  normalizedIdByPackage.set(item.name, normalizedID);
   const generatedRequirements = item.name === platformPackage
     ? [
         ...(portablePlatformAdapterConfig ? [{ id: 'platform.adapters', path: '/platform/adapters', default: portablePlatformAdapterConfig }] : []),
@@ -285,9 +298,7 @@ const exportValue = {
     ])].map(packageName => {
       const item = byName.get(packageName);
       return item ? component(item, undefined,
-        services.find(service => service.packageName === packageName)?.id
-        ?? adapters.find(adapter => adapter.package === packageName)?.id
-        ?? idFor(packageName),
+        normalizedIdByPackage.get(packageName) ?? idFor(packageName),
       ) : undefined;
     }),
   }],
