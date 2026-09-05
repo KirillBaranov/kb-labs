@@ -14,7 +14,7 @@ export const manifest: ServiceManifest = {
   },
   env: {
     KB_MCP_DAEMON_PORT: { description: 'TCP port', default: '7779' },
-    KB_MCP_DAEMON_HOST: { description: 'Bind host', default: 'localhost' },
+    KB_MCP_DAEMON_HOST: { description: 'Bind host', default: '0.0.0.0' },
     GATEWAY_JWT_SECRET: { description: 'Shared JWT secret (same value as gateway)' },
   },
 };
