@@ -3,8 +3,15 @@
   "version": "2.118.2",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "kb-host-agent": "./dist/index.js"
+    "kb-host-agent": "./dist/bin.js"
   },
   "files": [
     "dist"
