@@ -57,7 +57,7 @@ export type StatusResponse = z.infer<typeof StatusResponseSchema>;
 // Plan
 // ============================================================================
 
-export const VersionBumpSchema = z.enum(['patch', 'minor', 'major', 'auto']);
+export const VersionBumpSchema = z.enum(['patch', 'minor', 'major', 'auto', 'none']);
 
 export type VersionBump = z.infer<typeof VersionBumpSchema>;
 
