@@ -208,7 +208,14 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if err := json.Unmarshal([]byte(workflowOutput), &response); err != nil {
 		t.Fatalf("workflow response is not JSON: %v\nstdout:\n%s\nstderr:\n%s", err, workflowOutput, workflowStderr)
 	}
-	if strings.TrimSpace(stringValue(response["runId"])) == "" && strings.TrimSpace(stringValue(response["id"])) == "" {
+	// The CLI's --json envelope is {"ok":true,"data":{"runId":...,"status":...}}
+	// (see cli/bin/src/bin.ts's success-response shape) — the run ID lives
+	// under "data", not at the envelope's top level.
+	data, _ := response["data"].(map[string]any)
+	if strings.TrimSpace(stringValue(response["runId"])) == "" &&
+		strings.TrimSpace(stringValue(response["id"])) == "" &&
+		strings.TrimSpace(stringValue(data["runId"])) == "" &&
+		strings.TrimSpace(stringValue(data["id"])) == "" {
 		t.Fatalf("workflow response has no run ID: %s", workflowOutput)
 	}
 }
