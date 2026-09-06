@@ -200,13 +200,13 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 	if err := seedHealthcheckWorkflow(project); err != nil {
 		t.Fatalf("seed healthcheck workflow fixture: %v", err)
 	}
-	workflowOutput, code := runIn(t, project, "node", cli, "workflow", "run", "--workflow-id", "healthcheck", "--json")
+	workflowOutput, code, workflowStderr := runInJSON(t, project, "node", cli, "workflow", "run", "--workflow-id", "healthcheck", "--json")
 	if code != 0 {
-		t.Fatalf("workflow run exited %d:\n%s", code, workflowOutput)
+		t.Fatalf("workflow run exited %d:\nstdout:\n%s\nstderr:\n%s", code, workflowOutput, workflowStderr)
 	}
 	var response map[string]any
 	if err := json.Unmarshal([]byte(workflowOutput), &response); err != nil {
-		t.Fatalf("workflow response is not JSON: %v\n%s", err, workflowOutput)
+		t.Fatalf("workflow response is not JSON: %v\nstdout:\n%s\nstderr:\n%s", err, workflowOutput, workflowStderr)
 	}
 	if strings.TrimSpace(stringValue(response["runId"])) == "" && strings.TrimSpace(stringValue(response["id"])) == "" {
 		t.Fatalf("workflow response has no run ID: %s", workflowOutput)
@@ -219,9 +219,9 @@ func TestPublishedV2JourneyReachesPluginWorkflow(t *testing.T) {
 // dependency: scaffold talks directly to the marketplace service it installed.
 func installedServiceURL(t *testing.T, project, kbDev, config, serviceID string) string {
 	t.Helper()
-	output, code := runIn(t, project, kbDev, "--config", config, "status", "--json")
+	output, code, stderr := runInJSON(t, project, kbDev, "--config", config, "status", "--json")
 	if code != 0 {
-		t.Fatalf("read installed service status: %s", output)
+		t.Fatalf("read installed service status: %s\nstderr:\n%s", output, stderr)
 	}
 	var status struct {
 		Services map[string]struct {
@@ -230,7 +230,7 @@ func installedServiceURL(t *testing.T, project, kbDev, config, serviceID string)
 		} `json:"services"`
 	}
 	if err := json.Unmarshal([]byte(output), &status); err != nil {
-		t.Fatalf("decode installed service status: %v\n%s", err, output)
+		t.Fatalf("decode installed service status: %v\nstdout:\n%s\nstderr:\n%s", err, output, stderr)
 	}
 	service, ok := status.Services[serviceID]
 	if !ok || strings.TrimSpace(service.URL) == "" {
@@ -285,6 +285,39 @@ func runIn(t *testing.T, dir, command string, args ...string) (string, int) {
 	}
 	t.Fatalf("command %s failed: %v\n%s", command, err, output)
 	return string(output), 1
+}
+
+// runInJSON runs command in dir and returns ONLY its stdout, for call sites
+// that parse the result as JSON (e.g. `--json` invocations). It must not use
+// CombinedOutput: the CLI's own documented contract (see cli/bin/src/bin.ts)
+// is that diagnostics — including structured [INFO]/[WARN] logs, which can be
+// un-silenced by an inherited LOG_LEVEL/KB_LOG_LEVEL env var — belong on
+// stderr, while stdout carries only the machine-readable result. Merging the
+// two streams (as CombinedOutput does) corrupts JSON parsing whenever any
+// diagnostic output reaches stderr, which is expected/valid CLI behavior, not
+// a bug in the command being invoked. Stderr is still captured and included
+// in failure messages so debugging information isn't lost.
+func runInJSON(t *testing.T, dir, command string, args ...string) (string, int, string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, command, args...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	cmd.Env = os.Environ()
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		return stdout.String(), 0, stderr.String()
+	}
+	if exit, ok := err.(*exec.ExitError); ok {
+		return stdout.String(), exit.ExitCode(), stderr.String()
+	}
+	t.Fatalf("command %s failed: %v\nstdout:\n%s\nstderr:\n%s", command, err, stdout.String(), stderr.String())
+	return stdout.String(), 1, stderr.String()
 }
 
 // seedHealthcheckWorkflow writes a minimal, generic "healthcheck" workflow
